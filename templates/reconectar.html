@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Reconectá tu cuenta · CoreLux{% endblock %}
+{% block content %}
+<h1>Tu cuenta se desconectó</h1>
+<p>Mercado Libre invalidó el permiso — puede ser porque revocaste el acceso, cambiaste la clave, o pasó mucho tiempo sin usarlo. No es un error nuestro, solo hace falta volver a autorizar.</p>
+<a href="{{ url_for('conectar') }}" class="btn">Reconectar cuenta</a>
+{% endblock %}

@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}Stock · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Panel de Stock & Modelos</h1>
+        <div class="page-subtitle">Sincronización en tiempo real vía Webhooks + Auto-Sync cada 20 min</div>
+    </div>
+    <div class="flex-gap">
+        <button class="btn btn-denim" id="btn-sync" onclick="ejecutarSincro()">
+            <svg class="icon"><use href="#icon-bolt"/></svg>Sincronizar ahora
+        </button>
+    </div>
+</div>
+
+<div class="panel" id="panel-resumen-diario" style="border-left:3px solid var(--accent-gold);">
+    <div class="panel-title">🌅 Resumen de Hoy</div>
+    <div id="resumen-diario-contenido">
+        <div class="skeleton" style="height:80px; border-radius:8px;"></div>
+    </div>
+</div>
+
+<div class="stat-strip">
+    <div class="stat-chip accent-gold">
+        <svg class="icon stat-chip-icon"><use href="#icon-shirt"/></svg>
+        <div class="stat-chip-label">Modelos Activos</div>
+        <div class="stat-chip-value">{{ stats.activas }}</div>
+        <div class="stat-chip-desc">Publicaciones online</div>
+    </div>
+    <div class="stat-chip accent-denim">
+        <svg class="icon stat-chip-icon"><use href="#icon-coin"/></svg>
+        <div class="stat-chip-label">Capital en Stock</div>
+        <div class="stat-chip-value">${{ stats.valor_total }}</div>
+        <div class="stat-chip-desc">Precio × unidades totales</div>
+    </div>
+    <div class="stat-chip accent-success">
+        <svg class="icon stat-chip-icon"><use href="#icon-box"/></svg>
+        <div class="stat-chip-label">Depósito Propio</div>
+        <div class="stat-chip-value">{{ stats.propio }} u.</div>
+        <div class="stat-chip-desc">Stock físico en local</div>
+    </div>
+    <div class="stat-chip accent-denim">
+        <svg class="icon stat-chip-icon"><use href="#icon-truck"/></svg>
+        <div class="stat-chip-label">Depósito FULL</div>
+        <div class="stat-chip-value">{{ stats.full }} u.</div>
+        <div class="stat-chip-desc">En bodegas de MeLi</div>
+    </div>
+</div>
+
+<div class="panel panel-colapsable" id="panel-riesgo-stock" style="display:none;" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
+    <div class="panel-title">
+        <span><svg class="icon"><use href="#icon-alert"/></svg>Alerta de Agotamiento Próximo (<span id="contador-riesgo-stock">0</span>)</span>
+        <span class="chevron-colapsable">▾</span>
+    </div>
+    <div class="contenido-colapsable"><div id="lista-riesgo-stock"></div></div>
+</div>
+
+<div class="panel" id="panel-oportunidades-seo" style="display:none;">
+    <div class="panel-title">💡 Oportunidades de Cassini (tendencias que no tenés en tu catálogo)</div>
+    <div id="lista-oportunidades-seo" class="flex-gap"></div>
+</div>
+
+<div style="text-align:right; margin-bottom:10px;">
+    <button type="button" class="btn btn-secondary" style="font-size:0.82em; padding:6px 12px;" onclick="togglePanelPersonalizar()">⚙️ Personalizar panel</button>
+</div>
+<div class="panel" id="panel-personalizar" style="display:none;">
+    <div class="panel-title">¿Qué querés ver en esta pantalla?</div>
+    <label class="flex-gap" style="align-items:center; cursor:pointer; margin-bottom:8px;">
+        <input type="checkbox" id="chk-mostrar-agotamiento" onchange="guardarPreferenciaPanel()"> Alerta de Agotamiento Próximo
+    </label>
+    <label class="flex-gap" style="align-items:center; cursor:pointer;">
+        <input type="checkbox" id="chk-mostrar-oportunidades" onchange="guardarPreferenciaPanel()"> Oportunidades de Cassini
+    </label>
+</div>
+
+<div class="panel">
+    <div class="filter-row" style="margin-bottom: 18px;">
+        <div class="field-group" style="flex: 1; min-width: 200px;">
+            <label class="field-label">Buscar Modelo</label>
+            <input type="text" id="input-buscador" placeholder="Título o ID..." onkeyup="aplicarFiltros()">
+        </div>
+        <div class="field-group">
+            <label class="field-label">Estado</label>
+            <div class="flex-gap">
+                <button type="button" id="chip-activas" class="btn btn-secondary active" onclick="toggleEstado('active')">Activas</button>
+                <button type="button" id="chip-pausadas" class="btn btn-secondary" onclick="toggleEstado('paused')">Pausadas</button>
+                <button type="button" id="chip-inactivas" class="btn btn-secondary" onclick="toggleEstado('closed')">Inactivas</button>
+            </div>
+        </div>
+        <div class="field-group">
+            <a href="/exportar_planilla_stock" class="btn btn-secondary">Exportar CSV</a>
+        </div>
+    </div>
+
+    <form action="/actualizar_precios_masivo" method="POST" class="filter-row" style="border-top: 1px solid var(--border); padding-top: 18px;" onsubmit="return confirm('¿Estás seguro de modificar los precios de TODO el catálogo?');">
+        <div class="field-group">
+            <label class="field-label">Actualización Masiva</label>
+            <select name="accion">
+                <option value="aumentar">Aumentar Precios</option>
+                <option value="descontar">Bajar Precios</option>
+            </select>
+        </div>
+        <div class="field-group" style="max-width: 100px;">
+            <label class="field-label">Porcentaje</label>
+            <input type="number" step="0.1" name="porcentaje" placeholder="%" required min="0.1">
+        </div>
+        <button type="submit" class="btn btn-primary"><svg class="icon"><use href="#icon-tag"/></svg>Aplicar Masivo</button>
+    </form>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Modelos en Catálogo (<span id="contador-visibles">{{ productos|length }}</span>)</div>
+
+    <table class="data-table" id="tabla-productos">
+        <thead>
+            <tr>
+                <th>Producto & Variantes Agrupadas</th>
+                <th class="num">Precio</th>
+                <th>Estado</th>
+                <th class="num">Depósito Propio</th>
+                <th class="num">FULL</th>
+                <th>Últimos 7 días</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in productos %}
+            <tr data-precio="{{ p.precio_min }}" data-estado="{{ p.estado }}" data-modelo-titulo="{{ p.titulo }}" class="{% if p.stock_propio == 0 and p.stock_full == 0 %}row-alert{% endif %}">
+                <td class="col-titulo">
+                    <div class="row-flex">
+                        {% if p.thumbnail %}<img src="{{ p.thumbnail }}" alt="" class="thumb-sm">{% endif %}
+                        <div>
+                            <div style="font-weight: 700; font-size: 1.05em;">
+                                {{ p.titulo }}
+                                {% if p.stock_propio == 0 and p.stock_full == 0 %}<span class="badge badge-danger">Sin Stock</span>{% endif %}
+                            </div>
+                            <div class="flex-gap" style="margin-top: 8px;">
+                                {% for v in p.variantes %}
+                                <a href="javascript:void(0)" onclick="abrirDrawer('{{ v.id_meli }}')" title="Gestionar talle {{ v.talle }}{% if v.revisar_duplicado %} — hay publicaciones hermanas con distinto stock, revisar en MeLi{% endif %}" style="text-decoration:none;">
+                                    <span class="badge {% if v.revisar_duplicado %}badge-warning{% else %}badge-neutral{% endif %}" style="font-size: 0.76em; cursor:pointer;">
+                                        <strong>{{ v.talle }}</strong>: {{ v.propio }}u propios {% if v.full > 0 %}| <span style="color:var(--accent-denim);">{{ v.full }}u FULL</span>{% endif %}
+                                        {% if v.revisar_duplicado %} ⚠️{% endif %}
+                                    </span>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td class="num">
+                    {% if p.descuento_pct %}
+                    <div class="text-muted" style="text-decoration: line-through; font-size:0.78em;">${{ p.precio_original_formateado }}</div>
+                    <div>${{ p.precio_formateado }} <span class="badge badge-success">-{{ p.descuento_pct }}%</span></div>
+                    {% else %}
+                    <div>${{ p.precio_rango }}</div>
+                    {% endif %}
+                    {% if p.recibis_formateado %}<div class="text-muted" style="font-size:0.72em;">Recibís ~${{ p.recibis_formateado }}</div>{% endif %}
+                </td>
+                <td>
+                    {% if p.estado == 'active' %}<span class="badge badge-success">Activa</span>
+                    {% elif p.estado == 'paused' %}<span class="badge badge-warning">Pausada</span>
+                    {% else %}<span class="badge badge-neutral">Inactiva</span>{% endif %}
+                </td>
+                <td class="num"><strong>{{ p.stock_propio }} u.</strong></td>
+                <td class="num"><strong>{{ p.stock_full }} u.</strong></td>
+                <td>
+                    {% if p.sparkline_total_7d > 0 %}
+                    <svg viewBox="0 0 70 24" class="sparkline" title="{{ p.sparkline_total_7d }} unidades vendidas en 7 días">
+                        <polyline points="{{ p.sparkline_puntos }}" fill="none" stroke="var(--accent-primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    {% else %}
+                    <span class="text-faint" style="font-size:0.78em;">Sin ventas</span>
+                    {% endif %}
+                </td>
+                <td><button type="button" class="btn btn-secondary" onclick="abrirDrawer('{{ p.id }}')">Gestionar</button></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const CLAVE_FILTRO_ESTADO = 'filtro_estado_stock';
+    let estadosVisibles = JSON.parse(localStorage.getItem(CLAVE_FILTRO_ESTADO) || 'null') || { active: true, paused: false, closed: false };
+
+    function _idChip(estado) {
+        return 'chip-' + (estado === 'active' ? 'activas' : (estado === 'paused' ? 'pausadas' : 'inactivas'));
+    }
+
+    function toggleEstado(estado) {
+        estadosVisibles[estado] = !estadosVisibles[estado];
+        localStorage.setItem(CLAVE_FILTRO_ESTADO, JSON.stringify(estadosVisibles));
+        document.getElementById(_idChip(estado)).classList.toggle('active', estadosVisibles[estado]);
+        aplicarFiltros();
+    }
+
+    function restaurarFiltrosGuardados() {
+        ['active', 'paused', 'closed'].forEach(estado => {
+            document.getElementById(_idChip(estado)).classList.toggle('active', !!estadosVisibles[estado]);
+        });
+    }
+
+    function aplicarFiltros() {
+        const consulta = document.getElementById("input-buscador").value.toLowerCase();
+        let visibles = 0;
+        document.querySelectorAll("#tabla-productos tbody tr").forEach(fila => {
+            const texto = fila.querySelector(".col-titulo").innerText.toLowerCase();
+            const estado = fila.getAttribute("data-estado");
+            const coincide = coincideBusqueda(texto, consulta) && estadosVisibles[estado] !== false;
+            fila.style.display = coincide ? "" : "none";
+            if (coincide) visibles++;
+        });
+        document.getElementById("contador-visibles").innerText = visibles;
+    }
+
+    function ejecutarSincro() {
+        const btn = document.getElementById('btn-sync');
+        btn.disabled = true;
+        btn.innerText = 'Sincronizando...';
+        fetch('/sincronizar_manual')
+            .then(() => window.location.reload())
+            .catch(() => window.location.reload());
+    }
+
+    async function cargarRiesgoStock() {
+        try {
+            const resp = await fetch('/api/quiebre_stock');
+            const data = await resp.json();
+            const panel = document.getElementById('panel-riesgo-stock');
+            const cont = document.getElementById('lista-riesgo-stock');
+            if (!data || data.length === 0 || !panelHabilitado('agotamiento')) { panel.style.display = 'none'; return; }
+            mostrarPanelConAnimacion(panel);
+            document.getElementById('contador-riesgo-stock').textContent = data.length;
+            cont.innerHTML = data.map(v => `
+                <div style="padding:9px 0; border-bottom:1px solid var(--border-soft); font-size:0.85em;">
+                    <div class="flex-gap" style="justify-content:space-between;">
+                        <span>${v.titulo} — <strong>${v.talle}</strong></span>
+                        <span class="text-danger" style="font-family:var(--font-data);">${v.stock_total} u. restantes (~${v.dias_restantes} días)</span>
+                    </div>
+                    ${v.proveedor_nombre ? `
+                    <div style="font-size:0.9em; margin-top:3px;" class="${v.pedir_ya ? 'text-danger' : 'text-muted'}">
+                        ${v.pedir_ya ? '🚨 Pedir YA a ' + v.proveedor_nombre + ' — el envío tarda más de lo que te queda de stock' : '🗓️ Con ' + v.proveedor_nombre + ': tenés ~' + v.dias_para_pedir + ' día/s más para pedir'}
+                    </div>` : ''}
+                </div>
+            `).join('');
+        } catch (e) { console.error(e); }
+    }
+
+    window.onload = function () {
+        restaurarFiltrosGuardados();
+        aplicarFiltros();
+        cargarRiesgoStock();
+        cargarResumenDiario();
+    };
+
+    async function cargarResumenDiario() {
+        const cont = document.getElementById('resumen-diario-contenido');
+        try {
+            const resp = await fetch('/api/resumen_diario');
+            const d = await resp.json();
+            if (!d) { cont.innerHTML = '<div class="text-muted">No se pudo generar el resumen de hoy.</div>'; return; }
+
+            let variacionHtml = '';
+            if (d.variacion_pct !== null && d.variacion_pct !== undefined) {
+                const esPositivo = d.variacion_pct >= 0;
+                variacionHtml = `<span class="${esPositivo ? 'text-success' : 'text-danger'}" style="font-size:0.5em; font-weight:600; margin-left:8px;">${esPositivo ? '▲' : '▼'} ${Math.abs(d.variacion_pct)}% vs. ayer</span>`;
+            }
+
+            cont.innerHTML = `
+                <div class="hero-number">
+                    $${d.facturado_formateado}${variacionHtml}
+                </div>
+                <div class="stat-strip" style="margin-top:14px; margin-bottom:14px;">
+                    <div class="stat-chip accent-denim"><div class="stat-chip-label">Ventas</div><div class="stat-chip-value">${d.ordenes}</div></div>
+                    <div class="stat-chip accent-denim"><div class="stat-chip-label">Unidades</div><div class="stat-chip-value">${d.unidades}</div></div>
+                    <div class="stat-chip accent-gold"><div class="stat-chip-label">Modelo Top</div><div class="stat-chip-value" style="font-size:0.95em; line-height:1.3;">${d.modelo_top || '—'}</div></div>
+                </div>
+                <div class="flex-gap" style="font-size:0.78em;">
+                    ${d.curva_rota_abiertas > 0 ? `<span class="badge badge-warning">⚖️ ${d.curva_rota_abiertas} curva rota</span>` : ''}
+                    ${d.en_riesgo_stock > 0 ? `<span class="badge badge-warning">⏳ ${d.en_riesgo_stock} en riesgo de stock</span>` : ''}
+                    ${d.incidencias_abiertas > 0 ? `<span class="badge badge-danger">⚠️ ${d.incidencias_abiertas} reclamos abiertos</span>` : ''}
+                    ${(d.curva_rota_abiertas === 0 && d.en_riesgo_stock === 0 && d.incidencias_abiertas === 0) ? '<span class="badge badge-success">✅ Sin alertas activas</span>' : ''}
+                </div>
+            `;
+        } catch (e) {
+            cont.innerHTML = '<div class="text-muted">No se pudo cargar el resumen de hoy.</div>';
+        }
+    }
+</script>
+{% endblock %}

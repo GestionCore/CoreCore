@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Espía de Competencia · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Espía de Publicaciones Rivales</h1>
+        <div class="page-subtitle">Seguimiento diario de precio, stock y ventas de la competencia (datos públicos)</div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Agregar publicación a seguir</div>
+    <form action="/competencia/agregar" method="POST" class="filter-row">
+        <div class="field-group" style="flex:1;">
+            <label class="field-label">ID de MeLi (ej: MLA123456789)</label>
+            <input type="text" name="id_meli_rival" placeholder="MLA..." required>
+        </div>
+        <div class="field-group" style="flex:1;">
+            <label class="field-label">Alias (opcional)</label>
+            <input type="text" name="alias" placeholder="Ej: Competidor Palermo">
+        </div>
+        <button type="submit" class="btn btn-primary">Agregar</button>
+    </form>
+</div>
+
+{% if not rivales %}
+<div class="panel"><div class="alert-empty">Todavía no estás siguiendo ninguna publicación rival.</div></div>
+{% endif %}
+
+{% for r in rivales %}
+<div class="panel">
+    <div class="panel-title">
+        <span>
+            {{ r.alias }}
+            {% if r.tendencia_precio == 'bajó' %}<span class="badge badge-danger">Precio bajó</span>
+            {% elif r.tendencia_precio == 'subió' %}<span class="badge badge-success">Precio subió</span>{% endif %}
+        </span>
+        <form action="/competencia/eliminar/{{ r.id_meli_rival }}" method="POST" onsubmit="return confirm('¿Dejar de seguir esta publicación?');" style="display:inline;">
+            <button type="submit" class="btn btn-danger">Dejar de seguir</button>
+        </form>
+    </div>
+    <div class="text-muted" style="margin-bottom:10px; font-size:0.85em;">{{ r.titulo_actual or 'Sin datos todavía — se releva una vez al día' }} · {{ r.id_meli_rival }}</div>
+    {% if r.historial %}
+    <table class="data-table">
+        <thead><tr><th>Fecha</th><th class="num">Precio</th><th class="num">Stock</th><th>Logística</th><th class="num">Vendidos (acum.)</th></tr></thead>
+        <tbody>
+            {% for h in r.historial %}
+            <tr>
+                <td>{{ h.fecha }}</td>
+                <td class="num">{% if h.precio %}${{ "%.2f"|format(h.precio) }}{% else %}-{% endif %}</td>
+                <td class="num">{{ h.stock }}</td>
+                <td>{% if h.es_full %}<span class="badge badge-neutral">FULL</span>{% else %}Propia{% endif %}</td>
+                <td class="num">{{ h.vendidos }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

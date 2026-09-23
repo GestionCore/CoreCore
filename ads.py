@@ -1,0 +1,211 @@
+"""
+Publicidad (Product Ads) — portado de Santi Mens.
+
+Cambio real respecto al original, no cosmético: `obtener_advertiser_info`
+cacheaba por `site_id` solo (ej: "MLA") — como CASI TODAS las cuentas
+argentinas van a pasar "MLA", esa caché iba a devolver el advertiser_id
+de la PRIMERA cuenta que la llenara a CUALQUIER otra cuenta que
+consultara después. En single-tenant esto nunca se notaba porque solo
+había una cuenta. Acá la clave de caché ahora incluye cuenta_id.
+
+También dejé afuera dos funciones que quedaron redundantes en el
+original: `_obtener_costos_ads_por_item_OBSOLETO` (ya estaba marcada
+como tal) y `obtener_gasto_ads_por_dia`, que usaba un patrón de endpoint
+con aggregation_type=DAILY nunca confirmado del todo — `obtener_serie_diaria_ads`
+hace lo mismo con el patrón que sí confirmamos que funciona, y ya la
+reemplazaba en la práctica.
+"""
+import time
+import requests
+import meli_http
+import concurrent.futures
+from datetime import datetime, timedelta
+
+_advertiser_cache = {}
+_costos_cache = {}
+TTL_COSTOS_SEGUNDOS = 300  # 5 minutos
+
+METRICAS_CAMPANA = "clicks,prints,ctr,cost,cpc,acos,roas,cvr,units_quantity,direct_amount,indirect_amount,total_amount"
+
+
+def obtener_ad_de_item(access_token, id_meli):
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        resp = requests.get(f"https://api.mercadolibre.com/advertising/product_ads/items/{id_meli}", headers=headers, timeout=8)
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        return {"campaign_id": data.get("campaign_id"), "status": data.get("status")}
+    except Exception as e:
+        print(f"[Ads] ⚠️ Error buscando anuncio de {id_meli}: {e}")
+        return None
+
+
+def pausar_ad_item(access_token, id_meli):
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+    try:
+        resp = requests.put(
+            f"https://api.mercadolibre.com/advertising/product_ads/items/{id_meli}",
+            json={"status": "paused"}, headers=headers, timeout=10
+        )
+        if resp.status_code == 200:
+            return True, "ok"
+        return False, f"HTTP {resp.status_code}: {resp.text[:200]}"
+    except Exception as e:
+        return False, f"Error de conexión: {e}"
+
+
+def obtener_advertiser_info(access_token, cuenta_id, site_id_esperado="MLA"):
+    """
+    cuenta_id es obligatorio a propósito — es lo que hace que la caché no
+    se mezcle entre cuentas distintas (ver nota del módulo).
+    """
+    clave_cache = (cuenta_id, site_id_esperado)
+    if clave_cache in _advertiser_cache:
+        return _advertiser_cache[clave_cache]
+
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json", "Api-Version": "1"}
+    url = "https://api.mercadolibre.com/advertising/advertisers?product_id=PADS"
+
+    try:
+        resp = meli_http.get(url, headers=headers, timeout=10)
+    except Exception as e:
+        print(f"[Ads] ❌ Error de conexión consultando advertiser_id: {e}")
+        return None, None
+
+    if resp.status_code != 200:
+        print(f"[Ads] ⚠️ Error consultando advertiser_id: {resp.status_code} - {resp.text[:300]}")
+        return None, None
+
+    anunciantes = resp.json().get("advertisers", [])
+    match = next((a for a in anunciantes if a.get("site_id") == site_id_esperado), None)
+    if not match:
+        return None, None
+
+    resultado = (match.get("advertiser_id"), match.get("site_id"))
+    _advertiser_cache[clave_cache] = resultado
+    return resultado
+
+
+def obtener_advertiser_id(access_token, cuenta_id, site_id="MLA"):
+    advertiser_id, _ = obtener_advertiser_info(access_token, cuenta_id, site_id)
+    return advertiser_id
+
+
+def obtener_campanas_con_metricas(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id="MLA"):
+    headers = {"Authorization": f"Bearer {access_token}", "api-version": "2"}
+    url = (
+        f"https://api.mercadolibre.com/advertising/{site_id}/advertisers/{advertiser_id}/product_ads/campaigns/search"
+        f"?limit=50&offset=0&date_from={fecha_desde}&date_to={fecha_hasta}&metrics={METRICAS_CAMPANA}&metrics_summary=true"
+    )
+    try:
+        resp = requests.get(url, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            print(f"[Ads] ⚠️ Error trayendo campañas: {resp.status_code} - {resp.text[:300]}")
+            return []
+        data = resp.json()
+        campanas = []
+        for c in data.get("results", []):
+            metricas = c.get("metrics", {}) or {}
+            # El campo "budget" de una campaña real vino como un número
+            # directo en la práctica (no como {"amount": N}, que era lo
+            # que asumíamos sin haber podido confirmarlo contra la API
+            # real todavía) — lo hacemos robusto a las dos formas.
+            budget_raw = c.get("budget")
+            presupuesto = budget_raw.get("amount") if isinstance(budget_raw, dict) else budget_raw
+            campanas.append({
+                "id": c.get("id"), "nombre": c.get("name", "Sin nombre"), "estado": c.get("status", "unknown"),
+                "presupuesto": presupuesto,
+                "clicks": metricas.get("clicks", 0), "prints": metricas.get("prints", 0),
+                "ctr": round((metricas.get("ctr") or 0) * 100, 2), "costo": metricas.get("cost", 0) or 0,
+                "cpc": metricas.get("cpc", 0) or 0, "roas": metricas.get("roas"), "acos": metricas.get("acos"),
+                "cvr": round((metricas.get("cvr") or 0) * 100, 2), "unidades": metricas.get("units_quantity", 0),
+                "ventas_atribuidas": metricas.get("total_amount", 0) or 0,
+            })
+        return campanas
+    except Exception as e:
+        print(f"[Ads] ❌ Error de conexión trayendo campañas: {e}")
+        return []
+
+
+def obtener_serie_diaria_ads(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id="MLA"):
+    d1 = datetime.strptime(fecha_desde, "%Y-%m-%d")
+    d2 = datetime.strptime(fecha_hasta, "%Y-%m-%d")
+    dias = [(d1 + timedelta(days=i)).strftime("%Y-%m-%d") for i in range((d2 - d1).days + 1)]
+
+    headers = {"Authorization": f"Bearer {access_token}", "api-version": "2"}
+
+    def _consultar_dia(fecha):
+        url = (
+            f"https://api.mercadolibre.com/advertising/{site_id}/advertisers/{advertiser_id}/product_ads/campaigns/search"
+            f"?limit=50&offset=0&date_from={fecha}&date_to={fecha}&metrics=cost,total_amount"
+        )
+        try:
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.status_code != 200:
+                return fecha, 0.0, 0.0
+            data = resp.json()
+            costo_dia = sum(float((c.get("metrics", {}) or {}).get("cost") or 0) for c in data.get("results", []))
+            ventas_dia = sum(float((c.get("metrics", {}) or {}).get("total_amount") or 0) for c in data.get("results", []))
+            return fecha, costo_dia, ventas_dia
+        except Exception:
+            return fecha, 0.0, 0.0
+
+    por_dia = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        for fecha, costo, ventas in executor.map(_consultar_dia, dias):
+            por_dia[fecha] = {"costo": costo, "ventas": ventas}
+    return por_dia
+
+
+def obtener_gasto_ads_total_periodo(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id="MLA"):
+    headers = {"Authorization": f"Bearer {access_token}", "api-version": "2"}
+    url = (
+        f"https://api.mercadolibre.com/advertising/{site_id}/advertisers/{advertiser_id}/product_ads/campaigns/search"
+        f"?limit=50&offset=0&date_from={fecha_desde}&date_to={fecha_hasta}&metrics=cost"
+    )
+    try:
+        resp = requests.get(url, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            print(f"[Ads] ⚠️ Error consultando gasto total: {resp.status_code} - {resp.text[:300]}")
+            return None
+        data = resp.json()
+        total = sum(float(c.get("metrics", {}).get("cost") or 0) for c in data.get("results", []))
+        return round(total, 2)
+    except Exception as e:
+        print(f"[Ads] ❌ Error de conexión trayendo gasto total: {e}")
+        return None
+
+
+def obtener_costos_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_hasta, ids_relevantes, site_id="MLA"):
+    clave_cache = (advertiser_id, fecha_desde, fecha_hasta, tuple(sorted(ids_relevantes)))
+    cacheado = _costos_cache.get(clave_cache)
+    if cacheado and (time.time() - cacheado["timestamp"]) < TTL_COSTOS_SEGUNDOS:
+        return cacheado["data"]
+
+    headers = {"Authorization": f"Bearer {access_token}", "Api-Version": "2"}
+    costos_por_item = {}
+
+    def _consultar_uno(item_id):
+        url = (
+            f"https://api.mercadolibre.com/marketplace/advertising/{site_id}/product_ads/ads/{item_id}"
+            f"?date_from={fecha_desde}&date_to={fecha_hasta}&metrics=cost"
+        )
+        try:
+            resp = meli_http.get(url, headers=headers, timeout=8)
+            if resp.status_code != 200:
+                return item_id, None
+            data = resp.json()
+            costo = float((data.get("metrics", {}) or {}).get("cost") or 0.0)
+            return item_id, costo if costo > 0 else None
+        except Exception as e:
+            print(f"[Ads] ⚠️ Error consultando costo de {item_id}: {e}")
+            return item_id, None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        for item_id, costo in executor.map(_consultar_uno, ids_relevantes):
+            if costo is not None:
+                costos_por_item[item_id] = costo
+
+    _costos_cache[clave_cache] = {"data": costos_por_item, "timestamp": time.time()}
+    return costos_por_item

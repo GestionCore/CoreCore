@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Tendencias · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Radar de Tendencias</h1>
+        <div class="page-subtitle">
+            {% if categoria_nombre %}
+                Búsquedas más populares esta semana en <strong>{{ categoria_nombre }}</strong> (dato oficial de MeLi, filtrado por tu rubro)
+            {% else %}
+                No pude detectar tu categoría — mostrando el top general del país filtrado por palabras clave de indumentaria
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if not relevantes %}
+<div class="panel"><div class="alert-empty">No hay tendencias disponibles ahora mismo.</div></div>
+{% else %}
+
+{% set oportunidades = relevantes|selectattr("es_oportunidad")|list %}
+{% set cubiertas = relevantes|rejectattr("es_oportunidad")|list %}
+
+<div class="stat-strip">
+    <div class="stat-chip accent-denim">
+        <div class="stat-chip-label">Tendencias del rubro</div>
+        <div class="stat-chip-value">{{ relevantes|length }}</div>
+    </div>
+    <div class="stat-chip accent-gold">
+        <div class="stat-chip-label">Oportunidades (no están en tu catálogo)</div>
+        <div class="stat-chip-value">{{ oportunidades|length }}</div>
+    </div>
+    <div class="stat-chip accent-success">
+        <div class="stat-chip-label">Ya cubiertas en tus títulos</div>
+        <div class="stat-chip-value">{{ cubiertas|length }}</div>
+    </div>
+</div>
+
+{% if calendario_estacional %}
+<div class="panel">
+    <div class="panel-title">📅 Próximas fechas comerciales</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        Solo fechas reales (fijas o calculables) — no incluye Hot Sale ni Cyber Monday porque esas las define CACE cada año y varían, poner una fecha ahí sería inventar un dato.
+    </div>
+    <div class="flex-gap">
+        {% for e in calendario_estacional %}
+        <div style="background:rgba(255,255,255,0.03); border-radius:10px; padding:12px 16px; min-width:180px;">
+            <div style="font-weight:700;">{{ e.nombre }}</div>
+            <div class="text-muted" style="font-size:0.8em; margin:4px 0;">{{ e.fecha_str }} — en {{ e.dias_faltantes }} día(s)</div>
+            <div style="font-size:0.78em; color:var(--accent-gold);">💡 {{ e.categoria_sugerida }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if seo_scores %}
+<div class="panel" data-mostrar-mas-scope>
+    <div class="panel-title">📝 Score de SEO por publicación</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        Qué tan bien aprovechado está cada título para la búsqueda — no es una caja negra, cada punto tiene una razón concreta.
+    </div>
+    {% for s in seo_scores %}
+    <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="padding:14px 0; border-bottom:1px solid var(--border-soft);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:8px;">
+            <a href="javascript:void(0)" onclick="abrirDrawer('{{ s.id_meli }}')" style="font-weight:600; flex:1;">{{ s.titulo }}</a>
+            <div class="seo-score-circulo {% if s.score >= 80 %}seo-score-alto{% elif s.score >= 50 %}seo-score-medio{% else %}seo-score-bajo{% endif %}">{{ s.score }}</div>
+        </div>
+        <div class="text-muted" style="font-size:0.8em; line-height:1.6;">
+            {% for r in s.razones %}<div>{{ r }}</div>{% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    {% if seo_scores|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ seo_scores|length - 5 }} más...</button>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if oportunidades %}
+<div class="panel">
+    <div class="panel-title">💡 Oportunidades — no aparecen en ninguno de tus títulos</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        Tocá una para abrir el Drawer de una publicación con el título sugerido precargado — vos revisás y decidís si guardarlo.
+    </div>
+    <div class="flex-gap">
+        {% for t in oportunidades %}
+        <button type="button" class="badge badge-warning" style="cursor:pointer; font-size:0.9em; padding:8px 14px; border:none;"
+            onclick="abrirDrawerConSugerencia({{ t.id_meli_sugerido|tojson }}, {{ t.titulo_sugerido|tojson }})">
+            {% if t.es_emergente %}🆕{% else %}💡{% endif %} {{ t.keyword }}
+        </button>
+        {% endfor %}
+    </div>
+    {% if coincide_con_competencia %}
+    <div class="alert alert-warning" style="margin-top:16px;">
+        ⚔️ <strong>Ojo con estas:</strong>
+        {% for c in coincide_con_competencia %}"{{ c.keyword }}" (ya la usa {{ c.rivales|join(', ') }}){% if not loop.last %}, {% endif %}{% endfor %}
+        — tu competencia ya la tiene y vos no.
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if cubiertas %}
+<div class="panel">
+    <div class="panel-title">✅ Ya tenés esto cubierto</div>
+    <div class="flex-gap">
+        {% for t in cubiertas %}
+        <a href="{{ t.url }}" target="_blank" class="badge badge-success" style="text-decoration:none;">{{ t.keyword }}</a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if resto %}
+<div class="panel" data-mostrar-mas-scope>
+    <div class="panel-title">Resto de las tendencias generales del país</div>
+    <div class="flex-gap">
+        {% for t in resto %}
+        <a href="{{ t.url }}" target="_blank" class="badge badge-neutral {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="text-decoration:none;">{{ t.keyword }}</a>
+        {% endfor %}
+    </div>
+    {% if resto|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ resto|length - 5 }} más...</button>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if canibalismo %}
+<div class="panel">
+    <div class="panel-title">⚔️ Posible canibalismo entre tus propias publicaciones</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        Estas publicaciones tienen títulos muy parecidos — podrían estar compitiendo por las mismas búsquedas y dividiéndose las ventas entre sí. No es una certeza absoluta, pero vale la pena diferenciarlas mejor.
+    </div>
+    {% for c in canibalismo %}
+    <div style="padding:12px 0; border-bottom:1px solid var(--border-soft);">
+        <div class="flex-gap" style="justify-content:space-between; align-items:center;">
+            <div>
+                <a href="javascript:void(0)" onclick="abrirDrawer('{{ c.id_a }}')">{{ c.modelo_a }}</a>
+                <span class="text-muted"> vs. </span>
+                <a href="javascript:void(0)" onclick="abrirDrawer('{{ c.id_b }}')">{{ c.modelo_b }}</a>
+            </div>
+            <span class="badge badge-warning">{{ c.similitud_pct }}% similares</span>
+        </div>
+        <div class="text-muted" style="font-size:0.82em; margin-top:4px;">Palabras compartidas: {{ c.palabras_compartidas|join(', ') }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

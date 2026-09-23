@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Despacho · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">📦 Modo Despacho Rápido</h1>
+        <div class="page-subtitle">
+            Despachos para Flex/Correo — corte {{ hora_corte }}:00 de hoy
+        </div>
+    </div>
+    <button type="button" class="btn btn-denim" onclick="alternarModoDespachoLimpio()" id="btn-modo-limpio">🎯 Modo Limpio</button>
+</div>
+
+{% if not flex_habilitado %}
+<div class="alert alert-warning">
+    ⚠️ No tenés Mercado Envíos Flex habilitado en tu cuenta — este panel solo te muestra despachos de Correo (Mercado Envíos estándar).
+</div>
+{% endif %}
+
+{% if total > 0 %}
+<div class="panel despacho-progreso-panel">
+    <div class="despacho-progreso-numero">
+        <span class="hero-number {% if listos == total %}acento-primario{% endif %}" id="contador-listos">{{ listos }}</span><span class="hero-number-label" style="font-size:0.9em;">/ {{ total }} listos</span>
+    </div>
+    <div class="despacho-progreso-barra">
+        <div class="despacho-progreso-fill" id="barra-progreso-despacho" style="width:{{ (listos / total * 100)|round(1) }}%;"></div>
+    </div>
+</div>
+{% endif %}
+
+<div class="panel">
+    <form action="/despacho" method="GET" class="filter-row">
+        <div class="field-group">
+            <label class="field-label">Ver otro día</label>
+            <input type="date" name="fecha" value="{{ fecha }}" onchange="this.form.submit()">
+        </div>
+    </form>
+    <div style="margin-top:10px;" class="flex-gap">
+        <a href="/sincronizar_hoy" class="btn btn-denim">🔄 Sincronizar ventas de hoy</a>
+        {% if cantidad_shipments > 0 %}
+        <a href="/despacho/etiquetas_pdf?fecha={{ fecha }}" class="btn btn-secondary">🏷️ Descargar {{ cantidad_shipments }} etiqueta(s) en PDF</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if not paquetes %}
+<div class="panel"><div class="alert-empty">No hay ventas propias/Flex para despachar en esta ventana.</div></div>
+{% else %}
+<div id="lista-despacho">
+    {% for p in paquetes %}
+    <div class="despacho-item {% if p.despachado %}despachado{% endif %}" data-clave="{{ p.clave }}">
+        {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm" alt="" style="width:52px;height:52px;">{% endif %}
+        <div class="despacho-info" onclick="toggleDespacho(this.closest('.despacho-item'), '{{ p.id_orden }}', '{{ p.id_meli }}', '{{ p.id_variante }}')" style="cursor:pointer;">
+            <strong>{{ p.modelo }}</strong>
+            <div class="text-muted" style="font-size:0.85em;">
+                Talle {{ p.talle }} · {{ p.cantidad }} u.
+                {% if p.comprador_nombre %} · {{ p.comprador_nombre }}{% endif %}
+                {% if p.comprador_nickname %} · <span title="Usuario de MeLi">@{{ p.comprador_nickname }}</span>{% endif %}
+                {% if p.etiqueta_impresa and not p.despachado %} · <span class="badge badge-warning" style="font-size:0.85em;" title="La etiqueta ya se imprimió en MeLi">🏷️ Etiqueta ya impresa</span>{% endif %}
+            </div>
+        </div>
+        <a href="https://www.mercadolibre.com.ar/ventas/{{ p.id_orden }}/detalle" target="_blank" class="badge badge-neutral" style="white-space:nowrap;" onclick="event.stopPropagation();">
+            Orden #{{ p.id_orden }} ↗
+        </a>
+        <div class="despacho-check" onclick="toggleDespacho(this.closest('.despacho-item'), '{{ p.id_orden }}', '{{ p.id_meli }}', '{{ p.id_variante }}')">{% if p.despachado %}✓{% endif %}</div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="panel" id="panel-todo-listo" style="{% if listos < total %}display:none;{% endif %} text-align:center; margin-top:16px;">
+    <div style="font-size:1.3em;">🎉 ¡Todo listo para el correo!</div>
+</div>
+{% endif %}
+
+<script>
+    function alternarModoDespachoLimpio() {
+        document.body.classList.toggle('modo-despacho-limpio');
+        const activo = document.body.classList.contains('modo-despacho-limpio');
+        document.getElementById('btn-modo-limpio').textContent = activo ? '✕ Salir del Modo Limpio' : '🎯 Modo Limpio';
+    }
+
+    function toggleDespacho(elemento, idOrden, idMeli, idVariante) {
+        const yaDespachado = elemento.classList.contains('despachado');
+        const nuevoEstado = !yaDespachado;
+
+        elemento.classList.toggle('despachado', nuevoEstado);
+        elemento.querySelector('.despacho-check').textContent = nuevoEstado ? '✓' : '';
+
+        const total = document.querySelectorAll('.despacho-item').length;
+        const listos = document.querySelectorAll('.despacho-item.despachado').length;
+        document.getElementById('contador-listos').textContent = listos;
+        document.getElementById('panel-todo-listo').style.display = (listos === total) ? '' : 'none';
+
+        const barra = document.getElementById('barra-progreso-despacho');
+        if (barra) barra.style.width = (listos / total * 100).toFixed(1) + '%';
+        const numeroHero = document.getElementById('contador-listos');
+        if (numeroHero) numeroHero.classList.toggle('acento-primario', listos === total);
+        if (listos === total && listos > 0 && !window._despachoYaCelebrado) {
+            celebrarConfeti();
+            window._despachoYaCelebrado = true;
+        } else if (listos < total) {
+            window._despachoYaCelebrado = false;
+        }
+
+        fetch('/despacho/marcar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ id_orden: idOrden, id_meli: idMeli, id_variante: idVariante, despachado: nuevoEstado })
+        }).catch(() => mostrarToast('⚠️ No se pudo guardar — revisá la conexión', 'error'));
+    }
+</script>
+{% endblock %}

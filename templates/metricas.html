@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Ganancia Real · CoreLux{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Liquidación & Ganancia Neta Real</h1>
+        <div class="page-subtitle">Período: {{ fecha_desde }} al {{ fecha_hasta }} — Monotributo (sin retenciones automáticas)</div>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    💡 Ganancia Real ya está completa: rentabilidad real por venta, promedios ponderados, Publicidad y Reclamos/Devoluciones.
+</div>
+
+{% if not ads_disponible %}
+<div class="alert alert-warning">Publicidad (Ads) en $0: comprobá que el permiso esté otorgado o que existan campañas activas en este período.</div>
+{% elif gasto_ads_total_periodo is not none %}
+<div class="alert alert-info">
+    📢 Gasto total en Ads este período: <strong>${{ "%.2f"|format(gasto_ads_total_periodo)|replace(".", ",") }}</strong>
+</div>
+{% endif %}
+
+<div class="panel" data-mostrar-mas-scope>
+    <div class="panel-title">⚠️ Devoluciones, Cancelaciones y Reclamos del Período</div>
+    <div class="stat-strip" style="margin-bottom: 14px;">
+        <div class="stat-chip"><div class="stat-chip-label">Devoluciones</div><div class="stat-chip-value">{{ posventa.devoluciones }}</div></div>
+        <div class="stat-chip"><div class="stat-chip-label">Cancelaciones</div><div class="stat-chip-value">{{ posventa.cancelaciones }}</div></div>
+        <div class="stat-chip"><div class="stat-chip-label">Reclamos</div><div class="stat-chip-value">{{ posventa.reclamos }}</div></div>
+        <div class="stat-chip accent-gold"><div class="stat-chip-label">Dinero Retenido</div><div class="stat-chip-value">${{ posventa.dinero_retenido }}</div></div>
+    </div>
+
+    {% if posventa.ranking_motivos_devolucion %}
+    <div style="margin-bottom:16px;">
+        <div style="font-size:0.85em; color:var(--text-secondary); margin-bottom:8px;">📋 Motivos de devolución más frecuentes:</div>
+        <div class="flex-gap">
+            {% for m in posventa.ranking_motivos_devolucion %}
+            <span class="badge {% if loop.first %}badge-danger{% else %}badge-neutral{% endif %}">{{ m.motivo }} ({{ m.cantidad }})</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if posventa.lista %}
+    <table class="data-table">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Orden</th><th>Motivo</th><th>Estado</th></tr></thead>
+        <tbody>
+            {% for item in posventa.lista %}
+            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
+                <td class="text-muted">{{ item.fecha }}</td>
+                <td><span class="badge badge-danger">{{ item.tipo }}</span></td>
+                <td><a href="{{ item.link }}" target="_blank" class="badge badge-neutral" style="text-decoration:none;">#{{ item.id_orden }} ↗</a></td>
+                <td>{{ item.motivo }}</td>
+                <td><span class="badge badge-warning">{{ item.estado }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if posventa.lista|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ posventa.lista|length - 5 }} más...</button>
+    {% endif %}
+    {% else %}
+    <div class="alert-empty" style="padding: 12px 0;">🎉 Período impecable: sin devoluciones ni reclamos registrados.</div>
+    {% endif %}
+</div>
+
+<form action="/metricas" method="GET" class="filter-row">
+    <div class="field-group"><label class="field-label">Desde</label><input type="date" name="fecha_desde" value="{{ fecha_desde }}"></div>
+    <div class="field-group"><label class="field-label">Hasta</label><input type="date" name="fecha_hasta" value="{{ fecha_hasta }}"></div>
+    <button type="submit" class="btn btn-denim" style="align-self:flex-end;">Ver período</button>
+    <div style="display:flex; gap:6px; align-self:flex-end;">
+        <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(7, this)">7 días</button>
+        <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(14, this)">14 días</button>
+        <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(30, this)">30 días</button>
+    </div>
+</form>
+
+<div class="stat-strip">
+    <div class="stat-chip accent-success">
+        <div class="stat-chip-label">Facturado</div>
+        <div class="stat-chip-value">${{ resumen.facturado }}</div>
+    </div>
+    <div class="stat-chip {% if resumen.ganancia_neta_negativa %}accent-danger{% else %}accent-primary{% endif %}">
+        <div class="stat-chip-label">Ganancia Neta Real</div>
+        <div class="stat-chip-value">${{ resumen.ganancia_neta }}</div>
+    </div>
+    <div class="stat-chip accent-denim">
+        <div class="stat-chip-label">Comisiones MeLi</div>
+        <div class="stat-chip-value">${{ resumen.comision }}</div>
+    </div>
+    <div class="stat-chip accent-denim">
+        <div class="stat-chip-label">Envíos</div>
+        <div class="stat-chip-value">${{ resumen.envios }}</div>
+    </div>
+    <div class="stat-chip accent-denim">
+        <div class="stat-chip-label">Publicidad</div>
+        <div class="stat-chip-value">${{ resumen.costo_ads }}</div>
+    </div>
+    <div class="stat-chip accent-gold">
+        <div class="stat-chip-label">Costo de Fabricación</div>
+        <div class="stat-chip-value">${{ resumen.costo_fabricacion }}</div>
+    </div>
+</div>
+
+<div class="panel" data-mostrar-mas-scope>
+    <div class="panel-title">Consolidado por Modelo — promedios ponderados reales</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">Total en pesos dividido unidades vendidas — nunca un promedio simple de talles.</div>
+    {% if not consolidados %}
+    <div class="alert-empty">No hay ventas registradas en este período.</div>
+    {% else %}
+    <table class="data-table">
+        <thead><tr><th>Modelo</th><th class="num">Unidades</th><th class="num">Precio prom.</th><th class="num">Comisión u.</th><th class="num">Envío u.</th><th class="num">Ads u.</th><th class="num">Costo u.</th><th class="num">Neto u.</th><th class="num">Neto total</th></tr></thead>
+        <tbody>
+            {% for c in consolidados %}
+            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
+                <td><strong>{{ c.titulo }}</strong></td>
+                <td class="num">{{ c.unidades }}</td>
+                <td class="num">${{ c.precio_promedio }}</td>
+                <td class="num text-danger">${{ c.cargo_u }}</td>
+                <td class="num text-danger">${{ c.envio_u }}</td>
+                <td class="num text-danger">${{ c.ads_u }}</td>
+                <td class="num text-danger">${{ c.costo_u }}</td>
+                <td class="num text-success"><strong>${{ c.neto_u }}</strong></td>
+                <td class="num text-success">${{ c.neto_total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if consolidados|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ consolidados|length - 5 }} más...</button>
+    {% endif %}
+    {% endif %}
+</div>
+
+<div class="panel" data-mostrar-mas-scope>
+    <div class="panel-title">Historial de Ventas Detallado ({{ ventas|length }})</div>
+    {% if not ventas %}
+    <div class="alert-empty">No hay ventas registradas en este período.</div>
+    {% else %}
+    <table class="data-table">
+        <thead><tr><th>Fecha</th><th>Producto</th><th>Talle</th><th class="num">Cant.</th><th class="num">Venta</th><th class="num">Cargo</th><th class="num">Envío</th><th class="num">Ads</th><th class="num">Costo</th><th class="num">Neto</th></tr></thead>
+        <tbody>
+            {% for v in ventas %}
+            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
+                <td class="text-muted">{{ v.fecha }}</td>
+                <td>{{ v.titulo }}</td>
+                <td>{{ v.talle }}</td>
+                <td class="num">{{ v.cantidad }}</td>
+                <td class="num">${{ v.precio_venta }}</td>
+                <td class="num text-danger">${{ v.cargo_venta }}</td>
+                <td class="num text-danger">${{ v.costo_envio }}{% if v.envio_pendiente %} <span class="badge badge-warning">pendiente</span>{% endif %}</td>
+                <td class="num text-danger">${{ v.costo_ads }}</td>
+                <td class="num text-danger">${{ v.costo_fabricacion }}</td>
+                <td class="num {% if v.es_negativo %}text-danger{% else %}text-success{% endif %}"><strong>${{ v.ganancia_neta_formateada }}</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if ventas|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ ventas|length - 5 }} más...</button>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

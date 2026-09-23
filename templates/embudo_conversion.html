@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Embudo de Conversión · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Embudo de Conversión</h1>
+        <div class="page-subtitle">Visitas → Preguntas → Ventas de los últimos 30 días — ordenado por lo que más conviene arreglar primero</div>
+    </div>
+</div>
+
+{% if not embudo %}
+<div class="panel"><div class="alert-empty">No hay publicaciones activas para analizar.</div></div>
+{% else %}
+
+{% set total_visitas = embudo|sum(attribute='visitas') %}
+{% set total_ventas = embudo|sum(attribute='vendidas') %}
+{% set a_revisar = embudo|selectattr('diagnostico', 'equalto', 'revisar_ficha')|list %}
+{% set poca_visibilidad = embudo|selectattr('diagnostico', 'equalto', 'poca_visibilidad')|list %}
+
+<div class="stat-strip">
+    <div class="stat-chip accent-denim"><div class="stat-chip-label">Visitas totales (30d)</div><div class="stat-chip-value">{{ total_visitas }}</div></div>
+    <div class="stat-chip accent-success"><div class="stat-chip-label">Ventas totales (30d)</div><div class="stat-chip-value">{{ total_ventas }}</div></div>
+    <div class="stat-chip accent-danger"><div class="stat-chip-label">Para revisar ficha</div><div class="stat-chip-value">{{ a_revisar|length }}</div></div>
+    <div class="stat-chip accent-gold"><div class="stat-chip-label">Con poca visibilidad</div><div class="stat-chip-value">{{ poca_visibilidad|length }}</div></div>
+</div>
+
+<div class="panel" data-mostrar-mas-scope>
+    <div class="panel-title">Detalle por publicación</div>
+    {% for e in embudo %}
+    <div class="embudo-fila {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" onclick="abrirDrawer('{{ e.id_meli }}')">
+        <div class="embudo-titulo">
+            <strong>{{ e.titulo }}</strong>
+            {% if e.diagnostico == 'revisar_ficha' %}<span class="badge badge-danger">Revisar ficha</span>
+            {% elif e.diagnostico == 'poca_visibilidad' %}<span class="badge badge-warning">Poca visibilidad</span>
+            {% elif e.diagnostico == 'funciona_bien' %}<span class="badge badge-success">Funciona bien</span>
+            {% else %}<span class="badge badge-neutral">Sin visitas todavía</span>{% endif %}
+        </div>
+        <div class="embudo-barras">
+            <div class="embudo-etapa">
+                <span class="embudo-etapa-label">👁️ {{ e.visitas }} visitas</span>
+                <div class="embudo-barra-fondo"><div class="embudo-barra" style="width:100%; background:var(--accent-denim);"></div></div>
+            </div>
+            <div class="embudo-etapa">
+                <span class="embudo-etapa-label">❓ {{ e.preguntas }} preguntas</span>
+                <div class="embudo-barra-fondo"><div class="embudo-barra" style="width:{{ ((e.preguntas / e.visitas * 100) if e.visitas > 0 else 0)|round(1) }}%; background:var(--accent-gold);"></div></div>
+            </div>
+            <div class="embudo-etapa">
+                <span class="embudo-etapa-label">🛒 {{ e.vendidas }} ventas {% if e.tasa_conversion is not none %}({{ e.tasa_conversion }}%){% endif %}</span>
+                <div class="embudo-barra-fondo"><div class="embudo-barra" style="width:{{ (e.tasa_conversion or 0)|round(1) }}%; background:var(--success);"></div></div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% if embudo|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ embudo|length - 5 }} más...</button>
+    {% endif %}
+</div>
+
+{% if zombies %}
+<div class="panel">
+    <div class="panel-title">💀 Publicaciones "Zombie" — cero visitas y cero ventas en 60 días ({{ zombies|length }})</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        Están activas pero no aportan nada — compiten por tu atención y tu lugar en el catálogo sin resultado. Tocá una para revisarla en el Drawer.
+    </div>
+    <div class="flex-gap">
+        {% for z in zombies %}
+        <button type="button" class="badge badge-neutral" style="cursor:pointer; font-size:0.9em; padding:8px 14px; border:none;" onclick="abrirDrawer('{{ z.id_meli }}')">
+            💀 {{ z.titulo }}
+        </button>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="page-subtitle">
+    💡 <strong>Revisar ficha</strong>: tiene visitas pero casi no convierte — el problema suele ser fotos, precio o confianza, no visibilidad.
+    <strong>Poca visibilidad</strong>: la ficha funciona pero la ve poca gente — ahí ayuda mejorar título/SEO o sumar publicidad.
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Monotributo · CoreLux{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Categoría de Monotributo</div>
+        <div class="page-subtitle">Escalas vigentes desde {{ vigente_desde }} — actividad "venta de cosas muebles". Esto avisa y sugiere; la decisión final siempre conviene confirmarla con tu contador.</div>
+    </div>
+</div>
+
+{% if not categoria_declarada %}
+<div class="alert alert-info">
+    Todavía no declaraste en qué categoría estás inscripto — elegila abajo para que podamos comparar contra tu facturación real.
+</div>
+{% endif %}
+
+{% for a in alertas %}
+<div class="alert {% if a.tipo == 'urgente' %}alert-danger{% elif a.tipo == 'oportunidad' %}alert-success{% else %}alert-warning{% endif %}">
+    {{ a.texto }}
+</div>
+{% endfor %}
+
+<div class="stat-strip">
+    <div class="stat-chip">
+        <div class="stat-chip-label">Facturación últimos 12 meses</div>
+        <div class="stat-chip-value">${{ "%.2f"|format(facturacion_12m)|replace(",", "@")|replace(".", ",")|replace("@", ".") }}</div>
+    </div>
+    <div class="stat-chip accent-gold">
+        <div class="stat-chip-label">Categoría según tu facturación real</div>
+        <div class="stat-chip-value">{{ categoria_real or "Fuera de escala" }}</div>
+    </div>
+    {% if categoria_declarada %}
+    <div class="stat-chip">
+        <div class="stat-chip-label">Categoría declarada</div>
+        <div class="stat-chip-value">{{ categoria_declarada }}</div>
+    </div>
+    <div class="stat-chip">
+        <div class="stat-chip-label">Cuota mensual de tu categoría</div>
+        <div class="stat-chip-value">${{ "%.2f"|format(cuota_mensual_declarada)|replace(",", "@")|replace(".", ",")|replace("@", ".") }}</div>
+    </div>
+    {% endif %}
+    {% if variacion_pct_propia is not none %}
+    <div class="stat-chip">
+        <div class="stat-chip-label">Tu propia tendencia (3m vs 3m)</div>
+        <div class="stat-chip-value {% if variacion_pct_propia < 0 %}text-danger{% else %}text-success{% endif %}">{{ variacion_pct_propia }}%</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="panel">
+    <div class="panel-title">Declarar tu categoría actual</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">La app no puede saber esto sola — decinos en qué categoría te inscribiste ante AFIP para poder comparar.</div>
+    <form action="{{ url_for('monotributo_declarar') }}" method="POST" class="filter-row">
+        <div class="field-group">
+            <label class="field-label">Categoría declarada</label>
+            <select name="categoria_monotributo" class="field-input">
+                <option value="">Sin declarar</option>
+                {% for e in escalas %}
+                <option value="{{ e.categoria }}" {% if e.categoria == categoria_declarada %}selected{% endif %}>{{ e.categoria }} — hasta ${{ "%.0f"|format(e.tope_anual) }}/año</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-denim" style="align-self:flex-end;">Guardar</button>
+    </form>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Tabla de escalas vigente</div>
+    <table class="data-table">
+        <thead><tr><th>Categoría</th><th class="num">Tope anual</th><th class="num">Cuota mensual</th></tr></thead>
+        <tbody>
+            {% for e in escalas %}
+            <tr {% if e.categoria == categoria_real %}class="row-alert"{% endif %}>
+                <td><strong>{{ e.categoria }}</strong> {% if e.categoria == categoria_real %}<span class="badge badge-success">Tu facturación real</span>{% endif %} {% if e.categoria == categoria_declarada %}<span class="badge badge-neutral">Declarada</span>{% endif %}</td>
+                <td class="num">${{ "%.2f"|format(e.tope_anual) }}</td>
+                <td class="num">${{ "%.2f"|format(e.cuota_mensual) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

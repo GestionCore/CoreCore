@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Gestión de Stock Masiva · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Gestión de Stock Masiva</h1>
+        <div class="page-subtitle">Editá el depósito de varias publicaciones a la vez, agrupadas por modelo</div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="field-group">
+        <label class="field-label">Buscar (modelo, color o talle — ej: "celeste l")</label>
+        <input type="text" id="input-buscador-masivo" placeholder="Buscar..." onkeyup="filtrarAcordeon()">
+    </div>
+</div>
+
+<form action="/actualizar_stock_multiple" method="POST">
+    <input type="hidden" name="volver_a" value="/stock_masivo">
+    <div id="acordeon-modelos">
+        {% for m in modelos %}
+        <div class="panel acordeon-item" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}">
+            <div class="acordeon-header" onclick="toggleAcordeon(this)">
+                <div class="row-flex">
+                    {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="">{% endif %}
+                    <div>
+                        <strong>{{ m.titulo }}</strong>
+                        <div class="text-muted" style="font-size:0.8em;">Depósito: {{ m.propio }}u · FULL: {{ m.full }}u · {{ m.variantes|length }} talle(s)</div>
+                    </div>
+                </div>
+                <span class="acordeon-chevron">▾</span>
+            </div>
+            <div class="acordeon-body" style="display:none;">
+                <table class="data-table">
+                    <thead><tr><th>Talle</th><th>Estado</th><th class="num">Depósito</th><th class="num">FULL</th></tr></thead>
+                    <tbody>
+                        {% for v in m.variantes %}
+                        <tr>
+                            <td>{{ v.talle }} <span class="text-muted" style="font-size:0.78em;">· {{ v.id_meli }}</span></td>
+                            <td>
+                                {% if v.pausada_por_stock %}<span class="badge badge-neutral">Pausada por stock (0u)</span>
+                                {% elif v.estado == 'active' %}<span class="badge badge-success">Activa</span>
+                                {% elif v.estado == 'paused' %}<span class="badge badge-warning">Pausada</span>
+                                {% else %}<span class="badge badge-neutral">Inactiva</span>{% endif %}
+                            </td>
+                            <td class="num">
+                                {% if v.full > 0 %}<input type="number" value="{{ v.propio }}" disabled style="max-width:90px; margin-left:auto;">
+                                {% else %}<input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" min="0" style="max-width:90px; margin-left:auto;">{% endif %}
+                            </td>
+                            <td class="num">{{ v.full }} u.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary">Aplicar cambios a Mercado Libre</button>
+</form>
+
+<script>
+    function toggleAcordeon(header) {
+        const body = header.nextElementSibling;
+        const abierto = body.style.display !== 'none';
+        body.style.display = abierto ? 'none' : 'block';
+        header.querySelector('.acordeon-chevron').textContent = abierto ? '▾' : '▴';
+    }
+    function filtrarAcordeon() {
+        const q = document.getElementById('input-buscador-masivo').value;
+        document.querySelectorAll('.acordeon-item').forEach(item => {
+            item.style.display = coincideBusqueda(item.dataset.buscar, q) ? '' : 'none';
+        });
+    }
+</script>
+{% endblock %}

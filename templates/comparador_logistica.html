@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Propia vs FULL · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Logística Propia vs FULL</h1>
+        <div class="page-subtitle">Qué te deja más margen neto, según cómo despachás cada venta</div>
+    </div>
+</div>
+
+<div class="alert alert-warning">
+    Compara según la logística ACTUAL de cada publicación — si alguna cambió de Propia a FULL (o al revés) durante el período, las ventas viejas de ese modelo quedan del lado de su logística de hoy, no la de cuando se vendieron.
+</div>
+
+{% if cantidad_cargos_almacenamiento == 0 %}
+<div class="alert alert-info">
+    No encontré cargos de almacenamiento prolongado en la facturación de este período — puede ser que no hayas tenido, o que MeLi lo nombre distinto a como lo estoy buscando. Si sabés que tuviste ese cargo este mes, avisame para ajustar la búsqueda.
+</div>
+{% endif %}
+
+<div class="panel">
+    <form action="/comparador_logistica" method="GET" class="filter-row">
+        <div class="field-group"><label class="field-label">Desde</label><input type="date" name="fecha_desde" value="{{ fecha_desde }}" required></div>
+        <div class="field-group"><label class="field-label">Hasta</label><input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" required></div>
+        <button type="submit" class="btn btn-denim">Ver este período</button>
+        <div style="display:flex; gap:6px;">
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(7, this)">7 días</button>
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(14, this)">14 días</button>
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(30, this)">30 días</button>
+        </div>
+    </form>
+</div>
+
+<div class="filter-row" style="align-items:stretch;">
+    {% for g in resultado %}
+    <div class="panel" style="flex:1; min-width:280px;">
+        <div class="panel-title">{{ g.nombre }}</div>
+        {% if g.sin_datos %}
+        <div class="alert-empty">Sin ventas con esta logística en el período.</div>
+        {% else %}
+        <div class="stat-strip" style="margin-bottom:14px;">
+            <div class="stat-chip accent-denim"><div class="stat-chip-label">Unidades</div><div class="stat-chip-value">{{ g.unidades }}</div></div>
+            <div class="stat-chip accent-success"><div class="stat-chip-label">Ganancia neta</div><div class="stat-chip-value">${{ g.ganancia_neta_formateada }}</div></div>
+        </div>
+        <table class="data-table">
+            <tbody>
+                <tr><td>Facturado</td><td class="num">${{ g.facturado_formateado }}</td></tr>
+                <tr><td>Comisión MeLi</td><td class="num text-danger">-${{ g.comision_formateada }}</td></tr>
+                <tr><td>Envío</td><td class="num text-danger">-${{ g.envio_formateado }}</td></tr>
+                <tr><td>Costo de fábrica</td><td class="num text-danger">-${{ g.costo_fab_formateado }}</td></tr>
+                {% if g.almacenamiento_formateado %}
+                <tr><td>Almacenamiento prolongado FULL</td><td class="num text-danger">-${{ g.almacenamiento_formateado }}</td></tr>
+                {% endif %}
+                <tr><td><strong>Ganancia neta / unidad</strong></td><td class="num text-success"><strong>${{ g.ganancia_por_unidad_formateada }}</strong></td></tr>
+                <tr><td><strong>Margen</strong></td><td class="num"><strong>{{ g.margen_pct }}%</strong></td></tr>
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

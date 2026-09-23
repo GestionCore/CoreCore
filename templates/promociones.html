@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}Promociones · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Promociones</h1>
+        <div class="page-subtitle">Tus descuentos, campañas de Mercado Libre y ofertas relámpago</div>
+    </div>
+</div>
+
+{% if promociones_por_vencer %}
+<div class="alert alert-warning">
+    ⏰ <strong>{{ promociones_por_vencer|length }} promoción(es) por vencer pronto:</strong>
+    {% for p in promociones_por_vencer %}{{ p.titulo }} (hasta {{ p.fecha_fin_planeada }}){% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+
+<div class="panel">
+    <div class="panel-title">Crear un descuento propio</div>
+    <form action="/promociones/crear_descuento" method="POST" class="filter-row" id="form-crear-descuento">
+        <div class="field-group" style="flex:2; min-width:220px;">
+            <label class="field-label">Publicación</label>
+            <select name="id_meli" id="select-promo-item" required onchange="actualizarSimuladorPromo()">
+                {% for p in catalogo %}
+                <option value="{{ p.id }}" data-precio="{{ p.precio }}" data-costo="{{ p.precio_costo or 0 }}">{{ p.titulo }} — ${{ '%.2f'|format(p.precio) }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field-group">
+            <label class="field-label">Precio con descuento ($)</label>
+            <input type="number" step="0.01" name="deal_price" id="input-deal-price" required oninput="actualizarSimuladorPromo()">
+        </div>
+        <div class="field-group">
+            <label class="field-label">Desde</label>
+            <input type="date" name="fecha_desde" required>
+        </div>
+        <div class="field-group">
+            <label class="field-label">Hasta</label>
+            <input type="date" name="fecha_hasta" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Crear descuento</button>
+    </form>
+    <div id="simulador-impacto-promo" style="display:none; margin-top:16px; padding:14px 16px; background:rgba(255,255,255,0.03); border-radius:10px;"></div>
+</div>
+
+{% if sugerencias_promocion %}
+<div class="panel" data-mostrar-mas-scope>
+    <div class="panel-title">💡 Candidatas a promocionar (stock alto, venta lenta)</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        Tienen plata inmovilizada en stock que casi no se mueve — son las que más sentido tienen para empujar con un descuento.
+    </div>
+    {% for s in sugerencias_promocion %}
+    <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border-soft); gap:12px; flex-wrap:wrap;">
+        <div>
+            <strong>{{ s.titulo }}</strong>
+            <div class="text-muted" style="font-size:0.8em;">{{ s.stock_total }} u. en stock · {{ s.unidades_14d }} vendidas en 14 días</div>
+        </div>
+        <div class="flex-gap" style="align-items:center;">
+            <span class="badge badge-warning">${{ "%.0f"|format(s.capital_inmovilizado) }} inmovilizados</span>
+            <button type="button" class="btn btn-secondary" onclick="precargarPromoDesde('{{ s.id_meli }}')">Promocionar</button>
+        </div>
+    </div>
+    {% endfor %}
+    {% if sugerencias_promocion|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ sugerencias_promocion|length - 5 }} más...</button>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="panel">
+    <div class="panel-title">Publicaciones con descuento activo ({{ con_descuento|length }})</div>
+    <table class="data-table only-desktop">
+        <thead><tr><th>Publicación</th><th class="num">Precio original</th><th class="num">Precio actual</th><th class="num">Descuento</th><th></th></tr></thead>
+        <tbody>
+            {% for p in con_descuento %}
+            <tr>
+                <td style="font-family: var(--font-ui);">{{ p.titulo }}</td>
+                <td class="num text-muted" style="text-decoration:line-through;">${{ p.precio_original_formateado }}</td>
+                <td class="num">${{ p.precio_formateado }}</td>
+                <td class="num"><span class="badge badge-success">-{{ p.descuento_pct }}%</span></td>
+                <td>
+                    <form action="/promociones/eliminar_descuento/{{ p.id }}" method="POST" onsubmit="return confirm('¿Quitar el descuento de esta publicación?');">
+                        <button type="submit" class="btn btn-danger">Quitar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not con_descuento %}
+            <tr><td colspan="5" class="alert-empty">No tenés publicaciones con descuento activo ahora mismo.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% if ofertas_relampago %}
+<div class="panel">
+    <div class="panel-title">Ofertas relámpago disponibles ({{ ofertas_relampago|length }})</div>
+    <table class="data-table only-desktop">
+        <thead><tr><th>Publicación</th><th class="num">Precio normal</th><th class="num">Precio sugerido</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+            {% for o in ofertas_relampago %}
+            <tr>
+                <td style="font-family: var(--font-ui);">{{ o.id }}</td>
+                <td class="num">${{ '%.2f'|format(o.original_price or 0) }}</td>
+                <td class="num">${{ '%.2f'|format(o.price or 0) }}</td>
+                <td><span class="badge badge-neutral">{{ o.status }}</span></td>
+                <td>
+                    {% if o.status == 'candidate' %}
+                    <form action="/promociones/participar_relampago" method="POST" class="flex-gap" style="align-items:center;">
+                        <input type="hidden" name="id_meli" value="{{ o.id }}">
+                        <input type="number" step="0.01" name="deal_price" placeholder="Precio oferta" required style="max-width:120px;">
+                        <input type="number" name="stock" placeholder="Stock" required style="max-width:80px;">
+                        <button type="submit" class="btn btn-primary">Participar</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="panel">
+    <div class="panel-title">Campañas de Mercado Libre ({{ campanias|length }})</div>
+    <table class="data-table only-desktop">
+        <thead><tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Vigencia</th><th>Cofinanciamiento</th></tr></thead>
+        <tbody>
+            {% for c in campanias %}
+            <tr>
+                <td style="font-family: var(--font-ui);">{{ c.name or c.id }}</td>
+                <td>
+                    <span class="badge badge-neutral">
+                        {% if c.type == 'MARKETPLACE_CAMPAIGN' %}Cofinanciada
+                        {% elif c.type == 'DEAL' %}Tradicional
+                        {% elif c.type == 'PRICE_MATCHING' %}Precios competitivos
+                        {% elif c.type == 'SMART' %}Cofinanciada automática
+                        {% elif c.type == 'LIGHTNING' %}Oferta relámpago
+                        {% else %}{{ c.type }}{% endif %}
+                    </span>
+                </td>
+                <td>{{ c.status }}</td>
+                <td class="text-muted">{{ c.start_date }} — {{ c.finish_date }}</td>
+                <td class="num">
+                    {% if c.benefits and c.benefits.meli_percent is defined %}
+                        MeLi {{ c.benefits.meli_percent }}% / Vos {{ c.benefits.seller_percent }}%
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not campanias %}
+            <tr><td colspan="5" class="alert-empty">No hay campañas activas o invitaciones pendientes ahora mismo.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+    <div class="page-subtitle" style="margin-top:10px;">
+        Sumarte a una campaña cofinanciada (elegir el nivel de descuento dentro del rango que te ofrece MeLi) todavía se gestiona desde tu panel de Mercado Libre — no lo automaticé todavía porque necesita consultar los ítems candidatos y sus rangos de precio permitidos, y no quiero arriesgarme a mandar un precio mal calculado.
+    </div>
+</div>
+
+{% if impacto_promociones %}
+<div class="panel" data-mostrar-mas-scope>
+    <div class="panel-title">📊 Impacto real de tus promociones</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        Comparamos tu ritmo de venta de ANTES de cada promoción contra lo que vendió DURANTE, para medir el impacto real en unidades vendidas.
+    </div>
+    <table class="data-table">
+        <thead><tr><th>Publicación</th><th>Período</th><th class="num">Antes (u/día)</th><th class="num">Durante (u/día)</th><th class="num">Variación</th><th></th></tr></thead>
+        <tbody>
+            {% for imp in impacto_promociones %}
+            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
+                <td>{{ imp.titulo }}</td>
+                <td class="text-muted">{{ imp.fecha_inicio }}{% if imp.fecha_fin %} → {{ imp.fecha_fin }}{% endif %}</td>
+                <td class="num">{{ imp.promedio_previo }}</td>
+                <td class="num">{{ imp.promedio_durante }}</td>
+                <td class="num">
+                    {% if imp.variacion_pct is not none %}
+                        <span class="{% if imp.variacion_pct > 10 %}text-success{% elif imp.variacion_pct < -10 %}text-danger{% else %}text-muted{% endif %}">
+                            {{ '+' if imp.variacion_pct >= 0 else '' }}{{ imp.variacion_pct }}%
+                        </span>
+                    {% else %}
+                        <span class="text-muted">Sin base previa</span>
+                    {% endif %}
+                </td>
+                <td>{% if imp.activo %}<span class="badge badge-success">Activa</span>{% else %}<span class="badge badge-neutral">Finalizada</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if impacto_promociones|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ impacto_promociones|length - 5 }} más...</button>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+    async function actualizarSimuladorPromo() {
+        const select = document.getElementById('select-promo-item');
+        const opcion = select.selectedOptions[0];
+        const precioDeal = parseFloat(document.getElementById('input-deal-price').value);
+        const cont = document.getElementById('simulador-impacto-promo');
+        if (!opcion || !precioDeal || precioDeal <= 0) { cont.style.display = 'none'; return; }
+
+        const costo = parseFloat(opcion.dataset.costo) || 0;
+        cont.style.display = 'block';
+        cont.innerHTML = 'Calculando impacto en margen...';
+        try {
+            const resp = await fetch(`/api/simular_costo?precio=${precioDeal}&costo=${costo}`);
+            const data = await resp.json();
+            if (data.error) { cont.innerHTML = `<span class="text-danger">${data.error}</span>`; return; }
+            const color = data.ganancia_neta >= 0 ? 'text-success' : 'text-danger';
+            cont.innerHTML = `
+                <div style="font-size:0.85em; color:var(--text-secondary); margin-bottom:6px;">Con este precio de descuento:</div>
+                <div class="flex-gap" style="justify-content:space-between;">
+                    <span>Margen neto por unidad</span>
+                    <strong class="${color}">$${data.ganancia_neta.toLocaleString('es-AR', {minimumFractionDigits:2})} (${data.margen_pct}%)</strong>
+                </div>
+            `;
+        } catch (e) { cont.innerHTML = '<span class="text-danger">No se pudo calcular.</span>'; }
+    }
+
+    function precargarPromoDesde(idMeli) {
+        document.getElementById('select-promo-item').value = idMeli;
+        document.getElementById('form-crear-descuento').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        actualizarSimuladorPromo();
+    }
+</script>
+{% endblock %}

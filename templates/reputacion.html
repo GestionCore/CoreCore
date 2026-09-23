@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Reputación · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Reputación y Confianza</h1>
+        <div class="page-subtitle">Datos oficiales de tu cuenta en Mercado Libre</div>
+    </div>
+</div>
+
+{% if not rep %}
+<div class="panel"><div class="alert-empty">No se pudo traer tu reputación ahora mismo — probá de nuevo en un rato.</div></div>
+{% else %}
+
+<div class="panel" style="text-align:center; padding:36px 26px;">
+    <div class="stat-chip-label" style="margin-bottom:8px;">Nivel de reputación</div>
+    <div class="hero-number
+        {% if rep.nivel_id in ['5_green', '4_light_green'] %}acento-primario{% endif %}"
+        style="{% if rep.nivel_id == '1_red' %}background:none; -webkit-text-fill-color:var(--danger); color:var(--danger);
+               {% elif rep.nivel_id == '2_orange' %}background:none; -webkit-text-fill-color:var(--warning); color:var(--warning);{% endif %}">
+        {{ rep.nivel_nombre.split(' (')[0] }}
+    </div>
+    {% if rep.power_seller_nombre %}
+    <div style="margin-top:10px;"><span class="badge badge-warning" style="font-size:0.9em;">🏅 Mercado Líder {{ rep.power_seller_nombre }}</span></div>
+    {% endif %}
+</div>
+
+<div class="stat-strip">
+    <div class="stat-chip {% if rep.tasa_cancelacion > 5 %}accent-danger{% else %}accent-success{% endif %}">
+        <div class="stat-chip-label">Tasa de cancelación</div>
+        <div class="stat-chip-value">{{ rep.tasa_cancelacion }}%</div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Historial de transacciones</div>
+    <table class="data-table">
+        <tbody>
+            <tr><td>Total histórico</td><td class="num">{{ rep.total_transacciones }}</td></tr>
+            <tr><td>Completadas</td><td class="num text-success">{{ rep.completadas }}</td></tr>
+            <tr><td>Canceladas</td><td class="num text-danger">{{ rep.canceladas }}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Calificaciones recibidas</div>
+    <table class="data-table">
+        <tbody>
+            <tr><td>👍 Positivas</td><td class="num text-success">{{ rep.ratings_positivas }}</td></tr>
+            <tr><td>➖ Neutras</td><td class="num">{{ rep.ratings_neutras }}</td></tr>
+            <tr><td>👎 Negativas</td><td class="num text-danger">{{ rep.ratings_negativas }}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+{% if rep.reclamos.tasa is not none or rep.demora_en_despacho.tasa is not none or rep.cancelaciones_metrica.tasa is not none %}
+<div class="panel">
+    <div class="panel-title">Métricas de calidad (las que arman tu nivel)</div>
+    <table class="data-table">
+        <tbody>
+            {% if rep.reclamos.tasa is not none %}
+            <tr><td>Tasa de reclamos</td><td class="num">{{ (rep.reclamos.tasa * 100)|round(2) }}%</td></tr>
+            {% endif %}
+            {% if rep.demora_en_despacho.tasa is not none %}
+            <tr><td>Demora en el despacho</td><td class="num">{{ (rep.demora_en_despacho.tasa * 100)|round(2) }}%</td></tr>
+            {% endif %}
+            {% if rep.cancelaciones_metrica.tasa is not none %}
+            <tr><td>Cancelaciones (métrica de calidad)</td><td class="num">{{ (rep.cancelaciones_metrica.tasa * 100)|round(2) }}%</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="page-subtitle">
+    💡 Estos son los mismos números que usa MeLi para calcular tu nivel de reputación — bajarlos es lo que más impacto tiene en tu visibilidad y en la confianza de tus compradores.
+</div>
+
+{% endif %}
+{% endblock %}

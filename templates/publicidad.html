@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Publicidad · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">📢 Publicidad</h1>
+        <div class="page-subtitle">Product Ads — rendimiento real de tus campañas</div>
+    </div>
+    <form action="/publicidad" method="GET" class="filter-row" style="margin:0;">
+        <div class="field-group">
+            <label class="field-label">Desde</label>
+            <input type="date" name="fecha_desde" value="{{ fecha_desde }}">
+        </div>
+        <div class="field-group">
+            <label class="field-label">Hasta</label>
+            <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}">
+        </div>
+        <button type="submit" class="btn btn-denim" style="align-self:flex-end;">Actualizar</button>
+        <div style="display:flex; gap:6px; align-self:flex-end;">
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(7, this)">7 días</button>
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(14, this)">14 días</button>
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(30, this)">30 días</button>
+        </div>
+    </form>
+</div>
+
+{% if not ads_disponible %}
+<div class="panel"><div class="alert-empty">No encontramos una cuenta de anunciante de Product Ads asociada — si nunca activaste publicidad en Mercado Libre, es esperable que no haya nada acá todavía.</div></div>
+{% else %}
+
+<div class="panel" style="text-align:center; padding:34px 26px;">
+    <div class="stat-chip-label" style="margin-bottom:6px;">Invertido en el período</div>
+    <div class="hero-number">${{ costo_total_formateado }}</div>
+    <div class="text-muted" style="font-size:0.85em; margin-top:6px;">Generó ${{ ventas_atribuidas_formateado }} en ventas atribuidas a publicidad</div>
+</div>
+
+<div class="stat-strip">
+    <div class="stat-chip accent-primary" title="Cuánto volvió por cada peso invertido en Ads — MeLi usa esta métrica como la principal desde 2026">
+        <div class="stat-chip-label">ROAS general</div>
+        <div class="stat-chip-value">{{ roas_general if roas_general is not none else '—' }}{% if roas_general %}x{% endif %}</div>
+        <div class="stat-chip-desc">Retorno por cada $ invertido</div>
+    </div>
+    <div class="stat-chip accent-gold" title="Qué porcentaje de tus ventas por ads se fue en pagar la publicidad — es la métrica inversa al ROAS (ACOS = 100/ROAS)">
+        <div class="stat-chip-label">ACOS general</div>
+        <div class="stat-chip-value">{{ acos_general if acos_general is not none else '—' }}{% if acos_general %}%{% endif %}</div>
+        <div class="stat-chip-desc">% de venta que se va en Ads</div>
+    </div>
+    <div class="stat-chip accent-denim" title="Gasto en Ads sobre TU FACTURACIÓN TOTAL del período (no solo lo atribuido a ads) — mide qué tan dependiente sos de la pauta para vender en general">
+        <div class="stat-chip-label">TACOS</div>
+        <div class="stat-chip-value">{{ tacos if tacos is not none else '—' }}{% if tacos %}%{% endif %}</div>
+        <div class="stat-chip-desc">Ads / facturación total (${{ facturacion_total_negocio_formateada }})</div>
+    </div>
+    <div class="stat-chip accent-success">
+        <div class="stat-chip-label">Unidades por Ads</div>
+        <div class="stat-chip-value">{{ unidades_total }}</div>
+        <div class="stat-chip-desc">{{ clicks_total }} clicks totales</div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Gasto vs. Ventas atribuidas por día</div>
+    <div style="height:260px; position:relative;"><canvas id="chartAdsEvolucion"></canvas></div>
+</div>
+
+<div class="panel" data-mostrar-mas-scope>
+    <div class="panel-title">Campañas ({{ campanas|length }})</div>
+    {% if not campanas %}
+    <div class="alert-empty">No hay campañas con datos en este período.</div>
+    {% else %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Campaña</th><th>Estado</th><th class="num">Presupuesto</th>
+                <th class="num">Invertido</th><th class="num">Clicks</th><th class="num">CTR</th>
+                <th class="num">CVR</th><th class="num">ROAS</th><th class="num">ACOS</th><th class="num">Ventas atribuidas</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in campanas %}
+            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
+                <td>
+                    <strong>{{ c.nombre }}</strong>
+                    {% if c.recomendacion %}
+                    <div style="margin-top:4px;">
+                        <span class="badge {% if c.recomendacion.tipo == 'urgente' %}badge-danger{% elif c.recomendacion.tipo == 'oportunidad' %}badge-success{% else %}badge-warning{% endif %}" style="font-size:0.72em;">
+                            {{ c.recomendacion.texto }}
+                        </span>
+                    </div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if c.estado == 'active' %}<span class="badge badge-success">Activa</span>
+                    {% elif c.estado == 'paused' %}<span class="badge badge-warning">Pausada</span>
+                    {% else %}<span class="badge badge-neutral">{{ c.estado }}</span>{% endif %}
+                </td>
+                <td class="num">
+                    {% if c.presupuesto_formateado %}
+                        ${{ c.presupuesto_formateado }}
+                        <div class="text-muted" style="font-size:0.75em;">{{ c.pct_presupuesto }}% usado</div>
+                    {% else %}—{% endif %}
+                </td>
+                <td class="num text-danger">${{ c.costo_formateado }}</td>
+                <td class="num">{{ c.clicks }}</td>
+                <td class="num">{{ c.ctr }}%</td>
+                <td class="num">{{ c.cvr }}%</td>
+                <td class="num">
+                    {% if c.roas is not none %}
+                        <span class="{% if c.roas_bajo %}text-danger{% else %}text-success{% endif %}"><strong>{{ c.roas }}x</strong></span>
+                    {% else %}—{% endif %}
+                </td>
+                <td class="num">{{ (c.acos|round(1)) if c.acos is not none else '—' }}{% if c.acos is not none %}%{% endif %}</td>
+                <td class="num text-success">${{ c.ventas_atribuidas_formateado }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if campanas|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ campanas|length - 5 }} más...</button>
+    {% endif %}
+    {% if campanas|selectattr('roas_bajo')|list %}
+    <div class="alert alert-warning" style="margin-top:16px;">
+        ⚠️ Las campañas marcadas en rojo tienen un ROAS por debajo de 3x (referencia típica de equilibrio) — vale la pena revisar si conviene bajarles presupuesto o pausarlas.
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+{% if costo_ads_por_publicacion %}
+<div class="panel">
+    <div class="panel-title">Costo de Ads por publicación (últimas ventas del período)</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        Mismo dato que usamos en Ganancia Real para descontar Ads de tu ganancia neta real, acá para verlo sin cambiar de pantalla.
+    </div>
+    <table class="data-table">
+        <thead><tr><th>Publicación</th><th class="num">Invertido</th></tr></thead>
+        <tbody>
+            {% for item in costo_ads_por_publicacion %}
+            <tr><td>{{ item.titulo }}</td><td class="num text-danger">${{ item.costo_formateado }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="page-subtitle">
+    💡 <strong>ROAS</strong> = cuánto volvió por cada peso invertido (más alto = mejor). <strong>ACOS</strong> = qué % de esa venta se fue en pagar el anuncio (más bajo = mejor, es la métrica inversa al ROAS). <strong>TACOS</strong> no es de MeLi — es el gasto en Ads sobre TODA tu facturación del período, para ver qué tan dependiente sos de la pauta en general.
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const ctx = document.getElementById('chartAdsEvolucion');
+    if (!ctx || !window.Chart) return;
+    const datos = {{ chart_data | tojson | safe }};
+    const ctx2d = ctx.getContext('2d');
+
+    function crearDegradado(color) {
+        const g = ctx2d.createLinearGradient(0, 0, 0, ctx.height || 260);
+        g.addColorStop(0, color + '55'); g.addColorStop(1, color + '00');
+        return g;
+    }
+    const pluginBrillo = {
+        id: 'brilloAds',
+        beforeDatasetsDraw(chart) { chart.ctx.save(); chart.ctx.shadowColor = 'rgba(176,107,255,0.5)'; chart.ctx.shadowBlur = 10; },
+        afterDatasetsDraw(chart) { chart.ctx.restore(); }
+    };
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: datos.labels || [],
+            datasets: [
+                { label: 'Gasto en Ads ($)', data: datos.gasto || [], borderColor: '#ffd93d', backgroundColor: crearDegradado('#ffd93d'), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5 },
+                { label: 'Ventas atribuidas ($)', data: datos.ventas || [], borderColor: '#29e6b0', backgroundColor: crearDegradado('#29e6b0'), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5 }
+            ]
+        },
+        plugins: [pluginBrillo],
+        options: {
+            responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { labels: { color: '#9494b8', usePointStyle: true, pointStyle: 'circle' } },
+                tooltip: { backgroundColor: 'rgba(13,15,38,0.95)', borderColor: 'rgba(176,107,255,0.25)', borderWidth: 1, padding: 12, cornerRadius: 8,
+                    callbacks: { label: (c) => ` ${c.dataset.label}: $${c.parsed.y.toLocaleString('es-AR')}` } }
+            },
+            scales: {
+                x: { ticks: { color: '#9494b8' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                y: { ticks: { color: '#9494b8' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

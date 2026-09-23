@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoreLux — Preparando tu cuenta</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_v('css/style.css') }}">
+    <style>
+        html, body { height: 100%; margin: 0; }
+        body {
+            display: flex; align-items: center; justify-content: center;
+            background: var(--bg-base); color: var(--text-primary);
+            font-family: var(--font-ui); text-align: center;
+        }
+        .espera-tarjeta { max-width: 460px; margin: 24px; padding: 44px 40px; border-radius: var(--radius-lg);
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: var(--shadow-elevated); }
+        .espera-spinner { width: 44px; height: 44px; margin: 0 auto 24px; border-radius: 50%;
+            border: 3px solid var(--glass-border); border-top-color: var(--accent-primary);
+            animation: girar 0.9s linear infinite; }
+        @keyframes girar { to { transform: rotate(360deg); } }
+        .espera-titulo { font-family: var(--font-display); font-size: 1.3em; font-weight: 700; margin-bottom: 10px; }
+        .espera-detalle { color: var(--text-secondary); font-size: 0.92em; line-height: 1.6; margin-bottom: 4px; }
+        .espera-nota { color: var(--text-faint); font-size: 0.8em; margin-top: 22px; }
+    </style>
+</head>
+<body>
+<div class="espera-tarjeta">
+    <div class="espera-spinner"></div>
+    <div class="espera-titulo">Estamos trayendo tu información</div>
+    <div class="espera-detalle">Publicaciones, stock y el historial de ventas del último año — puede tardar unos minutos según el tamaño de tu catálogo.</div>
+    <div class="espera-nota">Esta pantalla se actualiza sola apenas termine. No hace falta que hagas nada.</div>
+</div>
+<script>
+    async function chequearEstado() {
+        try {
+            const resp = await fetch('/api/estado_sincronizacion');
+            const data = await resp.json();
+            if (data.lista) { window.location.reload(); return; }
+        } catch (e) { /* seguimos intentando */ }
+        setTimeout(chequearEstado, 4000);
+    }
+    setTimeout(chequearEstado, 4000);
+</script>
+</body>
+</html>

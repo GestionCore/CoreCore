@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Flujo de Caja · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Flujo de Caja Proyectado (14 días)</h1>
+        <div class="page-subtitle">Cuándo se libera en Mercado Pago el dinero de tus ventas ya sincronizadas</div>
+    </div>
+</div>
+
+<div class="alert alert-warning">
+    Esta proyección solo incluye ventas sincronizadas desde que activamos este dato — las ventas más viejas no tienen fecha de liberación guardada todavía.
+</div>
+
+<div class="stat-strip">
+    <div class="stat-chip accent-success">
+        <div class="stat-chip-label">Total a liberarse (14 días)</div>
+        <div class="stat-chip-value">${{ total_formateado }}</div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Calendario de liberaciones</div>
+    <table class="data-table">
+        <thead><tr><th>Fecha</th><th class="num">Órdenes</th><th class="num">Monto a liberar</th></tr></thead>
+        <tbody>
+            {% for d in dias %}
+            <tr class="{% if d.es_hoy %}row-alert{% endif %}">
+                <td>{{ d.fecha }}{% if d.es_hoy %} <span class="badge badge-warning">Hoy</span>{% endif %}</td>
+                <td class="num">{{ d.cantidad }}</td>
+                <td class="num text-success">${{ d.monto_formateado }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

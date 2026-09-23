@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">🏠 Dashboard</h1>
+        <div class="page-subtitle">Tu resumen del día — personalizalo a gusto</div>
+    </div>
+    <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()">⚙️ Personalizar</button>
+</div>
+
+<div class="panel" id="panel-personalizar-dashboard" style="display:none;">
+    <div class="panel-title">¿Qué querés ver acá?</div>
+    <div class="flex-gap" id="checks-widgets-dashboard" style="flex-wrap:wrap;"></div>
+</div>
+
+<div id="grid-widgets-dashboard" class="grid-dashboard"></div>
+
+<script>
+    const WIDGETS_DISPONIBLES = [
+        { id: 'resumen_dia', nombre: 'Ganancia y Facturación del Día', default: true },
+        { id: 'ventas_vivo', nombre: 'Ventas en Vivo', default: true },
+        { id: 'salud', nombre: 'Salud de Cuenta', default: true },
+        { id: 'reclamos', nombre: 'Devoluciones y Reclamos', default: false },
+        { id: 'costos', nombre: 'Margen Promedio (Costos)', default: false },
+        { id: 'stock_riesgo', nombre: 'Stock en Riesgo', default: false },
+        { id: 'logro_top', nombre: 'Misión Prioritaria (Logros)', default: true },
+    ];
+    const CLAVE_PREFS_DASHBOARD = 'dashboard_widgets_activos';
+
+    function obtenerPrefsDashboard() {
+        const guardado = localStorage.getItem(CLAVE_PREFS_DASHBOARD);
+        if (guardado) return JSON.parse(guardado);
+        const defaults = {};
+        WIDGETS_DISPONIBLES.forEach(w => { defaults[w.id] = w.default; });
+        return defaults;
+    }
+
+    function guardarPrefsDashboard(prefs) {
+        localStorage.setItem(CLAVE_PREFS_DASHBOARD, JSON.stringify(prefs));
+    }
+
+    function togglePersonalizarDashboard() {
+        const panel = document.getElementById('panel-personalizar-dashboard');
+        const abrir = panel.style.display === 'none';
+        if (abrir) {
+            const prefs = obtenerPrefsDashboard();
+            const cont = document.getElementById('checks-widgets-dashboard');
+            cont.innerHTML = WIDGETS_DISPONIBLES.map(w => `
+                <label class="flex-gap" style="align-items:center; cursor:pointer; background:rgba(255,255,255,0.03); padding:8px 14px; border-radius:8px;">
+                    <input type="checkbox" data-widget-id="${w.id}" ${prefs[w.id] ? 'checked' : ''} onchange="alCambiarWidget(this)"> ${w.nombre}
+                </label>
+            `).join('');
+            mostrarPanelConAnimacion(panel);
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+
+    function alCambiarWidget(checkbox) {
+        const prefs = obtenerPrefsDashboard();
+        prefs[checkbox.dataset.widgetId] = checkbox.checked;
+        guardarPrefsDashboard(prefs);
+        renderizarWidgetsActivos();
+    }
+
+    function crearTarjetaWidget(id, href) {
+        const div = document.createElement('a');
+        div.href = href;
+        div.className = 'panel widget-dashboard';
+        div.id = 'widget-' + id;
+        div.innerHTML = '<div class="skeleton" style="height:70px;border-radius:8px;"></div>';
+        return div;
+    }
+
+    async function renderizarWidgetsActivos() {
+        const prefs = obtenerPrefsDashboard();
+        const grid = document.getElementById('grid-widgets-dashboard');
+        grid.innerHTML = '';
+
+        if (prefs.resumen_dia) {
+            const w = crearTarjetaWidget('resumen_dia', '/metricas');
+            grid.appendChild(w);
+            fetch('/api/resumen_diario').then(r => r.json()).then(d => {
+                if (!d) { w.querySelector('div').outerHTML = '<div class="text-muted">Sin datos.</div>'; return; }
+                let variacion = '';
+                if (d.variacion_pct !== null && d.variacion_pct !== undefined) {
+                    const pos = d.variacion_pct >= 0;
+                    variacion = `<span class="${pos?'text-success':'text-danger'}" style="font-size:0.5em; margin-left:8px;">${pos?'▲':'▼'} ${Math.abs(d.variacion_pct)}%</span>`;
+                }
+                w.innerHTML = `<div class="stat-chip-label">Facturado Hoy</div><div class="hero-number" style="font-size:1.9em;">$${d.facturado_formateado}${variacion}</div>
+                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.ordenes} ventas · ${d.unidades} unidades · Top: ${d.modelo_top || '—'}</div>`;
+            });
+        }
+
+        if (prefs.ventas_vivo) {
+            const w = crearTarjetaWidget('ventas_vivo', '/metricas');
+            grid.appendChild(w);
+            fetch('/api/hoy').then(r => r.json()).then(d => {
+                w.innerHTML = `<div class="stat-chip-label">Ventas en Vivo</div><div class="hero-number acento-primario" style="font-size:1.9em;">${d.ordenes_hoy || 0}</div>
+                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.unidades_hoy || 0} unidades hoy</div>`;
+            });
+        }
+
+        if (prefs.salud) {
+            const w = crearTarjetaWidget('salud', '/');
+            grid.appendChild(w);
+            fetch('/api/ticker').then(r => r.json()).then(d => {
+                let color = 'var(--success)';
+                if (d.salud_score < 45) color = 'var(--danger)'; else if (d.salud_score < 65) color = 'var(--accent-gold)';
+                w.innerHTML = `<div class="stat-chip-label">Salud de Cuenta</div><div class="hero-number" style="font-size:1.9em; background:none; -webkit-text-fill-color:${color}; color:${color};">${d.salud_score ?? '—'}</div>
+                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.salud_etiqueta || ''}</div>`;
+            });
+        }
+
+        if (prefs.reclamos) {
+            const w = crearTarjetaWidget('reclamos', '/metricas');
+            grid.appendChild(w);
+            fetch('/api/dashboard/reclamos_resumen').then(r => r.json()).then(d => {
+                w.innerHTML = `<div class="stat-chip-label">Reclamos Abiertos</div><div class="hero-number" style="font-size:1.9em; ${d.cantidad > 0 ? 'background:none; -webkit-text-fill-color:var(--danger); color:var(--danger);' : ''}">${d.cantidad}</div>
+                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">$${d.monto_formateado} retenidos</div>`;
+            });
+        }
+
+        if (prefs.costos) {
+            const w = crearTarjetaWidget('costos', '/costos');
+            grid.appendChild(w);
+            fetch('/api/dashboard/costos_resumen').then(r => r.json()).then(d => {
+                if (d.margen_promedio === null) { w.innerHTML = '<div class="text-muted">Sin datos de costo cargados todavía.</div>'; return; }
+                w.innerHTML = `<div class="stat-chip-label">Margen Promedio del Catálogo</div><div class="hero-number" style="font-size:1.9em;">${d.margen_promedio}%</div>
+                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">Más ajustado: ${d.peor.titulo.slice(0,30)}... (${d.peor.margen_pct}%)</div>`;
+            });
+        }
+
+        if (prefs.stock_riesgo) {
+            const w = crearTarjetaWidget('stock_riesgo', '/');
+            grid.appendChild(w);
+            fetch('/api/quiebre_stock').then(r => r.json()).then(d => {
+                w.innerHTML = `<div class="stat-chip-label">Talles en Riesgo de Quiebre</div><div class="hero-number" style="font-size:1.9em;">${d.length}</div>
+                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.length > 0 ? 'Revisar antes de perder ventas' : 'Todo en orden'}</div>`;
+            });
+        }
+
+        if (prefs.logro_top) {
+            const w = crearTarjetaWidget('logro_top', '/logros');
+            grid.appendChild(w);
+            fetch('/api/dashboard/logro_top').then(r => r.json()).then(d => {
+                if (!d.hay_mision) { w.innerHTML = '<div class="stat-chip-label">Logros</div><div class="text-success" style="margin-top:10px;">🎉 Sin misiones pendientes</div>'; return; }
+                const color = d.prioridad === 'urgente' ? 'var(--danger)' : (d.prioridad === 'importante' ? 'var(--accent-gold)' : 'var(--accent-primary)');
+                w.innerHTML = `<div class="stat-chip-label">Misión Prioritaria</div><div style="font-weight:700; margin-top:8px; color:${color};">${d.titulo}</div>
+                    <div class="text-muted" style="font-size:0.82em; margin-top:6px;">${d.descripcion}</div>`;
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', renderizarWidgetsActivos);
+</script>
+{% endblock %}

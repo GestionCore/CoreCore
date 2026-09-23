@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% block title %}Costos · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Costos del negocio</h1>
+        <div class="page-subtitle">Período: {{ fecha_desde }} al {{ fecha_hasta }}</div>
+    </div>
+    <button type="button" class="btn btn-denim" onclick="abrirCalculadoraCostos()">🧮 Calculadora de Costos MeLi</button>
+</div>
+
+<div class="panel">
+    <div class="panel-title">💬 Cargar un gasto por chat</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">Describilo con tus palabras — por ejemplo "el alquiler sale 150 mil por mes desde julio". Nunca se guarda nada sin que lo confirmes vos.</div>
+    <div id="costos-chat-mensajes" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px; max-height:280px; overflow-y:auto;"></div>
+    <div id="costos-chat-propuesta" style="display:none;"></div>
+    <form id="costos-chat-form" onsubmit="return enviarMensajeCostosChat(event)" class="filter-row" style="margin:0;">
+        <input type="text" id="costos-chat-input" class="field-input" placeholder="Escribí acá el gasto..." style="flex:1;" autocomplete="off">
+        <button type="submit" class="btn btn-denim">Enviar</button>
+    </form>
+</div>
+
+<div class="calc-overlay" id="calc-overlay" onclick="if(event.target===this) cerrarCalculadoraCostos()">
+    <div class="calc-panel" id="calc-panel">
+        <div class="calc-header">
+            <h2 style="margin:0; font-family:var(--font-display);">🧮 Calculadora de Costos Real</h2>
+            <span style="cursor:pointer; font-size:1.4em;" onclick="cerrarCalculadoraCostos()">✕</span>
+        </div>
+        <div class="calc-body">
+            <div class="page-subtitle" style="margin-bottom:16px;">
+                Consulta en vivo la API de Mercado Libre — te muestra la ganancia que recibirías con el precio que definas.
+            </div>
+            <div class="field-group" style="margin-bottom:14px;">
+                <label class="field-label">Categoría (de tu propio catálogo)</label>
+                <select id="calc-categoria"><option value="">Cargando categorías...</option></select>
+            </div>
+            <div class="field-group" style="margin-bottom:14px;">
+                <label class="field-label">Precio de venta ($)</label>
+                <input type="number" step="0.01" id="calc-precio" oninput="calcularCostoReal()">
+            </div>
+            <div class="field-group" style="margin-bottom:14px;">
+                <label class="field-label">Tipo de publicación</label>
+                <select id="calc-listing-type" onchange="calcularCostoReal()">
+                    <option value="gold_special">Clásica</option>
+                    <option value="gold_pro">Premium</option>
+                </select>
+            </div>
+            <label class="flex-gap" style="align-items:center; cursor:pointer; margin-bottom:20px;">
+                <input type="checkbox" id="calc-cuotas" onchange="calcularCostoReal()"> Voy a ofrecer cuotas sin interés
+            </label>
+            <div id="calc-resultado"></div>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Ver otro período</div>
+    <form action="/costos" method="GET" class="filter-row">
+        <div class="field-group"><label class="field-label">Desde</label><input type="date" name="fecha_desde" value="{{ fecha_desde }}" required></div>
+        <div class="field-group"><label class="field-label">Hasta</label><input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" required></div>
+        <button type="submit" class="btn btn-secondary">Ver este período</button>
+        <div style="display:flex; gap:6px;">
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(7, this)">7 días</button>
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(14, this)">14 días</button>
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(30, this)">30 días</button>
+        </div>
+    </form>
+</div>
+
+<div class="stat-strip">
+    <div class="stat-chip accent-denim"><div class="stat-chip-label">Gastos fijos</div><div class="stat-chip-value">${{ stats.fijos }}</div></div>
+    <div class="stat-chip accent-gold"><div class="stat-chip-label">Gastos variables</div><div class="stat-chip-value">${{ stats.variables }}</div></div>
+    <div class="stat-chip accent-danger"><div class="stat-chip-label">Total del período</div><div class="stat-chip-value">${{ stats.total }}</div></div>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Registrar un gasto</div>
+    <form action="/agregar_gasto" method="POST" class="filter-row">
+        <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
+        <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
+        <div class="field-group" style="flex: 2; min-width: 200px;"><label class="field-label">Concepto</label><input type="text" name="concepto" placeholder="Ej: Bolsas de envío" required></div>
+        <div class="field-group"><label class="field-label">Categoría</label><select name="categoria"><option value="variable">Variable</option><option value="fijo">Fijo</option></select></div>
+        <div class="field-group" style="max-width: 140px;"><label class="field-label">Monto ($)</label><input type="number" step="0.01" name="monto" min="0.01" required></div>
+        <div class="field-group"><label class="field-label">Fecha</label><input type="date" name="fecha" value="{{ fecha_hasta }}" required></div>
+        <button type="submit" class="btn btn-primary">Agregar</button>
+    </form>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Gastos del período ({{ gastos|length }})</div>
+    <table class="data-table">
+        <thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th class="num">Monto</th><th></th></tr></thead>
+        <tbody>
+            {% for g in gastos %}
+            <tr>
+                <td class="text-muted">{{ g.fecha }}</td>
+                <td>{{ g.concepto }}</td>
+                <td><span class="badge {% if g.categoria == 'fijo' %}badge-neutral{% else %}badge-warning{% endif %}">{{ g.categoria|capitalize }}</span></td>
+                <td class="num">${{ g.monto_formateado }}</td>
+                <td>
+                    <form action="/eliminar_gasto/{{ g.id }}" method="POST" onsubmit="return confirm('¿Eliminar este gasto?');" style="display:inline;">
+                        <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
+                        <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
+                        <button type="submit" class="btn btn-danger">Borrar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not gastos %}<tr><td colspan="5" class="alert-empty">No hay gastos registrados en este período.</td></tr>{% endif %}
+        </tbody>
+    </table>
+</div>
+
+<div class="panel">
+    <div class="panel-title">Proveedores</div>
+    <form action="/proveedores/agregar" method="POST" class="filter-row" style="margin-bottom:14px;">
+        <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
+        <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
+        <div class="field-group" style="flex:2; min-width:180px;"><label class="field-label">Nombre</label><input type="text" name="nombre" placeholder="Ej: Angelica" required></div>
+        <div class="field-group" style="max-width:160px;"><label class="field-label">Tiempo de entrega (días)</label><input type="number" name="tiempo_entrega_dias" value="7" min="1" required></div>
+        <button type="submit" class="btn btn-primary">Agregar</button>
+    </form>
+    {% if proveedores %}
+    <table class="data-table">
+        <thead><tr><th>Nombre</th><th class="num">Entrega estimada</th><th></th></tr></thead>
+        <tbody>
+            {% for pr in proveedores %}
+            <tr>
+                <td>{{ pr.nombre }}</td>
+                <td class="num">{{ pr.tiempo_entrega_dias }} día(s)</td>
+                <td>
+                    <form action="/proveedores/eliminar/{{ pr.id }}" method="POST" onsubmit="return confirm('¿Eliminar este proveedor? Las publicaciones asignadas quedan sin proveedor.');" style="display:inline;">
+                        <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
+                        <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
+                        <button type="submit" class="btn btn-danger">Borrar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert-empty">Todavía no cargaste ningún proveedor — sin esto, el Punto de Reposición no puede calcular cuándo pedir.</div>
+    {% endif %}
+</div>
+
+<div class="panel">
+    <div class="panel-title">
+        <span>Costo de fabricación y rentabilidad por publicación ({{ productos|length }})</span>
+        <button type="button" class="btn btn-denim" id="btn-guardar-costos-masivo" onclick="guardarCostosMasivo()">💾 Guardar todos los cambios</button>
+    </div>
+    <div id="lista-costos-productos">
+        {% for p in productos[:5] %}
+        <div class="costo-item">
+            <div class="costo-item-header">
+                {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm">{% endif %}
+                <div class="costo-item-titulo">{{ p.titulo }}</div>
+                <div class="field-group" style="max-width:130px;">
+                    <label class="field-label">Costo fabricación</label>
+                    <input type="number" step="0.01" class="input-costo-producto" data-id-meli="{{ p.id }}" value="{{ p.precio_costo }}">
+                </div>
+                <div class="field-group" style="max-width:160px;">
+                    <label class="field-label">Proveedor</label>
+                    <select class="input-proveedor-producto" data-id-meli="{{ p.id }}">
+                        <option value="">Sin asignar</option>
+                        {% for pr in proveedores %}
+                        <option value="{{ pr.id }}" {% if p.proveedor_id == pr.id %}selected{% endif %}>{{ pr.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {% if p.segmentos_pct %}
+            <div class="unit-economics-bar">
+                <div class="ue-segmento ue-costo" style="width:{{ p.segmentos_pct.costo }}%;" title="Costo de fabricación: ${{ p.precio_costo_formateado }}"></div>
+                <div class="ue-segmento ue-envio" style="width:{{ p.segmentos_pct.envio }}%;" title="Envío promedio: ${{ p.envio_formateado or '0' }}"></div>
+                <div class="ue-segmento ue-comision" style="width:{{ p.segmentos_pct.comision }}%;" title="Comisión MeLi: ${{ p.comision_formateada }}"></div>
+                <div class="ue-segmento ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}" style="width:{{ p.segmentos_pct.ganancia }}%;" title="Ganancia neta: ${{ p.ganancia_neta_formateada }}"></div>
+            </div>
+            <div class="unit-economics-leyenda">
+                <span><i class="ue-dot ue-costo"></i>Costo</span>
+                <span><i class="ue-dot ue-envio"></i>Envío</span>
+                <span><i class="ue-dot ue-comision"></i>Comisión</span>
+                <span class="{% if p.ganancia_negativa %}text-danger{% else %}text-success{% endif %}" style="margin-left:auto; font-weight:700;">
+                    <i class="ue-dot ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}"></i>
+                    Ganancia neta: ${{ p.ganancia_neta_formateada }} de ${{ p.precio_formateado }}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% if productos|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" id="btn-mostrar-mas-costos" onclick="mostrarMasCostos()">Mostrar {{ productos|length - 5 }} más...</button>
+    {% endif %}
+</div>
+
+<template id="template-costos-ocultos">
+    {% for p in productos[5:] %}
+    <div class="costo-item">
+        <div class="costo-item-header">
+            {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm">{% endif %}
+            <div class="costo-item-titulo">{{ p.titulo }}</div>
+            <div class="field-group" style="max-width:130px;">
+                <label class="field-label">Costo fabricación</label>
+                <input type="number" step="0.01" class="input-costo-producto" data-id-meli="{{ p.id }}" value="{{ p.precio_costo }}">
+            </div>
+            <div class="field-group" style="max-width:160px;">
+                <label class="field-label">Proveedor</label>
+                <select class="input-proveedor-producto" data-id-meli="{{ p.id }}">
+                    <option value="">Sin asignar</option>
+                    {% for pr in proveedores %}
+                    <option value="{{ pr.id }}" {% if p.proveedor_id == pr.id %}selected{% endif %}>{{ pr.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        {% if p.segmentos_pct %}
+        <div class="unit-economics-bar">
+            <div class="ue-segmento ue-costo" style="width:{{ p.segmentos_pct.costo }}%;" title="Costo de fabricación: ${{ p.precio_costo_formateado }}"></div>
+            <div class="ue-segmento ue-envio" style="width:{{ p.segmentos_pct.envio }}%;" title="Envío promedio: ${{ p.envio_formateado or '0' }}"></div>
+            <div class="ue-segmento ue-comision" style="width:{{ p.segmentos_pct.comision }}%;" title="Comisión MeLi: ${{ p.comision_formateada }}"></div>
+            <div class="ue-segmento ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}" style="width:{{ p.segmentos_pct.ganancia }}%;" title="Ganancia neta: ${{ p.ganancia_neta_formateada }}"></div>
+        </div>
+        <div class="unit-economics-leyenda">
+            <span><i class="ue-dot ue-costo"></i>Costo</span>
+            <span><i class="ue-dot ue-envio"></i>Envío</span>
+            <span><i class="ue-dot ue-comision"></i>Comisión</span>
+            <span class="{% if p.ganancia_negativa %}text-danger{% else %}text-success{% endif %}" style="margin-left:auto; font-weight:700;">
+                <i class="ue-dot ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}"></i>
+                Ganancia neta: ${{ p.ganancia_neta_formateada }} de ${{ p.precio_formateado }}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</template>
+
+<script>
+    function mostrarMasCostos() {
+        const plantilla = document.getElementById('template-costos-ocultos');
+        const contenedor = document.getElementById('lista-costos-productos');
+        contenedor.appendChild(plantilla.content.cloneNode(true));
+        document.getElementById('btn-mostrar-mas-costos').remove();
+    }
+
+    let categoriasCalculadora = null;
+
+    async function abrirCalculadoraCostos() {
+        document.getElementById('calc-overlay').classList.add('open');
+        if (!categoriasCalculadora) {
+            const resp = await fetch('/api/calculadora_categorias');
+            categoriasCalculadora = await resp.json();
+            const select = document.getElementById('calc-categoria');
+            if (!categoriasCalculadora.length) {
+                select.innerHTML = '<option value="">No se encontraron categorías</option>';
+            } else {
+                select.innerHTML = categoriasCalculadora.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+                calcularCostoReal();
+            }
+        }
+    }
+
+    function cerrarCalculadoraCostos() {
+        document.getElementById('calc-overlay').classList.remove('open');
+    }
+
+    async function calcularCostoReal() {
+        const precio = parseFloat(document.getElementById('calc-precio').value);
+        const categoryId = document.getElementById('calc-categoria').value;
+        const listingType = document.getElementById('calc-listing-type').value;
+        const ofreceCuotas = document.getElementById('calc-cuotas').checked;
+        const cont = document.getElementById('calc-resultado');
+
+        if (!precio || precio <= 0 || !categoryId) { cont.innerHTML = ''; return; }
+        cont.innerHTML = '<div class="text-muted">Consultando a MeLi en vivo...</div>';
+
+        try {
+            const resp = await fetch(`/api/calculadora_costos?precio=${precio}&category_id=${categoryId}&listing_type_id=${listingType}&ofrece_cuotas=${ofreceCuotas}`);
+            const d = await resp.json();
+            if (d.error) { cont.innerHTML = `<span class="text-danger">${d.error}</span>`; return; }
+
+            let filasHtml = `
+                <div class="flex-gap" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft);">
+                    <span>Comisión (${d.pct_comision_base !== null && d.pct_comision_base !== undefined ? d.pct_comision_base + '%' : ''})</span>
+                    <strong class="text-danger">-$${d.comision_total.toLocaleString('es-AR', {minimumFractionDigits:2})}</strong>
+                </div>
+            `;
+            if (d.pct_cuotas) {
+                filasHtml += `
+                <div class="flex-gap" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft); font-size:0.85em; color:var(--text-secondary);">
+                    <span>&nbsp;&nbsp;↳ de la cual, costo de cuotas sin interés</span>
+                    <span>${d.pct_cuotas}%</span>
+                </div>`;
+            }
+            if (d.cargo_fijo > 0) {
+                filasHtml += `
+                <div class="flex-gap" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft);">
+                    <span>Cargo fijo (precio bajo)</span><strong class="text-danger">-$${d.cargo_fijo.toLocaleString('es-AR')}</strong>
+                </div>`;
+            }
+            if (d.costo_envio !== null) {
+                filasHtml += `
+                <div class="flex-gap" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft);">
+                    <span>Envío${d.envio_obligatorio_gratis ? ' (obligatorio a tu cargo por el precio)' : ''}</span>
+                    <strong class="text-danger">-$${d.costo_envio.toLocaleString('es-AR', {minimumFractionDigits:2})}</strong>
+                </div>`;
+            } else {
+                filasHtml += `
+                <div class="text-muted" style="font-size:0.82em; padding:8px 0;">No pudimos determinar el costo exacto de envío para este precio desde acá — confirmalo en tu panel de MeLi antes de decidir.</div>`;
+            }
+            filasHtml += `
+                <div class="flex-gap" style="justify-content:space-between; padding-top:14px; margin-top:6px; border-top:2px solid var(--glass-border);">
+                    <span style="font-weight:700;">Te queda de este precio</span>
+                    <span class="hero-number acento-primario" style="font-size:1.4em;">$${d.recibis.toLocaleString('es-AR', {minimumFractionDigits:2})}</span>
+                </div>
+                <div class="text-muted" style="font-size:0.78em; margin-top:6px;">Antes de restar el costo de fabricación del producto.</div>
+            `;
+            cont.innerHTML = filasHtml;
+        } catch (e) { cont.innerHTML = '<span class="text-danger">Error consultando la API.</span>'; }
+    }
+
+    async function guardarCostosMasivo() {
+        const inputsCosto = document.querySelectorAll('.input-costo-producto');
+        const cambios = {};
+        inputsCosto.forEach(inp => { cambios[inp.dataset.idMeli] = parseFloat(inp.value) || 0; });
+
+        const inputsProveedor = document.querySelectorAll('.input-proveedor-producto');
+        const asignaciones = {};
+        inputsProveedor.forEach(sel => { asignaciones[sel.dataset.idMeli] = sel.value; });
+
+        const boton = document.getElementById('btn-guardar-costos-masivo');
+        const textoOriginal = boton.textContent;
+        boton.disabled = true;
+        boton.textContent = 'Guardando...';
+
+        try {
+            const [respCostos, respProveedores] = await Promise.all([
+                fetch('/guardar_costos_masivo', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ costos: cambios })
+                }),
+                fetch('/asignar_proveedor_masivo', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ asignaciones: asignaciones })
+                })
+            ]);
+            const dataCostos = await respCostos.json();
+            const dataProveedores = await respProveedores.json();
+            if (dataCostos.ok && dataProveedores.ok) {
+                mostrarToast(`✅ ${dataCostos.actualizados} costo(s) y ${dataProveedores.actualizados} proveedor(es) guardados`, 'success');
+            } else {
+                mostrarToast('⚠️ No se pudo guardar — revisá la conexión', 'error');
+            }
+        } catch (e) {
+            mostrarToast('⚠️ No se pudo guardar — revisá la conexión', 'error');
+        } finally {
+            boton.disabled = false;
+            boton.textContent = textoOriginal;
+        }
+    }
+</script>
+{% endblock %}

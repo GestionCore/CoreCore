@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoreLux — Iniciar sesión</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,700;8..60,800;8..60,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_v('css/style.css') }}">
+    <style>
+        /* Solo lo específico de esta pantalla — el resto viene de style.css,
+           para que la sensación visual sea la misma que el resto de CoreLux
+           sin arrastrar nada del layout de la app (nav, ticker, drawer). */
+        html, body { height: 100%; margin: 0; }
+        body {
+            display: flex; align-items: center; justify-content: center;
+            background: var(--bg-base); color: var(--text-primary);
+            font-family: var(--font-ui); position: relative; overflow: hidden;
+        }
+        .login-tarjeta {
+            position: relative; z-index: 2; width: 100%; max-width: 420px; margin: 24px;
+            padding: 44px 40px; text-align: center; border-radius: var(--radius-lg);
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            box-shadow: var(--shadow-elevated), 0 0 60px -20px var(--accent-primary-glow);
+            animation: fadeInUp 0.5s cubic-bezier(0.16,1,0.3,1);
+        }
+        .login-marca { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 28px; }
+        .login-marca span { font-family: var(--font-display); font-weight: 800; font-size: 1.4em; letter-spacing: -0.02em; }
+        .login-tagline { color: var(--text-secondary); font-size: 0.95em; line-height: 1.5; margin-bottom: 32px; }
+        .btn-conectar-meli {
+            display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
+            padding: 16px 20px; border-radius: var(--radius-md); border: none; cursor: pointer;
+            font-family: var(--font-ui); font-size: 1.02em; font-weight: 700; color: #14100a;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim));
+            box-shadow: 0 4px 24px -4px var(--accent-gold-glow); transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+        }
+        .btn-conectar-meli:hover { transform: translateY(-2px); box-shadow: 0 8px 32px -4px var(--accent-gold-glow); }
+        .login-confianza {
+            display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 18px;
+            color: var(--text-faint); font-size: 0.78em;
+        }
+        .login-prueba { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--border-soft); color: var(--text-secondary); font-size: 0.85em; }
+        .login-prueba strong { color: var(--accent-cyan); }
+    </style>
+</head>
+<body>
+<canvas id="fondo-particulas" data-seccion="finanzas"></canvas>
+
+<div class="login-tarjeta">
+    <div class="login-marca">
+        <span class="brand-mark"></span>
+        <span>CoreLux</span>
+    </div>
+
+    <div class="login-tagline">
+        Ganancia real, stock, publicidad y logros de tu cuenta de Mercado Libre — todo en un solo lugar.
+    </div>
+
+    <a href="{{ url_for('conectar') }}" class="btn-conectar-meli">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+        Conectar con Mercado Libre
+    </a>
+
+    <div class="login-confianza">
+        🔒 Ingresás con tu cuenta oficial de Mercado Libre
+    </div>
+
+    <div class="login-prueba">
+        <strong>14 días de prueba gratis.</strong> No pedimos tarjeta para empezar.
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/particulas.js') }}?v={{ static_v('js/particulas.js') }}" defer></script>
+</body>
+</html>
