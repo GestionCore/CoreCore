@@ -22,6 +22,7 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
             WHERE (v.fecha_venta + COALESCE(v.hora_venta, '00:00'::time) + (%s || ' hours')::interval)::date = %s
               AND COALESCE(p.tipo_logistica, '') != 'fulfillment'
+              AND v.origen = 'meli'
             ORDER BY v.despachado ASC, v.id ASC
         """, (offset_horas, fecha))
         filas = cursor.fetchall()

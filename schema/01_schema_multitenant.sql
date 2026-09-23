@@ -172,6 +172,7 @@ CREATE TABLE ventas (
     despachado          BOOLEAN NOT NULL DEFAULT false,
     comprador_nickname  TEXT,
     comprador_nombre    TEXT,
+    origen              TEXT NOT NULL DEFAULT 'meli',  -- 'meli' | 'manual' (ventas_manuales.py — mostrador/canal directo)
     UNIQUE (cuenta_id, id_orden, id_meli)
 );
 CREATE INDEX idx_ventas_cuenta ON ventas(cuenta_id);

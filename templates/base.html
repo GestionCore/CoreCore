@@ -19,7 +19,7 @@
 </head>
 <body {% if session.get('mostrar_tutorial') %}data-mostrar-tutorial="1"{% endif %}>
 <canvas id="fondo-particulas"
-    data-seccion="{% if active_nav in ['stock','stock_masivo','despacho'] %}catalogo{% elif active_nav in ['metricas','facturacion','costos','flujo_caja','comparador_logistica','historial_precios'] %}finanzas{% elif active_nav in ['promociones','tendencias','competencia','embudo_conversion','reputacion','publicidad','logros'] %}crecimiento{% else %}catalogo{% endif %}"
+    data-seccion="{% if active_nav in ['stock','stock_masivo','despacho'] %}catalogo{% elif active_nav in ['metricas','facturacion','costos','flujo_caja','comparador_logistica','historial_precios','ventas_manuales'] %}finanzas{% elif active_nav in ['promociones','tendencias','competencia','embudo_conversion','reputacion','publicidad','logros'] %}crecimiento{% else %}catalogo{% endif %}"
 ></canvas>
 
 <svg style="display:none;">
@@ -86,13 +86,14 @@
                     <a href="/despacho" class="nav-dropdown-item {% if active_nav == 'despacho' %}active{% endif %}">Despacho</a>
                 </div>
             </div>
-            <div class="nav-dropdown {% if active_nav in ['metricas','facturacion','costos','flujo_caja','comparador_logistica','historial_precios','monotributo'] %}active{% endif %}" id="tour-nav-finanzas">
+            <div class="nav-dropdown {% if active_nav in ['metricas','facturacion','costos','flujo_caja','comparador_logistica','historial_precios','monotributo','ventas_manuales'] %}active{% endif %}" id="tour-nav-finanzas">
                 <button class="topnav-link nav-dropdown-toggle" type="button"><svg class="icon"><use href="#icon-chart"/></svg>Finanzas <span class="nav-chevron">▾</span></button>
                 <div class="nav-dropdown-menu">
                     <a href="/metricas" class="nav-dropdown-item {% if active_nav == 'metricas' %}active{% endif %}">Ganancia Real</a>
                     <a href="/facturacion" class="nav-dropdown-item {% if active_nav == 'facturacion' %}active{% endif %}">Facturación</a>
                     <a href="/costos" class="nav-dropdown-item {% if active_nav == 'costos' %}active{% endif %}">Costos</a>
                     <a href="/flujo_caja" class="nav-dropdown-item {% if active_nav == 'flujo_caja' %}active{% endif %}">Flujo de Caja</a>
+                    <a href="/ventas_manuales" class="nav-dropdown-item {% if active_nav == 'ventas_manuales' %}active{% endif %}">Ventas fuera de MeLi</a>
                     <a href="/comparador_logistica" class="nav-dropdown-item {% if active_nav == 'comparador_logistica' %}active{% endif %}">Propia vs FULL</a>
                     <a href="/historial_precios" class="nav-dropdown-item {% if active_nav == 'historial_precios' %}active{% endif %}">Historial de Precios</a>
                     <a href="/monotributo" class="nav-dropdown-item {% if active_nav == 'monotributo' %}active{% endif %}">Monotributo</a>

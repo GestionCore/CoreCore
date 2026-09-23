@@ -1,0 +1,121 @@
+"""
+Registro de ventas por fuera de Mercado Libre (mostrador, canal directo,
+Instagram, etc.) — item #2 del brainstorm original, nunca se había
+construido.
+
+Reusa la tabla `ventas` tal cual, en vez de crear una tabla aparte —
+así una venta manual entra a Ganancia Real, al Dashboard y a los
+consolidados por modelo exactamente igual que una venta real de MeLi,
+sin duplicar lógica en ningún lado. Lo único que la distingue es la
+columna `origen` ('meli' | 'manual'), que además sirve para que
+Despacho las excluya (una venta de mostrador ya está entregada, no
+necesita etiqueta de envío).
+
+Requiere la migración `ALTER TABLE ventas ADD COLUMN origen TEXT NOT
+NULL DEFAULT 'meli';` — ver schema/01_schema_multitenant.sql.
+"""
+import uuid
+from datetime import datetime
+from psycopg.rows import dict_row
+import db
+from utils import formatear_moneda
+
+
+def obtener_catalogo_para_selector(usuario_id, cuenta_id):
+    """Variantes activas con stock propio, para el <select> del formulario."""
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor(row_factory=dict_row)
+        cursor.execute("""
+            SELECT pv.id_variante, pp.id_meli, pp.titulo, pv.talle, pv.color, pv.stock_propio, pp.precio
+            FROM productos_variantes pv
+            JOIN productos_padre pp ON pp.id = pv.id_padre AND pp.cuenta_id = pv.cuenta_id
+            WHERE pv.cuenta_id = %s AND pp.estado = 'active'
+            ORDER BY pp.titulo, pv.talle
+        """, (cuenta_id,))
+        filas = cursor.fetchall()
+
+    return [{
+        "id_variante": f["id_variante"], "id_meli": f["id_meli"],
+        "etiqueta": f"{f['titulo']} — Talle {f['talle']}" + (f" / {f['color']}" if f["color"] and f["color"] != "Único" else "") + f" (stock: {f['stock_propio']})",
+        "precio_sugerido": float(f["precio"] or 0),
+    } for f in filas]
+
+
+def registrar_venta_manual(usuario_id, cuenta_id, id_variante, cantidad, precio_venta, fecha_venta, comprador_nombre):
+    """Devuelve (ok: bool, mensaje_o_None)."""
+    cantidad = int(cantidad or 0)
+    precio_venta = float(precio_venta or 0)
+    if cantidad <= 0 or precio_venta <= 0:
+        return False, "Cantidad y precio tienen que ser mayores a cero."
+
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor(row_factory=dict_row)
+        cursor.execute("""
+            SELECT pv.id_variante, pp.id_meli, pp.titulo
+            FROM productos_variantes pv
+            JOIN productos_padre pp ON pp.id = pv.id_padre AND pp.cuenta_id = pv.cuenta_id
+            WHERE pv.cuenta_id = %s AND pv.id_variante = %s
+        """, (cuenta_id, id_variante))
+        variante = cursor.fetchone()
+        if not variante:
+            return False, "Esa variante no pertenece a tu catálogo."
+
+        id_orden_manual = f"MANUAL-{uuid.uuid4().hex[:12]}"
+        ahora = datetime.now()
+        cursor.execute("""
+            INSERT INTO ventas (cuenta_id, id_orden, id_meli, id_variante, titulo, cantidad, precio_venta,
+                                 cargo_venta, costo_envio, fecha_venta, hora_venta, despachado,
+                                 comprador_nombre, origen)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 0, 0, %s, %s, true, %s, 'manual')
+        """, (
+            cuenta_id, id_orden_manual, variante["id_meli"], variante["id_variante"], variante["titulo"],
+            cantidad, precio_venta, fecha_venta, ahora.time(), comprador_nombre or None
+        ))
+
+        # Igual que una venta real: descuenta del stock propio disponible.
+        # GREATEST evita que quede en negativo si el stock cargado ya
+        # estaba desactualizado — mejor mostrar 0 que un número raro.
+        cursor.execute(
+            "UPDATE productos_variantes SET stock_propio = GREATEST(stock_propio - %s, 0) WHERE cuenta_id = %s AND id_variante = %s",
+            (cantidad, cuenta_id, id_variante)
+        )
+
+    return True, None
+
+
+def obtener_ventas_manuales_recientes(usuario_id, cuenta_id, limite=25):
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor(row_factory=dict_row)
+        cursor.execute("""
+            SELECT id, id_orden, titulo, id_variante, cantidad, precio_venta, fecha_venta, comprador_nombre
+            FROM ventas WHERE cuenta_id = %s AND origen = 'manual'
+            ORDER BY id DESC LIMIT %s
+        """, (cuenta_id, limite))
+        filas = cursor.fetchall()
+
+    return [{
+        "id": f["id"], "titulo": f["titulo"], "id_variante": f["id_variante"], "cantidad": f["cantidad"],
+        "precio_formateado": formatear_moneda(float(f["precio_venta"]) * f["cantidad"]),
+        "fecha": f["fecha_venta"].strftime("%Y-%m-%d") if hasattr(f["fecha_venta"], "strftime") else f["fecha_venta"],
+        "comprador_nombre": f["comprador_nombre"] or "—",
+    } for f in filas]
+
+
+def eliminar_venta_manual(usuario_id, cuenta_id, id_venta):
+    """Borra una venta manual y le devuelve el stock a la variante — deshacer una carga por error."""
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor(row_factory=dict_row)
+        cursor.execute(
+            "SELECT id_variante, cantidad FROM ventas WHERE cuenta_id = %s AND id = %s AND origen = 'manual'",
+            (cuenta_id, id_venta)
+        )
+        fila = cursor.fetchone()
+        if not fila:
+            return False
+
+        cursor.execute("DELETE FROM ventas WHERE cuenta_id = %s AND id = %s AND origen = 'manual'", (cuenta_id, id_venta))
+        cursor.execute(
+            "UPDATE productos_variantes SET stock_propio = stock_propio + %s WHERE cuenta_id = %s AND id_variante = %s",
+            (fila["cantidad"], cuenta_id, fila["id_variante"])
+        )
+    return True

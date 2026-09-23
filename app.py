@@ -37,6 +37,7 @@ import costos_chat
 import timeline_publicacion
 import exportador_redes
 import scheduler
+import ventas_manuales
 from utils import formatear_moneda
 from datetime import datetime, timedelta
 
@@ -892,6 +893,44 @@ def costos_vista():
     fecha_desde = request.args.get("fecha_desde") or datetime.now().replace(day=1).strftime("%Y-%m-%d")
     gastos, stats, productos, proveedores = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta)
     return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, proveedores=proveedores, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, active_nav="costos")
+
+
+@app.route("/ventas_manuales")
+@login_requerido
+def ventas_manuales_vista():
+    """Registrar ventas por fuera de MeLi (mostrador, canal directo) — entran a Ganancia Real igual que las reales."""
+    catalogo = ventas_manuales.obtener_catalogo_para_selector(g.usuario_id, g.cuenta_id)
+    recientes = ventas_manuales.obtener_ventas_manuales_recientes(g.usuario_id, g.cuenta_id)
+    return render_template(
+        "ventas_manuales.html", catalogo=catalogo, ventas=recientes,
+        hoy=datetime.now().strftime("%Y-%m-%d"), active_nav="ventas_manuales"
+    )
+
+
+@app.route("/ventas_manuales/agregar", methods=["POST"])
+@login_requerido
+def ventas_manuales_agregar():
+    ok, error = ventas_manuales.registrar_venta_manual(
+        g.usuario_id, g.cuenta_id,
+        request.form.get("id_variante"), request.form.get("cantidad"),
+        request.form.get("precio_venta"), request.form.get("fecha_venta"),
+        request.form.get("comprador_nombre", "").strip(),
+    )
+    if not ok:
+        return render_template(
+            "ventas_manuales.html",
+            catalogo=ventas_manuales.obtener_catalogo_para_selector(g.usuario_id, g.cuenta_id),
+            ventas=ventas_manuales.obtener_ventas_manuales_recientes(g.usuario_id, g.cuenta_id),
+            hoy=datetime.now().strftime("%Y-%m-%d"), active_nav="ventas_manuales", error=error
+        ), 400
+    return redirect(url_for("ventas_manuales_vista"))
+
+
+@app.route("/ventas_manuales/eliminar/<int:id_venta>", methods=["POST"])
+@login_requerido
+def ventas_manuales_eliminar(id_venta):
+    ventas_manuales.eliminar_venta_manual(g.usuario_id, g.cuenta_id, id_venta)
+    return redirect(url_for("ventas_manuales_vista"))
 
 
 @app.route("/proveedores/agregar", methods=["POST"])
