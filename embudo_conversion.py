@@ -93,7 +93,14 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=30):
     fecha_hasta = datetime.now().strftime("%Y-%m-%d")
     fecha_desde = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
 
-    cursor.execute("SELECT id_meli, titulo FROM productos_padre WHERE estado = 'active'")
+    cursor.execute("""
+        SELECT p.id_meli, p.titulo, p.thumbnail, p.precio,
+               COALESCE(SUM(v.stock_propio + v.stock_full), 0) AS stock_total
+        FROM productos_padre p
+        LEFT JOIN productos_variantes v ON v.id_padre = p.id
+        WHERE p.estado = 'active'
+        GROUP BY p.id_meli, p.titulo, p.thumbnail, p.precio
+    """)
     activos = cursor.fetchall()
     if not activos:
         return []
@@ -106,7 +113,7 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=30):
 
     preguntas_por_item = {}
     with ThreadPoolExecutor(max_workers=6) as pool:
-        futuros = {pool.submit(_obtener_cantidad_preguntas, headers, id_meli): id_meli for id_meli, _ in activos}
+        futuros = {pool.submit(_obtener_cantidad_preguntas, headers, id_meli): id_meli for id_meli, *_resto in activos}
         for futuro in as_completed(futuros):
             id_meli = futuros[futuro]
             try:
@@ -115,7 +122,7 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=30):
                 preguntas_por_item[id_meli] = 0
 
     resultado = []
-    for id_meli, titulo in activos:
+    for id_meli, titulo, thumbnail, precio, stock_total in activos:
         visitas = visitas_por_item.get(id_meli, 0) or 0
         preguntas = preguntas_por_item.get(id_meli, 0)
         vendidas = ventas_por_item.get(id_meli, 0)
@@ -131,7 +138,8 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=30):
 
         resultado.append({
             "id_meli": id_meli, "titulo": titulo, "visitas": visitas, "preguntas": preguntas,
-            "vendidas": vendidas, "tasa_conversion": tasa_conversion, "diagnostico": diagnostico
+            "vendidas": vendidas, "tasa_conversion": tasa_conversion, "diagnostico": diagnostico,
+            "thumbnail": thumbnail, "precio": float(precio or 0), "stock_total": int(stock_total or 0),
         })
 
     def _prioridad(r):

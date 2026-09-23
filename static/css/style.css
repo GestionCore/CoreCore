@@ -326,6 +326,16 @@ input:focus, select:focus, textarea:focus {
 }
 input:disabled { color: var(--text-faint); }
 
+/* El popup nativo de <option> es un widget del navegador/SO, no del CSS
+   normal de la página — Chrome en Windows ignora el background del
+   <select> para ese popup pero SÍ hereda el color de texto, así que sin
+   esto queda texto claro sobre el blanco por defecto del navegador
+   (bug real reportado: el selector de categoría de Monotributo era
+   ilegible). Forzando fondo Y color en el propio <option> se arregla
+   en todos los selects de la app, no solo ese. */
+select option { background: #14162a; color: var(--text-primary); }
+:root[data-theme="light"] select option { background: #ffffff; color: #1a1a2e; }
+
 /* Badges */
 .badge { display: inline-block; padding: 4px 11px; border-radius: var(--radius-pill); font-size: 0.76em; font-weight: 600; }
 .badge-success { background: var(--success-bg); color: var(--success); }
