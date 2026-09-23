@@ -33,12 +33,23 @@ def _obtener_comparacion_periodo_anterior(cursor, fecha_desde, fecha_hasta):
     hasta_anterior = desde_dt - timedelta(days=1)
     desde_anterior = hasta_anterior - timedelta(days=largo_dias - 1)
 
+    # Alias explícitos, a propósito: este cursor usa row_factory=dict_row
+    # (llega armado así desde calcular_ganancia_real), y sin alias las dos
+    # columnas COALESCE(...) reciben el mismo nombre por defecto de
+    # Postgres — el dict resultante termina con 2 claves en vez de 3 (la
+    # segunda pisa a la primera), y el unpacking de abajo revienta con
+    # "not enough values to unpack". Ya me había pasado una vez en este
+    # mismo archivo con otra query; se me escapó acá al escribirla de nuevo.
     cursor.execute("""
-        SELECT COALESCE(SUM(precio_venta * cantidad), 0), COALESCE(SUM(cantidad), 0), COUNT(DISTINCT id_orden)
+        SELECT COALESCE(SUM(precio_venta * cantidad), 0) AS facturado,
+               COALESCE(SUM(cantidad), 0) AS unidades,
+               COUNT(DISTINCT id_orden) AS ordenes
         FROM ventas WHERE fecha_venta BETWEEN %s AND %s
     """, (desde_anterior, hasta_anterior))
-    facturado_ant, unidades_ant, ordenes_ant = cursor.fetchone()
-    facturado_ant = float(facturado_ant or 0)
+    fila = cursor.fetchone()
+    facturado_ant = float(fila["facturado"] or 0)
+    unidades_ant = fila["unidades"]
+    ordenes_ant = fila["ordenes"]
 
     return {
         "desde": desde_anterior.isoformat(), "hasta": hasta_anterior.isoformat(),
