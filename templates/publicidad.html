@@ -7,13 +7,9 @@
         <div class="page-subtitle">Product Ads — rendimiento real de tus campañas</div>
     </div>
     <form action="/publicidad" method="GET" class="filter-row" style="margin:0;">
-        <div class="field-group">
-            <label class="field-label">Desde</label>
-            <input type="date" name="fecha_desde" value="{{ fecha_desde }}">
-        </div>
-        <div class="field-group">
-            <label class="field-label">Hasta</label>
-            <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}">
+        <div class="rango-fechas" id="rango-publicidad" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
+            <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-publicidad')"></button>
+            <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
         </div>
         <button type="submit" class="btn btn-denim" style="align-self:flex-end;">Actualizar</button>
         <div style="display:flex; gap:6px; align-self:flex-end;">
@@ -23,6 +19,7 @@
         </div>
     </form>
 </div>
+<script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-publicidad'));</script>
 
 {% if not ads_disponible %}
 <div class="panel"><div class="alert-empty">No encontramos una cuenta de anunciante de Product Ads asociada — si nunca activaste publicidad en Mercado Libre, es esperable que no haya nada acá todavía.</div></div>

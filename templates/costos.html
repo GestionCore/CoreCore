@@ -56,8 +56,10 @@
 <div class="panel">
     <div class="panel-title">Ver otro período</div>
     <form action="/costos" method="GET" class="filter-row">
-        <div class="field-group"><label class="field-label">Desde</label><input type="date" name="fecha_desde" value="{{ fecha_desde }}" required></div>
-        <div class="field-group"><label class="field-label">Hasta</label><input type="date" name="fecha_hasta" value="{{ fecha_hasta }}" required></div>
+        <div class="rango-fechas" id="rango-costos" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
+            <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-costos')"></button>
+            <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
+        </div>
         <button type="submit" class="btn btn-secondary">Ver este período</button>
         <div style="display:flex; gap:6px;">
             <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(7, this)">7 días</button>
@@ -185,6 +187,8 @@
 </template>
 
 <script>
+    document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-costos'));
+
     function mostrarMasCostos() {
         const plantilla = document.getElementById('template-costos-ocultos');
         const contenedor = document.getElementById('lista-costos-productos');

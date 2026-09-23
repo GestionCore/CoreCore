@@ -68,8 +68,10 @@
 </div>
 
 <form action="/metricas" method="GET" class="filter-row">
-    <div class="field-group"><label class="field-label">Desde</label><input type="date" name="fecha_desde" value="{{ fecha_desde }}"></div>
-    <div class="field-group"><label class="field-label">Hasta</label><input type="date" name="fecha_hasta" value="{{ fecha_hasta }}"></div>
+    <div class="rango-fechas" id="rango-metricas" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
+        <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-metricas')"></button>
+        <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
+    </div>
     <button type="submit" class="btn btn-denim" style="align-self:flex-end;">Ver período</button>
     <div style="display:flex; gap:6px; align-self:flex-end;">
         <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(7, this)">7 días</button>
@@ -77,6 +79,7 @@
         <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(30, this)">30 días</button>
     </div>
 </form>
+<script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-metricas'));</script>
 
 <div class="stat-strip">
     <div class="stat-chip accent-success">

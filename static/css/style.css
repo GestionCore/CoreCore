@@ -840,3 +840,33 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-p
 .inactividad-titulo { font-family: var(--font-display); font-size: 1.6em; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
 .inactividad-subtitulo { color: var(--text-secondary); font-size: 0.95em; }
 .inactividad-hint { margin-top: 26px; color: var(--text-faint); font-size: 0.8em; }
+
+/* ---------- Selector de rango de fechas unificado (RangoFechas en
+   global.js) — reemplaza los pares desde/hasta repetidos en Ganancia
+   Real, Costos, Publicidad, Comparador Logística y Promociones. ---------- */
+.rango-fechas { position: relative; }
+.rango-fechas-boton {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: var(--text-primary);
+    padding: 10px 14px; border-radius: var(--radius-sm); font-family: var(--font-data); font-size: 0.9em;
+    cursor: pointer; white-space: nowrap; min-width: 220px; text-align: left; transition: border-color 0.2s;
+}
+.rango-fechas-boton:hover, .rango-fechas.abierto .rango-fechas-boton { border-color: var(--accent-primary); }
+.rango-fechas-popup {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: 280px;
+    background: var(--glass-bg-alt); border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+    backdrop-filter: blur(16px); box-shadow: var(--shadow-elevated); padding: 14px;
+}
+.rango-fechas.abierto .rango-fechas-popup { display: block; }
+.rf-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 0.9em; }
+.rf-header button { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); width: 26px; height: 26px; cursor: pointer; }
+.rf-header button:hover { border-color: var(--accent-primary); }
+.rf-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.rf-grid-header { color: var(--text-faint); font-size: 0.72em; margin-bottom: 4px; }
+.rf-dia { padding: 7px 0; border-radius: 6px; font-size: 0.82em; cursor: pointer; color: var(--text-secondary); }
+.rf-dia:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.rf-vacio { cursor: default; }
+.rf-vacio:hover { background: none; }
+.rf-hoy { box-shadow: inset 0 0 0 1px var(--accent-gold); }
+.rf-en-rango { background: rgba(176,107,255,0.15); border-radius: 0; color: var(--text-primary); }
+.rf-limite { background: var(--accent-primary); color: #fff; font-weight: 700; }
+.rf-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-soft); text-align: center; font-size: 0.8em; color: var(--text-secondary); font-family: var(--font-data); }

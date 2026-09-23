@@ -234,12 +234,178 @@ function aplicarUltimosDias(dias, boton) {
     form.submit();
 }
 
+/**
+ * Selector de rango de fechas unificado (pedido explícito) — reemplaza
+ * los pares de <input type="date"> desde/hasta repetidos en Ganancia
+ * Real, Costos, Publicidad, Comparador Logística y Promociones: 1er
+ * click define el inicio, 2do click define el fin (si el 2do click cae
+ * antes del 1ro, se invierten solos — no hace falta acertar el orden).
+ *
+ * Uso en el HTML: reemplazar los dos field-group de fecha por
+ *   <div class="rango-fechas" id="MI_ID" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
+ *     <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('MI_ID')"></button>
+ *     <input type="hidden" name="fecha_desde">
+ *     <input type="hidden" name="fecha_hasta">
+ *   </div>
+ * e inicializar con RangoFechas.inicializar('MI_ID') en DOMContentLoaded.
+ * Los inputs hidden se llaman igual que los <input type="date"> de
+ * antes, así que aplicarUltimosDias() y el submit del form no cambian.
+ */
+const RangoFechas = {
+    MESES: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+    DIAS: ['Lu','Ma','Mi','Ju','Vi','Sá','Do'],
+    estados: {},
+
+    _aISO(anio, mes, dia) {
+        return `${anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+    },
+
+    _formatearCorto(iso) {
+        if (!iso) return '';
+        const [a, m, d] = iso.split('-');
+        return `${d}/${m}/${a}`;
+    },
+
+    inicializar(id) {
+        const cont = document.getElementById(id);
+        if (!cont) return;
+        const desde = cont.dataset.desde || null;
+        const hasta = cont.dataset.hasta || null;
+        const base = desde ? new Date(desde + 'T00:00:00') : new Date();
+        this.estados[id] = { inicio: desde, fin: hasta, anio: base.getFullYear(), mes: base.getMonth(), abierto: false };
+        this._actualizarBoton(id);
+
+        document.addEventListener('click', (e) => {
+            const est = this.estados[id];
+            if (!est || !est.abierto) return;
+            const widget = document.getElementById(id);
+            // composedPath() en vez de widget.contains(e.target): elegirDia()
+            // reemplaza el innerHTML del popup (re-renderiza el calendario) en
+            // el mismo click que lo dispara, así que para cuando este listener
+            // corre en la fase de bubble, el <span> del día que se clickeó ya
+            // fue reemplazado por uno nuevo — contains() con ese nodo
+            // desconectado siempre da false y cerraba el popup en cada click a
+            // un día. composedPath() es la ruta del evento capturada ANTES de
+            // esa mutación, así que sigue siendo correcta.
+            const ruta = e.composedPath ? e.composedPath() : [];
+            if (widget && !ruta.includes(widget)) this.cerrar(id);
+        });
+    },
+
+    toggle(id) {
+        const est = this.estados[id];
+        if (!est) return;
+        est.abierto ? this.cerrar(id) : this.abrir(id);
+    },
+
+    abrir(id) {
+        const est = this.estados[id];
+        est.abierto = true;
+        this._render(id);
+        document.getElementById(id).classList.add('abierto');
+    },
+
+    cerrar(id) {
+        const est = this.estados[id];
+        if (!est) return;
+        est.abierto = false;
+        const widget = document.getElementById(id);
+        if (widget) widget.classList.remove('abierto');
+    },
+
+    cambiarMes(id, delta) {
+        const est = this.estados[id];
+        est.mes += delta;
+        if (est.mes < 0) { est.mes = 11; est.anio--; }
+        else if (est.mes > 11) { est.mes = 0; est.anio++; }
+        this._render(id);
+    },
+
+    elegirDia(id, iso) {
+        const est = this.estados[id];
+        if (!est.inicio || (est.inicio && est.fin)) {
+            est.inicio = iso;
+            est.fin = null;
+        } else if (iso < est.inicio) {
+            est.fin = est.inicio;
+            est.inicio = iso;
+        } else {
+            est.fin = iso;
+        }
+        this._render(id);
+        this._actualizarBoton(id);
+        if (est.inicio && est.fin) {
+            const cont = document.getElementById(id);
+            cont.querySelector('input[name="fecha_desde"]').value = est.inicio;
+            cont.querySelector('input[name="fecha_hasta"]').value = est.fin;
+            this.cerrar(id);
+        }
+    },
+
+    _actualizarBoton(id) {
+        const est = this.estados[id];
+        const cont = document.getElementById(id);
+        if (!cont) return;
+        const boton = cont.querySelector('.rango-fechas-boton');
+        const inputDesde = cont.querySelector('input[name="fecha_desde"]');
+        const inputHasta = cont.querySelector('input[name="fecha_hasta"]');
+        if (inputDesde) inputDesde.value = est.inicio || '';
+        if (inputHasta) inputHasta.value = est.fin || '';
+        if (boton) {
+            boton.textContent = (est.inicio && est.fin)
+                ? `${this._formatearCorto(est.inicio)} → ${this._formatearCorto(est.fin)}`
+                : (est.inicio ? `${this._formatearCorto(est.inicio)} → elegí el fin...` : 'Elegí un rango...');
+        }
+    },
+
+    _render(id) {
+        const est = this.estados[id];
+        const cont = document.getElementById(id);
+        if (!cont || !est) return;
+        let popup = cont.querySelector('.rango-fechas-popup');
+        if (!popup) {
+            popup = document.createElement('div');
+            popup.className = 'rango-fechas-popup';
+            cont.appendChild(popup);
+        }
+
+        const primerDiaSemana = (new Date(est.anio, est.mes, 1).getDay() + 6) % 7; // lunes=0
+        const diasEnMes = new Date(est.anio, est.mes + 1, 0).getDate();
+        const hoyISO = this._aISO(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+
+        let celdas = '';
+        for (let i = 0; i < primerDiaSemana; i++) celdas += '<span class="rf-dia rf-vacio"></span>';
+        for (let d = 1; d <= diasEnMes; d++) {
+            const iso = this._aISO(est.anio, est.mes, d);
+            const esInicio = iso === est.inicio;
+            const esFin = iso === est.fin;
+            const enRango = est.inicio && est.fin && iso > est.inicio && iso < est.fin;
+            const clases = ['rf-dia'];
+            if (esInicio || esFin) clases.push('rf-limite');
+            if (enRango) clases.push('rf-en-rango');
+            if (iso === hoyISO) clases.push('rf-hoy');
+            celdas += `<span class="${clases.join(' ')}" onclick="RangoFechas.elegirDia('${id}','${iso}')">${d}</span>`;
+        }
+
+        popup.innerHTML = `
+            <div class="rf-header">
+                <button type="button" onclick="RangoFechas.cambiarMes('${id}',-1)">‹</button>
+                <strong>${this.MESES[est.mes]} ${est.anio}</strong>
+                <button type="button" onclick="RangoFechas.cambiarMes('${id}',1)">›</button>
+            </div>
+            <div class="rf-grid rf-grid-header">${this.DIAS.map(d => `<span>${d}</span>`).join('')}</div>
+            <div class="rf-grid">${celdas}</div>
+            <div class="rf-footer">${est.inicio ? this._formatearCorto(est.inicio) : '...'} → ${est.fin ? this._formatearCorto(est.fin) : '...'}</div>
+        `;
+    }
+};
+
 // ---------- Tutorial guiado (primera vez, después de la encuesta) ----------
 const PASOS_TUTORIAL = [
     { selector: '.brand', titulo: 'Este es tu punto de partida', texto: 'El logo te trae de vuelta acá desde cualquier pantalla.' },
     { selector: '#tour-buscador', titulo: 'Buscador universal', texto: 'Buscá cualquier publicación o sección de la app — o abrilo en cualquier momento con Ctrl+K.' },
     { selector: '#tour-nav-catalogo', titulo: 'Catálogo', texto: 'Tu stock por modelo, la vista masiva para editar varios a la vez, y el panel de despacho del día.' },
-    { selector: '#tour-nav-finanzas', titulo: 'Finanzas', texto: 'Ganancia Real, Facturación, Costos, Flujo de Caja y más — todo lo que tiene que ver con la plata.' },
+    { selector: '#tour-nav-finanzas', titulo: 'Finanzas', texto: 'Ganancia Real, Facturación, Costos y más — todo lo que tiene que ver con la plata.' },
     { selector: '#tour-nav-crecimiento', titulo: 'Crecimiento', texto: 'Promociones, tendencias, competencia y publicidad — para vender más, no solo para medir lo que ya vendiste.' },
     { selector: '#btn-sincronizar-todo', titulo: 'Sincronizar Todo', texto: 'Trae lo último de Mercado Libre bajo demanda. De fondo, esto ya corre solo cada tanto — no hace falta que lo toques seguido.' },
     { selector: '.ticker-bar', titulo: 'Estado en vivo', texto: 'Ventas de hoy, salud de la cuenta y el estado del bridge de WhatsApp, siempre a la vista.' },

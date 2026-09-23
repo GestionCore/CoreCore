@@ -30,18 +30,15 @@
             <label class="field-label">Precio con descuento ($)</label>
             <input type="number" step="0.01" name="deal_price" id="input-deal-price" required oninput="actualizarSimuladorPromo()">
         </div>
-        <div class="field-group">
-            <label class="field-label">Desde</label>
-            <input type="date" name="fecha_desde" required>
-        </div>
-        <div class="field-group">
-            <label class="field-label">Hasta</label>
-            <input type="date" name="fecha_hasta" required>
+        <div class="rango-fechas" id="rango-promo-nueva">
+            <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-promo-nueva')">Vigencia del descuento...</button>
+            <input type="hidden" name="fecha_desde" required><input type="hidden" name="fecha_hasta" required>
         </div>
         <button type="submit" class="btn btn-primary">Crear descuento</button>
     </form>
     <div id="simulador-impacto-promo" style="display:none; margin-top:16px; padding:14px 16px; background:rgba(255,255,255,0.03); border-radius:10px;"></div>
 </div>
+<script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-promo-nueva'));</script>
 
 {% if sugerencias_promocion %}
 <div class="panel" data-mostrar-mas-scope>
