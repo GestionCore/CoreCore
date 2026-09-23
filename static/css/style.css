@@ -726,6 +726,17 @@ body.modo-despacho-limpio { padding-top: 20px; }
 .grid-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
 .widget-dashboard { display: block; text-decoration: none; color: inherit; cursor: pointer; min-height: 110px; }
 .widget-dashboard:hover { border-color: rgba(176,107,255,0.4); }
+.widget-dashboard-ancho { grid-column: span 2; cursor: default; }
+.widget-dashboard-ancho:hover { border-color: var(--glass-border); }
+.grafico-tendencia-barras { display: flex; align-items: flex-end; gap: 4px; height: 90px; margin-top: 14px; }
+.grafico-tendencia-barra { flex: 1; background: linear-gradient(180deg, var(--accent-primary), var(--accent-primary-dim)); border-radius: 3px 3px 0 0; min-height: 3px; position: relative; transition: opacity 0.15s; }
+.grafico-tendencia-barra:hover { opacity: 0.75; }
+.grafico-tendencia-barra:hover::after {
+    content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    background: var(--glass-bg-alt); border: 1px solid var(--glass-border); border-radius: 6px;
+    padding: 4px 8px; font-size: 0.72em; white-space: nowrap; margin-bottom: 6px; pointer-events: none; z-index: 10;
+}
+.grafico-tendencia-ejes { display: flex; justify-content: space-between; font-size: 0.68em; color: var(--text-faint); margin-top: 6px; }
 
 /* ---------- Calculadora de Costos: panel deslizable 3/4 desde la derecha ---------- */
 .calc-overlay {

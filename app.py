@@ -246,6 +246,16 @@ def api_resumen_diario():
         return jsonify(None)
 
 
+@app.route("/api/dashboard/tendencia_ventas")
+@login_requerido
+def api_dashboard_tendencia_ventas():
+    try:
+        return jsonify(dashboard_mod.obtener_tendencia_ventas(g.usuario_id))
+    except Exception as e:
+        print(f"[Dashboard] ⚠️ Error en tendencia de ventas: {e}")
+        return jsonify({"serie": [], "total_formateado": "0,00", "promedio_diario_formateado": "0,00"})
+
+
 @app.route("/api/dashboard/reclamos_resumen")
 @login_requerido
 def api_dashboard_reclamos_resumen():

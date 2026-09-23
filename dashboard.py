@@ -95,6 +95,39 @@ def obtener_ticker(usuario_id):
     }
 
 
+def obtener_tendencia_ventas(usuario_id, dias=14):
+    """
+    Facturación por día de los últimos N días — para el gráfico de
+    tendencia del Dashboard. Pedido explícito del usuario ("quiero
+    gráficos, no solo cuadraditos"): esto no cambia el diseño general
+    de la página (eso queda para una conversación de diseño aparte),
+    solo agrega un widget más a la grilla existente, con el mismo
+    patrón que los demás (una tarjeta que se arma con JS al cargar).
+    """
+    hoy_local = (datetime.now(timezone.utc) - timedelta(hours=3)).date()
+    desde = hoy_local - timedelta(days=dias - 1)
+
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT fecha_venta, COALESCE(SUM(precio_venta * cantidad), 0)
+            FROM ventas WHERE fecha_venta BETWEEN %s AND %s
+            GROUP BY fecha_venta
+        """, (desde, hoy_local))
+        por_fecha = {fila[0]: float(fila[1]) for fila in cursor.fetchall()}
+
+    serie = []
+    for i in range(dias):
+        fecha = desde + timedelta(days=i)
+        serie.append({"fecha": fecha.strftime("%d/%m"), "facturado": round(por_fecha.get(fecha, 0.0), 2)})
+
+    total_periodo = sum(p["facturado"] for p in serie)
+    return {
+        "serie": serie, "total_formateado": formatear_moneda(total_periodo),
+        "promedio_diario_formateado": formatear_moneda(total_periodo / dias if dias else 0),
+    }
+
+
 def obtener_quiebre_stock(usuario_id):
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor()

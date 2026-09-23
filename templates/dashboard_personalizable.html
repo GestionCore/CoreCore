@@ -19,6 +19,7 @@
 <script>
     const WIDGETS_DISPONIBLES = [
         { id: 'resumen_dia', nombre: 'Ganancia y Facturación del Día', default: true },
+        { id: 'tendencia_ventas', nombre: 'Gráfico: Tendencia de Ventas (14 días)', default: true },
         { id: 'ventas_vivo', nombre: 'Ventas en Vivo', default: true },
         { id: 'salud', nombre: 'Salud de Cuenta', default: true },
         { id: 'reclamos', nombre: 'Devoluciones y Reclamos', default: false },
@@ -90,6 +91,26 @@
                 }
                 w.innerHTML = `<div class="stat-chip-label">Facturado Hoy</div><div class="hero-number" style="font-size:1.9em;">$${d.facturado_formateado}${variacion}</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.ordenes} ventas · ${d.unidades} unidades · Top: ${d.modelo_top || '—'}</div>`;
+            });
+        }
+
+        if (prefs.tendencia_ventas) {
+            const w = crearTarjetaWidget('tendencia_ventas', '/metricas');
+            w.classList.add('widget-dashboard-ancho');
+            grid.appendChild(w);
+            fetch('/api/dashboard/tendencia_ventas').then(r => r.json()).then(d => {
+                if (!d.serie || !d.serie.length) { w.innerHTML = '<div class="text-muted">Sin datos todavía.</div>'; return; }
+                const maximo = Math.max(...d.serie.map(p => p.facturado), 1);
+                const barras = d.serie.map(p => {
+                    const alturaPct = Math.max((p.facturado / maximo) * 100, 1);
+                    return `<div class="grafico-tendencia-barra" style="height:${alturaPct}%;" data-tooltip="${p.fecha}: $${p.facturado.toLocaleString('es-AR', {minimumFractionDigits:0})}"></div>`;
+                }).join('');
+                w.innerHTML = `
+                    <div class="stat-chip-label">Tendencia de Ventas — últimos ${d.serie.length} días</div>
+                    <div class="hero-number" style="font-size:1.5em;">$${d.total_formateado}<span class="hero-number-label">total del período</span></div>
+                    <div class="grafico-tendencia-barras">${barras}</div>
+                    <div class="grafico-tendencia-ejes"><span>${d.serie[0].fecha}</span><span>${d.serie[d.serie.length - 1].fecha}</span></div>
+                    <div class="text-muted" style="font-size:0.78em; margin-top:8px;">Promedio diario: $${d.promedio_diario_formateado}</div>`;
             });
         }
 
