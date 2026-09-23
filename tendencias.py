@@ -71,6 +71,66 @@ def obtener_categoria_principal(access_token, cuenta_id, cursor, site_id="MLA"):
         return None, None
 
 
+def explorar_demanda(access_token, termino, site_id="MLA", limite=50):
+    """
+    Buscador/explorador de demanda real — reemplaza la dependencia del
+    endpoint /trends, que MeLi viene devolviendo 404 "Not found public
+    trends" (un límite de la API, no un bug de acá: ni con category_id
+    devuelve datos para muchas cuentas/categorías).
+
+    En vez de eso, usa /sites/{site}/search — el buscador público de
+    MeLi, estable y sin permisos especiales — para armar una foto real
+    de demanda: cuánta competencia hay para ese término, cuánto se está
+    vendiendo (sold_quantity de los resultados, como proxy de demanda),
+    en qué rango de precio, y quién está ganando esa búsqueda.
+    """
+    termino = (termino or "").strip()
+    if not termino:
+        return None
+
+    headers = {"Authorization": f"Bearer {access_token}"} if access_token else {}
+    try:
+        resp = requests.get(
+            f"https://api.mercadolibre.com/sites/{site_id}/search",
+            headers=headers, params={"q": termino, "limit": limite}, timeout=10
+        )
+        if resp.status_code != 200:
+            return {"termino": termino, "error": f"MeLi devolvió {resp.status_code} — probá con otro término."}
+    except Exception as e:
+        return {"termino": termino, "error": f"Error de conexión: {e}"}
+
+    data = resp.json()
+    resultados = data.get("results", []) or []
+    if not resultados:
+        return {"termino": termino, "error": "No se encontraron publicaciones para ese término."}
+
+    precios = [r.get("price") for r in resultados if r.get("price")]
+    ventas_muestra = [r.get("sold_quantity") or 0 for r in resultados]
+
+    ventas_por_vendedor = {}
+    for r in resultados:
+        vendedor = (r.get("seller") or {}).get("nickname") or str((r.get("seller") or {}).get("id") or "Desconocido")
+        ventas_por_vendedor[vendedor] = ventas_por_vendedor.get(vendedor, 0) + (r.get("sold_quantity") or 0)
+    ranking_vendedores = sorted(ventas_por_vendedor.items(), key=lambda x: -x[1])[:5]
+
+    top_publicaciones = sorted(resultados, key=lambda r: -(r.get("sold_quantity") or 0))[:10]
+
+    return {
+        "termino": termino,
+        "total_publicaciones": (data.get("paging", {}) or {}).get("total", len(resultados)),
+        "ventas_totales_muestra": sum(ventas_muestra),
+        "precio_minimo": min(precios) if precios else None,
+        "precio_promedio": round(sum(precios) / len(precios), 2) if precios else None,
+        "precio_maximo": max(precios) if precios else None,
+        "top_publicaciones": [
+            {"titulo": r.get("title"), "precio": r.get("price"), "vendidas": r.get("sold_quantity") or 0,
+             "permalink": r.get("permalink"), "thumbnail": (r.get("thumbnail") or "").replace("http://", "https://")}
+            for r in top_publicaciones
+        ],
+        "ranking_vendedores": [{"nombre": n, "vendidas": v} for n, v in ranking_vendedores],
+    }
+
+
 def obtener_tendencias(access_token, site_id="MLA", category_id=None):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"https://api.mercadolibre.com/trends/{site_id}"

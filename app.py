@@ -485,6 +485,20 @@ def tendencias_vista():
     )
 
 
+@app.route("/api/tendencias/explorar_demanda")
+@login_requerido
+def api_tendencias_explorar_demanda():
+    termino = request.args.get("q", "").strip()
+    if not termino:
+        return jsonify({"error": "Escribí un término para buscar."})
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        access_token = None  # /sites/{id}/search es publico, no hace falta token
+    resultado = tendencias_mod.explorar_demanda(access_token, termino)
+    return jsonify(resultado)
+
+
 @app.route("/logros")
 @login_requerido
 def logros_vista():
