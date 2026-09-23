@@ -74,6 +74,18 @@
         return div;
     }
 
+    // No es un <a> como los demás: adentro va un botón de descarga con su
+    // propio link (<a download>) — anidar <a> dentro de <a> es HTML
+    // inválido y el click del botón terminaría disparando la navegación
+    // del padre.
+    function crearTarjetaWidgetDiv(id) {
+        const div = document.createElement('div');
+        div.className = 'panel widget-dashboard';
+        div.id = 'widget-' + id;
+        div.innerHTML = '<div class="skeleton" style="height:70px;border-radius:8px;"></div>';
+        return div;
+    }
+
     async function renderizarWidgetsActivos() {
         const prefs = obtenerPrefsDashboard();
         const grid = document.getElementById('grid-widgets-dashboard');
@@ -95,7 +107,7 @@
         }
 
         if (prefs.tendencia_ventas) {
-            const w = crearTarjetaWidget('tendencia_ventas', '/metricas');
+            const w = crearTarjetaWidgetDiv('tendencia_ventas');
             w.classList.add('widget-dashboard-ancho');
             grid.appendChild(w);
             fetch('/api/dashboard/tendencia_ventas').then(r => r.json()).then(d => {
@@ -106,11 +118,16 @@
                     return `<div class="grafico-tendencia-barra" style="height:${alturaPct}%;" data-tooltip="${p.fecha}: $${p.facturado.toLocaleString('es-AR', {minimumFractionDigits:0})}"></div>`;
                 }).join('');
                 w.innerHTML = `
-                    <div class="stat-chip-label">Tendencia de Ventas — últimos ${d.serie.length} días</div>
-                    <div class="hero-number" style="font-size:1.5em;">$${d.total_formateado}<span class="hero-number-label">total del período</span></div>
-                    <div class="grafico-tendencia-barras">${barras}</div>
-                    <div class="grafico-tendencia-ejes"><span>${d.serie[0].fecha}</span><span>${d.serie[d.serie.length - 1].fecha}</span></div>
-                    <div class="text-muted" style="font-size:0.78em; margin-top:8px;">Promedio diario: $${d.promedio_diario_formateado}</div>`;
+                    <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
+                        <div class="stat-chip-label">Tendencia de Ventas — últimos ${d.serie.length} días</div>
+                        <div class="hero-number" style="font-size:1.5em;">$${d.total_formateado}<span class="hero-number-label">total del período</span></div>
+                        <div class="grafico-tendencia-barras">${barras}</div>
+                        <div class="grafico-tendencia-ejes"><span>${d.serie[0].fecha}</span><span>${d.serie[d.serie.length - 1].fecha}</span></div>
+                        <div class="text-muted" style="font-size:0.78em; margin-top:8px;">Promedio diario: $${d.promedio_diario_formateado}</div>
+                    </a>
+                    <a href="/api/dashboard/tendencia_ventas.png" class="btn-descargar-grafico" title="Descargar gráfico como imagen" onclick="event.stopPropagation();">
+                        <svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg>
+                    </a>`;
             });
         }
 

@@ -256,6 +256,20 @@ def api_dashboard_tendencia_ventas():
         return jsonify({"serie": [], "total_formateado": "0,00", "promedio_diario_formateado": "0,00"})
 
 
+@app.route("/api/dashboard/tendencia_ventas.png")
+@login_requerido
+def api_dashboard_tendencia_ventas_png():
+    """Descarga del gráfico de tendencia como imagen — botón de exportar del widget."""
+    import graficos_export
+    datos = dashboard_mod.obtener_tendencia_ventas(g.usuario_id)
+    serie = [{"etiqueta": p["fecha"], "valor": p["facturado"]} for p in datos["serie"]]
+    buffer = graficos_export.generar_barras_png(
+        serie, titulo=f"Tendencia de Ventas — últimos {len(serie)} días",
+        subtitulo=f"Total del período: ${datos['total_formateado']}"
+    )
+    return send_file(buffer, mimetype="image/png", as_attachment=True, download_name="tendencia_ventas.png")
+
+
 @app.route("/api/dashboard/reclamos_resumen")
 @login_requerido
 def api_dashboard_reclamos_resumen():
