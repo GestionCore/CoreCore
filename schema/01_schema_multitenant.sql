@@ -82,6 +82,8 @@ CREATE TABLE cuentas_meli (
     ultima_sincronizacion TIMESTAMPTZ, -- último catálogo sincronizado con éxito
     ultima_sincronizacion_ventas TIMESTAMPTZ, -- hasta qué fecha ya trajimos órdenes reales de MeLi (para sincronizar incremental, no desde cero cada vez)
     sincronizacion_inicial_completa BOOLEAN NOT NULL DEFAULT false, -- se pone en true recién cuando la PRIMERA sincronización (catálogo + histórico de ventas) termina — mientras sea false, el frontend muestra la pantalla de "estamos trayendo tu información" en vez de páginas vacías
+    racha_dias          INT NOT NULL DEFAULT 0,   -- días consecutivos usando la app (logros.py actualizar_racha)
+    racha_ultimo_dia    DATE,                     -- último día (hora Argentina) que ya se contó, para no incrementar dos veces el mismo día
     UNIQUE (meli_user_id)  -- una misma cuenta de MeLi no puede quedar vinculada a dos usuarios nuestros a la vez
 );
 

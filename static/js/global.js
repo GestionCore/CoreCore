@@ -575,8 +575,19 @@ async function actualizarTicker() {
             dotSalud.style.boxShadow = `0 0 6px ${color}`;
         }
 
+        const pillRacha = document.getElementById('ticker-racha-pill');
+        const txtRacha = document.getElementById('ticker-racha-texto');
+        if (pillRacha && txtRacha) {
+            if (data.racha_dias >= 2) {
+                pillRacha.style.display = 'inline-flex';
+                txtRacha.textContent = `${data.racha_dias} días seguidos`;
+            } else {
+                pillRacha.style.display = 'none';
+            }
+        }
+
         window._ultimoTickerData = data;
-    } catch (e) { 
+    } catch (e) {
         console.error('Error actualizando ticker:', e); 
     }
 }

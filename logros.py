@@ -7,12 +7,13 @@ Nota: la publicación "zombie" (que depende de embudo_conversion.py,
 todavía no portado) queda afuera por ahora — se agrega cuando portemos
 ese módulo, sin romper nada mientras tanto.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import analisis_stock
 import embudo_conversion
 import tendencias as tendencias_mod
 import promociones as promociones_mod
 import ia_asistente
+import db
 
 PRIORIDAD_ORDEN = {"urgente": 0, "importante": 1, "opcional": 2}
 
@@ -224,3 +225,42 @@ def obtener_logros(cursor, cuenta_id, headers=None):
         "misiones": misiones, "mensaje_todo_bien": None, "mensaje_coach": mensaje_coach,
         "logros_resueltos": logros_resueltos, "recien_resueltas": len(recien_resueltas)
     }
+
+
+def actualizar_racha(usuario_id, cuenta_id):
+    """
+    Racha de días activo (pedido explícito) — gamificación con memoria
+    propia, no solo insignias por hito puntual. Se llama UNA vez por día
+    (el propio caller, auth/middleware.py, usa un flag de sesión para no
+    pegarle a la base en cada request — acá adentro no hay que
+    preocuparse por eso).
+
+    Requiere 2 columnas nuevas en cuentas_meli (ver migración pendiente
+    junto con ventas.origen):
+        ALTER TABLE cuentas_meli
+            ADD COLUMN racha_dias INT NOT NULL DEFAULT 0,
+            ADD COLUMN racha_ultimo_dia DATE;
+
+    Devuelve la racha actualizada (días consecutivos, incluyendo hoy).
+    """
+    hoy_local = (datetime.now(timezone.utc) - timedelta(hours=3)).date()
+    ayer_local = hoy_local - timedelta(days=1)
+
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT racha_dias, racha_ultimo_dia FROM cuentas_meli WHERE id = %s", (cuenta_id,))
+        fila = cursor.fetchone()
+        if not fila:
+            return 0
+        racha_dias, ultimo_dia = fila
+
+        if ultimo_dia == hoy_local:
+            return racha_dias or 0  # ya se contó hoy (no debería llegar hasta acá gracias al flag de sesión)
+        elif ultimo_dia == ayer_local:
+            racha_dias = (racha_dias or 0) + 1
+        else:
+            racha_dias = 1  # se cortó la racha (o es la primera vez)
+
+        cursor.execute("UPDATE cuentas_meli SET racha_dias = %s, racha_ultimo_dia = %s WHERE id = %s", (racha_dias, hoy_local, cuenta_id))
+
+    return racha_dias

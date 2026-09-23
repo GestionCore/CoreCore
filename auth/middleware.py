@@ -2,6 +2,7 @@
 Middleware de autenticación — decorador para proteger rutas y helper
 para saber qué usuario/cuenta está atendiendo cada request.
 """
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import session, redirect, url_for, g, request, render_template
 from auth import registro
@@ -43,6 +44,19 @@ def login_requerido(vista):
                 fila = cursor.fetchone()
             if fila and not fila[0]:
                 return render_template("sincronizando.html")
+
+        # Racha de días activo: un flag de sesión evita pegarle a la base
+        # en cada request — solo se actualiza la primera vez que se entra
+        # en el día (hora Argentina), no en cada click. Mismo criterio
+        # UTC-3 que usa actualizar_racha, para que coincidan.
+        hoy_local = (datetime.now(timezone.utc) - timedelta(hours=3)).strftime("%Y-%m-%d")
+        if session.get("racha_actualizada_el") != hoy_local:
+            try:
+                import logros
+                logros.actualizar_racha(usuario_id, cuenta_id)
+            except Exception as e:
+                print(f"[Middleware] ⚠️ Error actualizando racha: {e}")
+            session["racha_actualizada_el"] = hoy_local
 
         return vista(*args, **kwargs)
     return envoltorio

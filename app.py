@@ -227,7 +227,7 @@ def api_hoy():
 @app.route("/api/ticker")
 @login_requerido
 def api_ticker():
-    return jsonify(dashboard_mod.obtener_ticker(g.usuario_id))
+    return jsonify(dashboard_mod.obtener_ticker(g.usuario_id, g.cuenta_id))
 
 
 @app.route("/api/quiebre_stock")

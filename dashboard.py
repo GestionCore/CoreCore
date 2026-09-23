@@ -54,7 +54,7 @@ def obtener_ventas_hoy(usuario_id):
     }
 
 
-def obtener_ticker(usuario_id):
+def obtener_ticker(usuario_id, cuenta_id=None):
     # Mismo criterio que obtener_ventas_hoy: "hoy" es el día en Argentina
     # (UTC-3), no el del reloj del sistema donde corra el proceso — si
     # alguna vez esto corre en un servidor en UTC en vez de en la PC del
@@ -86,10 +86,21 @@ def obtener_ticker(usuario_id):
 
         salud = salud_cuenta.calcular_score_salud(cursor)
 
+        # Ojo: si la migración de racha_dias todavía no corrió, esto
+        # tira error — a propósito no hay try/except acá adentro: un
+        # error de SQL deja la transacción en estado "aborted", y el
+        # commit() del `with` de más arriba fallaría igual al salir, así
+        # que atajarlo acá no evita nada, solo lo esconde peor.
+        racha_dias = 0
+        if cuenta_id:
+            cursor.execute("SELECT racha_dias FROM cuentas_meli WHERE id = %s", (cuenta_id,))
+            fila_racha = cursor.fetchone()
+            racha_dias = (fila_racha[0] or 0) if fila_racha else 0
+
     return {
         "ventas_hoy": ord_hoy, "facturado_hoy": formatear_moneda(fact_hoy),
         "liberacion_manana": formatear_moneda(liberacion_manana), "bridge_activo": False,
-        "incidencias_activas": incidencias_activas, "salud_score": salud["score"],
+        "incidencias_activas": incidencias_activas, "salud_score": salud["score"], "racha_dias": racha_dias,
         "salud_etiqueta": salud["etiqueta"], "salud_detalle": salud["detalle"],
         "ventas_hoy_detalle": ventas_hoy_detalle
     }
