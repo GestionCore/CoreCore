@@ -1037,6 +1037,40 @@ async function enviarMensajeIA() {
     body.scrollTop = body.scrollHeight;
 }
 
+// ---------- Protector de inactividad ----------
+// A los 10 minutos sin mouse/teclado/touch, tapa la pantalla con blur —
+// NO cierra sesión (eso sería perder lo que se estaba haciendo), solo
+// evita que quede información sensible a la vista si alguien se aleja de
+// la pantalla en el local. Un click en cualquier lado lo saca.
+const MINUTOS_INACTIVIDAD = 10;
+let _timerInactividad = null;
+function mostrarProtectorInactividad() {
+    const overlay = document.getElementById('inactividad-overlay');
+    if (overlay) overlay.classList.add('visible');
+}
+function ocultarProtectorInactividad() {
+    const overlay = document.getElementById('inactividad-overlay');
+    if (overlay) overlay.classList.remove('visible');
+    reiniciarTimerInactividad();
+}
+function reiniciarTimerInactividad() {
+    clearTimeout(_timerInactividad);
+    _timerInactividad = setTimeout(mostrarProtectorInactividad, MINUTOS_INACTIVIDAD * 60 * 1000);
+}
+function inicializarProtectorInactividad() {
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evento => {
+        document.addEventListener(evento, () => {
+            // Si ya está tapado, el propio click de "volver" es el que lo
+            // saca (ocultarProtectorInactividad) — un mousemove de fondo
+            // no debería destaparlo solo.
+            if (!document.getElementById('inactividad-overlay')?.classList.contains('visible')) {
+                reiniciarTimerInactividad();
+            }
+        }, { passive: true });
+    });
+    reiniciarTimerInactividad();
+}
+
 // ---------- Arranque global ----------
 document.addEventListener('DOMContentLoaded', () => {
     _inicializarIconoTema();
@@ -1048,6 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
     marcarCurvaRota();
     cargarOportunidadesSeo();
     inicializarDropdownsNav();
+    inicializarProtectorInactividad();
     setInterval(actualizarTicker, 30000);
     if (document.body.dataset.mostrarTutorial) { setTimeout(iniciarTutorial, 500); }
 });
