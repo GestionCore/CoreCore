@@ -150,6 +150,32 @@ def callback():
     return redirect(url_for("landing"))
 
 
+@app.route("/notificaciones_meli", methods=["POST"])
+def notificaciones_meli():
+    """
+    Webhook de Mercado Libre — la URL ya estaba configurada del lado de
+    MeLi (se veía en los logs pegando acá y recibiendo 404 porque la
+    ruta todavía no existía). MeLi espera una respuesta 200 casi
+    inmediata: nunca hacer el trabajo real en el request, todo se
+    delega a un hilo de fondo (mismo patrón que /callback) y se
+    responde ya. Sin login de por medio a propósito — es MeLi
+    pegándole directo, no un usuario con sesión.
+    """
+    datos = request.get_json(silent=True) or {}
+    topic = datos.get("topic")
+    resource = datos.get("resource")
+    meli_user_id = datos.get("user_id")
+
+    if topic and meli_user_id:
+        import threading
+        threading.Thread(
+            target=sincronizador.procesar_notificacion_webhook,
+            args=(topic, resource, meli_user_id), daemon=True
+        ).start()
+
+    return "", 200
+
+
 @app.route("/reconectar")
 @login_requerido
 def reconectar():

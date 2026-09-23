@@ -208,6 +208,61 @@ def sincronizar_item_individual(cuenta_id, id_item, headers, cursor):
     _escribir_item_en_db(cuenta_id, datos, cursor)
 
 
+def procesar_notificacion_webhook(topic, resource, meli_user_id):
+    """
+    Punto de entrada real del webhook de MeLi (/notificaciones_meli en
+    app.py) — se llama en un hilo de fondo, después de que la ruta ya
+    respondió 200. MeLi espera esa respuesta casi inmediata; si tarda
+    o falla seguido, reintenta y eventualmente puede deshabilitar las
+    notificaciones para la app entera, así que acá adentro NUNCA debe
+    reventar: todo queda envuelto y solo se loguea.
+
+    Todavía no hay sesión de usuario en este punto (es MeLi pegándole
+    a la API, no un browser logueado) — por eso arranca por el canal
+    admin, lo mismo que hace registro.py, solo para ENCONTRAR de qué
+    cuenta se trata a partir de meli_user_id. En cuanto se sabe el
+    usuario_id, se pasa al canal normal con RLS para cualquier
+    escritura real.
+    """
+    if not meli_user_id or not topic:
+        return
+    try:
+        with db.conexion_admin() as conexion:
+            cursor = conexion.cursor()
+            cursor.execute("SELECT id, usuario_id FROM cuentas_meli WHERE meli_user_id = %s AND activa = true", (meli_user_id,))
+            fila = cursor.fetchone()
+        if not fila:
+            return
+        cuenta_id, usuario_id = fila
+
+        try:
+            access_token = token_manager.asegurar_token_valido(cuenta_id)
+        except token_manager.CuentaDesconectada:
+            return
+
+        if topic == "items":
+            id_item = (resource or "").rsplit("/", 1)[-1]
+            if not id_item:
+                return
+            headers = {"Authorization": f"Bearer {access_token}"}
+            with db.conexion_usuario(usuario_id) as conexion:
+                cursor = conexion.cursor()
+                sincronizar_item_individual(cuenta_id, id_item, headers, cursor)
+
+        elif topic in ("orders_v2", "orders"):
+            # Reusa el mismo sync incremental que corre cada 4 minutos —
+            # trae desde ultima_sincronizacion_ventas con su colchón de 2hs,
+            # así que llamarlo de más (webhook + scheduler solapados) es
+            # seguro, no duplica nada gracias al ON CONFLICT DO UPDATE.
+            ventas_sync.sincronizar_ventas(usuario_id, cuenta_id, access_token, meli_user_id)
+
+        # Otros topics (questions, shipments, payments, etc.) todavía no
+        # tienen sync propio — se ignoran a propósito en vez de fallar.
+
+    except Exception as e:
+        print(f"❌ [Webhook] Error procesando notificación (topic={topic}, resource={resource}): {e}")
+
+
 def sincronizar_catalogo(usuario_id, cuenta_id):
     candado = _obtener_candado(cuenta_id)
     if not candado.acquire(blocking=False):
