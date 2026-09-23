@@ -63,6 +63,7 @@ def calcular_datos_publicidad(usuario_id, cuenta_id, access_token, fecha_desde, 
         "labels": [d[8:10] + "/" + d[5:7] for d in dias_ordenados],
         "gasto": [round(serie_diaria[d]["costo"], 2) for d in dias_ordenados],
         "ventas": [round(serie_diaria[d]["ventas"], 2) for d in dias_ordenados],
+        "unidades": [serie_diaria[d]["unidades"] for d in dias_ordenados],
     }
 
     return {

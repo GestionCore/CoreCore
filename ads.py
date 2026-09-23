@@ -138,23 +138,24 @@ def obtener_serie_diaria_ads(access_token, advertiser_id, fecha_desde, fecha_has
     def _consultar_dia(fecha):
         url = (
             f"https://api.mercadolibre.com/advertising/{site_id}/advertisers/{advertiser_id}/product_ads/campaigns/search"
-            f"?limit=50&offset=0&date_from={fecha}&date_to={fecha}&metrics=cost,total_amount"
+            f"?limit=50&offset=0&date_from={fecha}&date_to={fecha}&metrics=cost,total_amount,units_quantity"
         )
         try:
             resp = requests.get(url, headers=headers, timeout=10)
             if resp.status_code != 200:
-                return fecha, 0.0, 0.0
+                return fecha, 0.0, 0.0, 0
             data = resp.json()
             costo_dia = sum(float((c.get("metrics", {}) or {}).get("cost") or 0) for c in data.get("results", []))
             ventas_dia = sum(float((c.get("metrics", {}) or {}).get("total_amount") or 0) for c in data.get("results", []))
-            return fecha, costo_dia, ventas_dia
+            unidades_dia = sum(int((c.get("metrics", {}) or {}).get("units_quantity") or 0) for c in data.get("results", []))
+            return fecha, costo_dia, ventas_dia, unidades_dia
         except Exception:
-            return fecha, 0.0, 0.0
+            return fecha, 0.0, 0.0, 0
 
     por_dia = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        for fecha, costo, ventas in executor.map(_consultar_dia, dias):
-            por_dia[fecha] = {"costo": costo, "ventas": ventas}
+        for fecha, costo, ventas, unidades in executor.map(_consultar_dia, dias):
+            por_dia[fecha] = {"costo": costo, "ventas": ventas, "unidades": unidades}
     return por_dia
 
 
