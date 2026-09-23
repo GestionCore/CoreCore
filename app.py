@@ -167,6 +167,7 @@ def callback():
 
 
 @app.route("/notificaciones_meli", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def notificaciones_meli():
     """
     Webhook de Mercado Libre — la URL ya estaba configurada del lado de
@@ -176,6 +177,12 @@ def notificaciones_meli():
     delega a un hilo de fondo (mismo patrón que /callback) y se
     responde ya. Sin login de por medio a propósito — es MeLi
     pegándole directo, no un usuario con sesión.
+
+    Dos rutas para el mismo handler a propósito: los logs mostraron
+    pedidos entrando tanto a /notificaciones_meli como a /webhook (no
+    tengo forma de ver cuál está configurada de verdad en MeLi
+    Developers desde acá), así que ambas quedan cubiertas en vez de
+    apostar a una sola.
     """
     datos = request.get_json(silent=True) or {}
     topic = datos.get("topic")
