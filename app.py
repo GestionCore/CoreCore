@@ -309,6 +309,26 @@ def metricas_vista():
     )
 
 
+@app.route("/metricas/exportar_excel")
+@login_requerido
+def metricas_exportar_excel():
+    """Balance de rentabilidad del período como .xlsx — item pendiente #3."""
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return redirect(url_for("reconectar"))
+
+    fecha_hasta = request.args.get("fecha_hasta") or datetime.now().strftime("%Y-%m-%d")
+    fecha_desde = request.args.get("fecha_desde") or (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    datos = metricas_mod.calcular_ganancia_real(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
+    buffer = metricas_mod.generar_excel_balance(datos, fecha_desde, fecha_hasta)
+
+    return send_file(
+        buffer, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True, download_name=f"balance_ganancia_real_{fecha_desde}_a_{fecha_hasta}.xlsx"
+    )
+
+
 @app.route("/promociones")
 @login_requerido
 def promociones_vista():

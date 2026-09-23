@@ -774,3 +774,14 @@ body.modo-despacho-limpio { padding-top: 20px; }
     background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); color: #fff;
     border: none; border-radius: var(--radius-sm); padding: 8px 18px; font-size: 0.85em; font-weight: 600; cursor: pointer;
 }
+
+/* ---------- Impresión (usado por el botón "Exportar a PDF" de Ganancia
+   Real — window.print(), sin depender de ninguna librería de PDF) ---------- */
+@media print {
+    .topnav, .ticker-bar, .chat-fab, .chat-window, .hud-fijo, #toast-container,
+    #fondo-particulas, .no-imprimir { display: none !important; }
+    body { background: #fff !important; color: #111 !important; }
+    .page-container { max-width: none; padding: 0; animation: none; }
+    .panel, .stat-chip, table.data-table { break-inside: avoid; }
+    a { color: inherit !important; text-decoration: none !important; }
+}

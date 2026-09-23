@@ -6,6 +6,10 @@
         <h1 class="page-title">Liquidación & Ganancia Neta Real</h1>
         <div class="page-subtitle">Período: {{ fecha_desde }} al {{ fecha_hasta }} — Monotributo (sin retenciones automáticas)</div>
     </div>
+    <div class="flex-gap no-imprimir">
+        <a class="btn btn-secondary" href="/metricas/exportar_excel?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}">📊 Exportar a Excel</a>
+        <button type="button" class="btn btn-secondary" onclick="window.print()">🖨️ Exportar a PDF</button>
+    </div>
 </div>
 
 <div class="alert alert-info">

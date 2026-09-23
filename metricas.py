@@ -1,9 +1,12 @@
 """
 Ganancia Real — núcleo portado de Santi Mens, ahora con el desglose de
-Publicidad (Ads) integrado. La sección de Reclamos/Devoluciones sigue
-pendiente para el próximo paso.
+Publicidad (Ads) integrado y Reclamos/Devoluciones real (via
+devoluciones_sync.py).
 """
+from io import BytesIO
 from psycopg.rows import dict_row
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
 import db
 import ads
 from utils import formatear_moneda, formatear_estado_incidencia
@@ -105,7 +108,13 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
             "costo_envio": formatear_moneda(costo_envio), "envio_pendiente": (envio_estado == "pendiente"),
             "costo_ads": formatear_moneda(costo_ads_fila), "costo_fabricacion": formatear_moneda(costo_fabricacion_total),
             "ganancia_neta_formateada": formatear_moneda(ganancia_neta), "es_negativo": ganancia_neta < 0,
-            "fecha": fecha_venta.strftime("%Y-%m-%d") if hasattr(fecha_venta, "strftime") else fecha_venta
+            "fecha": fecha_venta.strftime("%Y-%m-%d") if hasattr(fecha_venta, "strftime") else fecha_venta,
+            # Numeros reales (no texto formateado) para el export a Excel.
+            "raw": {
+                "precio_venta": round(ingreso_bruto_operacion, 2), "cargo_venta": round(cargo_venta, 2),
+                "costo_envio": round(costo_envio, 2), "costo_ads": round(costo_ads_fila, 2),
+                "costo_fabricacion": round(costo_fabricacion_total, 2), "ganancia_neta": ganancia_neta,
+            }
         })
 
         if id_meli not in consolidado_dict:
@@ -129,7 +138,12 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
             "titulo": cp["titulo"], "unidades": u, "facturado_raw": cp["facturado"],
             "precio_promedio": formatear_moneda(p_prom), "total_facturado": formatear_moneda(cp["facturado"]),
             "cargo_u": formatear_moneda(c_com_u), "envio_u": formatear_moneda(c_env_u), "ads_u": formatear_moneda(c_ads_u),
-            "costo_u": formatear_moneda(c_fab_u), "neto_u": formatear_moneda(neto_u), "neto_total": formatear_moneda(neto_u * u)
+            "costo_u": formatear_moneda(c_fab_u), "neto_u": formatear_moneda(neto_u), "neto_total": formatear_moneda(neto_u * u),
+            "raw": {
+                "precio_promedio": round(p_prom, 2), "total_facturado": round(cp["facturado"], 2),
+                "cargo_u": round(c_com_u, 2), "envio_u": round(c_env_u, 2), "ads_u": round(c_ads_u, 2),
+                "costo_u": round(c_fab_u, 2), "neto_u": round(neto_u, 2), "neto_total": round(neto_u * u, 2),
+            }
         })
     lista_consolidados.sort(key=lambda c: -c["facturado_raw"])
 
@@ -178,5 +192,85 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
             "envios": formatear_moneda(total_envio_real),
             "costo_ads": formatear_moneda(total_costo_ads),
             "costo_fabricacion": formatear_moneda(total_costo_fabricacion),
+            # Version sin formatear (numeros de verdad, no texto "1.234,56")
+            # para el export a Excel — openpyxl necesita numeros reales para
+            # que las columnas se puedan sumar/graficar del lado de Excel.
+            "raw": {
+                "facturado": round(total_facturado, 2), "ganancia_neta": round(total_ganancia_neta_real, 2),
+                "comision": round(total_comision, 2), "envios": round(total_envio_real, 2),
+                "costo_ads": round(total_costo_ads, 2), "costo_fabricacion": round(total_costo_fabricacion, 2),
+            }
         }
     }
+
+
+def generar_excel_balance(datos, fecha_desde, fecha_hasta):
+    """
+    Balance de rentabilidad del período como .xlsx — item pendiente #3
+    del brainstorm original. Tres hojas: Resumen (los mismos totales de
+    la pantalla), Consolidado por modelo (promedio ponderado real, igual
+    que en pantalla — nunca promedio simple de talles) y Detalle de
+    ventas fila por fila. Devuelve un BytesIO listo para send_file.
+    """
+    wb = Workbook()
+    azul_header = Font(bold=True, color="FFFFFF")
+    fondo_header = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
+
+    def _armar_header(ws, columnas):
+        ws.append(columnas)
+        for celda in ws[1]:
+            celda.font = azul_header
+            celda.fill = fondo_header
+
+    ws_resumen = wb.active
+    ws_resumen.title = "Resumen"
+    ws_resumen.append(["Balance de Rentabilidad — Ganancia Real"])
+    ws_resumen["A1"].font = Font(bold=True, size=14)
+    ws_resumen.append([f"Período: {fecha_desde} al {fecha_hasta}"])
+    ws_resumen.append([])
+    r = datos["resumen"]["raw"]
+    _armar_header(ws_resumen, ["Concepto", "Monto ($)"])
+    for etiqueta, clave in [
+        ("Facturación", "facturado"), ("Cargos MeLi", "comision"), ("Envíos", "envios"),
+        ("Publicidad", "costo_ads"), ("Costo de Fabricación", "costo_fabricacion"),
+        ("Ganancia Neta Real", "ganancia_neta"),
+    ]:
+        ws_resumen.append([etiqueta, r[clave]])
+    ws_resumen.append([])
+    p = datos["posventa"]
+    ws_resumen.append(["Devoluciones", p["devoluciones"]])
+    ws_resumen.append(["Cancelaciones", p["cancelaciones"]])
+    ws_resumen.append(["Reclamos", p["reclamos"]])
+    ws_resumen.append(["Dinero retenido ($)", float(p["dinero_retenido"].replace(".", "").replace(",", "."))])
+    for col, ancho in [("A", 26), ("B", 16)]:
+        ws_resumen.column_dimensions[col].width = ancho
+
+    ws_modelos = wb.create_sheet("Consolidado por modelo")
+    _armar_header(ws_modelos, ["Modelo", "Unidades", "Precio promedio", "Facturado", "Cargo MeLi (u)", "Envío (u)", "Ads (u)", "Costo (u)", "Neto (u)", "Neto total"])
+    for c in datos["consolidados"]:
+        cr = c["raw"]
+        ws_modelos.append([
+            c["titulo"], c["unidades"], cr["precio_promedio"], cr["total_facturado"],
+            cr["cargo_u"], cr["envio_u"], cr["ads_u"], cr["costo_u"], cr["neto_u"], cr["neto_total"]
+        ])
+    ws_modelos.column_dimensions["A"].width = 45
+    for col in "BCDEFGHIJ":
+        ws_modelos.column_dimensions[col].width = 15
+
+    ws_ventas = wb.create_sheet("Detalle de ventas")
+    _armar_header(ws_ventas, ["Fecha", "Orden", "Producto", "Talle", "Cantidad", "Precio venta", "Cargo MeLi", "Envío", "Ads", "Costo fabricación", "Ganancia neta"])
+    for v in datos["ventas"]:
+        vr = v["raw"]
+        ws_ventas.append([
+            v["fecha"], v["id_orden"], v["titulo"], v["talle"], v["cantidad"],
+            vr["precio_venta"], vr["cargo_venta"], vr["costo_envio"], vr["costo_ads"],
+            vr["costo_fabricacion"], vr["ganancia_neta"]
+        ])
+    ws_ventas.column_dimensions["C"].width = 45
+    for col in "ABDEFGHIJK":
+        ws_ventas.column_dimensions[col].width = 14
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer
