@@ -21,6 +21,7 @@ import meli_http
 import validacion_meli
 import db
 import ventas_sync
+import devoluciones_sync
 from auth import token_manager
 
 _candados_por_cuenta = {}
@@ -390,6 +391,13 @@ def sincronizar_todo(usuario_id, cuenta_id):
         ventas_sync.sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id)
     except Exception as e:
         print(f"❌ [Error VentasSync] cuenta {cuenta_id}: {e}")
+
+    # Reclamos/devoluciones y preguntas sin responder — antes esto no
+    # tenía sync real, así que Reclamos (en Ganancia Real), Logros y
+    # Salud de Cuenta quedaban vacíos para siempre con una cuenta real.
+    # Cada mitad ya maneja sus propios errores adentro, así que un
+    # problema acá nunca debe frenar el resto de sincronizar_todo.
+    devoluciones_sync.sincronizar_posventa(usuario_id, cuenta_id, access_token, seller_id)
 
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor()

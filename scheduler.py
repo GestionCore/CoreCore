@@ -6,10 +6,11 @@ una por una, con su propio try/except — así una cuenta con problemas
 (token vencido, cuenta desconectada) no frena la sincronización de las
 demás.
 
-Deliberadamente no incluye todavía: la auditoría de devoluciones/
-cancelaciones (depende de portar devoluciones_sync.py y ventas_sync.py)
-ni las alertas por WhatsApp de stock/curva de talles (sin puente
-todavía) — quedan para cuando se porten esos módulos.
+Deliberadamente no incluye todavía: las alertas por WhatsApp de stock/
+curva de talles (sin puente todavía) — queda para cuando se porte ese
+módulo. La auditoría de devoluciones/cancelaciones ya no depende de
+nada más: sincronizar_todo() (llamado más abajo) incluye
+devoluciones_sync desde esta sesión.
 """
 from apscheduler.schedulers.background import BackgroundScheduler
 import db
