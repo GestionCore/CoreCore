@@ -100,18 +100,6 @@ def _detectar_misiones_base(cursor):
                 "link": "/metricas", "link_texto": "Ver Ganancia Real"
             })
 
-    cursor.execute("SELECT COUNT(*) FROM productos_padre WHERE estado = 'active' AND proveedor_id IS NULL")
-    sin_proveedor = cursor.fetchone()[0] or 0
-    cursor.execute("SELECT COUNT(*) FROM proveedores")
-    hay_proveedores_cargados = (cursor.fetchone()[0] or 0) > 0
-    if hay_proveedores_cargados and sin_proveedor > 0:
-        misiones.append({
-            "id": "sin_proveedor", "categoria": "stock", "icono": "🔗", "prioridad": "opcional",
-            "titulo": f"{sin_proveedor} publicación(es) sin proveedor asignado",
-            "descripcion": "Sin proveedor asignado no podemos avisarte CUÁNDO pedir reposición a tiempo, solo cuándo se te va a acabar.",
-            "link": "/costos", "link_texto": "Asignar en Costos"
-        })
-
     try:
         seo_scores = tendencias_mod.calcular_seo_scores_catalogo(cursor, [])
         muy_bajos = [s for s in seo_scores if s["score"] < 50]

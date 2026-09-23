@@ -27,7 +27,6 @@ import reputacion as reputacion_mod
 import espia_competencia
 import comparador_logistica as comparador_logistica_mod
 import publicidad as publicidad_mod
-import flujo_caja as flujo_caja_mod
 import dashboard as dashboard_mod
 import sincronizador
 import analisis_stock
@@ -637,15 +636,6 @@ def publicidad_vista():
     )
 
 
-@app.route("/flujo_caja")
-@login_requerido
-def flujo_caja_vista():
-    dias = flujo_caja_mod.obtener_proyeccion_14_dias(g.usuario_id)
-    total_proyectado = sum(d["monto"] for d in dias)
-    dias_formateados = [{**d, "monto_formateado": formatear_moneda(d["monto"])} for d in dias]
-    return render_template("flujo_caja.html", dias=dias_formateados, total_formateado=formatear_moneda(total_proyectado), active_nav="flujo_caja")
-
-
 @app.route("/sincronizar_todo", methods=["GET", "POST"])
 @login_requerido
 def sincronizar_manual():
@@ -960,8 +950,8 @@ def historial_precios_vista():
 def costos_vista():
     fecha_hasta = request.args.get("fecha_hasta") or datetime.now().strftime("%Y-%m-%d")
     fecha_desde = request.args.get("fecha_desde") or datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    gastos, stats, productos, proveedores = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta)
-    return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, proveedores=proveedores, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, active_nav="costos")
+    gastos, stats, productos = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta)
+    return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, active_nav="costos")
 
 
 @app.route("/ventas_manuales")
@@ -1000,46 +990,6 @@ def ventas_manuales_agregar():
 def ventas_manuales_eliminar(id_venta):
     ventas_manuales.eliminar_venta_manual(g.usuario_id, g.cuenta_id, id_venta)
     return redirect(url_for("ventas_manuales_vista"))
-
-
-@app.route("/proveedores/agregar", methods=["POST"])
-@login_requerido
-def agregar_proveedor():
-    import db
-    nombre = request.form.get("nombre", "").strip()
-    tiempo_entrega = request.form.get("tiempo_entrega_dias", "7")
-    if nombre:
-        with db.conexion_usuario(g.usuario_id) as conexion:
-            cursor = conexion.cursor()
-            cursor.execute("INSERT INTO proveedores (cuenta_id, nombre, tiempo_entrega_dias) VALUES (%s, %s, %s)", (g.cuenta_id, nombre, int(tiempo_entrega)))
-    return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}")
-
-
-@app.route("/proveedores/eliminar/<int:id_proveedor>", methods=["POST"])
-@login_requerido
-def eliminar_proveedor(id_proveedor):
-    import db
-    with db.conexion_usuario(g.usuario_id) as conexion:
-        cursor = conexion.cursor()
-        cursor.execute("UPDATE productos_padre SET proveedor_id = NULL WHERE proveedor_id = %s", (id_proveedor,))
-        cursor.execute("DELETE FROM proveedores WHERE id = %s", (id_proveedor,))
-    return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}")
-
-
-@app.route("/asignar_proveedor_masivo", methods=["POST"])
-@login_requerido
-def asignar_proveedor_masivo():
-    import db
-    data = request.get_json(silent=True) or {}
-    asignaciones = data.get("asignaciones", {})
-    actualizados = 0
-    with db.conexion_usuario(g.usuario_id) as conexion:
-        cursor = conexion.cursor()
-        for id_meli, proveedor_id in asignaciones.items():
-            valor = int(proveedor_id) if proveedor_id else None
-            cursor.execute("UPDATE productos_padre SET proveedor_id = %s WHERE id_meli = %s", (valor, id_meli))
-            actualizados += cursor.rowcount
-    return jsonify({"ok": True, "actualizados": actualizados})
 
 
 @app.route("/agregar_gasto", methods=["POST"])

@@ -59,22 +59,19 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta):
             })
 
         cursor.execute("""
-            SELECT p.id_meli, p.titulo, p.precio_costo, p.estado, p.thumbnail, p.proveedor_id, p.precio, p.recibis_estimado
+            SELECT p.id_meli, p.titulo, p.precio_costo, p.estado, p.thumbnail, p.precio, p.recibis_estimado
             FROM productos_padre p
             ORDER BY CASE WHEN p.estado = 'active' THEN 0 ELSE 1 END, p.titulo
         """)
         filas_costo = cursor.fetchall()
 
-        # Estas dos consultas antes leían por posición (r[0], r[1]...) —
-        # con dict_row el resultado es un diccionario, así que hace falta
-        # el nombre real de columna. Le puse alias explícito a AVG() para
-        # no depender del nombre que Postgres le pone por default a una
+        # Esta consulta antes leía por posición (r[0], r[1]...) — con
+        # dict_row el resultado es un diccionario, así que hace falta el
+        # nombre real de columna. Le puse alias explícito a AVG() para no
+        # depender del nombre que Postgres le pone por default a una
         # columna calculada sin alias.
         cursor.execute("SELECT id_meli, AVG(costo_envio) AS envio_promedio FROM ventas WHERE costo_envio > 0 GROUP BY id_meli")
         envio_promedio_por_item = {r["id_meli"]: float(r["envio_promedio"]) for r in cursor.fetchall()}
-
-        cursor.execute("SELECT id, nombre, tiempo_entrega_dias FROM proveedores ORDER BY nombre")
-        proveedores = [{"id": pr["id"], "nombre": pr["nombre"], "tiempo_entrega_dias": pr["tiempo_entrega_dias"]} for pr in cursor.fetchall()]
 
     productos_costo = []
     for fila in filas_costo:
@@ -96,7 +93,7 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta):
         productos_costo.append({
             "id": fila["id_meli"], "titulo": fila["titulo"], "precio_costo": precio_costo_p,
             "precio_costo_formateado": formatear_moneda(precio_costo_p), "estado": fila["estado"],
-            "thumbnail": fila["thumbnail"], "proveedor_id": fila["proveedor_id"],
+            "thumbnail": fila["thumbnail"],
             "precio_formateado": formatear_moneda(precio_p) if precio_p else None,
             "comision_formateada": formatear_moneda(comision_est) if comision_est is not None else None,
             "envio_formateado": formatear_moneda(envio_prom) if envio_prom else None,
@@ -106,4 +103,4 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta):
         })
 
     stats_gastos = {"fijos": formatear_moneda(total_fijos), "variables": formatear_moneda(total_variables), "total": formatear_moneda(total_fijos + total_variables)}
-    return gastos, stats_gastos, productos_costo, proveedores
+    return gastos, stats_gastos, productos_costo

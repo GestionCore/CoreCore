@@ -66,9 +66,6 @@ def obtener_checklist_progreso(usuario_id, cuenta_id):
         cursor.execute("SELECT COUNT(*) FROM productos_padre WHERE estado = 'active' AND precio_costo IS NOT NULL AND precio_costo > 0")
         tiene_costos = (cursor.fetchone()[0] or 0) > 0
 
-        cursor.execute("SELECT COUNT(*) FROM proveedores")
-        tiene_proveedores = (cursor.fetchone()[0] or 0) > 0
-
         cursor.execute("SELECT COUNT(*) FROM gastos_operativos")
         tiene_gastos = (cursor.fetchone()[0] or 0) > 0
 
@@ -79,7 +76,6 @@ def obtener_checklist_progreso(usuario_id, cuenta_id):
         {"id": "onboarding", "texto": "Contanos cómo vendés (encuesta inicial)", "completo": onboarding_completo, "link": None},
         {"id": "sync", "texto": "Primera sincronización con Mercado Libre", "completo": sync_completa, "link": None},
         {"id": "costos", "texto": "Cargar el costo de fabricación de al menos un producto", "completo": tiene_costos, "link": "/costos"},
-        {"id": "proveedores", "texto": "Agregar al menos un proveedor", "completo": tiene_proveedores, "link": "/costos"},
         {"id": "gastos", "texto": "Cargar tus gastos fijos (alquiler, bolsas, etc.)", "completo": tiene_gastos, "link": "/costos"},
         {"id": "ventas", "texto": "Tener al menos una venta sincronizada", "completo": tiene_ventas, "link": "/metricas"},
     ]

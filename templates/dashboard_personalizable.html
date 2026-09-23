@@ -14,15 +14,17 @@
     <div class="flex-gap" id="checks-widgets-dashboard" style="flex-wrap:wrap;"></div>
 </div>
 
-<div class="panel" id="panel-checklist-perfil" style="display:none;">
+<div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
     <div class="panel-title">
-        <span>Completá tu perfil</span>
-        <span class="text-muted" id="checklist-contador" style="font-size:0.8em;"></span>
+        <span>Completá tu perfil <span class="text-muted" id="checklist-contador" style="font-size:0.8em; font-weight:400;"></span></span>
+        <span class="chevron-colapsable">▾</span>
     </div>
-    <div class="flex-gap" style="align-items:center; margin-top:4px;">
-        <div class="checklist-barra"><div class="checklist-fill" id="checklist-fill" style="width:0%;"></div></div>
+    <div class="contenido-colapsable">
+        <div class="flex-gap" style="align-items:center;">
+            <div class="checklist-barra"><div class="checklist-fill" id="checklist-fill" style="width:0%;"></div></div>
+        </div>
+        <div class="checklist-items" id="checklist-items"></div>
     </div>
-    <div class="checklist-items" id="checklist-items"></div>
 </div>
 
 <div id="grid-widgets-dashboard" class="grid-dashboard"></div>
