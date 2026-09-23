@@ -1,0 +1,13 @@
+{
+  "name": "Santi Mens — CoreLux",
+  "short_name": "Santi Mens",
+  "description": "Gestión de ventas, stock y rentabilidad para Mercado Libre.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#05060f",
+  "theme_color": "#0d1130",
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
