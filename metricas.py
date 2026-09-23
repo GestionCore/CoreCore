@@ -3,6 +3,7 @@ Ganancia Real — núcleo portado de Santi Mens, ahora con el desglose de
 Publicidad (Ads) integrado y Reclamos/Devoluciones real (via
 devoluciones_sync.py).
 """
+from datetime import date, timedelta
 from io import BytesIO
 from psycopg.rows import dict_row
 from openpyxl import Workbook
@@ -12,9 +13,44 @@ import ads
 from utils import formatear_moneda, formatear_estado_incidencia
 
 
+def _obtener_comparacion_periodo_anterior(cursor, fecha_desde, fecha_hasta):
+    """
+    "vs. período anterior" — pedido explícito: si el rango elegido son 14
+    días, comparar contra los 14 días inmediatamente anteriores; si es un
+    mes calendario (el default de la pantalla), contra el mes anterior.
+    No hace falta lógica especial para eso: alcanza con calcular el largo
+    real del rango elegido (en días) y correr esa misma cantidad de días
+    hacia atrás — funciona igual para cualquier rango.
+
+    A propósito NO repite el cálculo completo de Ganancia Real (que
+    llama a la API de Ads) para el período anterior — solo una suma
+    liviana de facturación/unidades/órdenes contra `ventas`, para no
+    duplicar llamadas a MeLi ni volver esto pesado.
+    """
+    desde_dt = date.fromisoformat(str(fecha_desde))
+    hasta_dt = date.fromisoformat(str(fecha_hasta))
+    largo_dias = (hasta_dt - desde_dt).days + 1
+    hasta_anterior = desde_dt - timedelta(days=1)
+    desde_anterior = hasta_anterior - timedelta(days=largo_dias - 1)
+
+    cursor.execute("""
+        SELECT COALESCE(SUM(precio_venta * cantidad), 0), COALESCE(SUM(cantidad), 0), COUNT(DISTINCT id_orden)
+        FROM ventas WHERE fecha_venta BETWEEN %s AND %s
+    """, (desde_anterior, hasta_anterior))
+    facturado_ant, unidades_ant, ordenes_ant = cursor.fetchone()
+    facturado_ant = float(facturado_ant or 0)
+
+    return {
+        "desde": desde_anterior.isoformat(), "hasta": hasta_anterior.isoformat(),
+        "facturado_formateado": formatear_moneda(facturado_ant), "unidades": unidades_ant, "ordenes": ordenes_ant,
+        "facturado_raw": facturado_ant,
+    }
+
+
 def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fecha_hasta):
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
+        comparacion_anterior = _obtener_comparacion_periodo_anterior(cursor, fecha_desde, fecha_hasta)
 
         cursor.execute("""
             SELECT id_orden, id_meli, titulo, cantidad, precio_venta, cargo_venta, costo_envio, fecha_venta, id_variante, envio_estado
@@ -178,12 +214,18 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         ]
     }
 
+    comparacion_anterior["variacion_facturado_pct"] = (
+        round(((total_facturado - comparacion_anterior["facturado_raw"]) / comparacion_anterior["facturado_raw"]) * 100, 1)
+        if comparacion_anterior["facturado_raw"] else None
+    )
+
     return {
         "ventas": ventas_procesadas,
         "consolidados": lista_consolidados,
         "ads_disponible": ads_disponible,
         "gasto_ads_total_periodo": gasto_ads_total_periodo,
         "posventa": resumen_posventa,
+        "comparacion_anterior": comparacion_anterior,
         "resumen": {
             "facturado": formatear_moneda(total_facturado),
             "ganancia_neta": formatear_moneda(total_ganancia_neta_real),

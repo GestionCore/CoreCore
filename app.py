@@ -314,6 +314,7 @@ def metricas_vista():
         "metricas.html", ventas=datos["ventas"], consolidados=datos["consolidados"],
         resumen=datos["resumen"], ads_disponible=datos["ads_disponible"],
         gasto_ads_total_periodo=datos["gasto_ads_total_periodo"], posventa=datos["posventa"],
+        comparacion_anterior=datos["comparacion_anterior"],
         fecha_desde=fecha_desde, fecha_hasta=fecha_hasta,
         active_nav="metricas"
     )

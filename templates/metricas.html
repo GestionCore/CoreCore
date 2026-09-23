@@ -81,7 +81,14 @@
 <div class="stat-strip">
     <div class="stat-chip accent-success">
         <div class="stat-chip-label">Facturado</div>
-        <div class="stat-chip-value">${{ resumen.facturado }}</div>
+        <div class="stat-chip-value">${{ resumen.facturado }}
+            {% if comparacion_anterior.variacion_facturado_pct is not none %}
+            <span class="{% if comparacion_anterior.variacion_facturado_pct >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:0.4em; vertical-align:middle; margin-left:4px;" title="vs. {{ comparacion_anterior.desde }} al {{ comparacion_anterior.hasta }} (${{ comparacion_anterior.facturado_formateado }})">
+                {{ '▲' if comparacion_anterior.variacion_facturado_pct >= 0 else '▼' }} {{ comparacion_anterior.variacion_facturado_pct|abs }}%
+            </span>
+            {% endif %}
+        </div>
+        <div class="text-muted" style="font-size:0.72em; margin-top:2px;">vs. período anterior ({{ comparacion_anterior.desde }} al {{ comparacion_anterior.hasta }})</div>
     </div>
     <div class="stat-chip {% if resumen.ganancia_neta_negativa %}accent-danger{% else %}accent-primary{% endif %}">
         <div class="stat-chip-label">Ganancia Neta Real</div>
