@@ -79,7 +79,36 @@ def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None):
 
 
 def obtener_cuentas_de_usuario(usuario_id):
-    """Todas las cuentas de MeLi que un usuario tiene conectadas (para el plan Elite multi-cuenta)."""
+    """
+    Todas las cuentas de MeLi que un usuario tiene conectadas (para el
+    plan Elite multi-cuenta).
+
+    ⚠️ LIMITACIÓN CONOCIDA, sin resolver a propósito (necesita ojos
+    despiertos, no un parche de madrugada): las políticas de RLS de
+    TODAS las demás tablas (ventas, productos_padre, etc.) filtran por
+    `cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id =
+    current_setting('app.usuario_actual'))` — es decir, por CUALQUIER
+    cuenta del usuario, no por la cuenta activa en sesión (g.cuenta_id).
+    Con un usuario de una sola cuenta esto es invisible. Pero casi
+    ninguna consulta de solo-lectura del resto de la app agrega un
+    `WHERE cuenta_id = %s` explícito (confían en que RLS ya lo resuelve,
+    que es el diseño buscado: "no es un filtro a mano, es RLS") — así
+    que en cuanto un usuario Elite tenga 2+ cuentas conectadas, la
+    mayoría de las páginas van a mostrarle datos MEZCLADOS de todas sus
+    cuentas en vez de solo la que eligió acá.
+
+    Arreglo recomendado (no aplicado): que la conexión también sepa la
+    cuenta activa (`db.conexion_usuario(usuario_id, cuenta_id)`, seteando
+    un segundo `app.cuenta_actual`), y que las políticas de las tablas
+    "hijas" (todo menos cuentas_meli) filtren por esa en vez de por
+    usuario_id. Es un cambio de las políticas de RLS reales en Supabase
+    otra vez, tocando el corazón del aislamiento entre cuentas — antes
+    de tocarlo hay que probarlo a fondo contra Postgres real, no
+    hacerlo sin supervisión. Hoy (antes de esta sesión) esta función no
+    tenía ninguna pantalla que la usara, así que el riesgo real
+    encendido para cualquier usuario actual es CERO — recién importa
+    el día que alguien conecte de verdad una segunda cuenta.
+    """
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("SELECT id, nickname, nombre_negocio, activa FROM cuentas_meli WHERE usuario_id = %s ORDER BY conectada_en", (usuario_id,))
