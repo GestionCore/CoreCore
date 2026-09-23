@@ -57,7 +57,12 @@ def _obtener_pagina_ordenes(access_token, seller_id, fecha_desde, fecha_hasta, o
     return data.get("results", []), (data.get("paging", {}) or {}).get("total", 0)
 
 
+# Vive mientras viva el proceso (el scheduler corre cada 4 minutos sin
+# parar), así que necesita un tope — si no, crece para siempre. shipment_id
+# es un ID de MeLi único a nivel global (no por cuenta), así que compartir
+# este caché entre cuentas no mezcla datos de tenants distintos.
 _cache_shipment = {}
+LIMITE_CACHE_SHIPMENT = 20000
 
 
 def _obtener_costo_envio(access_token, shipment_id):
@@ -67,6 +72,10 @@ def _obtener_costo_envio(access_token, shipment_id):
     devolvemos 0 en vez de inventar un número — se puede recalcular
     corriendo el sync de nuevo más adelante, cuando MeLi ya lo haya
     liquidado, gracias a que esto es incremental y reprocesa el colchón.
+    Por eso el 0 nunca se guarda en el caché: si se guardara, esa segunda
+    pasada (colchón) nunca volvería a consultar MeLi y el costo quedaría
+    en 0 clavado para siempre mientras el proceso siga vivo, aunque MeLi
+    ya haya liquidado el envío hace rato.
     """
     if shipment_id in _cache_shipment:
         return _cache_shipment[shipment_id]
@@ -80,7 +89,10 @@ def _obtener_costo_envio(access_token, shipment_id):
         if costo is None:
             costo = data.get("cost_components", {}).get("seller", 0) if isinstance(data.get("cost_components"), dict) else 0
         costo = float(costo or 0.0)
-        _cache_shipment[shipment_id] = costo
+        if costo:
+            if len(_cache_shipment) >= LIMITE_CACHE_SHIPMENT:
+                _cache_shipment.clear()
+            _cache_shipment[shipment_id] = costo
         return costo
     except Exception as e:
         print(f"[VentasSync] ⚠️ Error consultando envío {shipment_id}: {e}")
