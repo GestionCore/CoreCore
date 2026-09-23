@@ -14,6 +14,17 @@
     <div class="flex-gap" id="checks-widgets-dashboard" style="flex-wrap:wrap;"></div>
 </div>
 
+<div class="panel" id="panel-checklist-perfil" style="display:none;">
+    <div class="panel-title">
+        <span>Completá tu perfil</span>
+        <span class="text-muted" id="checklist-contador" style="font-size:0.8em;"></span>
+    </div>
+    <div class="flex-gap" style="align-items:center; margin-top:4px;">
+        <div class="checklist-barra"><div class="checklist-fill" id="checklist-fill" style="width:0%;"></div></div>
+    </div>
+    <div class="checklist-items" id="checklist-items"></div>
+</div>
+
 <div id="grid-widgets-dashboard" class="grid-dashboard"></div>
 
 <script>
@@ -191,6 +202,26 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', renderizarWidgetsActivos);
+    async function cargarChecklistPerfil() {
+        try {
+            const resp = await fetch('/api/onboarding/checklist');
+            const d = await resp.json();
+            if (!d.pasos || !d.pasos.length || d.porcentaje >= 100) return; // ya está completo — no ocupa lugar
+
+            document.getElementById('panel-checklist-perfil').style.display = '';
+            document.getElementById('checklist-contador').textContent = `${d.completos}/${d.total}`;
+            document.getElementById('checklist-fill').style.width = d.porcentaje + '%';
+            document.getElementById('checklist-items').innerHTML = d.pasos.map(p => {
+                const tag = p.link && !p.completo ? 'a' : 'div';
+                const href = p.link && !p.completo ? `href="${p.link}"` : '';
+                return `<${tag} ${href} class="checklist-item ${p.completo ? 'completo' : ''}">
+                    <span class="checklist-check">${p.completo ? '✓' : ''}</span>
+                    <span class="checklist-texto">${p.texto}</span>
+                </${tag}>`;
+            }).join('');
+        } catch (e) { console.error(e); }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { renderizarWidgetsActivos(); cargarChecklistPerfil(); });
 </script>
 {% endblock %}

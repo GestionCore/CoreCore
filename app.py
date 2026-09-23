@@ -700,6 +700,16 @@ def onboarding_tutorial_visto():
     return jsonify({"ok": True})
 
 
+@app.route("/api/onboarding/checklist")
+@login_requerido
+def api_onboarding_checklist():
+    try:
+        return jsonify(onboarding.obtener_checklist_progreso(g.usuario_id, g.cuenta_id))
+    except Exception as e:
+        print(f"[Onboarding] ⚠️ Error en checklist: {e}")
+        return jsonify({"pasos": [], "completos": 0, "total": 0, "porcentaje": 100})
+
+
 @app.route("/api/estado_sincronizacion")
 @login_requerido
 def api_estado_sincronizacion():

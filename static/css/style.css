@@ -637,6 +637,17 @@ body.modo-despacho-limpio { padding-top: 20px; }
 /* ---------- "Mostrar más" genérico ---------- */
 .oculto-mostrar-mas { display: none; }
 
+/* ---------- Checklist "Completá tu perfil" (Dashboard) ---------- */
+.checklist-barra { height: 8px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; flex: 1; }
+.checklist-fill { height: 100%; border-radius: 99px; transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1); background: linear-gradient(90deg, var(--accent-gold), var(--success)); }
+.checklist-items { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.checklist-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 0.88em; color: var(--text-secondary); text-decoration: none; transition: background 0.15s; }
+a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+.checklist-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--glass-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.7em; }
+.checklist-item.completo { color: var(--text-primary); }
+.checklist-item.completo .checklist-check { background: var(--success); border-color: var(--success); color: #06201a; }
+.checklist-item.completo .checklist-texto { text-decoration: line-through; text-decoration-color: var(--text-faint); opacity: 0.7; }
+
 /* ---------- HUD fijo: números críticos visibles en cualquier pantalla ---------- */
 .hud-fijo { position: fixed; bottom: 26px; left: 26px; z-index: 99; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 10px; }
 .hud-toggle {

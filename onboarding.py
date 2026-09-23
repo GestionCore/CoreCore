@@ -43,3 +43,45 @@ def obtener_endpoint_home(usuario_id):
         fila = cursor.fetchone()
     pantalla = fila[0] if fila and fila[0] else "stock"
     return RUTA_POR_PANTALLA.get(pantalla, "landing")
+
+
+def obtener_checklist_progreso(usuario_id, cuenta_id):
+    """
+    "Completá tu perfil" — pedido explícito, con barra de progreso. Los
+    3 primeros pasos (encuesta de onboarding, conectar MeLi, primera
+    sincronización) ya están resueltos si el usuario llegó hasta acá —
+    login_requerido no deja pasar sin eso — así que el checklist arranca
+    ya con algo de progreso en vez de en cero, y se enfoca en lo que
+    realmente todavía puede faltar. Nada de esto es una tabla nueva: se
+    deriva de datos que ya existen, para no pedir otra migración más.
+    """
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT onboarding_completo FROM usuarios WHERE id = %s", (usuario_id,))
+        onboarding_completo = bool((cursor.fetchone() or [False])[0])
+
+        cursor.execute("SELECT sincronizacion_inicial_completa FROM cuentas_meli WHERE id = %s", (cuenta_id,))
+        sync_completa = bool((cursor.fetchone() or [False])[0])
+
+        cursor.execute("SELECT COUNT(*) FROM productos_padre WHERE estado = 'active' AND precio_costo IS NOT NULL AND precio_costo > 0")
+        tiene_costos = (cursor.fetchone()[0] or 0) > 0
+
+        cursor.execute("SELECT COUNT(*) FROM proveedores")
+        tiene_proveedores = (cursor.fetchone()[0] or 0) > 0
+
+        cursor.execute("SELECT COUNT(*) FROM gastos_operativos")
+        tiene_gastos = (cursor.fetchone()[0] or 0) > 0
+
+        cursor.execute("SELECT COUNT(*) FROM ventas")
+        tiene_ventas = (cursor.fetchone()[0] or 0) > 0
+
+    pasos = [
+        {"id": "onboarding", "texto": "Contanos cómo vendés (encuesta inicial)", "completo": onboarding_completo, "link": None},
+        {"id": "sync", "texto": "Primera sincronización con Mercado Libre", "completo": sync_completa, "link": None},
+        {"id": "costos", "texto": "Cargar el costo de fabricación de al menos un producto", "completo": tiene_costos, "link": "/costos"},
+        {"id": "proveedores", "texto": "Agregar al menos un proveedor", "completo": tiene_proveedores, "link": "/costos"},
+        {"id": "gastos", "texto": "Cargar tus gastos fijos (alquiler, bolsas, etc.)", "completo": tiene_gastos, "link": "/costos"},
+        {"id": "ventas", "texto": "Tener al menos una venta sincronizada", "completo": tiene_ventas, "link": "/metricas"},
+    ]
+    completos = sum(1 for p in pasos if p["completo"])
+    return {"pasos": pasos, "completos": completos, "total": len(pasos), "porcentaje": round(completos / len(pasos) * 100)}
