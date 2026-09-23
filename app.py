@@ -7,7 +7,7 @@ import requests
 from flask import Flask, request, session, redirect, url_for, render_template, g, jsonify, send_file
 import config
 from auth import oauth_meli, registro, token_manager
-from auth.middleware import login_requerido, iniciar_sesion, cerrar_sesion
+from auth.middleware import login_requerido, iniciar_sesion, cerrar_sesion, cambiar_cuenta_activa
 import catalogo
 import metricas as metricas_mod
 import facturacion
@@ -53,6 +53,22 @@ def _inyectar_version_estaticos():
         except OSError:
             return "1"
     return {"static_v": v}
+
+
+@app.context_processor
+def _inyectar_cuentas_usuario():
+    """
+    Plan Elite multi-cuenta: obtener_cuentas_de_usuario ya existía en
+    registro.py, pero no había ninguna pantalla que la usara — la app
+    asumía una sola cuenta activa en sesión siempre. Esto la deja
+    disponible en cualquier template sin que cada vista tenga que
+    acordarse de pasarla; el navbar solo la muestra si hay más de una.
+    """
+    if not getattr(g, "usuario_id", None):
+        return {}
+    cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
+    cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
+    return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual}
 
 
 from flask_compress import Compress
@@ -191,6 +207,14 @@ def reconectar():
 def logout():
     cerrar_sesion()
     return redirect(url_for("landing"))
+
+
+@app.route("/cambiar_cuenta/<int:cuenta_id>")
+@login_requerido
+def cambiar_cuenta(cuenta_id):
+    """Plan Elite: cambiar cuál cuenta de MeLi conectada está viendo el usuario."""
+    cambiar_cuenta_activa(cuenta_id)
+    return redirect(url_for("dashboard_personalizable"))
 
 
 @app.route("/api/hoy")

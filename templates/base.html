@@ -57,6 +57,18 @@
     <div class="topnav-inner">
         <div class="topnav-zona-izq">
             <a href="/dashboard" class="brand"><span class="brand-mark"></span><span>Santi Mens</span></a>
+            {% if cuentas_disponibles and cuentas_disponibles|length > 1 %}
+            <div class="nav-dropdown" id="tour-nav-cuenta">
+                <button class="topnav-link nav-dropdown-toggle" type="button">
+                    <svg class="icon"><use href="#icon-shirt"/></svg>{{ cuenta_actual.nickname or cuenta_actual.nombre_negocio or 'Cuenta' }} <span class="nav-chevron">▾</span>
+                </button>
+                <div class="nav-dropdown-menu">
+                    {% for c in cuentas_disponibles %}
+                    <a href="{{ url_for('cambiar_cuenta', cuenta_id=c.id) }}" class="nav-dropdown-item {% if cuenta_actual and c.id == cuenta_actual.id %}active{% endif %}">{{ c.nickname or c.nombre_negocio or ('Cuenta #' ~ c.id) }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
         <button class="buscador-central" onclick="abrirComando()" type="button" id="tour-buscador">
             <svg class="icon" style="width:15px;height:15px;"><use href="#icon-search"/></svg>
