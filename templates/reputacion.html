@@ -32,26 +32,30 @@
     </div>
 </div>
 
-<div class="panel">
-    <div class="panel-title">Historial de transacciones</div>
-    <table class="data-table">
-        <tbody>
-            <tr><td>Total histórico</td><td class="num">{{ rep.total_transacciones }}</td></tr>
-            <tr><td>Completadas</td><td class="num text-success">{{ rep.completadas }}</td></tr>
-            <tr><td>Canceladas</td><td class="num text-danger">{{ rep.canceladas }}</td></tr>
-        </tbody>
-    </table>
-</div>
+<div class="filter-row" style="align-items:stretch;">
+    <div class="panel" style="flex:1; min-width:280px;">
+        <div class="panel-title">Historial de transacciones</div>
+        <div style="height:200px; position:relative; margin-bottom:14px;"><canvas id="chartTransacciones"></canvas></div>
+        <table class="data-table">
+            <tbody>
+                <tr><td>Total histórico</td><td class="num">{{ rep.total_transacciones }}</td></tr>
+                <tr><td>Completadas</td><td class="num text-success">{{ rep.completadas }}</td></tr>
+                <tr><td>Canceladas</td><td class="num text-danger">{{ rep.canceladas }}</td></tr>
+            </tbody>
+        </table>
+    </div>
 
-<div class="panel">
-    <div class="panel-title">Calificaciones recibidas</div>
-    <table class="data-table">
-        <tbody>
-            <tr><td>👍 Positivas</td><td class="num text-success">{{ rep.ratings_positivas }}</td></tr>
-            <tr><td>➖ Neutras</td><td class="num">{{ rep.ratings_neutras }}</td></tr>
-            <tr><td>👎 Negativas</td><td class="num text-danger">{{ rep.ratings_negativas }}</td></tr>
-        </tbody>
-    </table>
+    <div class="panel" style="flex:1; min-width:280px;">
+        <div class="panel-title">Calificaciones recibidas</div>
+        <div style="height:200px; position:relative; margin-bottom:14px;"><canvas id="chartCalificaciones"></canvas></div>
+        <table class="data-table">
+            <tbody>
+                <tr><td>👍 Positivas</td><td class="num text-success">{{ rep.ratings_positivas }}</td></tr>
+                <tr><td>➖ Neutras</td><td class="num">{{ rep.ratings_neutras }}</td></tr>
+                <tr><td>👎 Negativas</td><td class="num text-danger">{{ rep.ratings_negativas }}</td></tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 {% if rep.reclamos.tasa is not none or rep.demora_en_despacho.tasa is not none or rep.cancelaciones_metrica.tasa is not none %}
@@ -76,6 +80,47 @@
 <div class="page-subtitle">
     💡 Estos son los mismos números que usa MeLi para calcular tu nivel de reputación — bajarlos es lo que más impacto tiene en tu visibilidad y en la confianza de tus compradores.
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    if (!window.Chart) return;
+    const opcionesComunes = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: '#9494b8', usePointStyle: true, pointStyle: 'circle', padding: 12 } } }
+    };
+
+    const ctxTrans = document.getElementById('chartTransacciones');
+    if (ctxTrans) {
+        const completadas = {{ rep.completadas }};
+        const canceladas = {{ rep.canceladas }};
+        const enCurso = Math.max({{ rep.total_transacciones }} - completadas - canceladas, 0);
+        new Chart(ctxTrans, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completadas', 'Canceladas', 'En curso / otro'],
+                datasets: [{ data: [completadas, canceladas, enCurso], backgroundColor: ['#29e6b0', '#f5486b', '#9494b8'], borderWidth: 0 }]
+            },
+            options: opcionesComunes
+        });
+    }
+
+    const ctxCalif = document.getElementById('chartCalificaciones');
+    if (ctxCalif) {
+        new Chart(ctxCalif, {
+            type: 'doughnut',
+            data: {
+                labels: ['Positivas', 'Neutras', 'Negativas'],
+                datasets: [{
+                    data: [{{ rep.ratings_positivas }}, {{ rep.ratings_neutras }}, {{ rep.ratings_negativas }}],
+                    backgroundColor: ['#29e6b0', '#ffd93d', '#f5486b'], borderWidth: 0
+                }]
+            },
+            options: opcionesComunes
+        });
+    }
+});
+</script>
 
 {% endif %}
 {% endblock %}
