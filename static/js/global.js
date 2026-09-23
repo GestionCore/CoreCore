@@ -659,47 +659,104 @@ async function marcarCurvaRota() {
 }
 
 // ---------- Comando Universal (Ctrl+K) ----------
+// "De verdad" quiere decir dos cosas que antes faltaban: cubrir TODAS las
+// secciones (antes eran 8 de ~19) y navegar con flechas + Enter, no solo
+// con el mouse. También suma comandos de ACCIÓN (no solo ir-a-una-página):
+// esos llevan `accion` (nombre de función global) en vez de `url`.
 const ATAJOS_COMANDO = [
-    { alias: ['stk', 'stock', 'inicio'], texto: 'Ir a Stock', url: '/' },
+    { alias: ['stk', 'stock', 'inicio', 'home'], texto: 'Ir a Stock', url: '/' },
     { alias: ['masivo', 'stockm'], texto: 'Ir a Stock Masivo', url: '/stock_masivo' },
+    { alias: ['desp', 'despacho'], texto: 'Ir a Despacho', url: '/despacho' },
+    { alias: ['dash', 'dashboard', 'resumen'], texto: 'Ir a Dashboard', url: '/dashboard' },
     { alias: ['gan', 'ganancia', 'metricas'], texto: 'Ir a Ganancia Real', url: '/metricas' },
     { alias: ['fac', 'facturacion'], texto: 'Ir a Facturación', url: '/facturacion' },
-    { alias: ['prom', 'promo', 'promociones'], texto: 'Ir a Promociones', url: '/promociones' },
     { alias: ['cos', 'costos'], texto: 'Ir a Costos', url: '/costos' },
     { alias: ['flujo', 'caja'], texto: 'Ir a Flujo de Caja', url: '/flujo_caja' },
+    { alias: ['full', 'logistica', 'comparador'], texto: 'Ir a Propia vs FULL', url: '/comparador_logistica' },
+    { alias: ['hist', 'precios', 'historial'], texto: 'Ir a Historial de Precios', url: '/historial_precios' },
+    { alias: ['mono', 'monotributo'], texto: 'Ir a Monotributo', url: '/monotributo' },
+    { alias: ['manual', 'mostrador', 'directo'], texto: 'Ir a Ventas fuera de MeLi', url: '/ventas_manuales' },
+    { alias: ['prom', 'promo', 'promociones'], texto: 'Ir a Promociones', url: '/promociones' },
     { alias: ['tend', 'tendencias'], texto: 'Ir a Tendencias', url: '/tendencias' },
+    { alias: ['comp', 'competencia', 'espia'], texto: 'Ir a Espía de Competencia', url: '/competencia' },
+    { alias: ['embudo', 'conversion'], texto: 'Ir a Embudo de Conversión', url: '/embudo_conversion' },
+    { alias: ['rep', 'reputacion'], texto: 'Ir a Reputación', url: '/reputacion' },
+    { alias: ['ads', 'publicidad'], texto: 'Ir a Publicidad', url: '/publicidad' },
+    { alias: ['log', 'logros', 'misiones'], texto: 'Ir a Logros', url: '/logros' },
+];
+const ACCIONES_COMANDO = [
+    { alias: ['sinc', 'sincronizar', 'actualizar'], texto: '⚡ Sincronizar Todo', accion: 'ejecutarSincronizarTodo' },
+    { alias: ['tema', 'oscuro', 'claro', 'dark', 'light'], texto: '🌙 Cambiar tema claro/oscuro', accion: 'alternarTema' },
+    { alias: ['privacidad', 'ocultar', 'blur'], texto: '👁️ Modo privacidad (ocultar montos)', accion: 'alternarModoPrivacidad' },
 ];
 function abrirComando() {
     document.getElementById('command-overlay').classList.add('open');
     const input = document.getElementById('command-input');
     input.value = ''; input.focus();
+    _comandoIndiceActivo = -1;
     renderizarResultadosComando([]);
 }
 function cerrarComando() { document.getElementById('command-overlay').classList.remove('open'); }
+let _comandoItemsActuales = [];
+let _comandoIndiceActivo = -1;
 function renderizarResultadosComando(items) {
+    _comandoItemsActuales = items;
+    _comandoIndiceActivo = items.length ? 0 : -1;
     const cont = document.getElementById('command-results');
-    if (items.length === 0) { cont.innerHTML = '<div class="command-empty">Escribí para buscar publicaciones o secciones</div>'; return; }
-    cont.innerHTML = items.map(item => `<a href="${item.url}" class="command-item"><span>${item.texto}</span>${item.tag ? `<span class="badge badge-neutral">${item.tag}</span>` : ''}</a>`).join('');
+    if (items.length === 0) { cont.innerHTML = '<div class="command-empty">Escribí para buscar publicaciones, secciones o acciones ("sincronizar", "tema"...)</div>'; return; }
+    cont.innerHTML = items.map((item, i) => {
+        const claseActiva = i === _comandoIndiceActivo ? ' activo' : '';
+        const etiqueta = `<span>${item.texto}</span>${item.tag ? `<span class="badge badge-neutral">${item.tag}</span>` : ''}`;
+        return item.accion
+            ? `<a href="#" class="command-item${claseActiva}" data-idx="${i}" onclick="event.preventDefault(); ejecutarItemComando(${i});">${etiqueta}</a>`
+            : `<a href="${item.url}" class="command-item${claseActiva}" data-idx="${i}">${etiqueta}</a>`;
+    }).join('');
+}
+function ejecutarItemComando(i) {
+    const item = _comandoItemsActuales[i];
+    if (!item) return;
+    if (item.accion) {
+        cerrarComando();
+        const fn = window[item.accion];
+        if (typeof fn === 'function') fn();
+    } else if (item.url) {
+        window.location.href = item.url;
+    }
+}
+function _moverSeleccionComando(delta) {
+    if (!_comandoItemsActuales.length) return;
+    _comandoIndiceActivo = (_comandoIndiceActivo + delta + _comandoItemsActuales.length) % _comandoItemsActuales.length;
+    document.querySelectorAll('#command-results .command-item').forEach((el, i) => el.classList.toggle('activo', i === _comandoIndiceActivo));
+    const activo = document.querySelector('#command-results .command-item.activo');
+    if (activo) activo.scrollIntoView({ block: 'nearest' });
 }
 let comandoDebounce = null;
 function inicializarComando() {
     document.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); abrirComando(); return; }
         if (e.key === 'Escape') { cerrarComando(); cerrarDrawer(); }
+        if (!document.getElementById('command-overlay').classList.contains('open')) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); _moverSeleccionComando(1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); _moverSeleccionComando(-1); }
+        else if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'command-input') {
+            e.preventDefault();
+            if (_comandoIndiceActivo >= 0) ejecutarItemComando(_comandoIndiceActivo);
+        }
     });
     document.addEventListener('input', (e) => {
         if (e.target.id !== 'command-input') return;
         const q = e.target.value.trim().toLowerCase();
         clearTimeout(comandoDebounce);
         if (!q) { renderizarResultadosComando([]); return; }
-        const atajos = ATAJOS_COMANDO.filter(a => a.alias.some(al => al.includes(q) || q.includes(al))).map(a => ({ texto: a.texto, url: a.url, tag: 'Sección' }));
-        renderizarResultadosComando(atajos);
+        const secciones = ATAJOS_COMANDO.filter(a => a.alias.some(al => al.includes(q) || q.includes(al))).map(a => ({ texto: a.texto, url: a.url, tag: 'Sección' }));
+        const acciones = ACCIONES_COMANDO.filter(a => a.alias.some(al => al.includes(q) || q.includes(al))).map(a => ({ texto: a.texto, accion: a.accion, tag: 'Acción' }));
+        renderizarResultadosComando([...acciones, ...secciones]);
         comandoDebounce = setTimeout(async () => {
             try {
                 const resp = await fetch('/api/buscar?q=' + encodeURIComponent(q));
                 const productos = await resp.json();
                 const itemsProductos = productos.map(p => ({ texto: p.titulo, url: '/gestion_modelo/' + p.id, tag: p.id }));
-                renderizarResultadosComando([...atajos, ...itemsProductos]);
+                renderizarResultadosComando([...acciones, ...secciones, ...itemsProductos]);
             } catch (err) { console.error(err); }
         }, 200);
     });

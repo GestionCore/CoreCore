@@ -379,7 +379,7 @@ input:disabled { color: var(--text-faint); }
 .command-input:focus { outline: none; }
 .command-results { max-height: 320px; overflow-y: auto; }
 .command-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; color: var(--text-primary); transition: background 0.12s; }
-.command-item:hover { background: rgba(255,255,255,0.05); }
+.command-item:hover, .command-item.activo { background: rgba(255,255,255,0.05); }
 .command-empty { padding: 20px; text-align: center; color: var(--text-faint); font-size: 0.85em; }
 .command-footer { display: flex; gap: 14px; padding: 10px 20px; border-top: 1px solid var(--glass-border); font-size: 0.75em; color: var(--text-faint); }
 .command-footer kbd { background: rgba(255,255,255,0.08); border-radius: 4px; padding: 1px 6px; font-family: var(--font-data); margin-right: 4px; }
