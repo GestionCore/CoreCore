@@ -14,7 +14,7 @@ import facturacion
 import historial_precios as historial_precios_mod
 import costos as costos_mod
 import calculadora_costos
-import simulador_costos
+import meli_http
 import logistica
 import despacho as despacho_mod
 import stock_masivo as stock_masivo_mod
