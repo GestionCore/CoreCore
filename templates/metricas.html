@@ -201,6 +201,56 @@
     </div>
 </div>
 
+{% if analitica_clientes %}
+<div class="filter-row" style="align-items:stretch;">
+    <div class="panel" style="flex:1; min-width:300px;">
+        <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-users"/></svg> Clientes</div>
+        <div class="stat-strip" style="margin-bottom:16px;">
+            <div class="stat-chip"><div class="stat-chip-label">Clientes distintos</div><div class="stat-chip-value">{{ analitica_clientes.clientes_distintos }}</div></div>
+            <div class="stat-chip accent-success">
+                <div class="stat-chip-label">Compraron más de una vez</div>
+                <div class="stat-chip-value">{{ analitica_clientes.pct_repiten }}%</div>
+                <div class="stat-chip-desc">{{ analitica_clientes.clientes_repiten }} de {{ analitica_clientes.clientes_distintos }} clientes</div>
+            </div>
+        </div>
+        <div class="pl-detalle-tabla">
+            {% for f in analitica_clientes.distribucion_frecuencia %}
+            {% if f.cantidad > 0 %}
+            <div class="pl-detalle-fila">
+                <span class="pl-detalle-label">{{ f.veces }}</span>
+                <div class="checklist-barra" style="flex:1;"><div class="checklist-fill" style="width:{{ (f.cantidad / analitica_clientes.clientes_distintos * 100) | round(0) }}%;"></div></div>
+                <span class="pl-detalle-valor" style="width:50px;">{{ f.cantidad }}</span>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    <div class="panel" style="flex:1; min-width:300px;">
+        <div class="panel-title"><svg class="icon" style="color:var(--accent-brand);"><use href="#icon-credit-card"/></svg> Cómo te Pagan</div>
+        {% if analitica_clientes.pct_cuotas is not none %}
+        <div class="stat-strip" style="margin-bottom:16px;">
+            <div class="stat-chip"><div class="stat-chip-label">En cuotas</div><div class="stat-chip-value">{{ analitica_clientes.pct_cuotas }}%</div><div class="stat-chip-desc">{{ analitica_clientes.cant_ordenes_cuotas }} órdenes</div></div>
+            <div class="stat-chip accent-success"><div class="stat-chip-label">Contado</div><div class="stat-chip-value">{{ analitica_clientes.pct_contado }}%</div><div class="stat-chip-desc">{{ analitica_clientes.cant_ordenes_contado }} órdenes</div></div>
+        </div>
+        {% if analitica_clientes.distribucion_cuotas %}
+        <div class="page-subtitle" style="margin-bottom:8px;">¿En cuántas cuotas compran?{% if analitica_clientes.cuota_mas_elegida %} — la más elegida: {{ analitica_clientes.cuota_mas_elegida }} cuotas{% endif %}</div>
+        <div class="pl-detalle-tabla">
+            {% for c in analitica_clientes.distribucion_cuotas %}
+            <div class="pl-detalle-fila">
+                <span class="pl-detalle-label">{{ c.cuotas }} cuotas</span>
+                <div class="checklist-barra" style="flex:1;"><div class="checklist-fill hero-ganancia-fill-neutro" style="width:{{ (c.cantidad / analitica_clientes.cant_ordenes_cuotas * 100) | round(0) }}%;"></div></div>
+                <span class="pl-detalle-valor" style="width:50px;">{{ c.cantidad }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="alert-empty">Todavía no tenemos el dato de cuotas para las ventas de este período — se completa con las próximas sincronizaciones.</div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 <div class="panel">
     <div class="panel-title">Evolución Mensual — Costos vs. Resultado Neto</div>
     <div class="page-subtitle" style="margin-bottom:14px;">Últimos {{ evolucion_mensual|length }} meses, incluyendo el actual en curso.</div>

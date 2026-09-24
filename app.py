@@ -685,6 +685,13 @@ def metricas_vista():
     total_unidades_periodo = sum(v["cantidad"] for v in datos["ventas"])
     ganancia_por_unidad = formatear_moneda(datos["resumen"]["raw"]["ganancia_neta"] / total_unidades_periodo) if total_unidades_periodo > 0 else None
 
+    # Clientes: retención y forma de pago del período (C1-C4).
+    analitica_clientes = None
+    try:
+        analitica_clientes = metricas_mod.obtener_analitica_clientes(g.usuario_id, fecha_desde, fecha_hasta)
+    except Exception as e:
+        print(f"[Métricas] ⚠️ Error calculando analítica de clientes: {e}")
+
     return render_template(
         "metricas.html", ventas=datos["ventas"], consolidados=datos["consolidados"],
         resumen=datos["resumen"], ads_disponible=datos["ads_disponible"],
@@ -694,6 +701,7 @@ def metricas_vista():
         punto_equilibrio=punto_equilibrio, canales_envio=canales_envio,
         factura_meli=factura_meli, evolucion_mensual=evolucion_mensual,
         total_unidades_periodo=total_unidades_periodo, ganancia_por_unidad=ganancia_por_unidad,
+        analitica_clientes=analitica_clientes,
         active_nav="metricas"
     )
 

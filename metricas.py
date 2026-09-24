@@ -78,6 +78,76 @@ def obtener_evolucion_mensual(usuario_id, cuenta_id, access_token, meses=6):
     return serie
 
 
+def obtener_analitica_clientes(usuario_id, fecha_desde, fecha_hasta):
+    """
+    Retención y forma de pago, a nivel de ORDEN (no de fila de venta —
+    una orden con 3 ítems son 3 filas en `ventas` pero 1 sola compra).
+    Todo queda acotado al período elegido en la página, no es
+    histórico de vida del cliente — más simple y consistente con el
+    resto de Ganancia Real, que también es por período.
+    """
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor(row_factory=dict_row)
+        cursor.execute("""
+            SELECT id_orden, comprador_nickname, MAX(cuotas) AS cuotas
+            FROM ventas
+            WHERE fecha_venta BETWEEN %s AND %s
+              AND eliminado_en IS NULL AND origen = 'meli' AND comprador_nickname IS NOT NULL
+            GROUP BY id_orden, comprador_nickname
+        """, (fecha_desde, fecha_hasta))
+        ordenes = cursor.fetchall()
+
+    if not ordenes:
+        return None
+
+    ordenes_por_cliente = {}
+    for o in ordenes:
+        ordenes_por_cliente[o["comprador_nickname"]] = ordenes_por_cliente.get(o["comprador_nickname"], 0) + 1
+
+    total_clientes = len(ordenes_por_cliente)
+    clientes_repiten = sum(1 for c in ordenes_por_cliente.values() if c >= 2)
+
+    conteo_por_veces = {1: 0, 2: 0, 3: 0}
+    conteo_4_mas = 0
+    for c in ordenes_por_cliente.values():
+        if c in conteo_por_veces:
+            conteo_por_veces[c] += 1
+        else:
+            conteo_4_mas += 1
+    distribucion_frecuencia = [
+        {"veces": "1 vez", "cantidad": conteo_por_veces[1]},
+        {"veces": "2 veces", "cantidad": conteo_por_veces[2]},
+        {"veces": "3 veces", "cantidad": conteo_por_veces[3]},
+        {"veces": "4 o más", "cantidad": conteo_4_mas},
+    ]
+
+    ordenes_con_dato_cuotas = [o for o in ordenes if o["cuotas"] is not None]
+    ordenes_en_cuotas = [o for o in ordenes_con_dato_cuotas if o["cuotas"] > 1]
+    ordenes_contado = [o for o in ordenes_con_dato_cuotas if o["cuotas"] <= 1]
+
+    conteo_cuotas = {}
+    for o in ordenes_en_cuotas:
+        conteo_cuotas[o["cuotas"]] = conteo_cuotas.get(o["cuotas"], 0) + 1
+    distribucion_cuotas = sorted(
+        [{"cuotas": k, "cantidad": v} for k, v in conteo_cuotas.items()], key=lambda x: x["cuotas"]
+    )
+
+    return {
+        "clientes_distintos": total_clientes,
+        "clientes_repiten": clientes_repiten,
+        "pct_repiten": round(clientes_repiten / total_clientes * 100, 1) if total_clientes else 0,
+        "distribucion_frecuencia": distribucion_frecuencia,
+        "total_ordenes": len(ordenes),
+        "ordenes_con_dato_cuotas": len(ordenes_con_dato_cuotas),
+        "cant_ordenes_cuotas": len(ordenes_en_cuotas),
+        "cant_ordenes_contado": len(ordenes_contado),
+        "pct_cuotas": round(len(ordenes_en_cuotas) / len(ordenes_con_dato_cuotas) * 100, 1) if ordenes_con_dato_cuotas else None,
+        "pct_contado": round(len(ordenes_contado) / len(ordenes_con_dato_cuotas) * 100, 1) if ordenes_con_dato_cuotas else None,
+        "distribucion_cuotas": distribucion_cuotas,
+        "cuota_mas_elegida": max(distribucion_cuotas, key=lambda x: x["cantidad"])["cuotas"] if distribucion_cuotas else None,
+    }
+
+
 def _obtener_comparacion_periodo_anterior(cursor, fecha_desde, fecha_hasta):
     """
     "vs. período anterior" — pedido explícito: si el rango elegido son 14

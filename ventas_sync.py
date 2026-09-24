@@ -143,6 +143,13 @@ def _extraer_filas_de_orden(orden, access_token):
     facturado_total_orden = sum(float(it.get("unit_price") or 0) * int(it.get("quantity") or 1) for it in items) or 1.0
 
     buyer = orden.get("buyer", {}) or {}
+    # Cuotas: la trae cada pago de la orden, no el ítem — si hay más de
+    # un pago (poco común en retail chico) nos quedamos con el primero.
+    # None si MeLi no informó el dato, para no confundir "no sabemos"
+    # con "pagó contado" en los reportes que usan esto.
+    pagos = orden.get("payments", []) or []
+    cuotas_orden = pagos[0].get("installments") if pagos else None
+
     filas = []
     for it in items:
         item_info = it.get("item", {}) or {}
@@ -166,6 +173,7 @@ def _extraer_filas_de_orden(orden, access_token):
             "envio_estado": shipping_info.get("status"),
             "despachado": shipping_info.get("status") in ("shipped", "delivered"),
             "comprador_nickname": buyer.get("nickname"), "comprador_nombre": buyer.get("first_name"),
+            "cuotas": cuotas_orden,
         })
     return filas
 
@@ -179,15 +187,15 @@ def _escribir_pagina(cursor, cuenta_id, ordenes, access_token):
             cursor.execute("""
                 INSERT INTO ventas (cuenta_id, id_orden, id_meli, id_variante, titulo, cantidad, precio_venta,
                                      cargo_venta, costo_envio, fecha_venta, hora_venta, shipment_id, envio_estado,
-                                     despachado, comprador_nickname, comprador_nombre)
+                                     despachado, comprador_nickname, comprador_nombre, cuotas)
                 VALUES (%(cuenta_id)s, %(id_orden)s, %(id_meli)s, %(id_variante)s, %(titulo)s, %(cantidad)s,
                         %(precio_venta)s, %(cargo_venta)s, %(costo_envio)s, %(fecha_venta)s, %(hora_venta)s,
-                        %(shipment_id)s, %(envio_estado)s, %(despachado)s, %(comprador_nickname)s, %(comprador_nombre)s)
+                        %(shipment_id)s, %(envio_estado)s, %(despachado)s, %(comprador_nickname)s, %(comprador_nombre)s, %(cuotas)s)
                 ON CONFLICT (cuenta_id, id_orden, id_meli) DO UPDATE SET
                     cantidad = excluded.cantidad, precio_venta = excluded.precio_venta,
                     cargo_venta = COALESCE(excluded.cargo_venta, ventas.cargo_venta),
                     costo_envio = excluded.costo_envio, envio_estado = excluded.envio_estado,
-                    despachado = excluded.despachado
+                    despachado = excluded.despachado, cuotas = COALESCE(excluded.cuotas, ventas.cuotas)
             """, {**f, "cuenta_id": cuenta_id})
             filas_insertadas += 1
     return len(ordenes), filas_insertadas
