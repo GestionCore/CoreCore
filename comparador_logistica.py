@@ -15,13 +15,23 @@ def calcular_comparacion(usuario_id, cuenta_id, access_token, fecha_desde, fecha
         """, (fecha_desde, fecha_hasta))
         filas = cursor.fetchall()
 
+    # 3 canales, no 2: "self_service" es Flex (el vendedor entrega, MeLi
+    # solo intermedia el envío) — antes caía adentro de "propia" junto
+    # con drop_off/cross_docking (envío clásico por correo), mezclando
+    # dos operativas bien distintas en un solo número.
     grupos = {
-        "full": {"nombre": "Logística FULL", "unidades": 0, "facturado": 0.0, "comision": 0.0, "envio": 0.0, "costo_fab": 0.0},
-        "propia": {"nombre": "Logística Propia", "unidades": 0, "facturado": 0.0, "comision": 0.0, "envio": 0.0, "costo_fab": 0.0},
+        "full": {"nombre": "FULL", "unidades": 0, "facturado": 0.0, "comision": 0.0, "envio": 0.0, "costo_fab": 0.0},
+        "flex": {"nombre": "Flex", "unidades": 0, "facturado": 0.0, "comision": 0.0, "envio": 0.0, "costo_fab": 0.0},
+        "propia": {"nombre": "Envíos clásicos", "unidades": 0, "facturado": 0.0, "comision": 0.0, "envio": 0.0, "costo_fab": 0.0},
     }
 
     for id_meli, cantidad, precio_venta, cargo_venta, costo_envio, tipo_logistica, precio_costo in filas:
-        clave = "full" if tipo_logistica == "fulfillment" else "propia"
+        if tipo_logistica == "fulfillment":
+            clave = "full"
+        elif tipo_logistica == "self_service":
+            clave = "flex"
+        else:
+            clave = "propia"
         grupo = grupos[clave]
         grupo["unidades"] += cantidad
         grupo["facturado"] += float(precio_venta) * cantidad

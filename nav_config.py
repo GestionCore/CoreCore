@@ -28,7 +28,6 @@ GRUPOS_NAV = {
             {"nav_key": "facturacion", "label": "Facturación", "href": "/facturacion", "endpoint": "facturacion_vista"},
             {"nav_key": "costos", "label": "Costos", "href": "/costos", "endpoint": "costos_vista"},
             {"nav_key": "ventas_manuales", "label": "Ventas fuera de MeLi", "href": "/ventas_manuales", "endpoint": "ventas_manuales_vista"},
-            {"nav_key": "comparador_logistica", "label": "Propia vs FULL", "href": "/comparador_logistica", "endpoint": "comparador_logistica_vista"},
             {"nav_key": "historial_precios", "label": "Historial de Precios", "href": "/historial_precios", "endpoint": "historial_precios_vista"},
             {"nav_key": "calculadora", "label": "Calculadora MeLi", "href": "/calculadora", "endpoint": "calculadora_vista"},
             {"nav_key": "reporte_fiscal", "label": "Reporte Fiscal", "href": "/reporte_fiscal", "endpoint": "reporte_fiscal_vista"},

@@ -9,6 +9,7 @@ Ambas cachés ahora incluyen cuenta_id en su clave.
 """
 import time
 import requests
+from utils import formatear_moneda
 
 BASE_URL = "https://api.mercadolibre.com/billing/integration"
 
@@ -92,3 +93,50 @@ def obtener_costo_almacenamiento_full(access_token, period_key, group="ML"):
     except Exception as e:
         print(f"[Facturación] ❌ Error buscando costo de almacenamiento: {e}")
         return None, 0
+
+
+def resumen_condensado_periodo_actual(access_token, cuenta_id, group="ML"):
+    """
+    Versión liviana de obtener_resumen_periodo pensada para paneles que
+    solo necesitan un vistazo del período de facturación EN CURSO (no
+    la página completa de /facturacion, que deja elegir un período
+    viejo). Reutiliza el mismo caché de 10 minutos — si ya se visitó
+    /facturacion en esta sesión, esto no pega de nuevo a la API.
+    """
+    periodos = obtener_periodos(access_token, cuenta_id, group)
+    if not periodos:
+        return None
+    periodo_actual = periodos[0]
+    key = periodo_actual.get("key")
+    if not key:
+        return None
+    resumen = obtener_resumen_periodo(access_token, cuenta_id, key, group)
+    if not resumen or not isinstance(resumen, dict):
+        return None
+
+    bill_includes = resumen.get("bill_includes", {})
+    cargos_dict = {}
+    total_cargos = 0.0
+    for c in bill_includes.get("charges", []):
+        categoria = (c.get("group_description") or "Otros cargos").strip()
+        monto = c.get("amount") or 0.0
+        cargos_dict[categoria] = cargos_dict.get(categoria, 0.0) + monto
+        total_cargos += monto
+    for b in bill_includes.get("bonuses", []):
+        categoria = (b.get("group_description") or "Bonificaciones y anulaciones").strip()
+        monto = b.get("amount") or 0.0
+        cargos_dict[categoria] = cargos_dict.get(categoria, 0.0) + monto
+        total_cargos += monto
+
+    cargos = sorted(
+        [{"label": k, "monto_formateado": formatear_moneda(v)} for k, v in cargos_dict.items()],
+        key=lambda x: -abs(cargos_dict[x["label"]])
+    )
+    periodo = periodo_actual.get("period", {})
+    return {
+        "cargos": cargos,
+        "total_cargos_formateado": formatear_moneda(total_cargos),
+        "en_curso": periodo_actual.get("period_status") == "OPEN",
+        "date_from": periodo.get("date_from"),
+        "date_to": periodo.get("date_to"),
+    }

@@ -636,6 +636,17 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     .pl-tile { width: 100%; }
 }
 
+/* ---------- Punto de equilibrio (Ganancia Real) ---------- */
+.pe-badge { display: inline-flex; align-items: center; padding: 7px 14px; border-radius: var(--radius-pill); font-size: 0.88em; font-weight: 700; }
+.pe-badge-ok { background: var(--success-bg); color: var(--success); }
+.pe-badge-falta { background: var(--semantic-warning-bg); color: var(--semantic-warning); }
+
+/* ---------- Margen por canal de envío (Ganancia Real) ---------- */
+.canal-envio-lista { display: flex; flex-direction: column; gap: 14px; }
+.canal-envio-fila { display: flex; flex-direction: column; gap: 6px; }
+.canal-envio-nombre { font-size: 0.85em; font-weight: 600; color: var(--text-primary); }
+.canal-envio-valores { display: flex; justify-content: space-between; font-size: 0.82em; color: var(--text-secondary); }
+
 /* ---------- Skeleton loaders ---------- */
 .skeleton {
     display: inline-block; background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.05) 63%);

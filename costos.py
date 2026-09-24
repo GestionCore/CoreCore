@@ -102,5 +102,10 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta):
             "segmentos_pct": segmentos_pct,
         })
 
-    stats_gastos = {"fijos": formatear_moneda(total_fijos), "variables": formatear_moneda(total_variables), "total": formatear_moneda(total_fijos + total_variables)}
+    stats_gastos = {
+        "fijos": formatear_moneda(total_fijos), "variables": formatear_moneda(total_variables), "total": formatear_moneda(total_fijos + total_variables),
+        # Crudos (no texto) — los usa el punto de equilibrio de Ganancia
+        # Real, que necesita sumar/dividir de verdad, no solo mostrar.
+        "fijos_raw": round(total_fijos, 2), "variables_raw": round(total_variables, 2),
+    }
     return gastos, stats_gastos, productos_costo

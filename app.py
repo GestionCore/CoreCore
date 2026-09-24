@@ -637,12 +637,63 @@ def metricas_vista():
 
     datos = metricas_mod.calcular_ganancia_real(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
 
+    # Punto de equilibrio (B7): costos fijos del mismo período vs. el
+    # margen de contribución real que ya salió del cálculo de arriba.
+    # Ninguno de estos bloques nuevos puede tumbar la página entera si
+    # falla — mismo criterio que ya se usa con Ads más arriba.
+    punto_equilibrio = None
+    try:
+        _, stats_gastos, _ = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta)
+        costos_fijos = stats_gastos["fijos_raw"]
+        facturado_raw = datos["resumen"]["raw"]["facturado"]
+        margen_contribucion_pct = (datos["resumen"]["raw"]["ganancia_neta"] / facturado_raw) if facturado_raw > 0 else 0
+        if costos_fijos > 0 and margen_contribucion_pct > 0:
+            ventas_minimas = costos_fijos / margen_contribucion_pct
+            punto_equilibrio = {
+                "costos_fijos_f": formatear_moneda(costos_fijos),
+                "ventas_minimas_f": formatear_moneda(ventas_minimas),
+                "margen_contribucion_pct": round(margen_contribucion_pct * 100, 1),
+                "veces_superado": round(facturado_raw / ventas_minimas, 1) if ventas_minimas > 0 else None,
+                "superado": facturado_raw >= ventas_minimas,
+            }
+    except Exception as e:
+        print(f"[Métricas] ⚠️ Error calculando punto de equilibrio: {e}")
+
+    # Margen por canal de envío (B6) — Full / Flex / Envíos clásicos.
+    # Reemplaza a la página aparte "Propia vs FULL" (retirada del menú).
+    canales_envio = None
+    try:
+        canales_envio, _ = comparador_logistica_mod.calcular_comparacion(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
+    except Exception as e:
+        print(f"[Métricas] ⚠️ Error calculando margen por canal: {e}")
+
+    # Factura MeLi del período de facturación en curso (B3).
+    factura_meli = None
+    try:
+        factura_meli = facturacion.resumen_condensado_periodo_actual(access_token, g.cuenta_id)
+    except Exception as e:
+        print(f"[Métricas] ⚠️ Error trayendo la factura MeLi: {e}")
+
+    # Evolución mensual, últimos 6 meses (B4).
+    evolucion_mensual = []
+    try:
+        evolucion_mensual = metricas_mod.obtener_evolucion_mensual(g.usuario_id, g.cuenta_id, access_token, meses=6)
+    except Exception as e:
+        print(f"[Métricas] ⚠️ Error calculando evolución mensual: {e}")
+
+    # Ganancia por unidad (B8).
+    total_unidades_periodo = sum(v["cantidad"] for v in datos["ventas"])
+    ganancia_por_unidad = formatear_moneda(datos["resumen"]["raw"]["ganancia_neta"] / total_unidades_periodo) if total_unidades_periodo > 0 else None
+
     return render_template(
         "metricas.html", ventas=datos["ventas"], consolidados=datos["consolidados"],
         resumen=datos["resumen"], ads_disponible=datos["ads_disponible"],
         gasto_ads_total_periodo=datos["gasto_ads_total_periodo"], posventa=datos["posventa"],
         comparacion_anterior=datos["comparacion_anterior"],
         fecha_desde=fecha_desde, fecha_hasta=fecha_hasta,
+        punto_equilibrio=punto_equilibrio, canales_envio=canales_envio,
+        factura_meli=factura_meli, evolucion_mensual=evolucion_mensual,
+        total_unidades_periodo=total_unidades_periodo, ganancia_por_unidad=ganancia_por_unidad,
         active_nav="metricas"
     )
 

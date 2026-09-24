@@ -12,6 +12,71 @@ import db
 import ads
 from utils import formatear_moneda, formatear_estado_incidencia
 
+_NOMBRES_MES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+
+
+def obtener_evolucion_mensual(usuario_id, cuenta_id, access_token, meses=6):
+    """
+    Costos vs. Resultado neto por mes calendario, últimos `meses` meses
+    (incluye el actual, en curso). A propósito NO llama a
+    calcular_ganancia_real una vez por mes — eso pegaría en la API de
+    Ads de MeLi 6 veces con el desglose completo por ítem. En cambio:
+    comisión/envío/costo de fabricación salen de UNA sola consulta SQL
+    agrupada por mes, y Publicidad usa el gasto total de la cuenta por
+    mes (una llamada liviana a Ads por mes, no por item).
+    """
+    hoy = date.today()
+    inicios_mes = []
+    cursor_mes = hoy.replace(day=1)
+    for _ in range(meses):
+        inicios_mes.append(cursor_mes)
+        cursor_mes = (cursor_mes - timedelta(days=1)).replace(day=1)
+    inicios_mes.reverse()  # del más viejo al más nuevo
+
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor(row_factory=dict_row)
+        cursor.execute("""
+            SELECT to_char(date_trunc('month', v.fecha_venta), 'YYYY-MM') AS mes,
+                   COALESCE(SUM(v.precio_venta * v.cantidad), 0) AS facturado,
+                   COALESCE(SUM(v.cargo_venta), 0) AS comision,
+                   COALESCE(SUM(v.costo_envio), 0) AS envios,
+                   COALESCE(SUM(COALESCE(p.precio_costo, 0) * v.cantidad), 0) AS costo_fabricacion
+            FROM ventas v
+            LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            WHERE v.fecha_venta BETWEEN %s AND %s
+            GROUP BY 1
+        """, (inicios_mes[0].strftime("%Y-%m-%d"), hoy.strftime("%Y-%m-%d")))
+        por_mes = {f["mes"]: f for f in cursor.fetchall()}
+
+    gasto_ads_por_mes = {}
+    try:
+        advertiser_id = ads.obtener_advertiser_id(access_token, cuenta_id)
+        if advertiser_id:
+            for inicio in inicios_mes:
+                fin = min((inicio.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1), hoy)
+                etiqueta = inicio.strftime("%Y-%m")
+                gasto_ads_por_mes[etiqueta] = ads.obtener_gasto_ads_total_periodo(
+                    access_token, advertiser_id, inicio.strftime("%Y-%m-%d"), fin.strftime("%Y-%m-%d")
+                ) or 0.0
+    except Exception as e:
+        print(f"[Metricas] ⚠️ Error trayendo evolución de Ads: {e}")
+
+    serie = []
+    for inicio in inicios_mes:
+        etiqueta = inicio.strftime("%Y-%m")
+        fila = por_mes.get(etiqueta)
+        facturado = float(fila["facturado"]) if fila else 0.0
+        comision = float(fila["comision"]) if fila else 0.0
+        envios = float(fila["envios"]) if fila else 0.0
+        costo_fabricacion = float(fila["costo_fabricacion"]) if fila else 0.0
+        costos_totales = round(comision + envios + costo_fabricacion + gasto_ads_por_mes.get(etiqueta, 0.0), 2)
+        serie.append({
+            "mes": etiqueta, "mes_label": _NOMBRES_MES_CORTOS[inicio.month - 1],
+            "facturado": round(facturado, 2), "costos": costos_totales,
+            "resultado_neto": round(facturado - costos_totales, 2),
+        })
+    return serie
+
 
 def _obtener_comparacion_periodo_anterior(cursor, fecha_desde, fecha_hasta):
     """
