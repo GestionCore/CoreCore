@@ -8,6 +8,7 @@ from flask import session, redirect, url_for, g, request, render_template, abort
 from auth import registro
 import db
 import config
+import nav_config
 
 # Rutas que tienen que funcionar SIEMPRE, aunque la primera sincronización
 # todavía no haya terminado — si no las excluimos acá, el usuario queda
@@ -78,8 +79,27 @@ def login_requerido(vista):
                 print(f"[Middleware] ⚠️ Error actualizando racha: {e}")
             session["racha_actualizada_el"] = hoy_local
 
+        # "MÁS USADO": igual que la racha, se recalcula una sola vez por
+        # día (no en cada click) y se guarda en sesión — el menú y el
+        # tab-strip lo leen de ahí sin pegarle a la base en cada render.
+        if session.get("mas_usado_actualizado_el") != hoy_local:
+            try:
+                session["mas_usado"] = _calcular_mas_usado_sesion(usuario_id)
+            except Exception as e:
+                print(f"[Middleware] ⚠️ Error calculando más usado: {e}")
+            session["mas_usado_actualizado_el"] = hoy_local
+
         return vista(*args, **kwargs)
     return envoltorio
+
+
+def _calcular_mas_usado_sesion(usuario_id):
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT nav_key, contador FROM navegacion_visitas WHERE usuario_id = %s", (usuario_id,))
+        filas = cursor.fetchall()
+    contadores = {nav_key: contador for nav_key, contador in filas}
+    return nav_config.calcular_mas_usado(contadores)
 
 
 def admin_requerido(vista):

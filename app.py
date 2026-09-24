@@ -2,7 +2,20 @@
 CoreLux — esqueleto inicial con el flujo completo de OAuth 2.0 contra
 Mercado Libre, multi-tenant, con Postgres/Supabase + Row Level Security.
 """
+import sys
 import os
+
+# La consola de Windows arranca en cp1252 por default, que no puede
+# imprimir los emojis (✅ ⚠️ etc.) que usan los prints de todo el proyecto
+# — sin esto, el primer log con un emoji tira UnicodeEncodeError y tumba
+# el proceso entero. reconfigure() está desde Python 3.7.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
 import requests
 from flask import Flask, request, session, redirect, url_for, render_template, g, jsonify, send_file, stream_with_context, Response
 import config
@@ -34,6 +47,7 @@ import onboarding
 import monotributo
 import costos_chat
 import db
+import nav_config
 import timeline_publicacion
 import exportador_redes
 import scheduler
@@ -113,6 +127,39 @@ def _inyectar_cuentas_usuario():
     cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
     cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
     return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual}
+
+
+@app.context_processor
+def _inyectar_nav_grupos():
+    return {"nav_grupos": nav_config.GRUPOS_NAV}
+
+
+@app.after_request
+def _trackear_navegacion(response):
+    """
+    Suma una visita a navegacion_visitas cada vez que se entra a una
+    página del menú (no APIs) — es lo que alimenta el badge "MÁS USADO".
+    Va en after_request (no en login_requerido) para cubrir también
+    landing(), que no pasa por ese decorador.
+    """
+    try:
+        usuario_id = getattr(g, "usuario_id", None)
+        if usuario_id and request.method == "GET" and response.status_code == 200 and request.endpoint in nav_config.ENDPOINT_A_NAV:
+            _, nav_key = nav_config.ENDPOINT_A_NAV[request.endpoint]
+            with db.conexion_usuario(usuario_id) as conexion:
+                cursor = conexion.cursor()
+                cursor.execute(
+                    """
+                    INSERT INTO navegacion_visitas (usuario_id, nav_key, contador, ultima_visita)
+                    VALUES (%s, %s, 1, now())
+                    ON CONFLICT (usuario_id, nav_key)
+                    DO UPDATE SET contador = navegacion_visitas.contador + 1, ultima_visita = now()
+                    """,
+                    (usuario_id, nav_key),
+                )
+    except Exception as e:
+        print(f"[NavTracking] ⚠️ Error registrando visita: {e}")
+    return response
 
 
 from flask_compress import Compress
