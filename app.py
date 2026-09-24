@@ -493,39 +493,66 @@ def api_dashboard_logro_top():
     return jsonify({"hay_mision": False})
 
 
-@app.route("/api/dashboard/ganancia_hoy")
+@app.route("/api/dashboard/ganancia_dia_vs_promedio")
 @login_requerido
-def api_dashboard_ganancia_hoy():
-    from datetime import date
-    hoy = date.today().isoformat()
-    with db.conexion_usuario(g.usuario_id) as conexion:
-        cursor = conexion.cursor()
-        cursor.execute("""
-            SELECT
-                COALESCE(SUM(precio_venta * cantidad), 0) AS facturado,
-                COALESCE(SUM(
-                    (precio_venta * cantidad)
-                    - COALESCE(cargo_venta, 0)
-                    - COALESCE(costo_envio, 0)
-                ), 0) AS ganancia,
-                COUNT(*) AS ordenes
-            FROM ventas
-            WHERE cuenta_id = %s
-              AND DATE(fecha_venta) = %s
-              AND eliminado_en IS NULL
-        """, (g.cuenta_id, hoy))
-        fila = cursor.fetchone()
-    facturado = float(fila[0]) if fila else 0
-    ganancia = float(fila[1]) if fila else 0
-    ordenes = int(fila[2]) if fila else 0
-    margen = round(ganancia / facturado * 100, 1) if facturado > 0 else 0
+def api_dashboard_ganancia_dia_vs_promedio():
+    """
+    Alimenta el hero del Dashboard (Ganancia Neta Real de hoy vs. el
+    promedio diario de los últimos 14 días) y el panel de P&L (B1 + B2)
+    con UNA sola llamada a calcular_ganancia_real — reutiliza el mismo
+    período de 14 días para ambas cosas en vez de pedirlo dos veces
+    (cada llamada le pega en vivo a la API de Ads de MeLi, así que
+    duplicarla sería plata y tiempo tirados).
+
+    Reemplaza al viejo /api/dashboard/ganancia_hoy, que calculaba una
+    "ganancia" simplificada (sin publicidad ni costo de fabricación) —
+    eso violaba la fórmula de Ganancia Neta Real que CLAUDE.md marca
+    como innegociable. Este endpoint usa la fórmula completa.
+    """
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        access_token = None
+
+    hoy = datetime.now()
+    hoy_str = hoy.strftime("%Y-%m-%d")
+    desde_str = (hoy - timedelta(days=13)).strftime("%Y-%m-%d")  # 14 días incluyendo hoy
+
+    datos = metricas_mod.calcular_ganancia_real(g.usuario_id, g.cuenta_id, access_token, desde_str, hoy_str)
+    r = datos["resumen"]["raw"]
+
+    ganancia_hoy = sum(v["raw"]["ganancia_neta"] for v in datos["ventas"] if v["fecha"] == hoy_str)
+    facturado_hoy = sum(v["raw"]["precio_venta"] for v in datos["ventas"] if v["fecha"] == hoy_str)
+    ganancia_promedio_diario = r["ganancia_neta"] / 14
+
+    variacion_pct = None
+    if ganancia_promedio_diario:
+        variacion_pct = round(((ganancia_hoy - ganancia_promedio_diario) / abs(ganancia_promedio_diario)) * 100, 1)
+
+    def _f(n):
+        return f"${n:,.0f}".replace(",", ".")
+
     return jsonify({
-        "facturado": facturado,
-        "ganancia": ganancia,
-        "ordenes": ordenes,
-        "margen_pct": margen,
-        "facturado_f": f"${facturado:,.0f}".replace(",", "."),
-        "ganancia_f": f"${ganancia:,.0f}".replace(",", "."),
+        "hoy": {
+            "ganancia": round(ganancia_hoy, 2), "ganancia_f": _f(ganancia_hoy),
+            "facturado": round(facturado_hoy, 2), "facturado_f": _f(facturado_hoy),
+        },
+        "promedio_diario_14d": {
+            "ganancia": round(ganancia_promedio_diario, 2), "ganancia_f": _f(ganancia_promedio_diario),
+        },
+        "variacion_pct": variacion_pct,
+        "por_encima_promedio": ganancia_hoy >= ganancia_promedio_diario,
+        "periodo_14d": {
+            "facturado": round(r["facturado"], 2), "facturado_f": _f(r["facturado"]),
+            "comision": round(r["comision"], 2), "comision_f": _f(r["comision"]),
+            "envios": round(r["envios"], 2), "envios_f": _f(r["envios"]),
+            "costo_ads": round(r["costo_ads"], 2), "costo_ads_f": _f(r["costo_ads"]),
+            "costo_fabricacion": round(r["costo_fabricacion"], 2), "costo_fabricacion_f": _f(r["costo_fabricacion"]),
+            "costos_totales": round(r["comision"] + r["envios"] + r["costo_ads"] + r["costo_fabricacion"], 2),
+            "costos_totales_f": _f(r["comision"] + r["envios"] + r["costo_ads"] + r["costo_fabricacion"]),
+            "margen": round(r["ganancia_neta"], 2), "margen_f": _f(r["ganancia_neta"]),
+            "margen_negativo": r["ganancia_neta"] < 0,
+        },
     })
 
 
@@ -593,7 +620,8 @@ def dashboard_personalizable():
         token_manager.asegurar_token_valido(g.cuenta_id)
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
-    return render_template("dashboard_personalizable.html", active_nav="dashboard")
+    mono = monotributo.evaluar_categoria(g.usuario_id, g.cuenta_id)
+    return render_template("dashboard_personalizable.html", active_nav="dashboard", mono=mono)
 
 
 @app.route("/metricas")
@@ -1098,7 +1126,10 @@ def monotributo_vista():
 def monotributo_declarar():
     categoria = request.form.get("categoria_monotributo") or None
     monotributo.guardar_categoria_declarada(g.usuario_id, g.cuenta_id, categoria)
-    return redirect(url_for("monotributo_vista"))
+    # Monotributo ahora vive como sección inline del Dashboard (ya no
+    # está en el menú) — volver ahí después de guardar, no a la página
+    # standalone.
+    return redirect(url_for("dashboard_personalizable"))
 
 
 @app.route("/api/costos_chat", methods=["POST"])

@@ -612,6 +612,30 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     padding: 2px 6px; border-radius: 4px; line-height: 1.3;
 }
 
+/* ---------- Hero de Ganancia Neta Real del día (Dashboard) ---------- */
+.panel-hero-ganancia { margin-bottom: 20px; }
+.hero-ganancia-compara { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.hero-ganancia-fila { display: flex; align-items: center; gap: 12px; }
+.hero-ganancia-fila-label { width: 100px; flex-shrink: 0; font-size: 0.82em; color: var(--text-secondary); font-weight: 600; }
+.hero-ganancia-fila-valor { width: 110px; flex-shrink: 0; text-align: right; font-size: 0.86em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hero-ganancia-fill-neutro { background: linear-gradient(90deg, var(--text-faint), var(--text-secondary)) !important; }
+
+/* ---------- P&L waterfall de 14 días (Dashboard) ---------- */
+.pl-waterfall { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+.pl-tile { flex: 1; min-width: 150px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 16px 18px; }
+.pl-tile-resultado { border-color: var(--accent-brand); background: rgba(245, 166, 35, 0.06); }
+.pl-tile-valor { font-size: 1.5em; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.pl-operador { font-size: 1.6em; font-weight: 700; color: var(--text-faint); flex-shrink: 0; }
+.pl-detalle-tabla { display: flex; flex-direction: column; gap: 10px; }
+.pl-detalle-fila { display: flex; align-items: center; gap: 12px; }
+.pl-detalle-label { width: 150px; flex-shrink: 0; font-size: 0.84em; color: var(--text-secondary); }
+.pl-detalle-valor { width: 150px; flex-shrink: 0; text-align: right; font-size: 0.86em; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 720px) {
+    .pl-operador { display: none; }
+    .pl-waterfall { flex-direction: column; align-items: stretch; }
+    .pl-tile { width: 100%; }
+}
+
 /* ---------- Skeleton loaders ---------- */
 .skeleton {
     display: inline-block; background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.05) 63%);

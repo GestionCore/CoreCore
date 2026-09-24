@@ -9,6 +9,56 @@
     <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-settings"/></svg> Personalizar</button>
 </div>
 
+<!-- ── Hero: Ganancia Neta Real de HOY vs. tu promedio diario (14 días) ──── -->
+<div class="panel panel-hero-ganancia" id="hero-ganancia-dia">
+    <div class="stat-chip-label">Ganancia Neta Real — Hoy</div>
+    <div class="hero-number" id="hero-ganancia-valor" style="font-size:2.6em;"><span class="skeleton">$0</span></div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:2px;">Después de comisiones, envíos, publicidad y costo de fabricación — la fórmula completa, no una aproximación.</div>
+
+    <div class="hero-ganancia-compara">
+        <div class="hero-ganancia-fila">
+            <span class="hero-ganancia-fila-label">Hoy</span>
+            <div class="checklist-barra"><div class="checklist-fill" id="barra-hoy" style="width:0%;"></div></div>
+            <span class="hero-ganancia-fila-valor" id="valor-hoy">—</span>
+        </div>
+        <div class="hero-ganancia-fila">
+            <span class="hero-ganancia-fila-label">Promedio 14d</span>
+            <div class="checklist-barra"><div class="checklist-fill hero-ganancia-fill-neutro" id="barra-promedio" style="width:0%;"></div></div>
+            <span class="hero-ganancia-fila-valor" id="valor-promedio">—</span>
+        </div>
+    </div>
+
+    <div class="alert" id="hero-ganancia-mensaje" style="display:none; margin-top:16px; margin-bottom:0;"></div>
+</div>
+
+<!-- ── Resultado de los últimos 14 días: FACTURADO − COSTOS = MARGEN ─────── -->
+<div class="panel panel-colapsable" id="panel-pl-14d" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
+    <div class="panel-title">
+        <span>Resultado de los últimos 14 días</span>
+        <span class="chevron-colapsable">▾</span>
+    </div>
+    <div class="pl-waterfall" id="pl-waterfall">
+        <div class="pl-tile">
+            <div class="stat-chip-label">Facturado</div>
+            <div class="pl-tile-valor skeleton" id="pl-facturado">$0</div>
+        </div>
+        <div class="pl-operador">−</div>
+        <div class="pl-tile">
+            <div class="stat-chip-label">Costos totales</div>
+            <div class="pl-tile-valor text-danger skeleton" id="pl-costos">$0</div>
+        </div>
+        <div class="pl-operador">=</div>
+        <div class="pl-tile pl-tile-resultado" id="pl-tile-margen">
+            <div class="stat-chip-label">Margen neto</div>
+            <div class="pl-tile-valor skeleton" id="pl-margen">$0</div>
+        </div>
+    </div>
+    <div class="contenido-colapsable">
+        <div class="pl-detalle-tabla" id="pl-detalle"></div>
+    </div>
+    <div class="text-muted" style="font-size:0.76em; margin-top:10px;">Click para ver el detalle de costos (comisión, envíos, publicidad, fabricación) — % sobre lo facturado.</div>
+</div>
+
 <!-- ── Hero del día: las 4 métricas que importan siempre ─────────────────── -->
 <div class="stat-strip" id="hero-metricas-dia">
     <div class="stat-chip accent-gold" id="hero-facturado">
@@ -57,11 +107,69 @@
 
 <div id="grid-widgets-dashboard" class="grid-dashboard"></div>
 
+{% if mono %}
+<div class="panel panel-colapsable {% if mono.alertas %}abierto{% endif %}" id="panel-monotributo" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
+    <div class="panel-title">
+        <span>
+            <svg class="icon" style="width:16px;height:16px;margin-right:6px;vertical-align:middle;color:var(--accent-gold);"><use href="#icon-file-text"/></svg>
+            Monotributo
+            {% if mono.categoria_real and mono.categoria_declarada and mono.categoria_real != mono.categoria_declarada %}
+            <span class="badge badge-warning" style="margin-left:8px;">Revisar categoría</span>
+            {% endif %}
+        </span>
+        <span class="chevron-colapsable">▾</span>
+    </div>
+    <div class="contenido-colapsable">
+        {% if not mono.categoria_declarada %}
+        <div class="alert alert-info">Todavía no declaraste en qué categoría estás inscripto — elegila abajo para comparar contra tu facturación real.</div>
+        {% endif %}
+        {% for a in mono.alertas %}
+        <div class="alert {% if a.tipo == 'urgente' %}alert-danger{% elif a.tipo == 'oportunidad' %}alert-success{% else %}alert-warning{% endif %}">{{ a.texto }}</div>
+        {% endfor %}
+
+        <div class="stat-strip" style="margin-bottom:16px;">
+            <div class="stat-chip">
+                <div class="stat-chip-label">Facturación últimos 12 meses</div>
+                <div class="stat-chip-value">${{ "%.0f"|format(mono.facturacion_12m)|replace(",", "@")|replace(".", ",")|replace("@", ".") }}</div>
+            </div>
+            <div class="stat-chip accent-gold">
+                <div class="stat-chip-label">Categoría según tu facturación real</div>
+                <div class="stat-chip-value">{{ mono.categoria_real or "Fuera de escala" }}</div>
+            </div>
+            {% if mono.categoria_declarada %}
+            <div class="stat-chip">
+                <div class="stat-chip-label">Categoría declarada</div>
+                <div class="stat-chip-value">{{ mono.categoria_declarada }}</div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip-label">Cuota mensual</div>
+                <div class="stat-chip-value">${{ "%.0f"|format(mono.cuota_mensual_declarada)|replace(",", "@")|replace(".", ",")|replace("@", ".") }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <form action="{{ url_for('monotributo_declarar') }}" method="POST" class="filter-row" style="margin-bottom:14px;">
+            <div class="field-group">
+                <label class="field-label">Declarar tu categoría actual</label>
+                <select name="categoria_monotributo" class="field-input">
+                    <option value="">Sin declarar</option>
+                    {% for e in mono.escalas %}
+                    <option value="{{ e.categoria }}" {% if e.categoria == mono.categoria_declarada %}selected{% endif %}>{{ e.categoria }} — hasta ${{ "%.0f"|format(e.tope_anual) }}/año</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-denim" style="align-self:flex-end;">Guardar</button>
+        </form>
+
+        <div class="text-muted" style="font-size:0.76em;">Escalas vigentes desde {{ mono.vigente_desde }} para "venta de cosas muebles" — esto avisa y sugiere; la decisión final siempre conviene confirmarla con tu contador.</div>
+    </div>
+</div>
+{% endif %}
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
     const WIDGETS_DISPONIBLES = [
         { id: 'resumen_dia', nombre: 'Ganancia y Facturación del Día', default: true },
-        { id: 'ganancia_hoy', nombre: 'Ganancia Neta de Hoy', default: true },
         { id: 'tendencia_ventas', nombre: 'Gráfico: Tendencia de Ventas (14 días)', default: true },
         { id: 'ventas_vivo', nombre: 'Ventas en Vivo', default: true },
         { id: 'salud', nombre: 'Salud de Cuenta', default: true },
@@ -277,21 +385,6 @@
             });
         }
 
-        if (prefs.ganancia_hoy) {
-            const w = crearTarjetaWidget('ganancia_hoy', '/metricas');
-            grid.appendChild(w);
-            fetch('/api/dashboard/ganancia_hoy').then(r => r.json()).then(d => {
-                const colorGanancia = d.ganancia >= 0 ? 'var(--success)' : 'var(--danger)';
-                const margenColor = d.margen_pct >= 20 ? 'var(--success)' : (d.margen_pct >= 10 ? 'var(--semantic-warning)' : 'var(--danger)');
-                w.innerHTML = `
-                    <div class="stat-chip-label">Ganancia Neta Hoy</div>
-                    <div class="hero-number" style="font-size:1.9em; background:none; -webkit-text-fill-color:${colorGanancia}; color:${colorGanancia};">${d.ganancia_f}</div>
-                    <div style="display:flex; gap:12px; margin-top:8px; font-size:0.8em; color:var(--text-secondary);">
-                        <span>Facturado: <strong>${d.facturado_f}</strong></span>
-                        <span>Margen: <strong style="color:${margenColor};">${d.margen_pct}%</strong></span>
-                    </div>`;
-            });
-        }
 
         if (prefs.top_productos) {
             const w = crearTarjetaWidgetDiv('top_productos');
@@ -436,6 +529,62 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => { renderizarWidgetsActivos(); cargarChecklistPerfil(); cargarHeroMetricasDia(); });
+    async function cargarGananciaDiaVsPromedio() {
+        try {
+            const resp = await fetch('/api/dashboard/ganancia_dia_vs_promedio');
+            const d = await resp.json();
+
+            const colorHoy = d.hoy.ganancia >= 0 ? 'var(--success)' : 'var(--danger)';
+            document.getElementById('hero-ganancia-valor').innerHTML =
+                `<span style="background:none; -webkit-text-fill-color:${colorHoy}; color:${colorHoy};">${d.hoy.ganancia_f}</span>`;
+
+            // Barras comparativas: el mayor de los dos valores absolutos marca el 100%.
+            const maxAbs = Math.max(Math.abs(d.hoy.ganancia), Math.abs(d.promedio_diario_14d.ganancia), 1);
+            const barraHoy = document.getElementById('barra-hoy');
+            barraHoy.style.width = Math.max(4, Math.round(Math.abs(d.hoy.ganancia) / maxAbs * 100)) + '%';
+            if (d.hoy.ganancia < 0) barraHoy.style.background = 'var(--danger)';
+            document.getElementById('barra-promedio').style.width = Math.max(4, Math.round(Math.abs(d.promedio_diario_14d.ganancia) / maxAbs * 100)) + '%';
+            document.getElementById('valor-hoy').textContent = d.hoy.ganancia_f;
+            document.getElementById('valor-promedio').textContent = d.promedio_diario_14d.ganancia_f;
+
+            const msg = document.getElementById('hero-ganancia-mensaje');
+            if (d.variacion_pct !== null) {
+                msg.className = 'alert ' + (d.por_encima_promedio ? 'alert-success' : 'alert-warning');
+                msg.style.display = '';
+                msg.textContent = d.por_encima_promedio
+                    ? `Estás ${Math.abs(d.variacion_pct)}% por encima de tu promedio diario de los últimos 14 días.`
+                    : `Estás ${Math.abs(d.variacion_pct)}% por debajo de tu promedio diario de los últimos 14 días.`;
+            }
+
+            const p = d.periodo_14d;
+            const elFact = document.getElementById('pl-facturado');
+            elFact.textContent = p.facturado_f; elFact.classList.remove('skeleton');
+            const elCostos = document.getElementById('pl-costos');
+            elCostos.textContent = p.costos_totales_f; elCostos.classList.remove('skeleton');
+            const elMargen = document.getElementById('pl-margen');
+            elMargen.textContent = p.margen_f; elMargen.classList.remove('skeleton');
+            elMargen.style.color = p.margen_negativo ? 'var(--danger)' : 'var(--success)';
+            document.getElementById('pl-tile-margen').style.borderColor = p.margen_negativo ? 'var(--danger)' : 'var(--accent-brand)';
+
+            const filas = [
+                { label: 'Comisión MeLi', valor: p.comision, valor_f: p.comision_f },
+                { label: 'Envíos', valor: p.envios, valor_f: p.envios_f },
+                { label: 'Publicidad', valor: p.costo_ads, valor_f: p.costo_ads_f },
+                { label: 'Costo de fabricación', valor: p.costo_fabricacion, valor_f: p.costo_fabricacion_f },
+            ];
+            document.getElementById('pl-detalle').innerHTML = filas.map(f => {
+                const pct = p.facturado > 0 ? Math.round(f.valor / p.facturado * 100) : 0;
+                return `<div class="pl-detalle-fila">
+                    <span class="pl-detalle-label">${f.label}</span>
+                    <div class="checklist-barra" style="flex:1;"><div class="checklist-fill" style="width:${Math.min(pct,100)}%; background:var(--danger);"></div></div>
+                    <span class="pl-detalle-valor">${f.valor_f} <span style="color:var(--text-faint); font-size:0.85em;">(${pct}%)</span></span>
+                </div>`;
+            }).join('');
+        } catch (e) {
+            console.error('[Dashboard] Error cargando ganancia vs promedio', e);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { renderizarWidgetsActivos(); cargarChecklistPerfil(); cargarHeroMetricasDia(); cargarGananciaDiaVsPromedio(); });
 </script>
 {% endblock %}
