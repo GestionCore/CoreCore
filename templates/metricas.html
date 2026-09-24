@@ -96,22 +96,27 @@
     <div class="stat-chip {% if resumen.ganancia_neta_negativa %}accent-danger{% else %}accent-primary{% endif %}">
         <div class="stat-chip-label">Ganancia Neta Real</div>
         <div class="stat-chip-value">${{ resumen.ganancia_neta }}</div>
+        <div class="stat-chip-desc">Lo que queda en el bolsillo</div>
     </div>
-    <div class="stat-chip accent-denim">
-        <div class="stat-chip-label">Comisiones MeLi</div>
-        <div class="stat-chip-value">${{ resumen.comision }}</div>
+    <div class="stat-chip" style="border-color:var(--semantic-danger); background:rgba(255,68,68,0.06);">
+        <div class="stat-chip-label" style="color:var(--semantic-danger);">Comisiones MeLi</div>
+        <div class="stat-chip-value text-danger">${{ resumen.comision }}</div>
+        <div class="stat-chip-desc">Cargo por venta</div>
     </div>
-    <div class="stat-chip accent-denim">
-        <div class="stat-chip-label">Envíos</div>
-        <div class="stat-chip-value">${{ resumen.envios }}</div>
+    <div class="stat-chip" style="border-color:rgba(255,140,0,0.6); background:rgba(255,140,0,0.06);">
+        <div class="stat-chip-label" style="color:#ff8c00;">Envíos</div>
+        <div class="stat-chip-value" style="color:#ff8c00;">${{ resumen.envios }}</div>
+        <div class="stat-chip-desc">Costo de logística</div>
     </div>
-    <div class="stat-chip accent-denim">
-        <div class="stat-chip-label">Publicidad</div>
-        <div class="stat-chip-value">${{ resumen.costo_ads }}</div>
+    <div class="stat-chip" style="border-color:rgba(255,200,50,0.6); background:rgba(255,200,50,0.06);">
+        <div class="stat-chip-label" style="color:#ffc832;">Publicidad</div>
+        <div class="stat-chip-value" style="color:#ffc832;">${{ resumen.costo_ads }}</div>
+        <div class="stat-chip-desc">Gasto en Ads</div>
     </div>
     <div class="stat-chip accent-gold">
         <div class="stat-chip-label">Costo de Fabricación</div>
         <div class="stat-chip-value">${{ resumen.costo_fabricacion }}</div>
+        <div class="stat-chip-desc">Costo del producto</div>
     </div>
 </div>
 
@@ -233,7 +238,11 @@
                     }
                 }
             });
-        }).catch(() => {});
+        }).catch(() => {
+            document.getElementById('canvas-correlacion').style.display = 'none';
+            document.getElementById('correlacion-empty').style.display = '';
+            document.getElementById('correlacion-empty').textContent = 'No se pudo cargar el gráfico. Revisá la conexión.';
+        });
 })();
 
 // ── Heatmap horario ───────────────────────────────────────────────────────────
@@ -287,7 +296,11 @@
                 }
             });
         })
-        .catch(() => {});
+        .catch(() => {
+            document.getElementById('canvas-heatmap').style.display = 'none';
+            document.getElementById('heatmap-empty').style.display = '';
+            document.getElementById('heatmap-empty').textContent = 'No se pudo cargar el gráfico. Revisá la conexión.';
+        });
 })();
 </script>
 {% endblock %}

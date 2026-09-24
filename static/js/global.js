@@ -187,6 +187,12 @@ function _actualizarBadgeNav(n) {
     if (!badge) return;
     if (n > 0) { badge.textContent = n > 9 ? '9+' : n; badge.style.display = 'inline-flex'; }
     else { badge.style.display = 'none'; }
+    // también actualizar el badge de Logros en el dropdown (misiones urgentes)
+    const badgeLogros = document.getElementById('nav-badge-logros');
+    if (badgeLogros) {
+        if (n > 0) { badgeLogros.textContent = n > 9 ? '9+' : n; badgeLogros.style.display = 'inline-flex'; }
+        else { badgeLogros.style.display = 'none'; }
+    }
 }
 
 async function cargarAlertasPendientes() {
@@ -1123,17 +1129,58 @@ async function cargarTabFicha(idMeli) {
     try {
         const resp = await fetch(`/api/drawer/info/${idMeli}`);
         const d = await resp.json();
-        const atributosHtml = d.atributos.map(a => `<div class="mobile-card-field"><span class="k">${a.nombre}</span><span class="v">${a.valor}</span></div>`).join('');
+        // Atributos editables: solo los que tienen valor no vacío o son relevantes
+        const atributosHtml = (d.atributos || []).map((a, i) => `
+            <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--glass-border);">
+                <span style="color:var(--text-secondary); font-size:0.82em; width:42%; flex-shrink:0;">${a.nombre}</span>
+                <input type="text" data-attr-id="${a.id || ''}" value="${(a.valor || '').replace(/"/g,'&quot;')}"
+                    style="flex:1; background:rgba(255,255,255,0.04); border:1px solid transparent; border-radius:4px; color:var(--text-primary); padding:4px 8px; font-size:0.85em; transition:border-color 0.15s;"
+                    onfocus="this.style.borderColor='var(--accent-brand)'" onblur="this.style.borderColor='transparent'"
+                    placeholder="(vacío)">
+            </div>`).join('');
         cont.innerHTML = `
-            <div class="field-group" style="margin-bottom:14px;">
-                <label class="field-label">Descripción</label>
-                <textarea id="drawer-descripcion" rows="8" style="width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text-primary); padding:10px; font-family:var(--font-ui);">${d.descripcion}</textarea>
-                <button type="button" class="btn btn-primary" style="margin-top:8px;" onclick="guardarDescripcion()">Guardar descripción</button>
+            <div class="field-group" style="margin-bottom:16px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                    <label class="field-label" style="margin:0;">Descripción</label>
+                    <span class="text-muted" style="font-size:0.75em;" id="desc-chars"></span>
+                </div>
+                <textarea id="drawer-descripcion" rows="7"
+                    style="width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text-primary); padding:10px; font-family:var(--font-ui); font-size:0.88em; line-height:1.5; resize:vertical;"
+                    oninput="document.getElementById('desc-chars').textContent = this.value.length + ' caracteres'">${d.descripcion || ''}</textarea>
+                <button type="button" class="btn btn-primary" style="margin-top:8px;" onclick="guardarDescripcion()">
+                    <svg class="icon" style="margin-right:5px;"><use href="#icon-check"/></svg>Guardar descripción
+                </button>
             </div>
-            <div class="panel-title" style="margin-top:20px;">Atributos técnicos</div>
-            <div class="mobile-card-grid">${atributosHtml || '<span class="text-muted">Sin atributos cargados.</span>'}</div>
+            ${atributosHtml ? `
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                <div class="field-label" style="margin:0;">Atributos técnicos</div>
+                <button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.8em;" onclick="guardarAtributosFicha()">
+                    <svg class="icon" style="width:12px;height:12px;margin-right:4px;"><use href="#icon-check"/></svg>Guardar atributos
+                </button>
+            </div>
+            <div id="ficha-atributos-cont">${atributosHtml}</div>
+            <div class="text-muted" style="font-size:0.75em; margin-top:10px; line-height:1.4;">
+                Los atributos son visibles en MeLi. Algunos tienen valores fijos que MeLi no permite cambiar libremente (pueden quedar ignorados al guardar).
+            </div>` : '<div class="alert-empty">Sin atributos técnicos cargados.</div>'}
         `;
+        // inicializar contador de chars
+        const ta = document.getElementById('drawer-descripcion');
+        if (ta) document.getElementById('desc-chars').textContent = ta.value.length + ' caracteres';
     } catch(e) { cont.innerHTML = '<div class="text-danger">Error al cargar.</div>'; }
+}
+
+async function guardarAtributosFicha() {
+    const inputs = document.querySelectorAll('#ficha-atributos-cont input[data-attr-id]');
+    const atributos = Array.from(inputs).map(inp => ({ id: inp.dataset.attrId, value_name: inp.value })).filter(a => a.id);
+    if (!atributos.length) { mostrarToast('Sin atributos para guardar', 'error'); return; }
+    try {
+        const resp = await fetch(`/api/drawer/guardar_atributos/${drawerIdActual}`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ atributos })
+        });
+        const data = await resp.json();
+        mostrarToast(data.ok ? 'Atributos actualizados en MeLi' : (data.detalle || 'No se pudieron guardar los atributos'), data.ok ? 'success' : 'error');
+    } catch(e) { mostrarToast('Error guardando atributos', 'error'); }
 }
 
 async function guardarDescripcion() {

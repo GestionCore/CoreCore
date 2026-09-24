@@ -20,21 +20,14 @@
 
     <div class="field-group" style="margin-bottom:14px;">
         <label class="field-label">Categoría</label>
-        <select id="calc-categoria">
-            <option value="">Cargando categorías...</option>
+        <div style="display:flex; gap:8px; margin-bottom:6px;">
+            <input type="text" id="calc-categoria-buscar" placeholder="Buscar categoría de MeLi..." style="flex:1;" oninput="buscarCategoria()">
+        </div>
+        <select id="calc-categoria" size="1">
+            <option value="">Cargando tus categorías...</option>
         </select>
-        <div class="text-muted" style="font-size:0.78em; margin-top:4px;">Tus categorías activas — la comisión varía según la categoría.</div>
-    </div>
-
-    <div class="field-group" style="margin-bottom:14px;">
-        <label class="field-label">Tipo de publicación</label>
-        <select id="calc-tipo">
-            <option value="gold_special">Premium (Gold Special)</option>
-            <option value="gold_pro">Premium Pro (Gold Pro)</option>
-            <option value="gold">Oro</option>
-            <option value="silver">Plata</option>
-            <option value="bronze">Bronce (Gratis)</option>
-        </select>
+        <div id="calc-cat-resultados" style="display:none; border:1px solid var(--glass-border); border-radius:var(--radius-sm); max-height:180px; overflow-y:auto; margin-top:4px; background:var(--glass-bg-alt);"></div>
+        <div class="text-muted" style="font-size:0.78em; margin-top:4px;">Seleccioná de tus categorías activas o buscá cualquier categoría de MeLi Argentina.</div>
     </div>
 
     <div class="field-group" style="margin-bottom:18px;">
@@ -65,7 +58,19 @@
 </div>
 
 <script>
+// Cuotas sin interés en MeLi Argentina — costo financiero que absorbe el vendedor
+// Fuente: tabla oficial Mercado Pago (actualizar si MELI cambia las tasas)
+const CUOTAS_FINANCIACION = [
+    { cuotas: 1,  label: "Pago en 1 cuota",       pct: 0.0    },
+    { cuotas: 3,  label: "3 cuotas sin interés",   pct: 0.0799 },
+    { cuotas: 6,  label: "6 cuotas sin interés",   pct: 0.1199 },
+    { cuotas: 12, label: "12 cuotas sin interés",  pct: 0.2299 },
+    { cuotas: 18, label: "18 cuotas sin interés",  pct: 0.2999 },
+    { cuotas: 24, label: "24 cuotas sin interés",  pct: 0.3699 },
+];
+
 let _categorias = [];
+let _buscarTimer = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const sel = document.getElementById('calc-categoria');
@@ -73,38 +78,65 @@ document.addEventListener('DOMContentLoaded', async () => {
         const resp = await fetch('/api/calculadora_categorias');
         _categorias = await resp.json();
         if (_categorias.error || !_categorias.length) {
-            sel.innerHTML = '<option value="">Sin categorías activas disponibles</option>';
+            sel.innerHTML = '<option value="">Sin categorías activas — usá el buscador</option>';
             return;
         }
-        sel.innerHTML = _categorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+        sel.innerHTML = '<option value="">— Seleccioná de tus categorías activas —</option>' +
+            _categorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
     } catch(e) {
         sel.innerHTML = '<option value="">Error cargando categorías</option>';
     }
 });
 
+function buscarCategoria() {
+    clearTimeout(_buscarTimer);
+    const q = document.getElementById('calc-categoria-buscar').value.trim();
+    const box = document.getElementById('calc-cat-resultados');
+    if (q.length < 3) { box.style.display = 'none'; return; }
+    _buscarTimer = setTimeout(async () => {
+        box.innerHTML = '<div style="padding:8px 12px; color:var(--text-secondary); font-size:0.85em;">Buscando...</div>';
+        box.style.display = '';
+        try {
+            const r = await fetch(`/api/calculadora_buscar_categoria?q=${encodeURIComponent(q)}`);
+            const data = await r.json();
+            if (!data.length) { box.innerHTML = '<div style="padding:8px 12px; color:var(--text-secondary); font-size:0.85em;">Sin resultados</div>'; return; }
+            box.innerHTML = data.map(c => `
+                <div onclick="seleccionarCategoria('${c.id}', '${c.nombre.replace(/'/g, "&#39;")}')"
+                     style="padding:9px 14px; cursor:pointer; font-size:0.88em; border-bottom:1px solid var(--glass-border);"
+                     onmouseenter="this.style.background='rgba(255,255,255,0.06)'" onmouseleave="this.style.background=''">
+                    <strong>${c.nombre}</strong><span style="color:var(--text-faint); margin-left:8px; font-size:0.8em;">${c.id}</span>
+                </div>`).join('');
+        } catch { box.innerHTML = '<div style="padding:8px 12px; color:var(--semantic-danger); font-size:0.85em;">Error buscando</div>'; }
+    }, 350);
+}
+
+function seleccionarCategoria(id, nombre) {
+    const sel = document.getElementById('calc-categoria');
+    // Si ya existe esa opción, seleccionarla; si no, crearla
+    let opt = sel.querySelector(`option[value="${id}"]`);
+    if (!opt) { opt = new Option(nombre, id); sel.add(opt); }
+    sel.value = id;
+    document.getElementById('calc-categoria-buscar').value = nombre;
+    document.getElementById('calc-cat-resultados').style.display = 'none';
+}
+
 async function calcular() {
     const precio = parseFloat(document.getElementById('calc-precio').value);
     const categoria = document.getElementById('calc-categoria').value;
-    const tipo = document.getElementById('calc-tipo').value;
     const costo = parseFloat(document.getElementById('calc-costo').value) || 0;
     const btn = document.getElementById('calc-btn');
 
     if (!precio || precio <= 0) { mostrarToast('Ingresá un precio válido', 'error'); return; }
-    if (!categoria) { mostrarToast('Seleccioná una categoría', 'error'); return; }
+    if (!categoria) { mostrarToast('Seleccioná o buscá una categoría', 'error'); return; }
 
     btn.disabled = true;
     btn.innerHTML = '<svg class="icon spin-anim" style="margin-right:6px;vertical-align:middle;"><use href="#icon-refresh"/></svg>Calculando...';
 
     try {
-        const [resSinCuotas, resConCuotas] = await Promise.all([
-            fetch(`/api/calculadora_costos?precio=${precio}&category_id=${encodeURIComponent(categoria)}&listing_type_id=${tipo}&ofrece_cuotas=false`).then(r => r.json()),
-            fetch(`/api/calculadora_costos?precio=${precio}&category_id=${encodeURIComponent(categoria)}&listing_type_id=${tipo}&ofrece_cuotas=true`).then(r => r.json()),
-        ]);
-
-        if (resSinCuotas.error) { mostrarToast(resSinCuotas.error, 'error'); return; }
-
-        mostrarResultado(resSinCuotas, costo);
-        mostrarComparativa(resSinCuotas, resConCuotas, costo);
+        const base = await fetch(`/api/calculadora_costos?precio=${precio}&category_id=${encodeURIComponent(categoria)}&listing_type_id=gold_special&ofrece_cuotas=false`).then(r => r.json());
+        if (base.error) { mostrarToast(base.error, 'error'); return; }
+        mostrarResultado(base, costo);
+        mostrarComparativaCuotas(base, costo);
     } catch(e) {
         mostrarToast('Error consultando la API', 'error');
     } finally {
@@ -117,12 +149,8 @@ function fmt(n) { return n !== null && n !== undefined ? '$' + Math.round(n).toL
 function pct(n) { return n !== null && n !== undefined ? (n * 100).toFixed(1) + '%' : '—'; }
 
 function mostrarResultado(d, costo) {
-    const envioTexto = d.costo_envio !== null
-        ? (d.envio_obligatorio_gratis ? `Incluido en comisión (envío gratis obligatorio)` : `${fmt(d.costo_envio)} a cargo tuyo`)
-        : 'No disponible';
-
     const gananciaNetaReal = costo > 0 ? (d.recibis - costo) : null;
-    const pctGanancia = (costo > 0 && d.recibis > 0) ? ((gananciaNetaReal / d.precio) * 100).toFixed(1) : null;
+    const pctGanancia = (costo > 0 && d.precio > 0) ? ((gananciaNetaReal / d.precio) * 100).toFixed(1) : null;
 
     document.getElementById('panel-resultado').style.display = '';
     document.getElementById('resultado-contenido').innerHTML = `
@@ -131,20 +159,20 @@ function mostrarResultado(d, costo) {
                 <div class="stat-chip-label">Precio de venta</div>
                 <div class="stat-chip-value">${fmt(d.precio)}</div>
             </div>
-            <div class="stat-chip" style="border-color:var(--semantic-danger);">
-                <div class="stat-chip-label">Comisión MeLi</div>
+            <div class="stat-chip" style="border-color:var(--semantic-danger); background:rgba(255,68,68,0.06);">
+                <div class="stat-chip-label" style="color:var(--semantic-danger);">Comisión MeLi</div>
                 <div class="stat-chip-value text-danger">${fmt(d.comision_total)}</div>
-                <div class="stat-chip-desc">${pct(d.pct_comision_base)} base${d.pct_cuotas ? ' + ' + pct(d.pct_cuotas) + ' cuotas' : ''}</div>
+                <div class="stat-chip-desc">${pct(d.pct_comision_base)} base${d.cargo_fijo ? ' + $' + Math.round(d.cargo_fijo) + ' fijo' : ''}</div>
             </div>
-            <div class="stat-chip" style="${d.costo_envio ? 'border-color:var(--semantic-danger);' : ''}">
-                <div class="stat-chip-label">Costo de envío</div>
-                <div class="stat-chip-value ${d.costo_envio ? 'text-danger' : ''}">${d.costo_envio !== null ? fmt(d.costo_envio) : '—'}</div>
-                <div class="stat-chip-desc">${d.envio_obligatorio_gratis ? 'Obligatorio gratis' : (d.costo_envio === null ? 'No disponible' : 'A cargo tuyo')}</div>
+            <div class="stat-chip" style="${d.costo_envio ? 'border-color:rgba(255,140,0,0.6); background:rgba(255,140,0,0.06);' : ''}">
+                <div class="stat-chip-label" style="${d.costo_envio ? 'color:#ff8c00;' : ''}">Costo de envío</div>
+                <div class="stat-chip-value" style="${d.costo_envio ? 'color:#ff8c00;' : ''}">${d.costo_envio !== null ? fmt(d.costo_envio) : '—'}</div>
+                <div class="stat-chip-desc">${d.envio_obligatorio_gratis ? 'Obligatorio gratis' : (d.costo_envio === null ? 'Consultar' : 'A cargo tuyo')}</div>
             </div>
             <div class="stat-chip accent-success">
                 <div class="stat-chip-label">Lo que recibís</div>
                 <div class="stat-chip-value">${fmt(d.recibis)}</div>
-                <div class="stat-chip-desc">${((d.recibis / d.precio) * 100).toFixed(1)}% del precio</div>
+                <div class="stat-chip-desc">${d.precio > 0 ? ((d.recibis / d.precio) * 100).toFixed(1) + '% del precio' : ''}</div>
             </div>
         </div>
         ${costo > 0 ? `
@@ -164,36 +192,30 @@ function mostrarResultado(d, costo) {
     `;
 }
 
-function mostrarComparativa(sinCuotas, conCuotas, costo) {
-    if (conCuotas.error) {
-        document.getElementById('panel-cuotas').style.display = 'none';
-        return;
-    }
-    const diff = sinCuotas.recibis - conCuotas.recibis;
+function mostrarComparativaCuotas(base, costo) {
     document.getElementById('panel-cuotas').style.display = '';
-    document.getElementById('cuotas-chips').innerHTML = `
-        <div class="stat-chip accent-success">
-            <div class="stat-chip-label">Sin cuotas — recibís</div>
-            <div class="stat-chip-value">${fmt(sinCuotas.recibis)}</div>
-            <div class="stat-chip-desc">Comisión: ${fmt(sinCuotas.comision_total)}</div>
-        </div>
-        <div class="stat-chip" style="border-color:var(--semantic-warning);">
-            <div class="stat-chip-label">Con cuotas sin interés — recibís</div>
-            <div class="stat-chip-value" style="color:var(--semantic-warning);">${fmt(conCuotas.recibis)}</div>
-            <div class="stat-chip-desc">Comisión: ${fmt(conCuotas.comision_total)} (${conCuotas.pct_cuotas ? '+' + pct(conCuotas.pct_cuotas) + ' financing' : 'aprox.'})</div>
-        </div>
-        <div class="stat-chip" style="border-color:var(--semantic-danger);">
-            <div class="stat-chip-label">Costo de ofrecer cuotas</div>
-            <div class="stat-chip-value text-danger">${fmt(diff)}</div>
-            <div class="stat-chip-desc">${((diff / sinCuotas.precio) * 100).toFixed(1)}% del precio de venta</div>
-        </div>
-        ${costo > 0 ? `
-        <div class="stat-chip">
-            <div class="stat-chip-label">Ganancia neta c/ cuotas</div>
-            <div class="stat-chip-value ${(conCuotas.recibis - costo) >= 0 ? 'text-success' : 'text-danger'}">${fmt(conCuotas.recibis - costo)}</div>
-            <div class="stat-chip-desc">vs ${fmt(sinCuotas.recibis - costo)} sin cuotas</div>
-        </div>` : ''}
-    `;
+    // comision base sin cuotas
+    const comisionBase = base.comision_total;
+    const recibisBase = base.recibis;
+
+    document.getElementById('cuotas-chips').innerHTML = CUOTAS_FINANCIACION.map(c => {
+        const costoFinanciamiento = c.pct > 0 ? base.precio * c.pct : 0;
+        const comisionTotal = comisionBase + costoFinanciamiento;
+        const recibis = base.precio - comisionTotal - (base.costo_envio || 0);
+        const diferencia = recibis - recibisBase;
+        const gananciaConCosto = costo > 0 ? recibis - costo : null;
+        return `
+            <div class="stat-chip ${c.cuotas === 1 ? 'accent-success' : diferencia < -base.precio * 0.15 ? '' : ''}"
+                 style="${c.cuotas === 1 ? '' : 'border-color:rgba(255,200,50,0.5); background:rgba(255,200,50,0.05);'}">
+                <div class="stat-chip-label">${c.label}</div>
+                <div class="stat-chip-value" style="${c.cuotas === 1 ? '' : 'color:#ffc832;'}">${fmt(recibis)}</div>
+                <div class="stat-chip-desc">
+                    Comisión: ${fmt(comisionTotal)}${c.pct > 0 ? ` (+${(c.pct*100).toFixed(1)}% financ.)` : ''}
+                    ${costo > 0 ? ` · Neto: <strong>${fmt(gananciaConCosto)}</strong>` : ''}
+                    ${c.cuotas > 1 ? `<br><span style="color:var(--semantic-danger)">Perdés ${fmt(Math.abs(diferencia))} vs contado</span>` : ''}
+                </div>
+            </div>`;
+    }).join('');
 }
 </script>
 {% endblock %}

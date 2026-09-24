@@ -54,6 +54,49 @@ def _mapear_estado_claim(status, stage):
     return status or "opened"
 
 
+_MOTIVOS_ES = {
+    # Códigos descriptivos
+    "SHIPPING_DELAY": "Demora en el envío",
+    "DAMAGE": "Artículo dañado",
+    "NOT_AS_DESCRIBED": "Diferente a lo anunciado",
+    "LOST": "Artículo perdido en tránsito",
+    "SWITCH": "Artículo equivocado enviado",
+    "ITEM_NOT_RECEIVED": "Artículo no recibido",
+    "PRODUCT_DIFFERENT": "Producto diferente al anunciado",
+    "DEFECT": "Artículo defectuoso",
+    "INCOMPLETE": "Pedido incompleto",
+    "DIFFERENT_COLOR": "Color diferente al publicado",
+    "DIFFERENT_SIZE": "Talle diferente al publicado",
+    "WRONG_ITEM": "Artículo equivocado",
+    "MISSING_PARTS": "Partes o accesorios faltantes",
+    "USED_AS_NEW": "Artículo usado vendido como nuevo",
+    "COUNTERFEIT": "Artículo falsificado",
+    "RETURN_REQUEST": "Solicitud de devolución",
+    "CANCEL_REQUEST": "Solicitud de cancelación",
+    # Códigos PDD (Post-venta / Defensa del Comprador)
+    "PDD9939": "Artículo no recibido",
+    "PDD9940": "Artículo dañado al llegar",
+    "PDD9941": "Artículo diferente al anunciado",
+    "PDD9942": "Artículo defectuoso",
+    "PDD9943": "Pedido incompleto",
+    "PDD9944": "Artículo equivocado enviado",
+    "PDD9945": "Artículo perdido en tránsito",
+    "PDD9946": "Calidad no corresponde",
+    "PDD9947": "Talle/medida diferente al publicado",
+    "PDD9948": "Color diferente al publicado",
+}
+
+
+def _traducir_motivo(reason_id):
+    if not reason_id:
+        return None
+    traducido = _MOTIVOS_ES.get(reason_id)
+    if traducido:
+        return traducido
+    # fallback: convertir código a texto legible
+    return reason_id.replace("_", " ").replace("-", " ").title()
+
+
 def _parsear_fecha(fecha_raw):
     if not fecha_raw:
         return None
@@ -99,7 +142,7 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
                 id_reclamo = str(id_reclamo)
                 status = c.get("status")
                 stage = c.get("stage")
-                razon = c.get("reason_id") or (c.get("resolution", {}) or {}).get("reason")
+                razon = _traducir_motivo(c.get("reason_id") or (c.get("resolution", {}) or {}).get("reason"))
 
                 cursor.execute("""
                     INSERT INTO incidencias_posventa (cuenta_id, id_reclamo, id_orden, tipo, motivo, estado, monto_retenido, fecha)

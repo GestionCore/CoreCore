@@ -1349,6 +1349,54 @@ def api_calculadora_categorias():
     return jsonify(categorias)
 
 
+@app.route("/api/calculadora_buscar_categoria")
+@login_requerido
+def api_calculadora_buscar_categoria():
+    q = request.args.get("q", "").strip()
+    if len(q) < 3:
+        return jsonify([])
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        headers = {"Authorization": f"Bearer {access_token}"}
+    except token_manager.CuentaDesconectada:
+        headers = {}
+    try:
+        # Búsqueda por dominio/keyword (devuelve las categorías con mejor score semántico)
+        resp = meli_http.get(
+            "https://api.mercadolibre.com/sites/MLA/domain_discovery/search",
+            headers=headers,
+            params={"q": q, "limit": 10},
+        )
+        resultados = []
+        if resp.status_code == 200:
+            data = resp.json()
+            seen = set()
+            for item in (data if isinstance(data, list) else []):
+                cat_id = item.get("category_id")
+                if cat_id and cat_id not in seen:
+                    seen.add(cat_id)
+                    nombre = item.get("domain_name") or item.get("category_name") or cat_id
+                    resultados.append({"id": cat_id, "nombre": nombre})
+        if not resultados:
+            # Fallback: search predictor (devuelve sugerencias de búsqueda con categoría asociada)
+            resp2 = meli_http.get(
+                "https://api.mercadolibre.com/sites/MLA/search",
+                headers=headers,
+                params={"q": q, "limit": 1},
+            )
+            if resp2.status_code == 200:
+                cat_info = resp2.json().get("available_filters", [])
+                for f in cat_info:
+                    if f.get("id") == "category":
+                        for v in (f.get("values") or [])[:8]:
+                            if v.get("id"):
+                                resultados.append({"id": v["id"], "nombre": v.get("name", v["id"])})
+        return jsonify(resultados[:10])
+    except Exception as e:
+        print(f"[Calculadora] Error buscando categoría: {e}")
+        return jsonify([])
+
+
 @app.route("/api/calculadora_costos")
 @login_requerido
 def api_calculadora_costos():
@@ -1552,7 +1600,7 @@ def api_drawer_info(id_meli):
                 data = r.json()
                 atributos_raw = data.get("attributes", [])
                 atributos = [
-                    {"nombre": a.get("name", ""), "valor": a.get("value_name") or a.get("value_id") or ""}
+                    {"id": a.get("id", ""), "nombre": a.get("name", ""), "valor": a.get("value_name") or a.get("value_id") or ""}
                     for a in atributos_raw if a.get("value_name") or a.get("value_id")
                 ]
             r2 = meli_http.get(f"https://api.mercadolibre.com/items/{id_meli}/description", headers=headers)
@@ -1623,6 +1671,30 @@ def api_drawer_guardar_descripcion(id_meli):
         )
         if r.status_code not in (200, 201):
             return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}"})
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
+    except Exception as e:
+        return jsonify({"ok": False, "detalle": str(e)})
+    return jsonify({"ok": True})
+
+
+@app.route("/api/drawer/guardar_atributos/<id_meli>", methods=["POST"])
+@login_requerido
+def api_drawer_guardar_atributos(id_meli):
+    data = request.get_json(silent=True) or {}
+    atributos = data.get("atributos") or []
+    if not atributos:
+        return jsonify({"ok": False, "detalle": "Sin atributos"})
+    payload = [{"id": a["id"], "value_name": a.get("value_name", "")} for a in atributos if a.get("id")]
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        r = meli_http.put(
+            f"https://api.mercadolibre.com/items/{id_meli}",
+            headers=headers, json={"attributes": payload},
+        )
+        if r.status_code not in (200, 201):
+            return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}: {r.text[:200]}"})
     except token_manager.CuentaDesconectada:
         return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
     except Exception as e:
