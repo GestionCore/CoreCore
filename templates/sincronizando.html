@@ -7,41 +7,200 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_v('css/style.css') }}">
     <style>
-        html, body { height: 100%; margin: 0; }
-        body {
-            display: flex; align-items: center; justify-content: center;
-            background: var(--bg-base); color: var(--text-primary);
-            font-family: var(--font-ui); text-align: center;
+        html, body { height: 100%; margin: 0; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-ui); }
+        body { display: flex; align-items: center; justify-content: center; }
+        .sync-wrap { max-width: 520px; width: 100%; margin: 24px; }
+
+        /* Card principal */
+        .sync-card {
+            padding: 44px 40px 36px;
+            border-radius: var(--radius-lg);
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            box-shadow: var(--shadow-elevated);
+            text-align: center;
+            margin-bottom: 16px;
         }
-        .espera-tarjeta { max-width: 460px; margin: 24px; padding: 44px 40px; border-radius: var(--radius-lg);
-            background: var(--glass-bg); border: 1px solid var(--glass-border);
-            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: var(--shadow-elevated); }
-        .espera-spinner { width: 44px; height: 44px; margin: 0 auto 24px; border-radius: 50%;
-            border: 3px solid var(--glass-border); border-top-color: var(--accent-primary);
-            animation: girar 0.9s linear infinite; }
+
+        /* Ícono animado */
+        .sync-icon { width: 52px; height: 52px; margin: 0 auto 22px; position: relative; }
+        .sync-icon-ring {
+            width: 52px; height: 52px; border-radius: 50%;
+            border: 3px solid var(--glass-border);
+            border-top-color: var(--accent-primary);
+            animation: girar 0.9s linear infinite;
+            position: absolute; top: 0; left: 0;
+        }
+        .sync-icon-inner {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 20px; line-height: 1;
+        }
         @keyframes girar { to { transform: rotate(360deg); } }
-        .espera-titulo { font-family: var(--font-display); font-size: 1.3em; font-weight: 700; margin-bottom: 10px; }
-        .espera-detalle { color: var(--text-secondary); font-size: 0.92em; line-height: 1.6; margin-bottom: 4px; }
-        .espera-nota { color: var(--text-faint); font-size: 0.8em; margin-top: 22px; }
+
+        .sync-titulo { font-family: var(--font-display); font-size: 1.35em; font-weight: 700; margin-bottom: 8px; }
+        .sync-subtitle { color: var(--text-secondary); font-size: 0.9em; line-height: 1.55; margin-bottom: 28px; }
+
+        /* Pasos */
+        .sync-steps { text-align: left; display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+        .sync-step {
+            display: flex; align-items: center; gap: 12px;
+            padding: 11px 14px; border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            background: var(--bg-elevated);
+            transition: border-color .3s, background .3s;
+        }
+        .sync-step.activo { border-color: var(--accent-primary); background: rgba(var(--accent-rgb, 88,166,255),.07); }
+        .sync-step.hecho { border-color: var(--success, #4caf50); background: rgba(76,175,80,.07); }
+
+        .step-icono {
+            width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700;
+            border: 2px solid var(--glass-border);
+            color: var(--text-faint);
+            transition: background .3s, border-color .3s, color .3s;
+        }
+        .sync-step.activo .step-icono {
+            border-color: var(--accent-primary); color: var(--accent-primary);
+            background: rgba(var(--accent-rgb, 88,166,255),.12);
+        }
+        .sync-step.hecho .step-icono {
+            border-color: var(--success, #4caf50); background: var(--success, #4caf50);
+            color: #fff;
+        }
+        .step-cuerpo { flex: 1; min-width: 0; }
+        .step-nombre { font-size: 0.88em; font-weight: 600; }
+        .step-detalle { font-size: 0.78em; color: var(--text-secondary); margin-top: 1px; }
+        .step-conteo { font-size: 0.75em; font-weight: 700; color: var(--accent-primary); white-space: nowrap; }
+        .sync-step.hecho .step-conteo { color: var(--success, #4caf50); }
+
+        /* Tip rotativo */
+        .sync-tip {
+            padding: 14px 18px; border-radius: var(--radius-md);
+            background: var(--bg-elevated); border: 1px solid var(--glass-border);
+            font-size: 0.83em; color: var(--text-secondary); text-align: left; line-height: 1.5;
+        }
+        .sync-tip strong { color: var(--accent-primary); }
+        .sync-tip-label { font-size: 0.72em; text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); margin-bottom: 4px; font-weight: 600; }
+
+        .sync-nota { text-align: center; color: var(--text-faint); font-size: 0.78em; margin-top: 20px; }
     </style>
 </head>
 <body>
-<div class="espera-tarjeta">
-    <div class="espera-spinner"></div>
-    <div class="espera-titulo">Estamos trayendo tu información</div>
-    <div class="espera-detalle">Publicaciones, stock y el historial de ventas del último año — puede tardar unos minutos según el tamaño de tu catálogo.</div>
-    <div class="espera-nota">Esta pantalla se actualiza sola apenas termine. No hace falta que hagas nada.</div>
+<div class="sync-wrap">
+  <div class="sync-card">
+    <div class="sync-icon">
+      <div class="sync-icon-ring"></div>
+      <div class="sync-icon-inner">⚡</div>
+    </div>
+    <div class="sync-titulo">Sincronizando tu cuenta</div>
+    <div class="sync-subtitle">Importando todo desde Mercado Libre por primera vez.<br>Solo tarda unos minutos.</div>
+
+    <div class="sync-steps">
+      <div class="sync-step" id="step-productos">
+        <div class="step-icono" id="ico-productos">1</div>
+        <div class="step-cuerpo">
+          <div class="step-nombre">Catálogo y stock</div>
+          <div class="step-detalle">Publicaciones, variantes y stock disponible</div>
+        </div>
+        <div class="step-conteo" id="cnt-productos">—</div>
+      </div>
+      <div class="sync-step" id="step-ventas">
+        <div class="step-icono" id="ico-ventas">2</div>
+        <div class="step-cuerpo">
+          <div class="step-nombre">Órdenes y ventas</div>
+          <div class="step-detalle">Historial completo del último año</div>
+        </div>
+        <div class="step-conteo" id="cnt-ventas">—</div>
+      </div>
+      <div class="sync-step" id="step-calc">
+        <div class="step-icono" id="ico-calc">3</div>
+        <div class="step-cuerpo">
+          <div class="step-nombre">Calculando métricas</div>
+          <div class="step-detalle">Ganancia real, comisiones y rentabilidad</div>
+        </div>
+        <div class="step-conteo" id="cnt-calc">—</div>
+      </div>
+    </div>
+
+    <div class="sync-tip" id="tip-box">
+      <div class="sync-tip-label">💡 Mientras esperás</div>
+      <div id="tip-texto">CoreLux calcula tu <strong>ganancia neta real</strong> descontando comisiones, envíos, publicidad y costo de fabricación — no solo la facturación bruta.</div>
+    </div>
+    <div class="sync-nota">Esta pantalla se actualiza sola cuando termine. No hace falta que hagas nada.</div>
+  </div>
 </div>
+
 <script>
-    async function chequearEstado() {
-        try {
-            const resp = await fetch('/api/estado_sincronizacion');
-            const data = await resp.json();
-            if (data.lista) { window.location.reload(); return; }
-        } catch (e) { /* seguimos intentando */ }
-        setTimeout(chequearEstado, 4000);
+var TIPS = [
+  'CoreLux calcula tu <strong>ganancia neta real</strong> descontando comisiones, envíos, publicidad y costo de fabricación — no solo la facturación bruta.',
+  'El módulo de <strong>Espía de Competencia</strong> rastrea precios y stock de cualquier publicación de MeLi en tiempo real.',
+  'Con <strong>Monotributo</strong> podés ver si estás cerca de cambiar de categoría y cuánto pagarías en cada una.',
+  'La <strong>Calculadora MeLi</strong> te dice exactamente cuánto tenés que cobrar para llegar al margen que querés.',
+  'Desde <strong>Publicidad</strong> podés ver el ACOS de cada campaña y detectar cuáles no están siendo rentables.',
+  'El módulo de <strong>Tendencias</strong> usa la API de MeLi para ver qué categorías están creciendo esta semana.',
+  'Con la vista de <strong>Reporte Fiscal</strong> podés exportar un resumen mensual listo para tu contador.',
+  'CoreLux sincroniza automáticamente cada 4 minutos — nunca más datos desactualizados.'
+];
+var tipIdx = 0;
+function rotateTip() {
+  tipIdx = (tipIdx + 1) % TIPS.length;
+  document.getElementById('tip-texto').innerHTML = TIPS[tipIdx];
+}
+setInterval(rotateTip, 5000);
+
+function marcarHecho(stepId, icoId, cntId, texto) {
+  var s = document.getElementById(stepId);
+  if (s) s.className = 'sync-step hecho';
+  var i = document.getElementById(icoId);
+  if (i) i.textContent = '✓';
+  var c = document.getElementById(cntId);
+  if (c && texto) c.textContent = texto;
+}
+function marcarActivo(stepId) {
+  var s = document.getElementById(stepId);
+  if (s && !s.classList.contains('hecho')) s.className = 'sync-step activo';
+}
+
+var prevProductos = 0, prevVentas = 0;
+
+async function chequearEstado() {
+  try {
+    var resp = await fetch('/api/estado_sincronizacion');
+    var data = await resp.json();
+
+    if (data.lista) {
+      marcarHecho('step-productos', 'ico-productos', 'cnt-productos', '');
+      marcarHecho('step-ventas', 'ico-ventas', 'cnt-ventas', '');
+      marcarHecho('step-calc', 'ico-calc', 'cnt-calc', 'Listo');
+      setTimeout(function() { window.location.reload(); }, 800);
+      return;
     }
-    setTimeout(chequearEstado, 4000);
+
+    var etapa = data.etapa || 'productos';
+    var nP = data.productos || 0;
+    var nV = data.ventas || 0;
+
+    if (etapa === 'productos') {
+      marcarActivo('step-productos');
+      if (nP > 0) document.getElementById('cnt-productos').textContent = nP + ' productos';
+    } else if (etapa === 'ventas') {
+      marcarHecho('step-productos', 'ico-productos', 'cnt-productos', nP + ' productos');
+      marcarActivo('step-ventas');
+      if (nV > 0) document.getElementById('cnt-ventas').textContent = nV + ' órdenes';
+    } else {
+      marcarHecho('step-productos', 'ico-productos', 'cnt-productos', nP + ' productos');
+      marcarHecho('step-ventas', 'ico-ventas', 'cnt-ventas', nV + ' órdenes');
+      marcarActivo('step-calc');
+    }
+  } catch(e) { /* sigue intentando */ }
+  setTimeout(chequearEstado, 3500);
+}
+
+// Arrancar activo el primer paso inmediatamente
+marcarActivo('step-productos');
+setTimeout(chequearEstado, 3000);
 </script>
 </body>
 </html>

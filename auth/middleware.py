@@ -4,9 +4,10 @@ para saber qué usuario/cuenta está atendiendo cada request.
 """
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from flask import session, redirect, url_for, g, request, render_template
+from flask import session, redirect, url_for, g, request, render_template, abort
 from auth import registro
 import db
+import config
 
 # Rutas que tienen que funcionar SIEMPRE, aunque la primera sincronización
 # todavía no haya terminado — si no las excluimos acá, el usuario queda
@@ -58,6 +59,26 @@ def login_requerido(vista):
                 print(f"[Middleware] ⚠️ Error actualizando racha: {e}")
             session["racha_actualizada_el"] = hoy_local
 
+        return vista(*args, **kwargs)
+    return envoltorio
+
+
+def admin_requerido(vista):
+    """
+    Decorador que verifica que el usuario logueado sea el administrador
+    de CoreLux. Debe ir dentro de @login_requerido (que ya setea g.usuario_id).
+    Usa ADMIN_EMAIL del .env — si está vacío, siempre deniega.
+    """
+    @wraps(vista)
+    def envoltorio(*args, **kwargs):
+        if not config.ADMIN_EMAIL:
+            abort(403)
+        with db.conexion_usuario(g.usuario_id) as conexion:
+            cursor = conexion.cursor()
+            cursor.execute("SELECT email FROM usuarios WHERE id = %s", (g.usuario_id,))
+            fila = cursor.fetchone()
+        if not fila or fila[0].lower() != config.ADMIN_EMAIL.lower():
+            abort(403)
         return vista(*args, **kwargs)
     return envoltorio
 

@@ -3,10 +3,38 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">🏠 Dashboard</h1>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-brand);"><use href="#icon-home"/></svg>Dashboard</h1>
         <div class="page-subtitle">Tu resumen del día — personalizalo a gusto</div>
     </div>
-    <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()">⚙️ Personalizar</button>
+    <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-settings"/></svg> Personalizar</button>
+</div>
+
+<!-- ── Hero del día: las 4 métricas que importan siempre ─────────────────── -->
+<div class="stat-strip" id="hero-metricas-dia">
+    <div class="stat-chip accent-gold" id="hero-facturado">
+        <svg class="stat-chip-icon"><use href="#icon-coin"/></svg>
+        <div class="stat-chip-label">Facturado Hoy</div>
+        <div class="stat-chip-value skeleton" style="min-width:100px;">—</div>
+        <div class="stat-chip-desc" id="hero-facturado-sub">—</div>
+    </div>
+    <div class="stat-chip accent-primary" id="hero-ordenes">
+        <svg class="stat-chip-icon" style="color:var(--accent-primary);"><use href="#icon-box"/></svg>
+        <div class="stat-chip-label">Ventas Hoy</div>
+        <div class="stat-chip-value skeleton" style="min-width:60px;">—</div>
+        <div class="stat-chip-desc" id="hero-ordenes-sub">—</div>
+    </div>
+    <div class="stat-chip accent-success" id="hero-mes">
+        <svg class="stat-chip-icon" style="color:var(--success);"><use href="#icon-chart"/></svg>
+        <div class="stat-chip-label">Facturado Últimos 14 días</div>
+        <div class="stat-chip-value skeleton" style="min-width:100px;">—</div>
+        <div class="stat-chip-desc" id="hero-mes-sub">—</div>
+    </div>
+    <div class="stat-chip" id="hero-salud">
+        <svg class="stat-chip-icon" style="color:var(--accent-cyan);"><use href="#icon-star"/></svg>
+        <div class="stat-chip-label">Salud de Cuenta</div>
+        <div class="stat-chip-value skeleton" style="min-width:60px;">—</div>
+        <div class="stat-chip-desc" id="hero-salud-sub">—</div>
+    </div>
 </div>
 
 <div class="panel" id="panel-personalizar-dashboard" style="display:none;">
@@ -29,12 +57,16 @@
 
 <div id="grid-widgets-dashboard" class="grid-dashboard"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
     const WIDGETS_DISPONIBLES = [
         { id: 'resumen_dia', nombre: 'Ganancia y Facturación del Día', default: true },
+        { id: 'ganancia_hoy', nombre: 'Ganancia Neta de Hoy', default: true },
         { id: 'tendencia_ventas', nombre: 'Gráfico: Tendencia de Ventas (14 días)', default: true },
         { id: 'ventas_vivo', nombre: 'Ventas en Vivo', default: true },
         { id: 'salud', nombre: 'Salud de Cuenta', default: true },
+        { id: 'top_productos', nombre: 'Top Productos del Mes', default: true },
+        { id: 'ultimas_ventas', nombre: 'Últimas Ventas', default: true },
         { id: 'reclamos', nombre: 'Devoluciones y Reclamos', default: false },
         { id: 'costos', nombre: 'Margen Promedio (Costos)', default: false },
         { id: 'stock_riesgo', nombre: 'Stock en Riesgo', default: false },
@@ -125,22 +157,75 @@
             grid.appendChild(w);
             fetch('/api/dashboard/tendencia_ventas').then(r => r.json()).then(d => {
                 if (!d.serie || !d.serie.length) { w.innerHTML = '<div class="text-muted">Sin datos todavía.</div>'; return; }
-                const maximo = Math.max(...d.serie.map(p => p.facturado), 1);
-                const barras = d.serie.map(p => {
-                    const alturaPct = Math.max((p.facturado / maximo) * 100, 1);
-                    return `<div class="grafico-tendencia-barra" style="height:${alturaPct}%;" data-tooltip="${p.fecha}: $${p.facturado.toLocaleString('es-AR', {minimumFractionDigits:0})}"></div>`;
-                }).join('');
+                const canvasId = 'chart-tendencia-' + Date.now();
                 w.innerHTML = `
                     <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
-                        <div class="stat-chip-label">Tendencia de Ventas — últimos ${d.serie.length} días</div>
-                        <div class="hero-number" style="font-size:1.5em;">$${d.total_formateado}<span class="hero-number-label">total del período</span></div>
-                        <div class="grafico-tendencia-barras">${barras}</div>
-                        <div class="grafico-tendencia-ejes"><span>${d.serie[0].fecha}</span><span>${d.serie[d.serie.length - 1].fecha}</span></div>
-                        <div class="text-muted" style="font-size:0.78em; margin-top:8px;">Promedio diario: $${d.promedio_diario_formateado}</div>
-                    </a>
-                    <a href="/api/dashboard/tendencia_ventas.png" class="btn-descargar-grafico" title="Descargar gráfico como imagen" onclick="event.stopPropagation();">
-                        <svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg>
+                        <div class="stat-chip-label">Facturación — últimos ${d.serie.length} días</div>
+                        <div class="hero-number" style="font-size:1.5em; margin-bottom:16px;">$${d.total_formateado}<span class="hero-number-label">total del período</span></div>
+                        <div style="position:relative; height:120px;">
+                            <canvas id="${canvasId}"></canvas>
+                        </div>
+                        <div class="grafico-tendencia-ejes" style="margin-top:6px;"><span>${d.serie[0].fecha}</span><span>Prom. diario: $${d.promedio_diario_formateado}</span><span>${d.serie[d.serie.length - 1].fecha}</span></div>
                     </a>`;
+                // Render chart after DOM update
+                requestAnimationFrame(() => {
+                    const canvas = document.getElementById(canvasId);
+                    if (!canvas || !window.Chart) return;
+                    const rootStyle = getComputedStyle(document.documentElement);
+                    const colorPrimario = rootStyle.getPropertyValue('--accent-primary').trim() || '#b06bff';
+                    const colorCian = rootStyle.getPropertyValue('--accent-cyan').trim() || '#2ee6ff';
+                    new Chart(canvas, {
+                        type: 'line',
+                        data: {
+                            labels: d.serie.map(p => p.fecha),
+                            datasets: [{
+                                data: d.serie.map(p => p.facturado),
+                                borderColor: colorPrimario,
+                                backgroundColor: (ctx) => {
+                                    const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 120);
+                                    g.addColorStop(0, 'rgba(176, 107, 255, 0.35)');
+                                    g.addColorStop(1, 'rgba(176, 107, 255, 0)');
+                                    return g;
+                                },
+                                borderWidth: 2,
+                                pointRadius: d.serie.length > 20 ? 0 : 3,
+                                pointHoverRadius: 5,
+                                pointBackgroundColor: colorCian,
+                                tension: 0.35,
+                                fill: true,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: { duration: 600, easing: 'easeOutQuart' },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: 'rgba(18,21,48,0.92)',
+                                    borderColor: 'rgba(168,130,255,0.25)',
+                                    borderWidth: 1,
+                                    titleColor: '#f7f7ff',
+                                    bodyColor: colorPrimario,
+                                    callbacks: {
+                                        label: ctx => `$${ctx.raw.toLocaleString('es-AR', {minimumFractionDigits:0})}`
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    display: false,
+                                    grid: { display: false }
+                                },
+                                y: {
+                                    display: false,
+                                    grid: { display: false },
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                });
             });
         }
 
@@ -158,7 +243,7 @@
             grid.appendChild(w);
             fetch('/api/ticker').then(r => r.json()).then(d => {
                 let color = 'var(--success)';
-                if (d.salud_score < 45) color = 'var(--danger)'; else if (d.salud_score < 65) color = 'var(--accent-gold)';
+                if (d.salud_score < 45) color = 'var(--danger)'; else if (d.salud_score < 65) color = 'var(--semantic-warning)';
                 w.innerHTML = `<div class="stat-chip-label">Salud de Cuenta</div><div class="hero-number" style="font-size:1.9em; background:none; -webkit-text-fill-color:${color}; color:${color};">${d.salud_score ?? '—'}</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.salud_etiqueta || ''}</div>`;
             });
@@ -192,12 +277,82 @@
             });
         }
 
+        if (prefs.ganancia_hoy) {
+            const w = crearTarjetaWidget('ganancia_hoy', '/metricas');
+            grid.appendChild(w);
+            fetch('/api/dashboard/ganancia_hoy').then(r => r.json()).then(d => {
+                const colorGanancia = d.ganancia >= 0 ? 'var(--success)' : 'var(--danger)';
+                const margenColor = d.margen_pct >= 20 ? 'var(--success)' : (d.margen_pct >= 10 ? 'var(--semantic-warning)' : 'var(--danger)');
+                w.innerHTML = `
+                    <div class="stat-chip-label">Ganancia Neta Hoy</div>
+                    <div class="hero-number" style="font-size:1.9em; background:none; -webkit-text-fill-color:${colorGanancia}; color:${colorGanancia};">${d.ganancia_f}</div>
+                    <div style="display:flex; gap:12px; margin-top:8px; font-size:0.8em; color:var(--text-secondary);">
+                        <span>Facturado: <strong>${d.facturado_f}</strong></span>
+                        <span>Margen: <strong style="color:${margenColor};">${d.margen_pct}%</strong></span>
+                    </div>`;
+            });
+        }
+
+        if (prefs.top_productos) {
+            const w = crearTarjetaWidgetDiv('top_productos');
+            w.classList.add('widget-dashboard-ancho');
+            grid.appendChild(w);
+            fetch('/api/dashboard/top_productos').then(r => r.json()).then(d => {
+                if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Top Productos</div><div class="text-muted" style="margin-top:10px;">Sin ventas este mes.</div>'; return; }
+                const maxPct = d[0].pct || 1;
+                w.innerHTML = `
+                    <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
+                        <div class="stat-chip-label">Top Productos — últimos 30 días</div>
+                        <div style="margin-top:14px; display:flex; flex-direction:column; gap:10px;">
+                            ${d.map((p, i) => `
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <span style="width:18px; text-align:right; font-size:0.78em; color:var(--text-faint); font-weight:700;">${i+1}</span>
+                                    <div style="flex:1; min-width:0;">
+                                        <div style="font-size:0.85em; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.nombre}</div>
+                                        <div style="height:5px; border-radius:3px; background:var(--glass-border); margin-top:4px; overflow:hidden;">
+                                            <div style="height:100%; width:${Math.round(p.pct/maxPct*100)}%; background:var(--accent-primary); border-radius:3px;"></div>
+                                        </div>
+                                    </div>
+                                    <div style="text-align:right; white-space:nowrap;">
+                                        <div style="font-size:0.82em; font-weight:600;">${p.facturado_f}</div>
+                                        <div style="font-size:0.73em; color:var(--text-faint);">${p.unidades} u.</div>
+                                    </div>
+                                </div>`).join('')}
+                        </div>
+                    </a>`;
+            });
+        }
+
+        if (prefs.ultimas_ventas) {
+            const w = crearTarjetaWidgetDiv('ultimas_ventas');
+            w.classList.add('widget-dashboard-ancho');
+            grid.appendChild(w);
+            fetch('/api/dashboard/ultimas_ventas').then(r => r.json()).then(d => {
+                if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Últimas Ventas</div><div class="text-muted" style="margin-top:10px;">Sin ventas recientes.</div>'; return; }
+                w.innerHTML = `
+                    <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
+                        <div class="stat-chip-label">Últimas Ventas</div>
+                        <div style="margin-top:12px;">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.82em;">
+                                ${d.map(v => `
+                                <tr style="border-bottom:1px solid var(--glass-border);">
+                                    <td style="padding:6px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">${v.nombre}</td>
+                                    <td style="padding:6px 4px; color:var(--text-faint); white-space:nowrap;">×${v.cantidad}</td>
+                                    <td style="padding:6px 0; text-align:right; font-weight:600; white-space:nowrap;">${v.precio_f}</td>
+                                    <td style="padding:6px 0 6px 8px; text-align:right; color:var(--text-faint); white-space:nowrap;">${v.fecha}</td>
+                                </tr>`).join('')}
+                            </table>
+                        </div>
+                    </a>`;
+            });
+        }
+
         if (prefs.logro_top) {
             const w = crearTarjetaWidget('logro_top', '/logros');
             grid.appendChild(w);
             fetch('/api/dashboard/logro_top').then(r => r.json()).then(d => {
                 if (!d.hay_mision) { w.innerHTML = '<div class="stat-chip-label">Logros</div><div class="text-success" style="margin-top:10px;">🎉 Sin misiones pendientes</div>'; return; }
-                const color = d.prioridad === 'urgente' ? 'var(--danger)' : (d.prioridad === 'importante' ? 'var(--accent-gold)' : 'var(--accent-primary)');
+                const color = d.prioridad === 'urgente' ? 'var(--danger)' : (d.prioridad === 'importante' ? 'var(--semantic-warning)' : 'var(--accent-primary)');
                 w.innerHTML = `<div class="stat-chip-label">Misión Prioritaria</div><div style="font-weight:700; margin-top:8px; color:${color};">${d.titulo}</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:6px;">${d.descripcion}</div>`;
             });
@@ -224,6 +379,63 @@
         } catch (e) { console.error(e); }
     }
 
-    document.addEventListener('DOMContentLoaded', () => { renderizarWidgetsActivos(); cargarChecklistPerfil(); });
+    function _heroSetValor(chipId, valor, desc) {
+        const chip = document.getElementById(chipId);
+        if (!chip) return;
+        const val = chip.querySelector('.stat-chip-value');
+        if (val) { val.classList.remove('skeleton'); val.textContent = valor; }
+        const sub = chip.querySelector('.stat-chip-desc');
+        if (sub) sub.textContent = desc || '';
+    }
+
+    async function cargarHeroMetricasDia() {
+        // Facturado hoy + ventas hoy — dos APIs en paralelo
+        const [resumen, hoy, tendencia, ticker] = await Promise.allSettled([
+            fetch('/api/resumen_diario').then(r => r.json()),
+            fetch('/api/hoy').then(r => r.json()),
+            fetch('/api/dashboard/tendencia_ventas').then(r => r.json()),
+            fetch('/api/ticker').then(r => r.json()),
+        ]);
+
+        if (resumen.status === 'fulfilled' && resumen.value) {
+            const d = resumen.value;
+            let txt = `$${d.facturado_formateado}`;
+            if (d.variacion_pct !== null && d.variacion_pct !== undefined) {
+                const flecha = d.variacion_pct >= 0 ? '▲' : '▼';
+                txt += ` ${flecha} ${Math.abs(d.variacion_pct)}%`;
+            }
+            _heroSetValor('hero-facturado', txt, `${d.ordenes || 0} ventas · top: ${d.modelo_top || '—'}`);
+        }
+
+        if (hoy.status === 'fulfilled' && hoy.value) {
+            const d = hoy.value;
+            _heroSetValor('hero-ordenes', d.ordenes_hoy ?? '—', `${d.unidades_hoy || 0} unidades hoy`);
+        }
+
+        if (tendencia.status === 'fulfilled' && tendencia.value?.total_formateado) {
+            const d = tendencia.value;
+            _heroSetValor('hero-mes', `$${d.total_formateado}`, `Prom. diario: $${d.promedio_diario_formateado}`);
+        }
+
+        if (ticker.status === 'fulfilled' && ticker.value) {
+            const d = ticker.value;
+            const chip = document.getElementById('hero-salud');
+            if (chip) {
+                const val = chip.querySelector('.stat-chip-value');
+                if (val) {
+                    val.classList.remove('skeleton');
+                    val.textContent = d.salud_score ?? '—';
+                    let color = 'var(--success)';
+                    if (d.salud_score < 45) color = 'var(--danger)';
+                    else if (d.salud_score < 65) color = 'var(--semantic-warning)';
+                    val.style.color = color;
+                }
+                const sub = chip.querySelector('.stat-chip-desc');
+                if (sub) sub.textContent = d.salud_etiqueta || '';
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { renderizarWidgetsActivos(); cargarChecklistPerfil(); cargarHeroMetricasDia(); });
 </script>
 {% endblock %}

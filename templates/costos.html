@@ -6,11 +6,11 @@
         <h1 class="page-title">Costos del negocio</h1>
         <div class="page-subtitle">Período: {{ fecha_desde }} al {{ fecha_hasta }}</div>
     </div>
-    <button type="button" class="btn btn-denim" onclick="abrirCalculadoraCostos()">🧮 Calculadora de Costos MeLi</button>
+    <button type="button" class="btn btn-denim" onclick="abrirCalculadoraCostos()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-coin"/></svg> Calculadora de Costos MeLi</button>
 </div>
 
 <div class="panel">
-    <div class="panel-title">💬 Cargar un gasto por chat</div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-chat"/></svg> Cargar un gasto por chat</div>
     <div class="page-subtitle" style="margin-bottom:14px;">Describilo con tus palabras — por ejemplo "el alquiler sale 150 mil por mes desde julio". Nunca se guarda nada sin que lo confirmes vos.</div>
     <div id="costos-chat-mensajes" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px; max-height:280px; overflow-y:auto;"></div>
     <div id="costos-chat-propuesta" style="display:none;"></div>
@@ -23,8 +23,8 @@
 <div class="calc-overlay" id="calc-overlay" onclick="if(event.target===this) cerrarCalculadoraCostos()">
     <div class="calc-panel" id="calc-panel">
         <div class="calc-header">
-            <h2 style="margin:0; font-family:var(--font-display);">🧮 Calculadora de Costos Real</h2>
-            <span style="cursor:pointer; font-size:1.4em;" onclick="cerrarCalculadoraCostos()">✕</span>
+            <h2 style="margin:0; font-family:var(--font-display);"><svg class="icon" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;color:var(--accent-brand);"><use href="#icon-coin"/></svg>Calculadora de Costos Real</h2>
+            <span style="cursor:pointer;" onclick="cerrarCalculadoraCostos()"><svg class="icon" style="width:16px;height:16px;"><use href="#icon-x"/></svg></span>
         </div>
         <div class="calc-body">
             <div class="page-subtitle" style="margin-bottom:16px;">
@@ -100,7 +100,7 @@
                 <td><span class="badge {% if g.categoria == 'fijo' %}badge-neutral{% else %}badge-warning{% endif %}">{{ g.categoria|capitalize }}</span></td>
                 <td class="num">${{ g.monto_formateado }}</td>
                 <td>
-                    <form action="/eliminar_gasto/{{ g.id }}" method="POST" onsubmit="return confirm('¿Eliminar este gasto?');" style="display:inline;">
+                    <form action="/eliminar_gasto/{{ g.id }}" method="POST" onsubmit="confirmarAccion('¿Eliminar este gasto?', this, 'Eliminar'); return false;" style="display:inline;">
                         <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
                         <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
                         <button type="submit" class="btn btn-danger">Borrar</button>
@@ -289,12 +289,12 @@
             });
             const dataCostos = await respCostos.json();
             if (dataCostos.ok) {
-                mostrarToast(`✅ ${dataCostos.actualizados} costo(s) guardados`, 'success');
+                mostrarToast(`${dataCostos.actualizados} costo(s) guardados`, 'success');
             } else {
-                mostrarToast('⚠️ No se pudo guardar — revisá la conexión', 'error');
+                mostrarToast('No se pudo guardar — revisá la conexión', 'error');
             }
         } catch (e) {
-            mostrarToast('⚠️ No se pudo guardar — revisá la conexión', 'error');
+            mostrarToast('No se pudo guardar — revisá la conexión', 'error');
         } finally {
             boton.disabled = false;
             boton.textContent = textoOriginal;

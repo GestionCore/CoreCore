@@ -1,5 +1,6 @@
 Flask==3.0.3
 Flask-Compress==1.15
+Flask-Caching>=2.3.0
 psycopg[binary,pool]>=3.2.10
 python-dotenv==1.0.1
 cryptography==43.0.1
@@ -7,3 +8,9 @@ requests==2.32.3
 Pillow>=12.0.0
 APScheduler==3.10.4
 openpyxl>=3.1.5
+
+# --- Infraestructura F0 ---
+celery[redis]>=5.3.6
+redis>=5.0.0
+sentry-sdk[flask]>=2.0.0
+waitress>=3.0.0

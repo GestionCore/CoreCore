@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}Preguntas · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-brand);"><use href="#icon-chat"/></svg>Preguntas de compradores</h1>
+        <div class="page-subtitle">Respondé directamente desde acá — los cambios se publican en Mercado Libre</div>
+    </div>
+    <button type="button" class="btn btn-secondary" onclick="cargarPreguntas()">
+        <svg class="icon spin-on-load" style="width:14px;height:14px;margin-right:5px;vertical-align:middle;" id="btn-refresh-icon"><use href="#icon-refresh"/></svg>Actualizar
+    </button>
+</div>
+
+<div style="display:flex; gap:8px; margin-bottom:16px; align-items:center; flex-wrap:wrap;">
+    <button class="btn btn-secondary filtro-btn active" data-estado="pendiente" onclick="setFiltro(this,'pendiente')">Pendientes</button>
+    <button class="btn btn-secondary filtro-btn" data-estado="respondida" onclick="setFiltro(this,'respondida')">Respondidas</button>
+    <button class="btn btn-secondary filtro-btn" data-estado="ignorada" onclick="setFiltro(this,'ignorada')">Ignoradas</button>
+    <button class="btn btn-secondary filtro-btn" data-estado="todos" onclick="setFiltro(this,'todos')">Todas</button>
+    <span id="conteo-label" class="text-muted" style="font-size:0.82em; margin-left:4px;"></span>
+</div>
+
+<div id="barra-seleccion" style="display:none; background:var(--glass-bg); border:1px solid var(--accent-brand); border-radius:var(--radius-sm); padding:10px 16px; margin-bottom:12px; display:none; align-items:center; gap:12px;">
+    <span id="seleccion-label" style="font-size:0.88em; color:var(--accent-brand); font-weight:600;"></span>
+    <button type="button" class="btn btn-secondary" style="font-size:0.82em; padding:4px 12px;" onclick="ignorarSeleccionadas()">Ignorar seleccionadas</button>
+    <button type="button" class="btn btn-secondary" style="font-size:0.82em; padding:4px 12px;" onclick="deseleccionarTodo()">Cancelar</button>
+</div>
+
+<div class="panel" id="panel-tabla" style="overflow-x:auto;">
+    <table class="data-table" id="tabla-preguntas">
+        <thead>
+            <tr>
+                <th style="width:32px;"><input type="checkbox" id="check-all" onchange="toggleAll(this)" title="Seleccionar todas"></th>
+                <th>Pregunta</th>
+                <th>Publicación</th>
+                <th class="num">Fecha</th>
+                <th class="num">Estado</th>
+                <th class="num">Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tbody-preguntas">
+            <tr><td colspan="6" class="text-muted" style="text-align:center; padding:32px;">Cargando...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div id="panel-vacio" class="panel" style="display:none; text-align:center; padding:40px;">
+    <svg class="icon" style="width:36px;height:36px;color:var(--accent-brand);display:block;margin:0 auto 12px;"><use href="#icon-check"/></svg>
+    <div style="font-size:1.05em; font-weight:600; margin-bottom:4px;">Sin preguntas pendientes</div>
+    <div class="text-muted">Todas las preguntas de compradores están respondidas.</div>
+</div>
+
+<script>
+let _estado = 'pendiente';
+let _preguntas = [];
+let _seleccionadas = new Set();
+
+document.addEventListener('DOMContentLoaded', cargarPreguntas);
+
+function setFiltro(btn, estado) {
+    document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _estado = estado;
+    _seleccionadas.clear();
+    cargarPreguntas();
+}
+
+async function cargarPreguntas() {
+    const icon = document.getElementById('btn-refresh-icon');
+    icon.classList.add('spin-anim');
+    try {
+        const resp = await fetch(`/api/preguntas/lista?estado=${_estado}`);
+        _preguntas = await resp.json();
+        renderTabla(_preguntas);
+    } catch(e) {
+        mostrarToast('Error cargando preguntas', 'error');
+    } finally {
+        icon.classList.remove('spin-anim');
+    }
+}
+
+function renderTabla(preguntas) {
+    const tbody = document.getElementById('tbody-preguntas');
+    const panelVacio = document.getElementById('panel-vacio');
+    const panelTabla = document.getElementById('panel-tabla');
+    panelTabla.style.display = '';
+    panelVacio.style.display = 'none';
+
+    document.getElementById('conteo-label').textContent = `${preguntas.length} resultado(s)`;
+    document.getElementById('check-all').checked = false;
+
+    if (!preguntas.length) {
+        panelTabla.style.display = 'none';
+        panelVacio.style.display = '';
+        return;
+    }
+
+    tbody.innerHTML = preguntas.map(p => {
+        const textoCorto = p.texto.length > 120 ? p.texto.substring(0,120) + '…' : p.texto;
+        const estadoBadge = {
+            'pendiente': '<span class="badge badge-warning">Pendiente</span>',
+            'respondida': '<span class="badge badge-success">Respondida</span>',
+            'ignorada': '<span class="badge" style="background:rgba(255,255,255,0.08);color:var(--text-muted);">Ignorada</span>',
+        }[p.estado] || p.estado;
+
+        const chk = _seleccionadas.has(p.question_id) ? 'checked' : '';
+        return `
+        <tr id="fila-${p.question_id}" data-qid="${escapeAttr(p.question_id)}">
+            <td><input type="checkbox" class="row-check" data-qid="${escapeAttr(p.question_id)}" ${chk} onchange="toggleFila(this)"></td>
+            <td style="max-width:340px;">
+                <div style="font-size:0.92em; line-height:1.4;">${escapeHtml(textoCorto)}</div>
+                ${p.respuesta_sugerida ? `<div class="text-muted" style="font-size:0.78em;margin-top:3px;">Respuesta: ${escapeHtml(p.respuesta_sugerida.substring(0,80))}${p.respuesta_sugerida.length>80?'…':''}</div>` : ''}
+            </td>
+            <td style="font-size:0.82em; color:var(--text-secondary); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeAttr(p.titulo_item)}">${escapeHtml(p.titulo_item)}</td>
+            <td class="num" style="font-size:0.82em; white-space:nowrap;">${p.fecha}</td>
+            <td class="num">${estadoBadge}</td>
+            <td class="num" style="white-space:nowrap;">
+                ${p.estado === 'pendiente' ? `
+                <button type="button" class="btn btn-secondary" style="font-size:0.78em;padding:3px 10px;" onclick="abrirRespuesta('${escapeAttr(p.question_id)}')">Responder</button>
+                ` : ''}
+                ${p.estado !== 'ignorada' && p.texto ? `
+                <a href="/stock?drawer=${escapeAttr(p.item_id)}" class="btn btn-secondary" style="font-size:0.78em;padding:3px 10px;" title="Ver publicación">Ver pub.</a>
+                ` : ''}
+            </td>
+        </tr>
+        <tr id="form-${p.question_id}" style="display:none;">
+            <td></td>
+            <td colspan="5" style="padding:12px 8px 16px;">
+                <div style="background:rgba(255,255,255,0.04); border-radius:var(--radius-sm); padding:14px; border:1px solid var(--glass-border);">
+                    <div style="font-size:0.88em; color:var(--text-secondary); margin-bottom:8px; font-style:italic;">"${escapeHtml(p.texto)}"</div>
+                    <textarea id="ta-${p.question_id}" rows="3" placeholder="Escribí tu respuesta..." style="width:100%; box-sizing:border-box; margin-bottom:8px; resize:vertical;">${escapeHtml(p.respuesta_sugerida)}</textarea>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-primary" style="font-size:0.82em;" onclick="publicarRespuesta('${escapeAttr(p.question_id)}')">
+                            <svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-check"/></svg>Publicar respuesta
+                        </button>
+                        <button type="button" class="btn btn-secondary" style="font-size:0.82em;" onclick="sugerirIA('${escapeAttr(p.question_id)}','${escapeAttr(p.titulo_item)}')">
+                            <svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-bolt"/></svg>Sugerir con IA
+                        </button>
+                        <button type="button" class="btn btn-secondary" style="font-size:0.82em;" onclick="cerrarRespuesta('${escapeAttr(p.question_id)}')">Cancelar</button>
+                    </div>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+    actualizarBarraSeleccion();
+}
+
+function abrirRespuesta(qid) {
+    const fila = document.getElementById(`form-${qid}`);
+    if (!fila) return;
+    const estabAbierto = fila.style.display !== 'none';
+    // Cerrar todos
+    document.querySelectorAll('[id^="form-"]').forEach(f => f.style.display = 'none');
+    if (!estabAbierto) {
+        fila.style.display = '';
+        const ta = document.getElementById(`ta-${qid}`);
+        if (ta) ta.focus();
+    }
+}
+
+function cerrarRespuesta(qid) {
+    const fila = document.getElementById(`form-${qid}`);
+    if (fila) fila.style.display = 'none';
+}
+
+async function publicarRespuesta(qid) {
+    const ta = document.getElementById(`ta-${qid}`);
+    const texto = (ta?.value || '').trim();
+    if (!texto) { mostrarToast('Escribí una respuesta antes de publicar', 'error'); return; }
+
+    const btn = ta.closest('div').querySelector('button.btn-primary');
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="icon spin-anim" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-refresh"/></svg>Publicando...';
+
+    try {
+        const r = await fetch('/api/preguntas/responder', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({question_id: qid, texto}),
+        });
+        const d = await r.json();
+        if (d.ok) {
+            mostrarToast('Respuesta publicada en Mercado Libre');
+            await cargarPreguntas();
+        } else {
+            mostrarToast(d.detalle || 'No se pudo publicar la respuesta', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-check"/></svg>Publicar respuesta';
+        }
+    } catch(e) {
+        mostrarToast('Error de red', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-check"/></svg>Publicar respuesta';
+    }
+}
+
+async function sugerirIA(qid, tituloItem) {
+    const ta = document.getElementById(`ta-${qid}`);
+    if (!ta) return;
+    const pregunta = _preguntas.find(p => p.question_id === qid);
+    if (!pregunta) return;
+
+    const btn = ta.closest('div').querySelector('button:nth-of-type(2)');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<svg class="icon spin-anim" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-refresh"/></svg>Generando...'; }
+
+    try {
+        const r = await fetch('/api/preguntas/sugerir', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({texto: pregunta.texto, titulo_item: tituloItem}),
+        });
+        const d = await r.json();
+        if (d.ok) {
+            ta.value = d.respuesta;
+            ta.focus();
+            mostrarToast('Respuesta sugerida — revisala antes de publicar');
+        } else {
+            mostrarToast(d.error || 'No se pudo generar sugerencia', 'error');
+        }
+    } catch(e) {
+        mostrarToast('Error de red', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-bolt"/></svg>Sugerir con IA'; }
+    }
+}
+
+function toggleFila(chk) {
+    const qid = chk.dataset.qid;
+    if (chk.checked) _seleccionadas.add(qid);
+    else _seleccionadas.delete(qid);
+    actualizarBarraSeleccion();
+}
+
+function toggleAll(chk) {
+    document.querySelectorAll('.row-check').forEach(c => {
+        c.checked = chk.checked;
+        const qid = c.dataset.qid;
+        if (chk.checked) _seleccionadas.add(qid);
+        else _seleccionadas.delete(qid);
+    });
+    actualizarBarraSeleccion();
+}
+
+function deseleccionarTodo() {
+    _seleccionadas.clear();
+    document.querySelectorAll('.row-check').forEach(c => c.checked = false);
+    document.getElementById('check-all').checked = false;
+    actualizarBarraSeleccion();
+}
+
+function actualizarBarraSeleccion() {
+    const barra = document.getElementById('barra-seleccion');
+    const label = document.getElementById('seleccion-label');
+    if (_seleccionadas.size > 0) {
+        barra.style.display = 'flex';
+        label.textContent = `${_seleccionadas.size} pregunta(s) seleccionada(s)`;
+    } else {
+        barra.style.display = 'none';
+    }
+}
+
+async function ignorarSeleccionadas() {
+    if (!_seleccionadas.size) return;
+    const ids = Array.from(_seleccionadas);
+    try {
+        const r = await fetch('/api/preguntas/ignorar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({question_ids: ids}),
+        });
+        const d = await r.json();
+        if (d.ok) {
+            mostrarToast(`${d.actualizadas} pregunta(s) marcadas como ignoradas`);
+            _seleccionadas.clear();
+            await cargarPreguntas();
+        } else {
+            mostrarToast(d.detalle || 'Error al ignorar preguntas', 'error');
+        }
+    } catch(e) {
+        mostrarToast('Error de red', 'error');
+    }
+}
+
+function escapeHtml(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escapeAttr(s) {
+    return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}

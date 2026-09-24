@@ -42,7 +42,7 @@
 
 {% if sugerencias_promocion %}
 <div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">💡 Candidatas a promocionar (stock alto, venta lenta)</div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-tag"/></svg> Candidatas a promocionar (stock alto, venta lenta)</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
         Tienen plata inmovilizada en stock que casi no se mueve — son las que más sentido tienen para empujar con un descuento.
     </div>
@@ -76,7 +76,7 @@
                 <td class="num">${{ p.precio_formateado }}</td>
                 <td class="num"><span class="badge badge-success">-{{ p.descuento_pct }}%</span></td>
                 <td>
-                    <form action="/promociones/eliminar_descuento/{{ p.id }}" method="POST" onsubmit="return confirm('¿Quitar el descuento de esta publicación?');">
+                    <form action="/promociones/eliminar_descuento/{{ p.id }}" method="POST" onsubmit="confirmarAccion('¿Quitar el descuento de esta publicación?', this, 'Quitar descuento'); return false;">
                         <button type="submit" class="btn btn-danger">Quitar</button>
                     </form>
                 </td>
@@ -157,7 +157,7 @@
 
 {% if impacto_promociones %}
 <div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">📊 Impacto real de tus promociones</div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-chart"/></svg> Impacto real de tus promociones</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
         Comparamos tu ritmo de venta de ANTES de cada promoción contra lo que vendió DURANTE, para medir el impacto real en unidades vendidas.
     </div>

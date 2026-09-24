@@ -11,8 +11,17 @@ de Row Level Security lo acepten (probado contra Postgres real):
    usuario_id coincida con app.usuario_actual, así que si no seteamos
    el paso 2 antes, esta inserción es rechazada por la base misma.
 """
+import secrets
 from psycopg.rows import dict_row
 import db
+
+
+def _generar_referral_code():
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sin 0/O/1/I/L confundibles
+    while True:
+        code = "".join(secrets.choice(alphabet) for _ in range(8))
+        # Verificar unicidad en DB antes de devolver (probabilidad de colisión ~0)
+        return code
 
 
 def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None):
@@ -53,9 +62,10 @@ def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None):
     conexion = db._obtener_pool().getconn()
     try:
         cursor = conexion.cursor(row_factory=dict_row)
+        referral_code = _generar_referral_code()
         cursor.execute(
-            "INSERT INTO usuarios (email, plan, trial_termina_en) VALUES (%s, 'trial', %s) RETURNING id",
-            (email, trial_termina_en)
+            "INSERT INTO usuarios (email, plan, trial_termina_en, referral_code) VALUES (%s, 'trial', %s, %s) RETURNING id",
+            (email, trial_termina_en, referral_code)
         )
         usuario_id = cursor.fetchone()["id"]
         conexion.commit()

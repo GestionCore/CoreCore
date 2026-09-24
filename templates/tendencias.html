@@ -15,7 +15,7 @@
 </div>
 
 <div class="panel">
-    <div class="panel-title">🔎 Explorador de Demanda</div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-search"/></svg> Explorador de Demanda</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
         Buscá cualquier término y te traemos cuánta competencia hay, cuánto se vendió entre los resultados (proxy real de demanda), el rango de precios, y quién está ganando esa búsqueda — directo del buscador público de MeLi.
     </div>
@@ -30,7 +30,7 @@
 
 {% if calendario_estacional %}
 <div class="panel">
-    <div class="panel-title">📅 Próximas fechas comerciales</div>
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-info"/></svg> Próximas fechas comerciales</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
         Solo fechas reales (fijas o calculables) — no incluye Hot Sale ni Cyber Monday porque esas las define CACE cada año y varían, poner una fecha ahí sería inventar un dato.
     </div>
@@ -39,7 +39,7 @@
         <div style="background:rgba(255,255,255,0.03); border-radius:10px; padding:12px 16px; min-width:180px;">
             <div style="font-weight:700;">{{ e.nombre }}</div>
             <div class="text-muted" style="font-size:0.8em; margin:4px 0;">{{ e.fecha_str }} — en {{ e.dias_faltantes }} día(s)</div>
-            <div style="font-size:0.78em; color:var(--accent-gold);">💡 {{ e.categoria_sugerida }}</div>
+            <div style="font-size:0.78em; color:var(--accent-gold);">{{ e.categoria_sugerida }}</div>
         </div>
         {% endfor %}
     </div>
@@ -48,7 +48,7 @@
 
 {% if seo_scores %}
 <div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">📝 Score de SEO por publicación</div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-edit"/></svg> Score de SEO por publicación</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
         Qué tan bien aprovechado está cada título para la búsqueda — no es una caja negra, cada punto tiene una razón concreta.
     </div>
@@ -90,7 +90,7 @@
 
 {% if oportunidades %}
 <div class="panel">
-    <div class="panel-title">💡 Oportunidades — no aparecen en ninguno de tus títulos</div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-bolt"/></svg> Oportunidades — no aparecen en ninguno de tus títulos</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
         Tocá una para abrir el Drawer de una publicación con el título sugerido precargado — vos revisás y decidís si guardarlo.
     </div>
@@ -98,13 +98,13 @@
         {% for t in oportunidades %}
         <button type="button" class="badge badge-warning" style="cursor:pointer; font-size:0.9em; padding:8px 14px; border:none;"
             onclick="abrirDrawerConSugerencia({{ t.id_meli_sugerido|tojson }}, {{ t.titulo_sugerido|tojson }})">
-            {% if t.es_emergente %}🆕{% else %}💡{% endif %} {{ t.keyword }}
+            {% if t.es_emergente %}<svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><use href="#icon-bolt"/></svg>{% else %}<svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><use href="#icon-info"/></svg>{% endif %}{{ t.keyword }}
         </button>
         {% endfor %}
     </div>
     {% if coincide_con_competencia %}
     <div class="alert alert-warning" style="margin-top:16px;">
-        ⚔️ <strong>Ojo con estas:</strong>
+        <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-alert"/></svg><strong>Ojo con estas:</strong>
         {% for c in coincide_con_competencia %}"{{ c.keyword }}" (ya la usa {{ c.rivales|join(', ') }}){% if not loop.last %}, {% endif %}{% endfor %}
         — tu competencia ya la tiene y vos no.
     </div>
@@ -114,7 +114,7 @@
 
 {% if cubiertas %}
 <div class="panel">
-    <div class="panel-title">✅ Ya tenés esto cubierto</div>
+    <div class="panel-title"><svg class="icon" style="color:var(--success);"><use href="#icon-check"/></svg> Ya tenés esto cubierto</div>
     <div class="flex-gap">
         {% for t in cubiertas %}
         <a href="{{ t.url }}" target="_blank" class="badge badge-success" style="text-decoration:none;">{{ t.keyword }}</a>
@@ -142,7 +142,7 @@
 
 {% if canibalismo %}
 <div class="panel">
-    <div class="panel-title">⚔️ Posible canibalismo entre tus propias publicaciones</div>
+    <div class="panel-title"><svg class="icon" style="color:var(--semantic-warning);"><use href="#icon-alert"/></svg> Posible canibalismo entre tus propias publicaciones</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
         Estas publicaciones tienen títulos muy parecidos — podrían estar compitiendo por las mismas búsquedas y dividiéndose las ventas entre sí. No es una certeza absoluta, pero vale la pena diferenciarlas mejor.
     </div>
@@ -192,7 +192,7 @@
                     <div class="stat-chip accent-gold"><div class="stat-chip-label">Precio promedio</div><div class="stat-chip-value">$${d.precio_promedio ? Math.round(d.precio_promedio).toLocaleString('es-AR') : '—'}</div></div>
                     <div class="stat-chip"><div class="stat-chip-label">Rango de precio</div><div class="stat-chip-value" style="font-size:1.1em;">$${d.precio_minimo ? Math.round(d.precio_minimo).toLocaleString('es-AR') : '—'} – $${d.precio_maximo ? Math.round(d.precio_maximo).toLocaleString('es-AR') : '—'}</div></div>
                 </div>
-                ${vendedoresHtml ? `<div class="page-subtitle" style="margin-bottom:8px;">🏆 Quién más vende esta búsqueda:</div><div class="flex-gap" style="margin-bottom:18px;">${vendedoresHtml}</div>` : ''}
+                ${vendedoresHtml ? `<div class="page-subtitle" style="margin-bottom:8px;">Quién más vende esta búsqueda:</div><div class="flex-gap" style="margin-bottom:18px;">${vendedoresHtml}</div>` : ''}
                 <div class="page-subtitle" style="margin-bottom:6px;">Publicaciones que más venden para "${d.termino}":</div>
                 ${topHtml}
             `;

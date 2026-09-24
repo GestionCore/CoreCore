@@ -4,10 +4,10 @@ Mercado Libre, multi-tenant, con Postgres/Supabase + Row Level Security.
 """
 import os
 import requests
-from flask import Flask, request, session, redirect, url_for, render_template, g, jsonify, send_file
+from flask import Flask, request, session, redirect, url_for, render_template, g, jsonify, send_file, stream_with_context, Response
 import config
 from auth import oauth_meli, registro, token_manager
-from auth.middleware import login_requerido, iniciar_sesion, cerrar_sesion, cambiar_cuenta_activa
+from auth.middleware import login_requerido, admin_requerido, iniciar_sesion, cerrar_sesion, cambiar_cuenta_activa
 import catalogo
 import metricas as metricas_mod
 import facturacion
@@ -33,6 +33,7 @@ import analisis_stock
 import onboarding
 import monotributo
 import costos_chat
+import db
 import timeline_publicacion
 import exportador_redes
 import scheduler
@@ -42,6 +43,48 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
+
+# ── Sentry: monitoreo de errores en producción ──────────────────────────────
+# Solo se activa si SENTRY_DSN está configurado en .env. En desarrollo local
+# sin la variable, Sentry simplemente no se inicializa — sin efecto.
+if config.SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.flask import FlaskIntegration
+    sentry_sdk.init(
+        dsn=config.SENTRY_DSN,
+        integrations=[FlaskIntegration()],
+        traces_sample_rate=0.1,  # 10% de requests trazados para performance
+        profiles_sample_rate=0.1,
+        send_default_pii=False,  # No enviar cookies ni IP por defecto
+    )
+    # Añadir contexto de usuario a cada evento para poder filtrar errores
+    # por usuario específico en el dashboard de Sentry.
+    from flask import g as _g
+    import sentry_sdk as _sdk
+
+    @app.before_request
+    def _sentry_set_user():
+        if getattr(_g, "usuario_id", None):
+            _sdk.set_user({"id": str(_g.usuario_id)})
+
+# ── Flask-Caching ─────────────────────────────────────────────────────────
+from cache import cache
+
+_cache_config = {
+    "CACHE_TYPE": config.CACHE_TYPE,
+    "CACHE_DEFAULT_TIMEOUT": config.CACHE_DEFAULT_TIMEOUT,
+    "CACHE_KEY_PREFIX": config.CACHE_KEY_PREFIX,
+}
+if config.CACHE_TYPE == "RedisCache":
+    _cache_config["CACHE_REDIS_URL"] = config.REDIS_URL
+
+try:
+    cache.init_app(app, config=_cache_config)
+except Exception as _e:
+    # Redis no disponible: degradar a SimpleCache silenciosamente
+    import warnings
+    warnings.warn(f"[Cache] Redis no disponible, usando SimpleCache: {_e}")
+    cache.init_app(app, config={"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 300})
 
 
 @app.context_processor
@@ -153,15 +196,37 @@ def callback():
         cuenta_id, resultado["access_token"], resultado["refresh_token"], resultado["expires_in"]
     )
 
+    if es_nuevo:
+        ref_code = request.cookies.get("ref_code")
+        if ref_code:
+            try:
+                with db.conexion_admin() as _conn:
+                    _cur = _conn.cursor()
+                    _cur.execute("SELECT id FROM usuarios WHERE referral_code = %s", (ref_code,))
+                    ref_row = _cur.fetchone()
+                    if ref_row and ref_row[0] != usuario_id:
+                        _cur.execute(
+                            "INSERT INTO referrals (referrer_id, referred_id, codigo, convertido_en) VALUES (%s, %s, %s, now()) ON CONFLICT (referred_id) DO NOTHING",
+                            (ref_row[0], usuario_id, ref_code)
+                        )
+            except Exception:
+                pass
+
     iniciar_sesion(usuario_id, cuenta_id)
 
-    # Disparamos la sincronización en segundo plano acá mismo, apenas
-    # conecta — así no espera al primer clic en "Sincronizar Todo".
-    # No bloqueamos la respuesta (podría tardar minutos con un catálogo
-    # grande): redirigimos ya, y login_requerido muestra la pantalla de
-    # espera hasta que sincronizacion_inicial_completa quede en true.
-    import threading
-    threading.Thread(target=sincronizador.sincronizar_todo, args=(usuario_id, cuenta_id), daemon=True).start()
+    # Sync inicial en background: si Celery está disponible lo encola
+    # (persistente, con reintentos). Si no, cae a un thread de Python
+    # como antes — la app funciona igual, solo sin garantía ante reinicios.
+    try:
+        from tasks.sync_tasks import sincronizar_todo_task
+        sincronizar_todo_task.delay(usuario_id, cuenta_id)
+    except Exception:
+        import threading
+        threading.Thread(
+            target=sincronizador.sincronizar_todo,
+            args=(usuario_id, cuenta_id),
+            daemon=True,
+        ).start()
 
     return redirect(url_for("landing"))
 
@@ -190,11 +255,16 @@ def notificaciones_meli():
     meli_user_id = datos.get("user_id")
 
     if topic and meli_user_id:
-        import threading
-        threading.Thread(
-            target=sincronizador.procesar_notificacion_webhook,
-            args=(topic, resource, meli_user_id), daemon=True
-        ).start()
+        try:
+            from tasks.webhook_tasks import procesar_webhook_task
+            procesar_webhook_task.delay(topic, resource, meli_user_id)
+        except Exception:
+            import threading
+            threading.Thread(
+                target=sincronizador.procesar_notificacion_webhook,
+                args=(topic, resource, meli_user_id),
+                daemon=True,
+            ).start()
 
     return "", 200
 
@@ -252,6 +322,74 @@ def api_resumen_diario():
         return jsonify(None)
 
 
+@app.route("/api/metricas/heatmap_horario")
+@login_requerido
+def api_metricas_heatmap_horario():
+    """Ventas agrupadas por hora del día (0-23) y día de la semana (0=Lun … 6=Dom).
+    Devuelve una matriz 7×24 con la cantidad de ventas en cada celda."""
+    import db
+    try:
+        dias_str = request.args.get("dias", "90")
+        dias = min(max(int(dias_str), 7), 365)
+        with db.conexion_usuario(g.usuario_id) as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT
+                    EXTRACT(DOW FROM (fecha_venta + COALESCE(hora_venta, '12:00'::time)))::int AS dow,
+                    EXTRACT(HOUR FROM (fecha_venta + COALESCE(hora_venta, '12:00'::time)))::int AS hora,
+                    SUM(cantidad)::int AS unidades
+                FROM ventas
+                WHERE fecha_venta >= CURRENT_DATE - (%s || ' days')::interval
+                  AND hora_venta IS NOT NULL
+                GROUP BY dow, hora
+            """, (dias,))
+            filas = cur.fetchall()
+        # dow: 0=Dom,1=Lun…6=Sab en Postgres EXTRACT(DOW) — reordenamos a Lun-Dom
+        matriz = [[0] * 24 for _ in range(7)]
+        maximo = 0
+        for dow, hora, unidades in filas:
+            lun_base = (dow - 1) % 7  # 0=Lun…6=Dom
+            matriz[lun_base][hora] = unidades
+            if unidades > maximo:
+                maximo = unidades
+        dias_labels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+        return jsonify({"matriz": matriz, "maximo": maximo, "dias": dias_labels, "horas": list(range(24))})
+    except Exception as e:
+        print(f"[Metricas] heatmap_horario error: {e}")
+        return jsonify({"matriz": [[0]*24 for _ in range(7)], "maximo": 0, "dias": ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"], "horas": list(range(24))})
+
+
+@app.route("/api/metricas/correlacion_precio_ventas")
+@login_requerido
+def api_correlacion_precio_ventas():
+    """Scatter: precio unitario vs unidades vendidas por modelo, para ver si precio alto = menos ventas."""
+    import db
+    try:
+        dias_str = request.args.get("dias", "90")
+        dias = min(max(int(dias_str), 7), 365)
+        with db.conexion_usuario(g.usuario_id) as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT
+                    COALESCE(p.titulo, v.id_meli) AS titulo,
+                    AVG(v.precio_venta)::numeric(12,2) AS precio_prom,
+                    SUM(v.cantidad)::int AS unidades
+                FROM ventas v
+                LEFT JOIN productos_padre p ON p.id_meli = v.id_meli
+                WHERE v.fecha_venta >= CURRENT_DATE - (%s || ' days')::interval
+                GROUP BY p.titulo, v.id_meli
+                HAVING SUM(v.cantidad) > 0
+                ORDER BY unidades DESC
+                LIMIT 60
+            """, (dias,))
+            filas = cur.fetchall()
+        puntos = [{"titulo": f[0][:40], "precio": float(f[1]), "unidades": f[2]} for f in filas]
+        return jsonify({"puntos": puntos})
+    except Exception as e:
+        print(f"[Metricas] correlacion error: {e}")
+        return jsonify({"puntos": []})
+
+
 @app.route("/api/dashboard/tendencia_ventas")
 @login_requerido
 def api_dashboard_tendencia_ventas():
@@ -305,6 +443,99 @@ def api_dashboard_logro_top():
         m = resultado["misiones"][0]
         return jsonify({"hay_mision": True, "titulo": m["titulo"], "descripcion": m["descripcion"], "prioridad": m["prioridad"], "link": m["link"]})
     return jsonify({"hay_mision": False})
+
+
+@app.route("/api/dashboard/ganancia_hoy")
+@login_requerido
+def api_dashboard_ganancia_hoy():
+    from datetime import date
+    hoy = date.today().isoformat()
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT
+                COALESCE(SUM(precio_venta * cantidad), 0) AS facturado,
+                COALESCE(SUM(
+                    (precio_venta * cantidad)
+                    - COALESCE(cargo_venta, 0)
+                    - COALESCE(costo_envio, 0)
+                ), 0) AS ganancia,
+                COUNT(*) AS ordenes
+            FROM ventas
+            WHERE cuenta_id = %s
+              AND DATE(fecha_venta) = %s
+              AND eliminado_en IS NULL
+        """, (g.cuenta_id, hoy))
+        fila = cursor.fetchone()
+    facturado = float(fila[0]) if fila else 0
+    ganancia = float(fila[1]) if fila else 0
+    ordenes = int(fila[2]) if fila else 0
+    margen = round(ganancia / facturado * 100, 1) if facturado > 0 else 0
+    return jsonify({
+        "facturado": facturado,
+        "ganancia": ganancia,
+        "ordenes": ordenes,
+        "margen_pct": margen,
+        "facturado_f": f"${facturado:,.0f}".replace(",", "."),
+        "ganancia_f": f"${ganancia:,.0f}".replace(",", "."),
+    })
+
+
+@app.route("/api/dashboard/top_productos")
+@login_requerido
+def api_dashboard_top_productos():
+    from datetime import date, timedelta
+    desde = (date.today() - timedelta(days=30)).isoformat()
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT
+                COALESCE(titulo, 'Sin nombre') AS nombre,
+                SUM(cantidad) AS unidades,
+                SUM(precio_venta * cantidad) AS facturado
+            FROM ventas
+            WHERE cuenta_id = %s
+              AND DATE(fecha_venta) >= %s
+              AND eliminado_en IS NULL
+            GROUP BY nombre
+            ORDER BY facturado DESC
+            LIMIT 5
+        """, (g.cuenta_id, desde))
+        filas = cursor.fetchall()
+    total = sum(float(f[2]) for f in filas) or 1
+    return jsonify([{
+        "nombre": f[0],
+        "unidades": int(f[1]),
+        "facturado": float(f[2]),
+        "facturado_f": f"${float(f[2]):,.0f}".replace(",", "."),
+        "pct": round(float(f[2]) / total * 100),
+    } for f in filas])
+
+
+@app.route("/api/dashboard/ultimas_ventas")
+@login_requerido
+def api_dashboard_ultimas_ventas():
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT
+                COALESCE(titulo, 'Sin nombre') AS nombre,
+                cantidad,
+                precio_venta,
+                fecha_venta
+            FROM ventas
+            WHERE cuenta_id = %s
+              AND eliminado_en IS NULL
+            ORDER BY fecha_venta DESC
+            LIMIT 8
+        """, (g.cuenta_id,))
+        filas = cursor.fetchall()
+    return jsonify([{
+        "nombre": f[0],
+        "cantidad": int(f[1]),
+        "precio_f": f"${float(f[2]):,.0f}".replace(",", "."),
+        "fecha": f[3].strftime("%d/%m %H:%M") if f[3] else "—",
+    } for f in filas])
 
 
 @app.route("/dashboard")
@@ -724,12 +955,23 @@ def api_onboarding_checklist():
 @app.route("/api/estado_sincronizacion")
 @login_requerido
 def api_estado_sincronizacion():
-    import db
     with db.conexion_usuario(g.usuario_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT sincronizacion_inicial_completa FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
         fila = cursor.fetchone()
-    return jsonify({"lista": bool(fila and fila[0])})
+        if fila and fila[0]:
+            return jsonify({"lista": True})
+        cursor.execute("SELECT COUNT(*) FROM productos_padre WHERE cuenta_id = %s", (g.cuenta_id,))
+        n_productos = cursor.fetchone()[0] or 0
+        cursor.execute("SELECT COUNT(*) FROM ventas WHERE cuenta_id = %s", (g.cuenta_id,))
+        n_ventas = cursor.fetchone()[0] or 0
+    if n_productos == 0:
+        etapa = "productos"
+    elif n_ventas == 0:
+        etapa = "ventas"
+    else:
+        etapa = "calculando"
+    return jsonify({"lista": False, "productos": n_productos, "ventas": n_ventas, "etapa": etapa})
 
 
 @app.route("/publicacion/<id_meli>/timeline")
@@ -1151,6 +1393,668 @@ def despacho_marcar():
     return jsonify({"ok": True})
 
 
+@app.route("/api/alertas/pendientes")
+@login_requerido
+def api_alertas_pendientes():
+    """
+    Devuelve las alertas in-app no leídas del usuario actual.
+    Usado por el badge de notificaciones en el nav (Fase 5 — UI todavía no
+    construida, pero el endpoint ya está listo para cuando llegue).
+    """
+    import db
+    try:
+        with db.conexion_usuario(g.usuario_id) as conexion:
+            from psycopg.rows import dict_row
+            cursor = conexion.cursor(row_factory=dict_row)
+            cursor.execute(
+                """SELECT id, tipo, titulo, mensaje, accion_url, creada_en
+                   FROM alertas_usuario
+                   WHERE usuario_id = %s AND leida = false
+                   ORDER BY creada_en DESC
+                   LIMIT 20""",
+                (g.usuario_id,),
+            )
+            alertas = cursor.fetchall()
+        return jsonify({
+            "total": len(alertas),
+            "alertas": [
+                {
+                    "id": a["id"],
+                    "tipo": a["tipo"],
+                    "titulo": a["titulo"],
+                    "mensaje": a["mensaje"],
+                    "accion_url": a["accion_url"],
+                    "creada_en": a["creada_en"].isoformat() if a["creada_en"] else None,
+                }
+                for a in alertas
+            ],
+        })
+    except Exception as e:
+        # La tabla puede no existir todavía si las migraciones están pendientes
+        return jsonify({"total": 0, "alertas": []})
+
+
+@app.route("/api/alertas/<int:id_alerta>/leer", methods=["POST"])
+@login_requerido
+def api_alerta_marcar_leida(id_alerta):
+    """Marca una alerta como leída."""
+    import db
+    from datetime import datetime, timezone
+    try:
+        with db.conexion_usuario(g.usuario_id) as conexion:
+            cursor = conexion.cursor()
+            cursor.execute(
+                "UPDATE alertas_usuario SET leida = true, leida_en = %s WHERE id = %s AND usuario_id = %s",
+                (datetime.now(timezone.utc), id_alerta, g.usuario_id),
+            )
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ─────────────────── Calculadora MeLi ───────────────────
+
+@app.route("/calculadora")
+@login_requerido
+def calculadora_vista():
+    return render_template("calculadora.html", active_nav="calculadora")
+
+
+# ─────────────────── Reporte Fiscal ───────────────────
+
+@app.route("/reporte_fiscal")
+@login_requerido
+def reporte_fiscal_vista():
+    import reporte_fiscal as rf
+    anio_actual = datetime.now().year
+    anio_seleccionado = int(request.args.get("anio", anio_actual))
+    # Ofrece los últimos 3 años como opciones
+    anios_disponibles = [anio_actual, anio_actual - 1, anio_actual - 2]
+
+    meses = rf.calcular_reporte_anual(g.usuario_id, anio_seleccionado)
+    from utils import formatear_moneda
+    totales = {
+        "facturacion": sum(m["facturacion"] for m in meses),
+        "comisiones":  sum(m["comisiones"] for m in meses),
+        "envios":      sum(m["envios"] for m in meses),
+        "cargos_totales": sum(m["cargos_totales"] for m in meses),
+        "gastos":      sum(m["gastos"] for m in meses),
+        "costo_fabricacion": sum(m["costo_fabricacion"] for m in meses),
+        "ganancia_estimada": sum(m["ganancia_estimada"] for m in meses),
+        "ordenes":  sum(m["ordenes"] for m in meses),
+        "unidades": sum(m["unidades"] for m in meses),
+    }
+    totales["facturacion_f"]     = formatear_moneda(totales["facturacion"])
+    totales["comisiones_f"]      = formatear_moneda(totales["comisiones"])
+    totales["envios_f"]          = formatear_moneda(totales["envios"])
+    totales["cargos_totales_f"]  = formatear_moneda(totales["cargos_totales"])
+    totales["gastos_f"]          = formatear_moneda(totales["gastos"])
+    totales["costo_fab_f"]       = formatear_moneda(totales["costo_fabricacion"])
+    totales["ganancia_f"]        = formatear_moneda(totales["ganancia_estimada"])
+
+    return render_template(
+        "reporte_fiscal.html",
+        active_nav="reporte_fiscal",
+        anio_seleccionado=anio_seleccionado,
+        anios_disponibles=anios_disponibles,
+        meses=meses,
+        totales=totales,
+    )
+
+
+@app.route("/reporte_fiscal/exportar")
+@login_requerido
+def reporte_fiscal_exportar():
+    import reporte_fiscal as rf
+    anio = int(request.args.get("anio", datetime.now().year))
+    meses = rf.calcular_reporte_anual(g.usuario_id, anio)
+    buf = rf.generar_excel_fiscal(meses, anio)
+    return send_file(
+        buf,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=f"reporte_fiscal_{anio}.xlsx",
+    )
+
+
+# ─────────────────── Drawer 360° ───────────────────
+
+@app.route("/api/drawer/info/<id_meli>")
+@login_requerido
+def api_drawer_info(id_meli):
+    import db
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        access_token = None
+
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            "SELECT titulo, precio, estado, precio_costo FROM productos_padre WHERE id_meli = %s",
+            (id_meli,),
+        )
+        fila = cursor.fetchone()
+
+    if not fila:
+        return jsonify({"error": "Publicación no encontrada"}), 404
+
+    titulo, precio, estado, precio_costo = fila
+    descripcion = ""
+    atributos = []
+
+    if access_token:
+        try:
+            headers = {"Authorization": f"Bearer {access_token}"}
+            r = meli_http.get(f"https://api.mercadolibre.com/items/{id_meli}?include_attributes=all", headers=headers)
+            if r.status_code == 200:
+                data = r.json()
+                atributos_raw = data.get("attributes", [])
+                atributos = [
+                    {"nombre": a.get("name", ""), "valor": a.get("value_name") or a.get("value_id") or ""}
+                    for a in atributos_raw if a.get("value_name") or a.get("value_id")
+                ]
+            r2 = meli_http.get(f"https://api.mercadolibre.com/items/{id_meli}/description", headers=headers)
+            if r2.status_code == 200:
+                descripcion = r2.json().get("plain_text", "")
+        except Exception:
+            pass
+
+    return jsonify({
+        "titulo": titulo, "precio": precio, "estado": estado,
+        "precio_costo": precio_costo or 0.0,
+        "descripcion": descripcion, "atributos": atributos,
+    })
+
+
+@app.route("/api/drawer/guardar/<id_meli>", methods=["POST"])
+@login_requerido
+def api_drawer_guardar(id_meli):
+    import db
+    data = request.get_json(silent=True) or {}
+    titulo = (data.get("titulo") or "").strip()
+    try:
+        precio = float(data.get("precio", 0))
+    except (ValueError, TypeError):
+        return jsonify({"ok": False, "detalle": "Precio inválido"}), 400
+    estado = data.get("estado", "active")
+    try:
+        precio_costo = float(data.get("precio_costo", 0))
+    except (ValueError, TypeError):
+        precio_costo = 0.0
+
+    if estado not in ("active", "paused", "closed"):
+        return jsonify({"ok": False, "detalle": "Estado no válido"}), 400
+
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            "UPDATE productos_padre SET titulo = %s, precio = %s, estado = %s, precio_costo = %s WHERE id_meli = %s",
+            (titulo, precio, estado, precio_costo, id_meli),
+        )
+
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        payload = {"title": titulo, "price": precio, "status": estado}
+        r = meli_http.put(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, json=payload)
+        if r.status_code not in (200, 201):
+            return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}: {r.text[:200]}"})
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "detalle": "La cuenta de MeLi está desconectada — reconectala primero."})
+    except Exception as e:
+        return jsonify({"ok": False, "detalle": str(e)})
+
+    return jsonify({"ok": True})
+
+
+@app.route("/api/drawer/guardar_descripcion/<id_meli>", methods=["POST"])
+@login_requerido
+def api_drawer_guardar_descripcion(id_meli):
+    data = request.get_json(silent=True) or {}
+    descripcion = (data.get("descripcion") or "").strip()
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        r = meli_http.post(
+            f"https://api.mercadolibre.com/items/{id_meli}/description",
+            headers=headers, json={"plain_text": descripcion},
+        )
+        if r.status_code not in (200, 201):
+            return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}"})
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
+    except Exception as e:
+        return jsonify({"ok": False, "detalle": str(e)})
+    return jsonify({"ok": True})
+
+
+@app.route("/api/drawer/resenas/<id_meli>")
+@login_requerido
+def api_drawer_resenas(id_meli):
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        headers = {"Authorization": f"Bearer {access_token}"}
+        r = meli_http.get(f"https://api.mercadolibre.com/reviews/item/{id_meli}", headers=headers)
+        if r.status_code != 200:
+            return jsonify({"rating_average": None, "reviews": []})
+        raw = r.json()
+        reviews = [
+            {
+                "titulo": rev.get("title", ""),
+                "texto": rev.get("content", ""),
+                "rating": rev.get("rating", 0),
+                "fecha": rev.get("date_created", "")[:10] if rev.get("date_created") else "",
+            }
+            for rev in raw.get("reviews", [])[:10]
+        ]
+        return jsonify({"rating_average": raw.get("rating_average"), "reviews": reviews})
+    except token_manager.CuentaDesconectada:
+        return jsonify({"rating_average": None, "reviews": []})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/drawer/preguntas/<id_meli>")
+@login_requerido
+def api_drawer_preguntas(id_meli):
+    import db
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            """SELECT question_id, texto_pregunta, estado, respuesta_sugerida, creado_en
+               FROM preguntas_pendientes
+               WHERE item_id = %s
+               ORDER BY creado_en DESC LIMIT 50""",
+            (id_meli,),
+        )
+        filas = cursor.fetchall()
+    preguntas = [
+        {
+            "id": f[0], "texto": f[1] or "", "estado": f[2],
+            "respuesta": f[3] or "",
+            "fecha": f[4].strftime("%Y-%m-%d") if f[4] and hasattr(f[4], "strftime") else str(f[4] or ""),
+        }
+        for f in filas
+    ]
+    return jsonify(preguntas)
+
+
+@app.route("/api/drawer/responder_pregunta", methods=["POST"])
+@login_requerido
+def api_drawer_responder_pregunta():
+    import db
+    data = request.get_json(silent=True) or {}
+    question_id = data.get("question_id")
+    texto = (data.get("texto") or "").strip()
+    if not question_id or not texto:
+        return jsonify({"ok": False, "detalle": "Faltan datos"}), 400
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        r = meli_http.post(
+            "https://api.mercadolibre.com/answers",
+            headers=headers, json={"question_id": question_id, "text": texto},
+        )
+        if r.status_code not in (200, 201):
+            return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}: {r.text[:200]}"})
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
+    except Exception as e:
+        return jsonify({"ok": False, "detalle": str(e)})
+
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            "UPDATE preguntas_pendientes SET estado = 'respondida', respuesta_sugerida = %s WHERE question_id = %s",
+            (texto, str(question_id)),
+        )
+    return jsonify({"ok": True})
+
+
+@app.route("/api/drawer/optimizar_titulo/<id_meli>", methods=["POST"])
+@login_requerido
+def api_drawer_optimizar_titulo(id_meli):
+    import ia_asistente
+    data = request.get_json(silent=True) or {}
+    titulo_actual = (data.get("titulo") or "").strip()
+    if not titulo_actual:
+        return jsonify({"ok": False, "error": "Falta el título actual"}), 400
+
+    prompt_sistema = (
+        "Sos un experto en optimización de títulos para Mercado Libre Argentina. "
+        "El título tiene que tener entre 60 y 80 caracteres, incluir el modelo o marca si está implícita, "
+        "mencionar atributos clave de búsqueda (material, talle si aplica, uso), "
+        "y estar en mayúsculas como es la convención en MeLi. "
+        "Respondé SOLO con el título sugerido, sin comillas, sin explicación."
+    )
+    prompt_usuario = f"Optimizá este título para MeLi:\n{titulo_actual}"
+    ok, resultado = ia_asistente.preguntar_ia(prompt_sistema, prompt_usuario, max_tokens=120, temperatura=0.5)
+    if not ok:
+        return jsonify({"ok": False, "error": resultado})
+    titulo_sugerido = resultado.strip().strip('"').strip("'")
+    return jsonify({"ok": True, "titulo": titulo_sugerido})
+
+
+@app.route("/api/drawer/salud/<id_meli>")
+@login_requerido
+def api_drawer_salud(id_meli):
+    """Score de salud por publicación individual (distinto al score global de cuenta)."""
+    import db
+    from datetime import datetime, timedelta
+
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+
+        cursor.execute(
+            "SELECT titulo, precio, estado, precio_costo FROM productos_padre WHERE id_meli = %s",
+            (id_meli,),
+        )
+        fila = cursor.fetchone()
+        if not fila:
+            return jsonify({"error": "Publicación no encontrada"}), 404
+        titulo, precio, estado, precio_costo = fila
+
+        score = 100
+        recomendaciones = []
+
+        # Sin precio de costo → no podemos calcular ganancia real
+        if not precio_costo or precio_costo <= 0:
+            score -= 15
+            recomendaciones.append("Cargá el costo de fabricación para calcular la ganancia real.")
+
+        # Publicación pausada o cerrada
+        if estado == "paused":
+            score -= 10
+            recomendaciones.append("La publicación está pausada — activala si querés que aparezca en los resultados.")
+        elif estado == "closed":
+            score -= 25
+            recomendaciones.append("La publicación está inactiva (cerrada) — si es intencional, podés ignorar esto.")
+
+        # Preguntas sin responder hace más de 24hs
+        cursor.execute(
+            """SELECT COUNT(*) FROM preguntas_pendientes
+               WHERE item_id = %s AND estado = 'pendiente'
+                 AND creado_en < (now() - interval '1 day')""",
+            (id_meli,),
+        )
+        preguntas_viejas = cursor.fetchone()[0] or 0
+        if preguntas_viejas > 0:
+            score -= min(preguntas_viejas * 8, 20)
+            recomendaciones.append(
+                f"Tenés {preguntas_viejas} pregunta(s) sin responder hace más de 24hs — responder rápido mejora el ranking."
+            )
+
+        # Sin ventas en los últimos 30 días
+        hace_30 = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+        cursor.execute(
+            "SELECT COALESCE(SUM(cantidad), 0) FROM ventas WHERE id_meli = %s AND fecha_venta >= %s",
+            (id_meli, hace_30),
+        )
+        ventas_30d = cursor.fetchone()[0] or 0
+        if ventas_30d == 0 and estado == "active":
+            score -= 20
+            recomendaciones.append("No registra ventas en los últimos 30 días — puede que tenga baja visibilidad o sea muy reciente.")
+
+        # Stock bajo o sin stock
+        cursor.execute(
+            """SELECT COALESCE(SUM(stock_propio),0) + COALESCE(SUM(stock_full),0)
+               FROM productos_variantes v
+               JOIN productos_padre p ON p.id = v.id_padre
+               WHERE p.id_meli = %s""",
+            (id_meli,),
+        )
+        stock_total = cursor.fetchone()[0] or 0
+        if stock_total == 0 and estado == "active":
+            score -= 25
+            recomendaciones.append("Stock en cero — la publicación activa sin stock tiene mala posición en MeLi.")
+        elif stock_total <= 3 and estado == "active":
+            score -= 8
+            recomendaciones.append(f"Stock muy bajo ({stock_total} unidad(es)) — considerá reponer antes de quedarte sin.")
+
+        score = max(0, min(100, score))
+
+    return jsonify({"porcentaje": score, "recomendaciones": recomendaciones})
+
+
+# ── Preguntas de compradores ──────────────────────────────────────────────
+
+@app.route("/preguntas")
+@login_requerido
+def preguntas_vista():
+    return render_template("preguntas.html", active_nav="preguntas")
+
+
+@app.route("/api/preguntas/lista")
+@login_requerido
+def api_preguntas_lista():
+    estado = request.args.get("estado", "pendiente")
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        sql = """
+            SELECT p.id, p.question_id, p.item_id, p.texto_pregunta,
+                   p.respuesta_sugerida, p.estado, p.creado_en,
+                   COALESCE(pp.titulo, p.item_id) AS titulo_item
+            FROM preguntas_pendientes p
+            LEFT JOIN productos_padre pp ON pp.id_meli = p.item_id
+            WHERE p.cuenta_id = %s
+        """
+        params = [g.cuenta_id]
+        if estado != "todos":
+            sql += " AND p.estado = %s"
+            params.append(estado)
+        sql += " ORDER BY p.creado_en DESC LIMIT 200"
+        cursor.execute(sql, params)
+        filas = cursor.fetchall()
+    preguntas = []
+    for f in filas:
+        preguntas.append({
+            "id": f[0],
+            "question_id": f[1],
+            "item_id": f[2] or "",
+            "texto": f[3] or "",
+            "respuesta_sugerida": f[4] or "",
+            "estado": f[5],
+            "fecha": f[6].strftime("%Y-%m-%d %H:%M") if f[6] and hasattr(f[6], "strftime") else str(f[6] or ""),
+            "titulo_item": f[7] or f[2] or "—",
+        })
+    return jsonify(preguntas)
+
+
+@app.route("/api/preguntas/responder", methods=["POST"])
+@login_requerido
+def api_preguntas_responder():
+    data = request.get_json(silent=True) or {}
+    question_id = data.get("question_id")
+    texto = (data.get("texto") or "").strip()
+    if not question_id or not texto:
+        return jsonify({"ok": False, "detalle": "Faltan datos"}), 400
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        r = meli_http.post(
+            "https://api.mercadolibre.com/answers",
+            headers=headers, json={"question_id": question_id, "text": texto},
+        )
+        if r.status_code not in (200, 201):
+            return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}: {r.text[:200]}"})
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
+    except Exception as e:
+        return jsonify({"ok": False, "detalle": str(e)})
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            "UPDATE preguntas_pendientes SET estado = 'respondida', respuesta_sugerida = %s WHERE question_id = %s AND cuenta_id = %s",
+            (texto, str(question_id), g.cuenta_id),
+        )
+    return jsonify({"ok": True})
+
+
+@app.route("/api/preguntas/ignorar", methods=["POST"])
+@login_requerido
+def api_preguntas_ignorar():
+    data = request.get_json(silent=True) or {}
+    ids = data.get("question_ids", [])
+    if not ids:
+        return jsonify({"ok": False, "detalle": "Sin preguntas"}), 400
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            "UPDATE preguntas_pendientes SET estado = 'ignorada' WHERE question_id = ANY(%s::text[]) AND cuenta_id = %s",
+            (ids, g.cuenta_id),
+        )
+    return jsonify({"ok": True, "actualizadas": len(ids)})
+
+
+@app.route("/api/preguntas/sugerir", methods=["POST"])
+@login_requerido
+def api_preguntas_sugerir():
+    import ia_asistente
+    data = request.get_json(silent=True) or {}
+    texto_pregunta = (data.get("texto") or "").strip()
+    titulo_item = (data.get("titulo_item") or "").strip()
+    if not texto_pregunta:
+        return jsonify({"ok": False, "error": "Falta el texto de la pregunta"}), 400
+    prompt = (
+        "Sos el vendedor de una tienda de ropa en Mercado Libre Argentina. "
+        "Respondé la siguiente pregunta de un comprador de forma breve, cordial y profesional. "
+        "La respuesta debe ser directa (máximo 2 oraciones). No uses emojis.\n\n"
+    )
+    if titulo_item:
+        prompt += f"Producto: {titulo_item}\n"
+    prompt += f"Pregunta: {texto_pregunta}\n\nRespuesta:"
+    try:
+        respuesta = ia_asistente.preguntar_ia(prompt)
+        return jsonify({"ok": True, "respuesta": respuesta.strip()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+# ── /Preguntas ────────────────────────────────────────────────────────────
+
+# ── Sistema de referidos ──────────────────────────────────────────────────
+
+@app.route("/r/<string:code>")
+def referral_redirect(code):
+    """Guarda el código en una cookie y redirige al landing."""
+    resp = redirect(url_for("landing"))
+    resp.set_cookie("ref_code", code.upper(), max_age=30 * 24 * 3600, httponly=True, samesite="Lax")
+    return resp
+
+
+@app.route("/referidos")
+@login_requerido
+def referidos_vista():
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT referral_code FROM usuarios WHERE id = %s", (g.usuario_id,))
+        fila = cursor.fetchone()
+        referral_code = fila[0] if fila else None
+        cursor.execute(
+            """SELECT r.creado_en, r.convertido_en, u.email
+               FROM referrals r
+               LEFT JOIN usuarios u ON u.id = r.referred_id
+               WHERE r.referrer_id = %s
+               ORDER BY r.creado_en DESC""",
+            (g.usuario_id,)
+        )
+        referidos = [{"creado_en": row[0], "convertido_en": row[1], "email": row[2]} for row in cursor.fetchall()]
+    base_url = request.host_url.rstrip("/")
+    referral_link = f"{base_url}/r/{referral_code}" if referral_code else None
+    return render_template("referidos.html", active_nav="referidos", referral_code=referral_code, referral_link=referral_link, referidos=referidos)
+
+
+# ── Panel de administración ───────────────────────────────────────────────
+
+@app.route("/admin")
+@login_requerido
+@admin_requerido
+def admin_panel():
+    # Usamos conexion_admin para ver TODOS los usuarios y sus cuentas
+    # (cuentas_meli tiene RLS que bloquea la vista cross-usuario normal).
+    # Requiere que DATABASE_URL_ADMIN tenga GRANT SELECT en usuarios/cuentas_meli.
+    with db.conexion_admin() as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT
+                u.id, u.email, COALESCE(u.nombre, '') AS nombre,
+                u.plan, u.activo, u.creado_en, u.trial_termina_en,
+                u.onboarding_completo,
+                COUNT(c.id)                                   AS num_cuentas,
+                MAX(c.ultima_sincronizacion_ventas)           AS ultima_sync,
+                MAX(c.racha_dias)                             AS racha_dias,
+                MAX(c.sincronizacion_inicial_completa::int)   AS sync_completa
+            FROM usuarios u
+            LEFT JOIN cuentas_meli c ON c.usuario_id = u.id
+            GROUP BY u.id, u.email, u.nombre, u.plan, u.activo,
+                     u.creado_en, u.trial_termina_en, u.onboarding_completo
+            ORDER BY u.creado_en DESC
+        """)
+        filas = cursor.fetchall()
+
+    from utils import formatear_moneda
+    usuarios_lista = []
+    for f in filas:
+        usuarios_lista.append({
+            "id": f[0], "email": f[1], "nombre": f[2],
+            "plan": f[3], "activo": f[4],
+            "creado_en": f[5].strftime("%Y-%m-%d") if f[5] and hasattr(f[5], "strftime") else str(f[5] or ""),
+            "trial_termina_en": f[6].strftime("%Y-%m-%d") if f[6] and hasattr(f[6], "strftime") else "",
+            "onboarding_completo": bool(f[7]),
+            "num_cuentas": int(f[8] or 0),
+            "ultima_sync": f[9].strftime("%Y-%m-%d %H:%M") if f[9] and hasattr(f[9], "strftime") else "—",
+            "racha_dias": int(f[10] or 0),
+            "sync_completa": bool(f[11]),
+        })
+
+    stats = {
+        "total": len(usuarios_lista),
+        "trial": sum(1 for u in usuarios_lista if u["plan"] == "trial"),
+        "base": sum(1 for u in usuarios_lista if u["plan"] == "base"),
+        "elite": sum(1 for u in usuarios_lista if u["plan"] == "elite"),
+        "cancelado": sum(1 for u in usuarios_lista if u["plan"] == "cancelado"),
+        "inactivos": sum(1 for u in usuarios_lista if not u["activo"]),
+    }
+    return render_template("admin_panel.html", active_nav="admin",
+                           usuarios=usuarios_lista, stats=stats)
+
+
+@app.route("/admin/usuario/<int:uid>/plan", methods=["POST"])
+@login_requerido
+@admin_requerido
+def admin_cambiar_plan(uid):
+    nuevo_plan = (request.get_json(silent=True) or {}).get("plan", "")
+    planes_validos = {"trial", "base", "elite", "cancelado"}
+    if nuevo_plan not in planes_validos:
+        return jsonify({"ok": False, "detalle": "Plan inválido"}), 400
+    with db.conexion_admin() as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            "UPDATE usuarios SET plan = %s, actualizado_en = now() WHERE id = %s",
+            (nuevo_plan, uid),
+        )
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/usuario/<int:uid>/toggle_activo", methods=["POST"])
+@login_requerido
+@admin_requerido
+def admin_toggle_activo(uid):
+    with db.conexion_admin() as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            "UPDATE usuarios SET activo = NOT activo, actualizado_en = now() WHERE id = %s RETURNING activo",
+            (uid,),
+        )
+        fila = cursor.fetchone()
+    if not fila:
+        return jsonify({"ok": False, "detalle": "Usuario no encontrado"}), 404
+    return jsonify({"ok": True, "activo": fila[0]})
+
+# ── /Panel de administración ──────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
     if config.DEBUG:
         print("=" * 70)
@@ -1159,5 +2063,17 @@ if __name__ == "__main__":
         print("    interactiva a cualquiera que la vea — es ejecución de código")
         print("    remoto en tu máquina, no un detalle menor.")
         print("=" * 70)
+
     scheduler.iniciar_scheduler()
-    app.run(debug=config.DEBUG, host="0.0.0.0", port=5000, threaded=True)
+
+    # Waitress: servidor WSGI de producción para Windows.
+    # Para Linux en producción, usar Gunicorn (ver gunicorn.conf.py).
+    try:
+        from waitress import serve
+        print("[CoreLux] Iniciando con Waitress en http://0.0.0.0:5000")
+        serve(app, host="0.0.0.0", port=5000, threads=8, channel_timeout=120)
+    except ImportError:
+        # Fallback a Flask dev server si waitress no está instalado todavía
+        print("[CoreLux] Waitress no instalado — usando Flask dev server.")
+        print("          Corré: pip install waitress")
+        app.run(debug=config.DEBUG, host="0.0.0.0", port=5000, threaded=True)

@@ -34,6 +34,25 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 
+# --- Infraestructura F0: Redis + Sentry ---
+# Redis: para Celery (cola de tareas + beat scheduler) y Flask-Caching.
+# Opciones:
+#   - Local Windows: descargá Memurai (https://www.memurai.com/) o usá Redis via WSL
+#   - Cloud gratis: Upstash Redis (https://upstash.com/) — ideal para desarrollo
+#   - Producción: Redis propio en el servidor Linux
+# Formato: redis://[:password@]host:port/db  ó  rediss://... (TLS)
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+# Sentry: monitoreo de errores en producción.
+# Obtené tu DSN en https://sentry.io — el free tier cubre 5000 errores/mes.
+# Dejá vacío en local si no querés enviar errores a Sentry durante desarrollo.
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+
+# Flask-Caching: usa Redis si está disponible, SimpleCache como fallback para dev local.
+CACHE_TYPE = os.getenv("CACHE_TYPE", "RedisCache")
+CACHE_DEFAULT_TIMEOUT = int(os.getenv("CACHE_DEFAULT_TIMEOUT", "300"))
+CACHE_KEY_PREFIX = "corelux_"
+
 # --- Seguridad ---
 # Clave de Flask para firmar la cookie de sesión — generá una real con:
 #   python -c "import secrets; print(secrets.token_hex(32))"
@@ -47,6 +66,10 @@ FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "")
 TOKEN_ENCRYPTION_KEY = os.getenv("TOKEN_ENCRYPTION_KEY", "")
 
 DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+
+# Panel de administración — email del dueño de CoreLux. Agregar a .env:
+#   ADMIN_EMAIL=tu@email.com
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
 
 # --- Validación al arranque ---
 # Sin esto, una variable vacía se manifiesta como un error 500 críptico

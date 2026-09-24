@@ -181,24 +181,58 @@ function celebrarConfeti() {
     reproducirTono([{freq: 523, t: 0, dur: 0.08}, {freq: 659, t: 0.06, dur: 0.08}, {freq: 784, t: 0.12, dur: 0.18}], 0.05);
 }
 
+// ---------- Badge de alertas en el nav ----------
+function _actualizarBadgeNav(n) {
+    const badge = document.getElementById('nav-badge-incidencias');
+    if (!badge) return;
+    if (n > 0) { badge.textContent = n > 9 ? '9+' : n; badge.style.display = 'inline-flex'; }
+    else { badge.style.display = 'none'; }
+}
+
+async function cargarAlertasPendientes() {
+    try {
+        const resp = await fetch('/api/alertas/pendientes');
+        const d = await resp.json();
+        if (d.total > 0) _actualizarBadgeNav(d.total);
+    } catch (e) { /* silencioso */ }
+}
+
 // ---------- Sincronizar Todo (botón global en la barra superior) ----------
 function ejecutarSincronizarTodo() {
     const btn = document.getElementById('btn-sincronizar-todo');
+    if (btn.disabled) return;
     const textoOriginal = btn.innerHTML;
+    const _spin = '<svg class="icon spin-anim" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg>';
     btn.disabled = true;
-    btn.innerHTML = '⏳ Sincronizando todo...';
+    btn.innerHTML = _spin + ' Sincronizando...';
     fetch('/sincronizar_todo')
         .then(r => r.json())
         .then(data => {
             if (data.status === 'ya_en_curso') {
-                mostrarToast('Ya hay una sincronización en curso, esperá un momento.', 'info');
+                mostrarToast('Ya hay una sincronización en curso.', 'info');
                 btn.disabled = false;
                 btn.innerHTML = textoOriginal;
-            } else {
-                window.location.reload();
+                return;
             }
+            // Sincronización iniciada: esperamos y mostramos progreso
+            let intentos = 0;
+            const maxIntentos = 60; // 2 minutos máx
+            const poll = setInterval(() => {
+                intentos++;
+                fetch('/api/estado_sincronizacion')
+                    .then(r => r.json())
+                    .then(est => {
+                        if (est.lista || intentos >= maxIntentos) {
+                            clearInterval(poll);
+                            btn.disabled = false;
+                            btn.innerHTML = textoOriginal;
+                            mostrarToast('Sincronización completada.', 'success');
+                        }
+                    })
+                    .catch(() => { clearInterval(poll); btn.disabled = false; btn.innerHTML = textoOriginal; });
+            }, 2000);
         })
-        .catch(() => window.location.reload());
+        .catch(() => { btn.disabled = false; btn.innerHTML = textoOriginal; mostrarToast('Error al iniciar sincronización.', 'error'); });
 }
 
 function mostrarPanelConAnimacion(elemento) {
@@ -593,17 +627,21 @@ function alternarTema() {
     if (esClaro) {
         delete document.documentElement.dataset.theme;
         localStorage.setItem('tema', 'dark');
-        document.getElementById('icono-tema').textContent = '🌙';
+        _setIconoTema('moon');
     } else {
         document.documentElement.dataset.theme = 'light';
         localStorage.setItem('tema', 'light');
-        document.getElementById('icono-tema').textContent = '☀️';
+        _setIconoTema('sun');
     }
 }
 
+function _setIconoTema(nombre) {
+    const use = document.getElementById('icono-tema-use');
+    if (use) use.setAttribute('href', '#icon-' + nombre);
+}
+
 function _inicializarIconoTema() {
-    const icono = document.getElementById('icono-tema');
-    if (icono) icono.textContent = (document.documentElement.dataset.theme === 'light') ? '☀️' : '🌙';
+    _setIconoTema(document.documentElement.dataset.theme === 'light' ? 'sun' : 'moon');
 }
 
 // ---------- Números que ruedan ----------
@@ -679,7 +717,7 @@ document.addEventListener('click', (e) => {
     const el = e.target.closest('.id-copiable');
     if (!el) return;
     navigator.clipboard.writeText(el.textContent).then(() => {
-        mostrarToast('📋 Dato copiado al portapapeles', 'success');
+        mostrarToast('Dato copiado al portapapeles', 'success');
         el.classList.remove('destello-copiado');
         void el.offsetWidth;
         el.classList.add('destello-copiado');
@@ -736,7 +774,7 @@ async function actualizarTicker() {
             txtSalud.textContent = `Salud: ${data.salud_score} (${data.salud_etiqueta})`;
             let color = 'var(--success)';
             if (data.salud_score < 45) color = 'var(--danger)';
-            else if (data.salud_score < 65) color = '#f59e0b';
+            else if (data.salud_score < 65) color = getComputedStyle(document.documentElement).getPropertyValue('--semantic-warning').trim() || '#e8822e';
             dotSalud.style.background = color;
             dotSalud.style.boxShadow = `0 0 6px ${color}`;
         }
@@ -752,9 +790,12 @@ async function actualizarTicker() {
             }
         }
 
+        // Badge en el nav: incidencias operativas del ticker
+        _actualizarBadgeNav((data.incidencias_activas || 0) + (data.salud_score !== undefined && data.salud_score < 65 ? 1 : 0));
+
         window._ultimoTickerData = data;
     } catch (e) {
-        console.error('Error actualizando ticker:', e); 
+        console.error('Error actualizando ticker:', e);
     }
 }
 
@@ -787,8 +828,8 @@ function mostrarTooltipSalud(ancla) {
             ${detalle.length ? `
                 <div class="tooltip-ticker-sub">En qué se basó:</div>
                 <ul class="tooltip-ticker-lista">${detalle.map(d => `<li>${d}</li>`).join('')}</ul>
-                <div class="tooltip-ticker-sub">💡 Resolviendo estos puntos, el score sube solo.</div>
-            ` : `<div class="tooltip-ticker-sub">✅ Sin descuentos activos — todo en orden.</div>`}
+                <div class="tooltip-ticker-sub">Resolviendo estos puntos, el score sube solo.</div>
+            ` : `<div class="tooltip-ticker-sub">Sin descuentos activos — todo en orden.</div>`}
         `;
     }
     _posicionarTooltipTicker(el, ancla);
@@ -862,9 +903,9 @@ const ATAJOS_COMANDO = [
     { alias: ['log', 'logros', 'misiones'], texto: 'Ir a Logros', url: '/logros' },
 ];
 const ACCIONES_COMANDO = [
-    { alias: ['sinc', 'sincronizar', 'actualizar'], texto: '⚡ Sincronizar Todo', accion: 'ejecutarSincronizarTodo' },
-    { alias: ['tema', 'oscuro', 'claro', 'dark', 'light'], texto: '🌙 Cambiar tema claro/oscuro', accion: 'alternarTema' },
-    { alias: ['privacidad', 'ocultar', 'blur'], texto: '👁️ Modo privacidad (ocultar montos)', accion: 'alternarModoPrivacidad' },
+    { alias: ['sinc', 'sincronizar', 'actualizar'], texto: 'Sincronizar Todo', accion: 'ejecutarSincronizarTodo' },
+    { alias: ['tema', 'oscuro', 'claro', 'dark', 'light'], texto: 'Cambiar tema claro/oscuro', accion: 'alternarTema' },
+    { alias: ['privacidad', 'ocultar', 'blur'], texto: 'Modo privacidad (ocultar montos)', accion: 'alternarModoPrivacidad' },
 ];
 function abrirComando() {
     document.getElementById('command-overlay').classList.add('open');
@@ -961,7 +1002,7 @@ async function cargarOportunidadesSeo() {
         cont.innerHTML = oportunidades.map(o => `
             <button type="button" class="badge badge-success" style="cursor:pointer; font-size:0.88em; padding:8px 14px; border:none;"
                 onclick="abrirDrawerConSugerencia('${o.id_meli_sugerido}', '${o.titulo_sugerido.replace(/'/g, "\\'")}')">
-                💡 Sumar "${o.termino}" a ${o.titulo_actual.length > 30 ? o.titulo_actual.slice(0,30)+'…' : o.titulo_actual}
+                Sumar "${o.termino}" a ${o.titulo_actual.length > 30 ? o.titulo_actual.slice(0,30)+'…' : o.titulo_actual}
             </button>
         `).join('');
     } catch (e) { console.error(e); }
@@ -1013,7 +1054,7 @@ async function cargarTabInfo(idMeli) {
             <div class="field-group" style="margin-bottom:14px;">
                 <label class="field-label">Título</label>
                 <input type="text" id="drawer-titulo" value="${d.titulo.replace(/"/g,'&quot;')}">
-                <button type="button" class="btn btn-secondary" style="margin-top:6px;" onclick="optimizarTitulo()">✨ Optimizar Título con IA</button>
+                <button type="button" class="btn btn-secondary" style="margin-top:6px;" onclick="optimizarTitulo()"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-bolt"/></svg>Optimizar Título con IA</button>
             </div>
             <div class="filter-row" style="margin-bottom:14px;">
                 <div class="field-group" style="flex:1;"><label class="field-label">Precio ($)</label><input type="number" step="0.01" id="drawer-precio" value="${d.precio}"></div>
@@ -1027,11 +1068,11 @@ async function cargarTabInfo(idMeli) {
             </div>
             <div class="field-group" style="margin-bottom:14px;"><label class="field-label">Costo de fabricación ($)</label><input type="number" step="0.01" id="drawer-costo" value="${d.precio_costo}"></div>
             <button type="button" class="btn btn-primary btn-block" onclick="guardarDrawerInfo()">Guardar cambios</button>
-            <a href="/publicacion/${idMeli}/timeline" class="btn btn-secondary btn-block" style="margin-top:8px; text-align:center; text-decoration:none;">📅 Ver línea de tiempo completa</a>
+            <a href="/publicacion/${idMeli}/timeline" class="btn btn-secondary btn-block" style="margin-top:8px; text-align:center; text-decoration:none;"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-info"/></svg>Ver línea de tiempo completa</a>
         `;
         if (_tituloSugeridoPendiente) {
             document.getElementById('drawer-titulo').value = _tituloSugeridoPendiente;
-            mostrarToast('💡 Título sugerido cargado — revisalo y guardá si te convence.', 'info');
+            mostrarToast('Título sugerido cargado — revisalo y guardá si te convence.', 'info');
             _tituloSugeridoPendiente = null;
         }
     } catch(e) { cont.innerHTML = '<div class="text-danger">Error al cargar.</div>'; }
@@ -1047,7 +1088,7 @@ async function guardarDrawerInfo() {
     try {
         const resp = await fetch(`/api/drawer/guardar/${drawerIdActual}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
         const data = await resp.json();
-        mostrarToast(data.ok ? '✓ Cambios guardados en Mercado Libre' : `⚠️ ${data.detalle}`, data.ok ? 'success' : 'error');
+        mostrarToast(data.ok ? 'Cambios guardados en Mercado Libre' : (data.detalle || 'No se pudieron guardar los cambios'), data.ok ? 'success' : 'error');
     } catch(e) { mostrarToast('Error guardando cambios', 'error'); }
 }
 
@@ -1071,7 +1112,7 @@ async function optimizarTitulo() {
     try {
         const resp = await fetch(`/api/drawer/optimizar_titulo/${drawerIdActual}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({titulo: tituloActual}) });
         const data = await resp.json();
-        if (data.ok) { await escribirTextoEnInput(document.getElementById('drawer-titulo'), data.titulo); mostrarToast('✓ Título optimizado (revisalo antes de guardar)', 'success'); }
+        if (data.ok) { await escribirTextoEnInput(document.getElementById('drawer-titulo'), data.titulo); mostrarToast('Título optimizado — revisalo antes de guardar', 'success'); }
         else mostrarToast(data.error || 'No se pudo optimizar', 'error');
     } catch(e) { mostrarToast('Error consultando la IA', 'error'); }
 }
@@ -1100,7 +1141,7 @@ async function guardarDescripcion() {
     try {
         const resp = await fetch(`/api/drawer/guardar_descripcion/${drawerIdActual}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({descripcion: texto}) });
         const data = await resp.json();
-        mostrarToast(data.ok ? '✓ Descripción actualizada' : '⚠️ No se pudo guardar la descripción', data.ok ? 'success' : 'error');
+        mostrarToast(data.ok ? 'Descripción actualizada' : 'No se pudo guardar la descripción', data.ok ? 'success' : 'error');
     } catch(e) { mostrarToast('Error guardando la descripción', 'error'); }
 }
 
@@ -1147,8 +1188,8 @@ async function responderPreguntaDrawer(questionId) {
     try {
         const resp = await fetch('/api/drawer/responder_pregunta', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({question_id: questionId, texto}) });
         const data = await resp.json();
-        if (data.ok) { mostrarToast('✓ Respuesta publicada en Mercado Libre', 'success'); cargarTabPreguntas(drawerIdActual); }
-        else mostrarToast('⚠️ No se pudo publicar la respuesta', 'error');
+        if (data.ok) { mostrarToast('Respuesta publicada en Mercado Libre', 'success'); cargarTabPreguntas(drawerIdActual); }
+        else mostrarToast('No se pudo publicar la respuesta', 'error');
     } catch(e) { mostrarToast('Error publicando la respuesta', 'error'); }
 }
 
@@ -1261,5 +1302,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inicializarDropdownsNav();
     inicializarProtectorInactividad();
     setInterval(actualizarTicker, 30000);
+    cargarAlertasPendientes();
+    setInterval(cargarAlertasPendientes, 300000); // cada 5 minutos
     if (document.body.dataset.mostrarTutorial) { setTimeout(iniciarTutorial, 500); }
 });

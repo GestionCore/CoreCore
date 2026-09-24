@@ -3,14 +3,14 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">🏆 Logros</h1>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-brand);"><use href="#icon-trophy"/></svg>Logros</h1>
         <div class="page-subtitle">Misiones concretas armadas a partir de los datos reales de tu cuenta</div>
     </div>
 </div>
 
 {% if mensaje_coach %}
 <div class="panel" style="border-left:3px solid var(--accent-primary);">
-    <div class="panel-title">🎯 Prioridad de hoy</div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-bolt"/></svg> Prioridad de hoy</div>
     <div style="line-height:1.6;">{{ mensaje_coach }}</div>
 </div>
 {% endif %}
@@ -64,7 +64,7 @@
 
 {% if logros_resueltos %}
 <div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">✅ Logros conseguidos</div>
+    <div class="panel-title"><svg class="icon" style="color:var(--success);"><use href="#icon-check"/></svg> Logros conseguidos</div>
     {% for l in logros_resueltos %}
     <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft); font-size:0.88em;">
         <span class="text-muted" style="text-decoration:line-through;">{{ l.titulo }}</span>

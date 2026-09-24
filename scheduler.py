@@ -1,42 +1,53 @@
 """
-Tareas periódicas — portado de Santi Mens. Cambio real: el original
-corría cada tarea UNA VEZ, para la única cuenta que existía. Acá cada
-tarea recorre TODAS las cuentas activas (`cuentas_meli.activa = true`),
-una por una, con su propio try/except — así una cuenta con problemas
-(token vencido, cuenta desconectada) no frena la sincronización de las
-demás.
+Scheduler de CoreLux.
 
-Deliberadamente no incluye todavía: las alertas por WhatsApp de stock/
-curva de talles (sin puente todavía) — queda para cuando se porte ese
-módulo. La auditoría de devoluciones/cancelaciones ya no depende de
-nada más: sincronizar_todo() (llamado más abajo) incluye
-devoluciones_sync desde esta sesión.
+En producción (con Redis disponible):
+  Las tareas periódicas las maneja Celery Beat — correr en proceso separado:
+      celery -A celery_app beat --loglevel=info
+  Este módulo detecta que Redis está disponible e imprime un mensaje
+  informativo. iniciar_scheduler() es un no-op en ese caso.
+
+En desarrollo (sin Redis):
+  Fallback automático a APScheduler corriendo en un hilo de fondo del mismo
+  proceso de Flask. No es ideal (muere si Flask se reinicia, no escala a
+  múltiples workers) pero suficiente para testear localmente sin instalar Redis.
+
+El API externo (iniciar_scheduler()) no cambia — app.py lo llama igual.
 """
 from apscheduler.schedulers.background import BackgroundScheduler
+import config
 import db
 import sincronizador
 import espia_competencia
 import motor_combos
 from auth import token_manager
 
-_scheduler = None
+_scheduler_apscheduler = None
+
+
+def _redis_disponible():
+    try:
+        import redis
+        r = redis.from_url(config.REDIS_URL, socket_connect_timeout=1)
+        r.ping()
+        return True
+    except Exception:
+        return False
 
 
 def _obtener_cuentas_activas():
-    """Lee directo con el pool admin porque esto corre en segundo plano,
-    sin un usuario autenticado en sesión del que colgar app.usuario_actual."""
     with db.conexion_admin() as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT id, usuario_id FROM cuentas_meli WHERE activa = true")
         return cursor.fetchall()
 
 
-def _tarea_sincronizar_catalogos():
+def _tarea_sincronizar_todo():
     for cuenta_id, usuario_id in _obtener_cuentas_activas():
         try:
             sincronizador.sincronizar_todo(usuario_id, cuenta_id)
         except Exception as e:
-            print(f"[Scheduler] ❌ Error sincronizando la cuenta {cuenta_id}: {e}")
+            print(f"[Scheduler APScheduler] ❌ Error cuenta {cuenta_id}: {e}")
 
 
 def _tarea_relevar_competencia():
@@ -46,9 +57,9 @@ def _tarea_relevar_competencia():
                 cursor = conexion.cursor()
                 relevados = espia_competencia.relevar_competidores(cursor)
                 if relevados:
-                    print(f"[Scheduler] 🔍 Cuenta {cuenta_id}: {relevados} competidor(es) relevado(s).")
+                    print(f"[Scheduler APScheduler] 🔍 Cuenta {cuenta_id}: {relevados} rival(es) relevado(s).")
         except Exception as e:
-            print(f"[Scheduler] ❌ Error relevando competencia de la cuenta {cuenta_id}: {e}")
+            print(f"[Scheduler APScheduler] ❌ Error competencia cuenta {cuenta_id}: {e}")
 
 
 def _tarea_analizar_combos():
@@ -58,25 +69,38 @@ def _tarea_analizar_combos():
                 cursor = conexion.cursor()
                 motor_combos.analizar_combos(cursor, cuenta_id)
         except Exception as e:
-            print(f"[Scheduler] ❌ Error analizando combos de la cuenta {cuenta_id}: {e}")
-
-
-def _envoltorio_seguro(funcion, nombre):
-    def envoltura():
-        try:
-            funcion()
-        except Exception as e:
-            print(f"[Scheduler] ❌ Error en tarea '{nombre}': {e}")
-    return envoltura
+            print(f"[Scheduler APScheduler] ❌ Error combos cuenta {cuenta_id}: {e}")
 
 
 def iniciar_scheduler():
-    global _scheduler
-    if _scheduler is not None:
+    """
+    Punto de entrada llamado desde app.py en el bloque __main__.
+    Si Redis está disponible, asume que Celery Beat corre por separado.
+    Si no, arranca APScheduler como fallback.
+    """
+    global _scheduler_apscheduler
+
+    if _redis_disponible():
+        print(
+            "[Scheduler] ✅ Redis detectado — tareas periódicas delegadas a Celery Beat.\n"
+            "            Correr en proceso separado:\n"
+            "            celery -A celery_app beat --loglevel=info"
+        )
         return
-    _scheduler = BackgroundScheduler(daemon=True)
-    _scheduler.add_job(_envoltorio_seguro(_tarea_sincronizar_catalogos, "sincronizar_catalogos"), "interval", minutes=4, id="sincronizar_catalogos")
-    _scheduler.add_job(_envoltorio_seguro(_tarea_relevar_competencia, "relevar_competencia"), "interval", hours=24, id="relevar_competencia")
-    _scheduler.add_job(_envoltorio_seguro(_tarea_analizar_combos, "analizar_combos"), "interval", days=7, id="analizar_combos")
-    _scheduler.start()
-    print("[Scheduler] ✅ Tareas periódicas iniciadas (sincronización cada 4 min, para todas las cuentas activas).")
+
+    # Fallback a APScheduler
+    if _scheduler_apscheduler is not None:
+        return
+
+    print(
+        "[Scheduler] ⚠️  Redis no disponible — usando APScheduler como fallback.\n"
+        "            Las tareas periódicas corren en este mismo proceso de Flask.\n"
+        "            Para producción: instalá Redis y corré Celery Beat por separado."
+    )
+
+    _scheduler_apscheduler = BackgroundScheduler(daemon=True)
+    _scheduler_apscheduler.add_job(_tarea_sincronizar_todo, "interval", minutes=4, id="sync_todo")
+    _scheduler_apscheduler.add_job(_tarea_relevar_competencia, "interval", hours=24, id="relevar")
+    _scheduler_apscheduler.add_job(_tarea_analizar_combos, "interval", days=7, id="combos")
+    _scheduler_apscheduler.start()
+    print("[Scheduler] ✅ APScheduler iniciado (sync cada 4 min, para todas las cuentas).")

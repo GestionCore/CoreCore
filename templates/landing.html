@@ -3,77 +3,418 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CoreLux — Iniciar sesión</title>
+    <title>CoreLux — Gestión profesional para Mercado Libre</title>
+    <meta name="description" content="Ganancia real, stock, publicidad y más para tu negocio en Mercado Libre Argentina. 14 días gratis.">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,700;8..60,800;8..60,900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,700;8..60,800;8..60,900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_v('css/style.css') }}">
     <style>
-        /* Solo lo específico de esta pantalla — el resto viene de style.css,
-           para que la sensación visual sea la misma que el resto de CoreLux
-           sin arrastrar nada del layout de la app (nav, ticker, drawer). */
-        html, body { height: 100%; margin: 0; }
+        html { scroll-behavior: smooth; }
+        html, body { margin: 0; padding: 0; }
         body {
-            display: flex; align-items: center; justify-content: center;
             background: var(--bg-base); color: var(--text-primary);
-            font-family: var(--font-ui); position: relative; overflow: hidden;
+            font-family: var(--font-ui); overflow-x: hidden;
         }
-        .login-tarjeta {
-            position: relative; z-index: 2; width: 100%; max-width: 420px; margin: 24px;
-            padding: 44px 40px; text-align: center; border-radius: var(--radius-lg);
-            background: var(--glass-bg); border: 1px solid var(--glass-border);
-            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-            box-shadow: var(--shadow-elevated), 0 0 60px -20px var(--accent-primary-glow);
-            animation: fadeInUp 0.5s cubic-bezier(0.16,1,0.3,1);
+
+        /* ── Barra de nav ─────────────────────────────── */
+        .lp-nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 32px;
+            background: rgba(13,15,38,0.82); backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
         }
-        .login-marca { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 28px; }
-        .login-marca span { font-family: var(--font-display); font-weight: 800; font-size: 1.4em; letter-spacing: -0.02em; }
-        .login-tagline { color: var(--text-secondary); font-size: 0.95em; line-height: 1.5; margin-bottom: 32px; }
+        .lp-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .lp-brand span { font-family: var(--font-display); font-weight: 800; font-size: 1.1em; color: var(--text-primary); }
+        .lp-nav-links { display: flex; align-items: center; gap: 16px; }
+        .lp-nav-link { color: var(--text-secondary); text-decoration: none; font-size: 0.88em; transition: color 0.2s; }
+        .lp-nav-link:hover { color: var(--text-primary); }
+
+        /* ── Hero ─────────────────────────────────────── */
+        .lp-hero {
+            position: relative; min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 120px 24px 80px; text-align: center; overflow: hidden;
+        }
+        .lp-hero-contenido { position: relative; z-index: 2; max-width: 780px; }
+        .lp-badge {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: rgba(176,107,255,0.12); border: 1px solid rgba(176,107,255,0.3);
+            border-radius: var(--radius-pill); padding: 5px 14px;
+            color: var(--accent-brand); font-size: 0.82em; font-weight: 600;
+            margin-bottom: 28px; letter-spacing: 0.01em;
+        }
+        .lp-titulo {
+            font-family: var(--font-display); font-weight: 900;
+            font-size: clamp(2.2em, 6vw, 3.8em); line-height: 1.12;
+            letter-spacing: -0.03em; margin: 0 0 20px;
+            background: linear-gradient(135deg, var(--text-primary) 40%, var(--accent-brand));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .lp-subtitulo {
+            color: var(--text-secondary); font-size: clamp(1em, 2.5vw, 1.18em);
+            line-height: 1.6; margin: 0 auto 40px; max-width: 560px;
+        }
+        .lp-hero-cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 48px; }
         .btn-conectar-meli {
-            display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
-            padding: 16px 20px; border-radius: var(--radius-md); border: none; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 9px;
+            padding: 15px 30px; border-radius: var(--radius-md); border: none; cursor: pointer;
             font-family: var(--font-ui); font-size: 1.02em; font-weight: 700; color: #14100a;
             background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim));
-            box-shadow: 0 4px 24px -4px var(--accent-gold-glow); transition: transform 0.2s, box-shadow 0.2s;
-            text-decoration: none;
+            box-shadow: 0 4px 28px -4px var(--accent-gold-glow); transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none; white-space: nowrap;
         }
-        .btn-conectar-meli:hover { transform: translateY(-2px); box-shadow: 0 8px 32px -4px var(--accent-gold-glow); }
-        .login-confianza {
-            display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 18px;
-            color: var(--text-faint); font-size: 0.78em;
+        .btn-conectar-meli:hover { transform: translateY(-2px); box-shadow: 0 8px 40px -4px var(--accent-gold-glow); }
+        .btn-ver-precios {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 15px 26px; border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border); background: var(--glass-bg);
+            color: var(--text-secondary); font-size: 0.96em; font-weight: 600;
+            text-decoration: none; transition: border-color 0.2s, color 0.2s;
         }
-        .login-prueba { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--border-soft); color: var(--text-secondary); font-size: 0.85em; }
-        .login-prueba strong { color: var(--accent-cyan); }
+        .btn-ver-precios:hover { border-color: var(--accent-brand); color: var(--text-primary); }
+        .lp-trial-nota {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            color: var(--text-faint); font-size: 0.8em;
+        }
+        .lp-trial-nota svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+        /* ── Stats rápidos ────────────────────────────── */
+        .lp-stats {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 32px;
+            border-top: 1px solid var(--glass-border); padding-top: 48px; margin-top: 48px;
+        }
+        .lp-stat { text-align: center; }
+        .lp-stat-val {
+            font-family: var(--font-display); font-size: 2.2em; font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-brand));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .lp-stat-label { color: var(--text-muted); font-size: 0.82em; margin-top: 2px; }
+
+        /* ── Secciones generales ──────────────────────── */
+        .lp-seccion {
+            position: relative; padding: 80px 24px; max-width: 1100px; margin: 0 auto;
+        }
+        .lp-seccion-titulo {
+            text-align: center; font-family: var(--font-display); font-size: clamp(1.6em, 4vw, 2.4em);
+            font-weight: 800; letter-spacing: -0.02em; margin-bottom: 12px;
+        }
+        .lp-seccion-subtitulo {
+            text-align: center; color: var(--text-secondary); font-size: 1em;
+            max-width: 500px; margin: 0 auto 52px; line-height: 1.5;
+        }
+        .lp-divider {
+            width: 1px; background: linear-gradient(to bottom, transparent, var(--glass-border), transparent);
+            min-height: 48px; margin: 0 auto;
+        }
+
+        /* ── Features grid ────────────────────────────── */
+        .lp-features {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: 20px;
+        }
+        .lp-feature-card {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md); padding: 28px 26px;
+            transition: border-color 0.25s, transform 0.2s;
+        }
+        .lp-feature-card:hover { border-color: var(--accent-brand); transform: translateY(-3px); }
+        .lp-feature-icon {
+            width: 44px; height: 44px; border-radius: var(--radius-sm);
+            background: rgba(176,107,255,0.1); border: 1px solid rgba(176,107,255,0.2);
+            display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+            color: var(--accent-brand);
+        }
+        .lp-feature-icon svg { width: 22px; height: 22px; }
+        .lp-feature-titulo { font-weight: 700; font-size: 1em; margin-bottom: 6px; }
+        .lp-feature-desc { color: var(--text-secondary); font-size: 0.88em; line-height: 1.55; }
+
+        /* ── Pricing ──────────────────────────────────── */
+        #precios { background: rgba(255,255,255,0.015); }
+        .lp-pricing {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px; max-width: 860px; margin: 0 auto;
+        }
+        .lp-plan {
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg); padding: 36px 28px; text-align: center;
+            display: flex; flex-direction: column; gap: 0;
+        }
+        .lp-plan.destacado {
+            border-color: var(--accent-brand);
+            box-shadow: 0 0 40px -10px rgba(176,107,255,0.25);
+            position: relative;
+        }
+        .lp-plan-badge {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            background: var(--accent-brand); color: #fff; font-size: 0.72em; font-weight: 700;
+            padding: 3px 14px; border-radius: var(--radius-pill); white-space: nowrap;
+        }
+        .lp-plan-nombre {
+            font-family: var(--font-display); font-size: 1.05em; font-weight: 700;
+            color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px;
+        }
+        .lp-plan-precio {
+            font-family: var(--font-display); font-size: 2.6em; font-weight: 900;
+            letter-spacing: -0.03em; margin-bottom: 4px; line-height: 1;
+        }
+        .lp-plan-moneda { font-size: 0.45em; vertical-align: top; margin-top: 8px; display: inline-block; color: var(--text-secondary); }
+        .lp-plan-periodo { color: var(--text-muted); font-size: 0.82em; margin-bottom: 28px; }
+        .lp-plan-features { list-style: none; padding: 0; margin: 0 0 28px; text-align: left; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+        .lp-plan-features li {
+            display: flex; align-items: flex-start; gap: 9px;
+            color: var(--text-secondary); font-size: 0.88em; line-height: 1.4;
+        }
+        .lp-plan-features li svg { width: 14px; height: 14px; color: var(--success); flex-shrink: 0; margin-top: 2px; }
+        .lp-plan-features li.muted { color: var(--text-faint); }
+        .lp-plan-features li.muted svg { color: var(--text-faint); }
+        .lp-plan-cta { margin-top: auto; }
+
+        /* ── CTA final ────────────────────────────────── */
+        .lp-cta-final {
+            text-align: center; padding: 80px 24px;
+            background: linear-gradient(135deg, rgba(176,107,255,0.06) 0%, rgba(41,230,176,0.04) 100%);
+            border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);
+        }
+
+        /* ── Footer ───────────────────────────────────── */
+        .lp-footer {
+            padding: 28px 32px; display: flex; flex-wrap: wrap; gap: 12px;
+            align-items: center; justify-content: space-between;
+            color: var(--text-faint); font-size: 0.8em;
+            border-top: 1px solid var(--glass-border);
+        }
+        .lp-footer a { color: var(--text-muted); text-decoration: none; }
+        .lp-footer a:hover { color: var(--text-primary); }
+
+        @media (max-width: 600px) {
+            .lp-nav { padding: 12px 16px; }
+            .lp-seccion { padding: 56px 16px; }
+            .lp-stats { gap: 20px; }
+            .lp-plan.destacado { margin-top: 12px; }
+        }
     </style>
 </head>
 <body>
 <canvas id="fondo-particulas" data-seccion="finanzas"></canvas>
 
-<div class="login-tarjeta">
-    <div class="login-marca">
+<!-- NAV -->
+<nav class="lp-nav">
+    <a href="/" class="lp-brand">
         <span class="brand-mark"></span>
         <span>CoreLux</span>
+    </a>
+    <div class="lp-nav-links">
+        <a href="#funciones" class="lp-nav-link">Funciones</a>
+        <a href="#precios" class="lp-nav-link">Precios</a>
+        <a href="{{ url_for('conectar') }}" class="btn btn-primary" style="font-size:0.88em; padding:8px 18px;">Empezar gratis</a>
     </div>
+</nav>
 
-    <div class="login-tagline">
-        Ganancia real, stock, publicidad y logros de tu cuenta de Mercado Libre — todo en un solo lugar.
+<!-- HERO -->
+<section class="lp-hero">
+    <div class="lp-hero-contenido">
+        <div class="lp-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 4 14 11 14 10 22 20 9 13 9 13 2"/></svg>
+            14 días de prueba gratis — sin tarjeta
+        </div>
+
+        <h1 class="lp-titulo">Gestioná tu negocio<br>en Mercado Libre<br>como un profesional</h1>
+
+        <p class="lp-subtitulo">
+            Ganancia real, stock inteligente, publicidad y reputación — todo consolidado en una sola pantalla. Tomá decisiones con datos, no con intuición.
+        </p>
+
+        <div class="lp-hero-cta">
+            <a href="{{ url_for('conectar') }}" class="btn-conectar-meli">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+                Conectar con Mercado Libre
+            </a>
+            <a href="#precios" class="btn-ver-precios">Ver planes</a>
+        </div>
+
+        <div class="lp-trial-nota">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Ingresás con tu cuenta oficial de Mercado Libre. Nunca pedimos tu contraseña.
+        </div>
+
+        <div class="lp-stats">
+            <div class="lp-stat">
+                <div class="lp-stat-val">+20</div>
+                <div class="lp-stat-label">pantallas de análisis</div>
+            </div>
+            <div class="lp-stat">
+                <div class="lp-stat-val">4 min</div>
+                <div class="lp-stat-label">frecuencia de sincronización</div>
+            </div>
+            <div class="lp-stat">
+                <div class="lp-stat-val">100%</div>
+                <div class="lp-stat-label">datos de tu cuenta real</div>
+            </div>
+        </div>
     </div>
+</section>
 
-    <a href="{{ url_for('conectar') }}" class="btn-conectar-meli">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+<!-- FUNCIONES -->
+<section id="funciones" class="lp-seccion">
+    <div class="lp-divider" style="margin-bottom:48px;"></div>
+    <h2 class="lp-seccion-titulo">Todo lo que necesitás para crecer</h2>
+    <p class="lp-seccion-subtitulo">Cada función está diseñada para responder una pregunta real de tu negocio.</p>
+
+    <div class="lp-features">
+        <div class="lp-feature-card">
+            <div class="lp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="8"/><rect x="11" y="7" width="3" height="13"/><rect x="16" y="14" width="3" height="6"/></svg>
+            </div>
+            <div class="lp-feature-titulo">Ganancia Neta Real</div>
+            <div class="lp-feature-desc">Calculá lo que te queda de cada venta descontando comisiones, envíos, fabricación y gastos operativos. Sin estimaciones: números reales de tu cuenta.</div>
+        </div>
+
+        <div class="lp-feature-card">
+            <div class="lp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 4 3 8l9 4 9-4z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/></svg>
+            </div>
+            <div class="lp-feature-titulo">Control de Stock</div>
+            <div class="lp-feature-desc">Visualizá el stock de todos tus productos y variantes. Alertas automáticas de quiebre y curvas de talle para detectar problemas antes de perder ventas.</div>
+        </div>
+
+        <div class="lp-feature-card">
+            <div class="lp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>
+            </div>
+            <div class="lp-feature-titulo">Tendencias de Mercado</div>
+            <div class="lp-feature-desc">Analizá qué se está vendiendo en tu categoría antes de invertir en nuevo stock. Datos de demanda real directamente de Mercado Libre.</div>
+        </div>
+
+        <div class="lp-feature-card">
+            <div class="lp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="8" y1="16" x2="16" y2="8"/><circle cx="9" cy="9" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1" fill="currentColor" stroke="none"/></svg>
+            </div>
+            <div class="lp-feature-titulo">Publicidad MeLi</div>
+            <div class="lp-feature-desc">Seguí el gasto real en ads y medí su impacto en tu ganancia. ¿El costo de publicidad está comiendo tus márgenes? Lo ves al instante.</div>
+        </div>
+
+        <div class="lp-feature-card">
+            <div class="lp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <div class="lp-feature-titulo">Espía de Competencia</div>
+            <div class="lp-feature-desc">Monitoreá los precios de tus competidores directos. Sabé cuándo bajaron el precio, qué stock tienen y cómo posicionarte mejor.</div>
+        </div>
+
+        <div class="lp-feature-card">
+            <div class="lp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="lp-feature-titulo">Preguntas en un solo lugar</div>
+            <div class="lp-feature-desc">Respondé preguntas de compradores directamente desde CoreLux. Incluye sugerencias de respuesta con IA para atender más rápido.</div>
+        </div>
+
+        <div class="lp-feature-card">
+            <div class="lp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21V3z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+            </div>
+            <div class="lp-feature-titulo">Reporte Fiscal</div>
+            <div class="lp-feature-desc">Resumen mensual de facturación, cargos y ganancia estimada — listo para compartir con tu contador. Exportable a Excel con un clic.</div>
+        </div>
+
+        <div class="lp-feature-card">
+            <div class="lp-feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21V3z"/><rect x="7" y="5" width="10" height="4" rx="1"/></svg>
+            </div>
+            <div class="lp-feature-titulo">Calculadora de Comisiones</div>
+            <div class="lp-feature-desc">Calculá exactamente cuánto recibís por cada venta según el tipo de publicación y si ofrecés cuotas. Antes de publicar, sabés los números.</div>
+        </div>
+    </div>
+</section>
+
+<!-- PRECIOS -->
+<section id="precios" style="padding: 80px 0;">
+    <div class="lp-seccion" style="padding-top:0; padding-bottom:0;">
+        <h2 class="lp-seccion-titulo">Planes y precios</h2>
+        <p class="lp-seccion-subtitulo">Comenzá gratis. Escalá cuando el negocio lo pida.</p>
+
+        <div class="lp-pricing">
+            <!-- Trial -->
+            <div class="lp-plan">
+                <div class="lp-plan-nombre">Prueba</div>
+                <div class="lp-plan-precio"><span class="lp-plan-moneda">$</span>0</div>
+                <div class="lp-plan-periodo">14 días gratis</div>
+                <ul class="lp-plan-features">
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Acceso completo a todas las funciones</li>
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>1 cuenta de Mercado Libre</li>
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sin tarjeta requerida</li>
+                </ul>
+                <div class="lp-plan-cta">
+                    <a href="{{ url_for('conectar') }}" class="btn btn-secondary btn-block">Empezar gratis</a>
+                </div>
+            </div>
+
+            <!-- Base (destacado) -->
+            <div class="lp-plan destacado">
+                <div class="lp-plan-badge">Más popular</div>
+                <div class="lp-plan-nombre">Base</div>
+                <div class="lp-plan-precio"><span class="lp-plan-moneda">$</span>40.000</div>
+                <div class="lp-plan-periodo">por mes · ARS</div>
+                <ul class="lp-plan-features">
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Todo lo del período de prueba</li>
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>1 cuenta de Mercado Libre</li>
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sincronización automática cada 4 min</li>
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Soporte por chat</li>
+                </ul>
+                <div class="lp-plan-cta">
+                    <a href="{{ url_for('conectar') }}" class="btn-conectar-meli btn-block" style="width:100%; box-sizing:border-box; justify-content:center;">Conectar ahora</a>
+                </div>
+            </div>
+
+            <!-- Elite -->
+            <div class="lp-plan">
+                <div class="lp-plan-nombre">Elite</div>
+                <div class="lp-plan-precio"><span class="lp-plan-moneda">$</span>99.000</div>
+                <div class="lp-plan-periodo">por mes · ARS</div>
+                <ul class="lp-plan-features">
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Todo lo del plan Base</li>
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Múltiples cuentas de MeLi</li>
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Funciones IA avanzadas</li>
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Soporte prioritario</li>
+                </ul>
+                <div class="lp-plan-cta">
+                    <a href="{{ url_for('conectar') }}" class="btn btn-secondary btn-block">Comenzar prueba</a>
+                </div>
+            </div>
+        </div>
+
+        <p style="text-align:center; color:var(--text-faint); font-size:0.78em; margin-top:28px;">
+            Los precios son en pesos argentinos (ARS) e incluyen IVA. Sujetos a actualización periódica.
+        </p>
+    </div>
+</section>
+
+<!-- CTA FINAL -->
+<div class="lp-cta-final">
+    <h2 style="font-family:var(--font-display); font-size:clamp(1.6em,4vw,2.4em); font-weight:800; letter-spacing:-0.02em; margin:0 0 14px;">
+        Empezá hoy. 14 días gratis.
+    </h2>
+    <p style="color:var(--text-secondary); margin:0 0 32px; font-size:1em;">
+        Sin tarjeta. Sin complicaciones. Conectás tu cuenta de Mercado Libre y en 5 minutos ya tenés tus datos.
+    </p>
+    <a href="{{ url_for('conectar') }}" class="btn-conectar-meli" style="font-size:1.05em;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
         Conectar con Mercado Libre
     </a>
-
-    <div class="login-confianza">
-        🔒 Ingresás con tu cuenta oficial de Mercado Libre
-    </div>
-
-    <div class="login-prueba">
-        <strong>14 días de prueba gratis.</strong> No pedimos tarjeta para empezar.
-    </div>
 </div>
+
+<!-- FOOTER -->
+<footer class="lp-footer">
+    <div>© 2025 CoreLux. Para vendedores de Mercado Libre Argentina.</div>
+    <div style="display:flex; gap:20px;">
+        <a href="mailto:soporte@corelux.app">Soporte</a>
+    </div>
+</footer>
 
 <script src="{{ url_for('static', filename='js/particulas.js') }}?v={{ static_v('js/particulas.js') }}" defer></script>
 </body>

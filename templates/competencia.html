@@ -35,7 +35,7 @@
             {% if r.tendencia_precio == 'bajó' %}<span class="badge badge-danger">Precio bajó</span>
             {% elif r.tendencia_precio == 'subió' %}<span class="badge badge-success">Precio subió</span>{% endif %}
         </span>
-        <form action="/competencia/eliminar/{{ r.id_meli_rival }}" method="POST" onsubmit="return confirm('¿Dejar de seguir esta publicación?');" style="display:inline;">
+        <form action="/competencia/eliminar/{{ r.id_meli_rival }}" method="POST" onsubmit="confirmarAccion('¿Dejar de seguir esta publicación?', this, 'Dejar de seguir'); return false;" style="display:inline;">
             <button type="submit" class="btn btn-danger">Dejar de seguir</button>
         </form>
     </div>

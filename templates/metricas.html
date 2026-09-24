@@ -7,25 +7,25 @@
         <div class="page-subtitle">Período: {{ fecha_desde }} al {{ fecha_hasta }} — Monotributo (sin retenciones automáticas)</div>
     </div>
     <div class="flex-gap no-imprimir">
-        <a class="btn btn-secondary" href="/metricas/exportar_excel?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}">📊 Exportar a Excel</a>
-        <button type="button" class="btn btn-secondary" onclick="window.print()">🖨️ Exportar a PDF</button>
+        <a class="btn btn-secondary" href="/metricas/exportar_excel?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> Exportar a Excel</a>
+        <button type="button" class="btn btn-secondary" onclick="window.print()"><svg class="icon" style="width:14px;height:14px;margin-right:5px;vertical-align:middle;"><use href="#icon-download"/></svg>Exportar a PDF</button>
     </div>
 </div>
 
 <div class="alert alert-info">
-    💡 Ganancia Real ya está completa: rentabilidad real por venta, promedios ponderados, Publicidad y Reclamos/Devoluciones.
+    <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-info"/></svg>Ganancia Real ya está completa: rentabilidad real por venta, promedios ponderados, Publicidad y Reclamos/Devoluciones.
 </div>
 
 {% if not ads_disponible %}
 <div class="alert alert-warning">Publicidad (Ads) en $0: comprobá que el permiso esté otorgado o que existan campañas activas en este período.</div>
 {% elif gasto_ads_total_periodo is not none %}
 <div class="alert alert-info">
-    📢 Gasto total en Ads este período: <strong>${{ "%.2f"|format(gasto_ads_total_periodo)|replace(".", ",") }}</strong>
+    <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-percent"/></svg>Gasto total en Ads este período: <strong>${{ "%.2f"|format(gasto_ads_total_periodo)|replace(".", ",") }}</strong>
 </div>
 {% endif %}
 
 <div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">⚠️ Devoluciones, Cancelaciones y Reclamos del Período</div>
+    <div class="panel-title"><svg class="icon" style="color:var(--semantic-warning);"><use href="#icon-alert"/></svg> Devoluciones, Cancelaciones y Reclamos del Período</div>
     <div class="stat-strip" style="margin-bottom: 14px;">
         <div class="stat-chip"><div class="stat-chip-label">Devoluciones</div><div class="stat-chip-value">{{ posventa.devoluciones }}</div></div>
         <div class="stat-chip"><div class="stat-chip-label">Cancelaciones</div><div class="stat-chip-value">{{ posventa.cancelaciones }}</div></div>
@@ -35,7 +35,7 @@
 
     {% if posventa.ranking_motivos_devolucion %}
     <div style="margin-bottom:16px;">
-        <div style="font-size:0.85em; color:var(--text-secondary); margin-bottom:8px;">📋 Motivos de devolución más frecuentes:</div>
+        <div style="font-size:0.85em; color:var(--text-secondary); margin-bottom:8px;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"><use href="#icon-layers"/></svg> Motivos de devolución más frecuentes:</div>
         <div class="flex-gap">
             {% for m in posventa.ranking_motivos_devolucion %}
             <span class="badge {% if loop.first %}badge-danger{% else %}badge-neutral{% endif %}">{{ m.motivo }} ({{ m.cantidad }})</span>
@@ -174,4 +174,120 @@
     {% endif %}
     {% endif %}
 </div>
+
+<div class="panel" id="panel-correlacion">
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-chart"/></svg> Precio vs. Ventas — ¿El precio afecta cuánto vendés?</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">Cada punto es un modelo. Mirá si los más caros venden menos — o si el precio no importa tanto como creés.</div>
+    <div style="position:relative; height:220px;">
+        <canvas id="canvas-correlacion"></canvas>
+    </div>
+    <div id="correlacion-empty" class="alert-empty" style="display:none;">Sin datos suficientes para el período.</div>
+</div>
+
+<div class="panel" id="panel-heatmap">
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-chart"/></svg> Mapa de Calor — ¿Cuándo vendés más?</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">Unidades vendidas por hora del día y día de la semana — últimos 90 días con hora registrada.</div>
+    <div style="position:relative; height:180px;">
+        <canvas id="canvas-heatmap"></canvas>
+    </div>
+    <div id="heatmap-empty" class="alert-empty" style="display:none;">Sin datos horarios suficientes para el período.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+// ── Correlación precio vs ventas ─────────────────────────────────────────────
+(function () {
+    fetch('/api/metricas/correlacion_precio_ventas?dias=90')
+        .then(r => r.json())
+        .then(d => {
+            if (!d.puntos || !d.puntos.length) {
+                document.getElementById('canvas-correlacion').style.display = 'none';
+                document.getElementById('correlacion-empty').style.display = '';
+                return;
+            }
+            const canvas = document.getElementById('canvas-correlacion');
+            if (!canvas || !window.Chart) return;
+            const root = getComputedStyle(document.documentElement);
+            const colorP = root.getPropertyValue('--accent-primary').trim() || '#b06bff';
+            const colorF = root.getPropertyValue('--text-faint').trim() || '#56567a';
+            const maxU = Math.max(...d.puntos.map(p => p.unidades), 1);
+            new Chart(canvas, {
+                type: 'bubble',
+                data: { datasets: [{ label: 'Modelos', data: d.puntos.map(p => ({ x: p.precio, y: p.unidades, r: Math.max(4, (p.unidades/maxU)*22), titulo: p.titulo })), backgroundColor: 'rgba(176,107,255,0.45)', borderColor: colorP, borderWidth: 1 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    animation: { duration: 500 },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(18,21,48,0.92)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff',
+                            callbacks: {
+                                title: items => items[0].raw.titulo,
+                                label: item => `$${item.raw.x.toLocaleString('es-AR')} · ${item.raw.y} uds`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: colorF, callback: v => '$' + v.toLocaleString('es-AR') }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Precio promedio', color: colorF, font: { size: 11 } } },
+                        y: { ticks: { color: colorF }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas', color: colorF, font: { size: 11 } } }
+                    }
+                }
+            });
+        }).catch(() => {});
+})();
+
+// ── Heatmap horario ───────────────────────────────────────────────────────────
+(function () {
+    fetch('/api/metricas/heatmap_horario?dias=90')
+        .then(r => r.json())
+        .then(d => {
+            if (!d.maximo) {
+                document.getElementById('canvas-heatmap').style.display = 'none';
+                document.getElementById('heatmap-empty').style.display = '';
+                return;
+            }
+            const canvas = document.getElementById('canvas-heatmap');
+            if (!canvas || !window.Chart) return;
+            const root = getComputedStyle(document.documentElement);
+            const colorFaint = root.getPropertyValue('--text-faint').trim() || '#56567a';
+            const datasets = [];
+            d.dias.forEach((dia, y) => {
+                const datos = d.horas
+                    .filter(h => d.matriz[y][h] > 0)
+                    .map(h => ({ x: h, y: y, v: d.matriz[y][h], r: Math.max(3, (d.matriz[y][h] / d.maximo) * 16) }));
+                if (datos.length) {
+                    datasets.push({
+                        label: dia, data: datos, borderColor: 'transparent',
+                        backgroundColor: datos.map(p => {
+                            const t = p.v / d.maximo;
+                            return `rgba(${Math.round(46 + t*(176-46))},${Math.round(230 + t*(107-230))},${Math.round(255 + t*(255-255))},${0.3 + t*0.6})`;
+                        }),
+                    });
+                }
+            });
+            new Chart(canvas, {
+                type: 'bubble', data: { datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    animation: { duration: 500 },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(18,21,48,0.92)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff',
+                            callbacks: {
+                                title: items => `${d.dias[items[0].raw.y]} ${items[0].raw.x}:00 hs`,
+                                label: item => `${item.raw.v} unidades`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { type: 'linear', min: 0, max: 23, ticks: { stepSize: 3, color: colorFaint, callback: v => v+'h' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                        y: { type: 'linear', min: -0.5, max: 6.5, ticks: { stepSize: 1, color: colorFaint, callback: v => (Number.isInteger(v) && v>=0 && v<=6) ? d.dias[v] : '' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                    }
+                }
+            });
+        })
+        .catch(() => {});
+})();
+</script>
 {% endblock %}

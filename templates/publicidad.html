@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">📢 Publicidad</h1>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-brand);"><use href="#icon-percent"/></svg>Publicidad</h1>
         <div class="page-subtitle">Product Ads — rendimiento real de tus campañas</div>
     </div>
     <form action="/publicidad" method="GET" class="filter-row" style="margin:0;">
@@ -29,7 +29,7 @@
     <div class="stat-chip-label" style="margin-bottom:6px;">Invertido en el período</div>
     <div class="hero-number">${{ costo_total_formateado }}</div>
     <div class="text-muted" style="font-size:0.85em; margin-top:6px;">Generó ${{ ventas_atribuidas_formateado }} en ventas atribuidas a publicidad</div>
-    <div class="text-muted" style="font-size:0.76em; margin-top:10px;">💡 Este monto viene directo de la API de Ads de MeLi (campo "cost") — históricamente NO incluye IVA. Si tu Facturación de MeLi muestra un número más alto para publicidad, es probablemente por eso, no un error de cálculo acá.</div>
+    <div class="text-muted" style="font-size:0.76em; margin-top:10px;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg>Este monto viene directo de la API de Ads de MeLi (campo "cost") — históricamente NO incluye IVA. Si tu Facturación de MeLi muestra un número más alto para publicidad, es probablemente por eso, no un error de cálculo acá.</div>
 </div>
 
 <div class="stat-strip">
@@ -117,7 +117,7 @@
     {% endif %}
     {% if campanas|selectattr('roas_bajo')|list %}
     <div class="alert alert-warning" style="margin-top:16px;">
-        ⚠️ Las campañas marcadas en rojo tienen un ROAS por debajo de 3x (referencia típica de equilibrio) — vale la pena revisar si conviene bajarles presupuesto o pausarlas.
+        <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-alert"/></svg>Las campañas marcadas en rojo tienen un ROAS por debajo de 3x (referencia típica de equilibrio) — vale la pena revisar si conviene bajarles presupuesto o pausarlas.
     </div>
     {% endif %}
     {% endif %}
@@ -141,7 +141,7 @@
 {% endif %}
 
 <div class="page-subtitle">
-    💡 <strong>ROAS</strong> = cuánto volvió por cada peso invertido (más alto = mejor). <strong>ACOS</strong> = qué % de esa venta se fue en pagar el anuncio (más bajo = mejor, es la métrica inversa al ROAS). <strong>TACOS</strong> no es de MeLi — es el gasto en Ads sobre TODA tu facturación del período, para ver qué tan dependiente sos de la pauta en general.
+    <svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg><strong>ROAS</strong> = cuánto volvió por cada peso invertido (más alto = mejor). <strong>ACOS</strong> = qué % de esa venta se fue en pagar el anuncio (más bajo = mejor, es la métrica inversa al ROAS). <strong>TACOS</strong> no es de MeLi — es el gasto en Ads sobre TODA tu facturación del período, para ver qué tan dependiente sos de la pauta en general.
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>

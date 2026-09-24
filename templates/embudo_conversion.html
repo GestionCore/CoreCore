@@ -13,15 +13,52 @@
 {% else %}
 
 {% set total_visitas = embudo|sum(attribute='visitas') %}
+{% set total_preguntas = embudo|sum(attribute='preguntas') %}
 {% set total_ventas = embudo|sum(attribute='vendidas') %}
 {% set a_revisar = embudo|selectattr('diagnostico', 'equalto', 'revisar_ficha')|list %}
 {% set poca_visibilidad = embudo|selectattr('diagnostico', 'equalto', 'poca_visibilidad')|list %}
 
+{% set pct_preg = ((total_preguntas / total_visitas) if total_visitas > 0 else 0) %}
+{% set pct_vnt = ((total_ventas / total_visitas) if total_visitas > 0 else 0) %}
+{% set max_w = 560 %}
+{% set cx = 300 %}
+{% set sh = 64 %}
+{% set gap = 10 %}
+{% set w1 = max_w %}
+{% set w2 = [pct_preg * max_w, 28]|max %}
+{% set w3 = [pct_vnt * max_w, 18]|max %}
+{% set y2 = sh + gap %}
+{% set y3 = (sh + gap) * 2 %}
+
+<div class="panel" style="margin-bottom:24px;">
+    <div class="panel-title">Funnel de Conversión — últimos 30 días</div>
+    <svg viewBox="0 0 600 {{ sh * 3 + gap * 2 + 10 }}" style="width:100%; max-width:600px; display:block; margin:10px auto 0; overflow:visible;" aria-label="Funnel de conversión">
+        <!-- Visitas -->
+        <polygon points="{{ cx - w1/2 }},0 {{ cx + w1/2 }},0 {{ cx + w2/2 }},{{ sh }} {{ cx - w2/2 }},{{ sh }}"
+            fill="rgba(46,230,255,0.22)" stroke="rgba(46,230,255,0.6)" stroke-width="1.5" stroke-linejoin="round"/>
+        <text x="{{ cx }}" y="{{ sh/2 + 6 }}" text-anchor="middle" fill="var(--accent-cyan)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_visitas | int }} visitas</text>
+        <!-- Conector + pct -->
+        <line x1="{{ cx }}" y1="{{ sh }}" x2="{{ cx }}" y2="{{ y2 }}" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="{{ cx }}" y="{{ sh + gap/2 + 4 }}" text-anchor="middle" fill="var(--text-faint)" font-size="10">{{ "%.1f"|format(pct_preg * 100) }}%</text>
+        <!-- Preguntas -->
+        <polygon points="{{ cx - w2/2 }},{{ y2 }} {{ cx + w2/2 }},{{ y2 }} {{ cx + w3/2 }},{{ y2 + sh }} {{ cx - w3/2 }},{{ y2 + sh }}"
+            fill="rgba(245,166,35,0.2)" stroke="rgba(245,166,35,0.55)" stroke-width="1.5" stroke-linejoin="round"/>
+        <text x="{{ cx }}" y="{{ y2 + sh/2 + 6 }}" text-anchor="middle" fill="var(--accent-brand)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_preguntas | int }} preguntas</text>
+        <!-- Conector + pct -->
+        <line x1="{{ cx }}" y1="{{ y2 + sh }}" x2="{{ cx }}" y2="{{ y3 }}" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="{{ cx }}" y="{{ y2 + sh + gap/2 + 4 }}" text-anchor="middle" fill="var(--text-faint)" font-size="10">{{ "%.1f"|format(pct_vnt * 100) }}%</text>
+        <!-- Ventas -->
+        <polygon points="{{ cx - w3/2 }},{{ y3 }} {{ cx + w3/2 }},{{ y3 }} {{ cx + w3/2 - 6 }},{{ y3 + sh }} {{ cx - w3/2 + 6 }},{{ y3 + sh }}"
+            fill="rgba(41,230,176,0.22)" stroke="rgba(41,230,176,0.6)" stroke-width="1.5" stroke-linejoin="round"/>
+        <text x="{{ cx }}" y="{{ y3 + sh/2 + 6 }}" text-anchor="middle" fill="var(--success)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_ventas | int }} ventas</text>
+    </svg>
+</div>
+
 <div class="stat-strip">
     <div class="stat-chip accent-denim"><div class="stat-chip-label">Visitas totales (30d)</div><div class="stat-chip-value">{{ total_visitas }}</div></div>
+    <div class="stat-chip accent-gold"><div class="stat-chip-label">Preguntas (30d)</div><div class="stat-chip-value">{{ total_preguntas }}</div></div>
     <div class="stat-chip accent-success"><div class="stat-chip-label">Ventas totales (30d)</div><div class="stat-chip-value">{{ total_ventas }}</div></div>
     <div class="stat-chip accent-danger"><div class="stat-chip-label">Para revisar ficha</div><div class="stat-chip-value">{{ a_revisar|length }}</div></div>
-    <div class="stat-chip accent-gold"><div class="stat-chip-label">Con poca visibilidad</div><div class="stat-chip-value">{{ poca_visibilidad|length }}</div></div>
 </div>
 
 <div class="panel" data-mostrar-mas-scope>
@@ -50,15 +87,15 @@
         </div>
         <div class="embudo-barras">
             <div class="embudo-etapa">
-                <span class="embudo-etapa-label">👁️ {{ e.visitas }} visitas</span>
+                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-eye"/></svg>{{ e.visitas }} visitas</span>
                 <div class="embudo-barra-fondo"><div class="embudo-barra" style="width:{{ '100' if e.visitas > 0 else '0' }}%; background:var(--accent-denim);"></div></div>
             </div>
             <div class="embudo-etapa">
-                <span class="embudo-etapa-label">❓ {{ e.preguntas }} preguntas</span>
+                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;color:var(--accent-brand);"><use href="#icon-info"/></svg>{{ e.preguntas }} preguntas</span>
                 <div class="embudo-barra-fondo"><div class="embudo-barra" style="width:{{ ((e.preguntas / e.visitas * 100) if e.visitas > 0 else 0)|round(1) }}%; background:var(--accent-gold);"></div></div>
             </div>
             <div class="embudo-etapa">
-                <span class="embudo-etapa-label">🛒 {{ e.vendidas }} ventas {% if e.tasa_conversion is not none %}({{ e.tasa_conversion }}%){% endif %}</span>
+                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-box"/></svg>{{ e.vendidas }} ventas {% if e.tasa_conversion is not none %}({{ e.tasa_conversion }}%){% endif %}</span>
                 <div class="embudo-barra-fondo"><div class="embudo-barra" style="width:{{ (e.tasa_conversion or 0)|round(1) }}%; background:var(--success);"></div></div>
             </div>
         </div>
@@ -97,14 +134,14 @@
 
 {% if zombies %}
 <div class="panel">
-    <div class="panel-title">💀 Publicaciones "Zombie" — cero visitas y cero ventas en 60 días ({{ zombies|length }})</div>
+    <div class="panel-title"><svg class="icon" style="color:var(--text-faint);"><use href="#icon-alert"/></svg> Publicaciones "Zombie" — cero visitas y cero ventas en 60 días ({{ zombies|length }})</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
         Están activas pero no aportan nada — compiten por tu atención y tu lugar en el catálogo sin resultado. Tocá una para revisarla en el Drawer.
     </div>
     <div class="flex-gap">
         {% for z in zombies %}
         <button type="button" class="badge badge-neutral" style="cursor:pointer; font-size:0.9em; padding:8px 14px; border:none;" onclick="abrirDrawer('{{ z.id_meli }}')">
-            💀 {{ z.titulo }}
+            {{ z.titulo }}
         </button>
         {% endfor %}
     </div>
@@ -112,7 +149,7 @@
 {% endif %}
 
 <div class="page-subtitle">
-    💡 <strong>Revisar ficha</strong>: tiene visitas pero casi no convierte — el problema suele ser fotos, precio o confianza, no visibilidad.
+    <svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg><strong>Revisar ficha</strong>: tiene visitas pero casi no convierte — el problema suele ser fotos, precio o confianza, no visibilidad.
     <strong>Poca visibilidad</strong>: la ficha funciona pero la ve poca gente — ahí ayuda mejorar título/SEO o sumar publicidad.
 </div>
 {% endif %}

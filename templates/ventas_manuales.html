@@ -57,7 +57,7 @@
                 <td class="num">{{ v.cantidad }}</td>
                 <td class="num">${{ v.precio_formateado }}</td>
                 <td>
-                    <form action="/ventas_manuales/eliminar/{{ v.id }}" method="POST" onsubmit="return confirm('¿Eliminar esta venta? El stock descontado se devuelve.');" style="display:inline;">
+                    <form action="/ventas_manuales/eliminar/{{ v.id }}" method="POST" onsubmit="confirmarAccion('¿Eliminar esta venta?', this, 'Eliminar', 'El stock descontado se devuelve automáticamente.'); return false;" style="display:inline;">
                         <button type="submit" class="btn btn-danger">Borrar</button>
                     </form>
                 </td>

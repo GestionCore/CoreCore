@@ -5,7 +5,7 @@ mostrar el desglose completo (comisión base vs. costo de cuotas) y el
 costo de envío real para un precio dado, sin inventar ningún porcentaje
 de blogs de terceros.
 """
-import requests
+import meli_http
 
 
 def obtener_categorias_del_catalogo(headers, cursor, limite=30):
@@ -14,7 +14,7 @@ def obtener_categorias_del_catalogo(headers, cursor, limite=30):
     nombre), para que elijas una en vez de escribir un category_id a
     mano. Solo consulta hasta `limite` items para no demorar.
     """
-    cursor.execute("SELECT id_meli FROM productos_padre WHERE estado = 'active' LIMIT ?", (limite,))
+    cursor.execute("SELECT id_meli FROM productos_padre WHERE estado = 'active' LIMIT %s", (limite,))
     ids = [r[0] for r in cursor.fetchall()]
     if not ids:
         return []
@@ -22,13 +22,13 @@ def obtener_categorias_del_catalogo(headers, cursor, limite=30):
     categorias_vistas = {}
     for id_meli in ids:
         try:
-            resp = requests.get(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, timeout=6)
+            resp = meli_http.get(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers)
             if resp.status_code != 200:
                 continue
             data = resp.json()
             cat_id = data.get("category_id")
             if cat_id and cat_id not in categorias_vistas:
-                resp_cat = requests.get(f"https://api.mercadolibre.com/categories/{cat_id}", timeout=6)
+                resp_cat = meli_http.get(f"https://api.mercadolibre.com/categories/{cat_id}")
                 nombre = resp_cat.json().get("name", cat_id) if resp_cat.status_code == 200 else cat_id
                 categorias_vistas[cat_id] = nombre
         except Exception:
@@ -52,7 +52,7 @@ def calcular_desglose_real(access_token, precio, category_id, listing_type_id, o
         params_precio["tags"] = "ahora-3"  # tag genérico de campaña de cuotas del BNA (la más común en MLA)
 
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/sites/{site_id}/listing_prices", headers=headers, params=params_precio, timeout=10)
+        resp = meli_http.get(f"https://api.mercadolibre.com/sites/{site_id}/listing_prices", headers=headers, params=params_precio)
         if resp.status_code != 200:
             return {"error": f"No se pudo consultar la comisión real: {resp.status_code} - {resp.text[:200]}"}
         opciones = resp.json()
@@ -73,14 +73,13 @@ def calcular_desglose_real(access_token, precio, category_id, listing_type_id, o
     costo_envio = None
     envio_obligatorio_gratis = None
     try:
-        user_id_resp = requests.get("https://api.mercadolibre.com/users/me", headers=headers, timeout=8)
+        user_id_resp = meli_http.get("https://api.mercadolibre.com/users/me", headers=headers)
         user_id = user_id_resp.json().get("id") if user_id_resp.status_code == 200 else None
         if user_id:
-            resp_envio = requests.get(
+            resp_envio = meli_http.get(
                 f"https://api.mercadolibre.com/users/{user_id}/shipping_options/free",
                 headers=headers,
                 params={"item_price": precio, "listing_type_id": listing_type_id, "mode": "me2", "condition": "new", "logistic_type": "drop_off"},
-                timeout=10
             )
             if resp_envio.status_code == 200:
                 data_envio = resp_envio.json()

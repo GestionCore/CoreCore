@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Reporte Fiscal · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-brand);"><use href="#icon-file-text"/></svg>Reporte Fiscal</h1>
+        <div class="page-subtitle">Resumen mensual para tu contador — facturación, cargos y ganancia estimada</div>
+    </div>
+    <div class="filter-row" style="margin:0;">
+        <form action="/reporte_fiscal" method="GET" style="display:flex; gap:8px; align-items:center;">
+            <label class="field-label" style="margin-bottom:0;">Año</label>
+            <select name="anio" onchange="this.form.submit()" class="btn btn-secondary" style="padding:8px 12px;">
+                {% for a in anios_disponibles %}
+                <option value="{{ a }}" {% if a == anio_seleccionado %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <a href="/reporte_fiscal/exportar?anio={{ anio_seleccionado }}" class="btn btn-secondary">
+            <svg class="icon" style="width:14px;height:14px;margin-right:5px;vertical-align:middle;"><use href="#icon-download"/></svg>Exportar Excel
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-info"/></svg>
+    Los montos de <strong>Ganancia Neta Estimada</strong> no incluyen Publicidad (Ads) — ese desglose está en la pantalla de Publicidad. El costo de fabricación es una estimación basada en el costo actual cargado por producto.
+    Siempre confirmá los números con tu contador antes de presentar algo a AFIP.
+</div>
+
+<div class="stat-strip" style="margin-bottom:20px;">
+    <div class="stat-chip accent-primary">
+        <div class="stat-chip-label">Facturación anual</div>
+        <div class="stat-chip-value">${{ totales.facturacion_f }}</div>
+        <div class="stat-chip-desc">{{ totales.ordenes }} órdenes</div>
+    </div>
+    <div class="stat-chip" style="border-color:var(--semantic-danger);">
+        <div class="stat-chip-label">Total cargos MeLi</div>
+        <div class="stat-chip-value text-danger">${{ totales.cargos_totales_f }}</div>
+        <div class="stat-chip-desc">Comisiones + envíos</div>
+    </div>
+    <div class="stat-chip" style="border-color:var(--semantic-warning);">
+        <div class="stat-chip-label">Gastos operativos</div>
+        <div class="stat-chip-value" style="color:var(--semantic-warning);">${{ totales.gastos_f }}</div>
+    </div>
+    <div class="stat-chip {% if totales.ganancia_estimada >= 0 %}accent-success{% endif %}" {% if totales.ganancia_estimada < 0 %}style="border-color:var(--semantic-danger);"{% endif %}>
+        <div class="stat-chip-label">Ganancia estimada anual</div>
+        <div class="stat-chip-value {% if totales.ganancia_estimada >= 0 %}text-success{% else %}text-danger{% endif %}">${{ totales.ganancia_f }}</div>
+        <div class="stat-chip-desc">Sin Ads</div>
+    </div>
+</div>
+
+<div class="panel" style="overflow-x:auto;">
+    <div class="panel-title">Desglose mensual {{ anio_seleccionado }}</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Mes</th>
+                <th class="num">Órdenes</th>
+                <th class="num">Uds.</th>
+                <th class="num">Facturación</th>
+                <th class="num">Comisiones</th>
+                <th class="num">Envíos</th>
+                <th class="num">Gastos Op.</th>
+                <th class="num">Costo Fab. (est.)</th>
+                <th class="num">Ganancia Neta (est.)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in meses %}
+            <tr {% if m.facturacion == 0 %}style="opacity:0.45;"{% endif %}>
+                <td><strong>{{ m.nombre }}</strong></td>
+                <td class="num">{{ m.ordenes }}</td>
+                <td class="num">{{ m.unidades }}</td>
+                <td class="num text-success">${{ m.facturacion_f }}</td>
+                <td class="num text-danger">${{ m.comisiones_f }}</td>
+                <td class="num text-danger">${{ m.envios_f }}</td>
+                <td class="num" style="color:var(--semantic-warning);">${{ m.gastos_f }}</td>
+                <td class="num text-muted">${{ m.costo_fab_f }}</td>
+                <td class="num {% if m.ganancia_estimada >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    <strong>${{ m.ganancia_f }}</strong>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="font-weight:700; border-top:2px solid var(--glass-border);">
+                <td>Total</td>
+                <td class="num">{{ totales.ordenes }}</td>
+                <td class="num">{{ totales.unidades }}</td>
+                <td class="num text-success">${{ totales.facturacion_f }}</td>
+                <td class="num text-danger">${{ totales.comisiones_f }}</td>
+                <td class="num text-danger">${{ totales.envios_f }}</td>
+                <td class="num" style="color:var(--semantic-warning);">${{ totales.gastos_f }}</td>
+                <td class="num text-muted">${{ totales.costo_fab_f }}</td>
+                <td class="num {% if totales.ganancia_estimada >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    <strong>${{ totales.ganancia_f }}</strong>
+                </td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="page-subtitle" style="margin-top:8px;">
+    <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
+    Esta pantalla no reemplaza la declaración jurada — es una herramienta de seguimiento para que vos y tu contador puedan estimar tu categoría y cuota de Monotributo. Para el cálculo oficial de Monotributo, usá la pantalla <a href="/monotributo" style="color:var(--accent-brand);">Monotributo</a>.
+</div>
+{% endblock %}

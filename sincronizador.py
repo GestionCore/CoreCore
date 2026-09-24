@@ -319,7 +319,7 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
             return
 
         items_procesados = []
-        lote_size = 20
+        lote_size = 50
 
         for i in range(0, len(lista_ids), lote_size):
             lote = lista_ids[i:i + lote_size]

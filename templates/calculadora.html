@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Calculadora de MeLi · Santi Mens{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-brand);"><use href="#icon-calculator"/></svg>Calculadora de Comisiones</h1>
+        <div class="page-subtitle">Desglose real de lo que recibís por cada venta — comisión, cuotas y envío incluidos</div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+<div class="panel">
+    <div class="panel-title">Datos de la venta</div>
+
+    <div class="field-group" style="margin-bottom:14px;">
+        <label class="field-label">Precio de venta ($)</label>
+        <input type="number" id="calc-precio" min="1" step="1" placeholder="ej: 25000" style="font-size:1.2em;">
+    </div>
+
+    <div class="field-group" style="margin-bottom:14px;">
+        <label class="field-label">Categoría</label>
+        <select id="calc-categoria">
+            <option value="">Cargando categorías...</option>
+        </select>
+        <div class="text-muted" style="font-size:0.78em; margin-top:4px;">Tus categorías activas — la comisión varía según la categoría.</div>
+    </div>
+
+    <div class="field-group" style="margin-bottom:14px;">
+        <label class="field-label">Tipo de publicación</label>
+        <select id="calc-tipo">
+            <option value="gold_special">Premium (Gold Special)</option>
+            <option value="gold_pro">Premium Pro (Gold Pro)</option>
+            <option value="gold">Oro</option>
+            <option value="silver">Plata</option>
+            <option value="bronze">Bronce (Gratis)</option>
+        </select>
+    </div>
+
+    <div class="field-group" style="margin-bottom:18px;">
+        <label class="field-label">Costo de fabricación ($) <span class="text-muted" style="font-weight:400;">(opcional)</span></label>
+        <input type="number" id="calc-costo" min="0" step="1" placeholder="ej: 8000">
+        <div class="text-muted" style="font-size:0.78em; margin-top:4px;">Para calcular la ganancia neta real.</div>
+    </div>
+
+    <button type="button" class="btn btn-primary btn-block" id="calc-btn" onclick="calcular()">
+        <svg class="icon" style="margin-right:6px;vertical-align:middle;"><use href="#icon-chart"/></svg>Calcular
+    </button>
+</div>
+
+<div class="panel" id="panel-resultado" style="display:none;">
+    <div class="panel-title">Desglose de la venta</div>
+    <div id="resultado-contenido"></div>
+</div>
+
+<div class="panel" id="panel-cuotas" style="display:none; grid-column: 1 / -1;">
+    <div class="panel-title">Comparativa: sin cuotas vs. con cuotas</div>
+    <div class="stat-strip" id="cuotas-chips"></div>
+    <div class="text-muted" style="font-size:0.78em; margin-top:12px;">
+        <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
+        Cuando ofrecés cuotas sin interés, MeLi te descuenta el costo financiero — el comprador paga el precio lleno, vos recibís menos.
+    </div>
+</div>
+
+</div>
+
+<script>
+let _categorias = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const sel = document.getElementById('calc-categoria');
+    try {
+        const resp = await fetch('/api/calculadora_categorias');
+        _categorias = await resp.json();
+        if (_categorias.error || !_categorias.length) {
+            sel.innerHTML = '<option value="">Sin categorías activas disponibles</option>';
+            return;
+        }
+        sel.innerHTML = _categorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    } catch(e) {
+        sel.innerHTML = '<option value="">Error cargando categorías</option>';
+    }
+});
+
+async function calcular() {
+    const precio = parseFloat(document.getElementById('calc-precio').value);
+    const categoria = document.getElementById('calc-categoria').value;
+    const tipo = document.getElementById('calc-tipo').value;
+    const costo = parseFloat(document.getElementById('calc-costo').value) || 0;
+    const btn = document.getElementById('calc-btn');
+
+    if (!precio || precio <= 0) { mostrarToast('Ingresá un precio válido', 'error'); return; }
+    if (!categoria) { mostrarToast('Seleccioná una categoría', 'error'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="icon spin-anim" style="margin-right:6px;vertical-align:middle;"><use href="#icon-refresh"/></svg>Calculando...';
+
+    try {
+        const [resSinCuotas, resConCuotas] = await Promise.all([
+            fetch(`/api/calculadora_costos?precio=${precio}&category_id=${encodeURIComponent(categoria)}&listing_type_id=${tipo}&ofrece_cuotas=false`).then(r => r.json()),
+            fetch(`/api/calculadora_costos?precio=${precio}&category_id=${encodeURIComponent(categoria)}&listing_type_id=${tipo}&ofrece_cuotas=true`).then(r => r.json()),
+        ]);
+
+        if (resSinCuotas.error) { mostrarToast(resSinCuotas.error, 'error'); return; }
+
+        mostrarResultado(resSinCuotas, costo);
+        mostrarComparativa(resSinCuotas, resConCuotas, costo);
+    } catch(e) {
+        mostrarToast('Error consultando la API', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="icon" style="margin-right:6px;vertical-align:middle;"><use href="#icon-chart"/></svg>Calcular';
+    }
+}
+
+function fmt(n) { return n !== null && n !== undefined ? '$' + Math.round(n).toLocaleString('es-AR') : '—'; }
+function pct(n) { return n !== null && n !== undefined ? (n * 100).toFixed(1) + '%' : '—'; }
+
+function mostrarResultado(d, costo) {
+    const envioTexto = d.costo_envio !== null
+        ? (d.envio_obligatorio_gratis ? `Incluido en comisión (envío gratis obligatorio)` : `${fmt(d.costo_envio)} a cargo tuyo`)
+        : 'No disponible';
+
+    const gananciaNetaReal = costo > 0 ? (d.recibis - costo) : null;
+    const pctGanancia = (costo > 0 && d.recibis > 0) ? ((gananciaNetaReal / d.precio) * 100).toFixed(1) : null;
+
+    document.getElementById('panel-resultado').style.display = '';
+    document.getElementById('resultado-contenido').innerHTML = `
+        <div class="stat-strip" style="margin-bottom:16px;">
+            <div class="stat-chip accent-primary">
+                <div class="stat-chip-label">Precio de venta</div>
+                <div class="stat-chip-value">${fmt(d.precio)}</div>
+            </div>
+            <div class="stat-chip" style="border-color:var(--semantic-danger);">
+                <div class="stat-chip-label">Comisión MeLi</div>
+                <div class="stat-chip-value text-danger">${fmt(d.comision_total)}</div>
+                <div class="stat-chip-desc">${pct(d.pct_comision_base)} base${d.pct_cuotas ? ' + ' + pct(d.pct_cuotas) + ' cuotas' : ''}</div>
+            </div>
+            <div class="stat-chip" style="${d.costo_envio ? 'border-color:var(--semantic-danger);' : ''}">
+                <div class="stat-chip-label">Costo de envío</div>
+                <div class="stat-chip-value ${d.costo_envio ? 'text-danger' : ''}">${d.costo_envio !== null ? fmt(d.costo_envio) : '—'}</div>
+                <div class="stat-chip-desc">${d.envio_obligatorio_gratis ? 'Obligatorio gratis' : (d.costo_envio === null ? 'No disponible' : 'A cargo tuyo')}</div>
+            </div>
+            <div class="stat-chip accent-success">
+                <div class="stat-chip-label">Lo que recibís</div>
+                <div class="stat-chip-value">${fmt(d.recibis)}</div>
+                <div class="stat-chip-desc">${((d.recibis / d.precio) * 100).toFixed(1)}% del precio</div>
+            </div>
+        </div>
+        ${costo > 0 ? `
+        <div style="background:rgba(255,255,255,0.04); border-radius:var(--radius-sm); padding:14px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span class="field-label">Lo que recibís de MeLi</span><span>${fmt(d.recibis)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span class="field-label">− Costo de fabricación</span><span class="text-danger">−${fmt(costo)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-top:1px solid var(--glass-border); padding-top:8px; margin-top:4px;">
+                <span class="field-label" style="font-size:1em;">Ganancia neta real</span>
+                <span class="${gananciaNetaReal >= 0 ? 'text-success' : 'text-danger'}" style="font-size:1.1em; font-weight:700;">${fmt(gananciaNetaReal)} <span style="font-size:0.8em; font-weight:400;">(${pctGanancia}%)</span></span>
+            </div>
+        </div>
+        ` : ''}
+    `;
+}
+
+function mostrarComparativa(sinCuotas, conCuotas, costo) {
+    if (conCuotas.error) {
+        document.getElementById('panel-cuotas').style.display = 'none';
+        return;
+    }
+    const diff = sinCuotas.recibis - conCuotas.recibis;
+    document.getElementById('panel-cuotas').style.display = '';
+    document.getElementById('cuotas-chips').innerHTML = `
+        <div class="stat-chip accent-success">
+            <div class="stat-chip-label">Sin cuotas — recibís</div>
+            <div class="stat-chip-value">${fmt(sinCuotas.recibis)}</div>
+            <div class="stat-chip-desc">Comisión: ${fmt(sinCuotas.comision_total)}</div>
+        </div>
+        <div class="stat-chip" style="border-color:var(--semantic-warning);">
+            <div class="stat-chip-label">Con cuotas sin interés — recibís</div>
+            <div class="stat-chip-value" style="color:var(--semantic-warning);">${fmt(conCuotas.recibis)}</div>
+            <div class="stat-chip-desc">Comisión: ${fmt(conCuotas.comision_total)} (${conCuotas.pct_cuotas ? '+' + pct(conCuotas.pct_cuotas) + ' financing' : 'aprox.'})</div>
+        </div>
+        <div class="stat-chip" style="border-color:var(--semantic-danger);">
+            <div class="stat-chip-label">Costo de ofrecer cuotas</div>
+            <div class="stat-chip-value text-danger">${fmt(diff)}</div>
+            <div class="stat-chip-desc">${((diff / sinCuotas.precio) * 100).toFixed(1)}% del precio de venta</div>
+        </div>
+        ${costo > 0 ? `
+        <div class="stat-chip">
+            <div class="stat-chip-label">Ganancia neta c/ cuotas</div>
+            <div class="stat-chip-value ${(conCuotas.recibis - costo) >= 0 ? 'text-success' : 'text-danger'}">${fmt(conCuotas.recibis - costo)}</div>
+            <div class="stat-chip-desc">vs ${fmt(sinCuotas.recibis - costo)} sin cuotas</div>
+        </div>` : ''}
+    `;
+}
+</script>
+{% endblock %}
