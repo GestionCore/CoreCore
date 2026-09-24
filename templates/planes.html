@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Planes — CoreLux{% endblock %}
+{% block content %}
+<div class="planes-hero">
+  <h1 class="planes-titulo">Elegí tu plan</h1>
+  <p class="planes-subtitulo">Todo lo que necesitás para gestionar tu negocio en Mercado Libre.</p>
+  {% if plan_actual == "trial" and dias_trial is not none %}
+    {% if dias_trial > 0 %}
+    <div class="planes-trial-banner">
+      Te quedan <strong>{{ dias_trial }} día{{ "s" if dias_trial != 1 else "" }}</strong> de prueba gratuita.
+    </div>
+    {% else %}
+    <div class="planes-trial-banner planes-trial-vencido">
+      Tu período de prueba venció. Suscribite para seguir usando CoreLux.
+    </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+<div class="planes-grid">
+
+  <!-- Plan Base -->
+  <div class="plan-card {% if plan_actual == 'base' %}plan-activo{% endif %}">
+    <div class="plan-header">
+      <span class="plan-nombre">Plan Base</span>
+      <div class="plan-precio">
+        <span class="plan-monto">$40.000</span>
+        <span class="plan-periodo">/ mes</span>
+      </div>
+    </div>
+    <ul class="plan-features">
+      <li>✓ Ganancia Real y análisis de costos</li>
+      <li>✓ Gestión de stock y catálogo</li>
+      <li>✓ Sincronización automática cada 4 minutos</li>
+      <li>✓ Análisis de tendencias y competencia</li>
+      <li>✓ Logros y métricas de crecimiento</li>
+      <li>✓ 1 cuenta de Mercado Libre</li>
+    </ul>
+    {% if plan_actual == "base" %}
+    <div class="plan-badge-activo">Tu plan actual</div>
+    {% elif plan_actual in (None, "trial", "cancelado") %}
+    <form action="/suscripcion/iniciar" method="post" class="plan-form">
+      <input type="hidden" name="plan" value="base">
+      <button type="submit" class="btn-plan">Suscribirme — $40.000/mes</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Plan Elite -->
+  <div class="plan-card plan-elite {% if plan_actual == 'elite' %}plan-activo{% endif %}">
+    <div class="plan-badge-elite">RECOMENDADO</div>
+    <div class="plan-header">
+      <span class="plan-nombre">Plan Elite</span>
+      <div class="plan-precio">
+        <span class="plan-monto">$99.000</span>
+        <span class="plan-periodo">/ mes</span>
+      </div>
+    </div>
+    <ul class="plan-features">
+      <li>✓ Todo lo del Plan Base</li>
+      <li>✓ <strong>Múltiples cuentas de MeLi</strong></li>
+      <li>✓ Analítica avanzada multi-cuenta</li>
+      <li>✓ Coach IA de costos y logística</li>
+      <li>✓ Soporte prioritario</li>
+    </ul>
+    {% if plan_actual == "elite" %}
+    <div class="plan-badge-activo">Tu plan actual</div>
+    {% elif plan_actual in (None, "trial", "cancelado") %}
+    <form action="/suscripcion/iniciar" method="post" class="plan-form">
+      <input type="hidden" name="plan" value="elite">
+      <button type="submit" class="btn-plan btn-plan-elite">Suscribirme — $99.000/mes</button>
+    </form>
+    {% elif plan_actual == "base" %}
+    <form action="/suscripcion/iniciar" method="post" class="plan-form">
+      <input type="hidden" name="plan" value="elite">
+      <button type="submit" class="btn-plan btn-plan-elite">Mejorar a Elite</button>
+    </form>
+    {% endif %}
+  </div>
+
+</div>
+
+{% if plan_actual in ("base", "elite") %}
+<div class="planes-footer-link">
+  <a href="/suscripcion">Ver estado de tu suscripción</a>
+</div>
+{% endif %}
+
+<div class="planes-notas">
+  <p>El cobro se procesa a través de <strong>Mercado Pago</strong>. Podés cancelar cuando quieras desde tu panel de suscripción.</p>
+  <p>Prueba gratuita de 14 días incluida para nuevas cuentas — se activa automáticamente al registrarte.</p>
+</div>
+
+<style>
+.planes-hero {
+  text-align: center;
+  padding: 2.5rem 1rem 1.5rem;
+}
+.planes-titulo {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  margin: 0 0 0.5rem;
+}
+.planes-subtitulo {
+  color: var(--color-text-muted, #aaa);
+  margin: 0 0 1rem;
+}
+.planes-trial-banner {
+  display: inline-block;
+  background: rgba(0,230,185,0.12);
+  border: 1px solid var(--color-accent);
+  border-radius: 8px;
+  padding: 0.5rem 1.2rem;
+  color: var(--color-accent);
+  font-size: 0.95rem;
+  margin-top: 0.5rem;
+}
+.planes-trial-vencido {
+  background: rgba(255,60,60,0.12);
+  border-color: #ff3c3c;
+  color: #ff3c3c;
+}
+.planes-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  padding: 0 1rem 2rem;
+  max-width: 860px;
+  margin: 0 auto;
+}
+.plan-card {
+  background: var(--color-surface, #111);
+  border: 1px solid var(--color-border, #2a2a2a);
+  border-radius: 14px;
+  padding: 1.8rem;
+  flex: 1 1 320px;
+  max-width: 380px;
+  position: relative;
+  transition: border-color 0.2s;
+}
+.plan-card:hover {
+  border-color: var(--color-accent);
+}
+.plan-activo {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 18px rgba(0,230,185,0.15);
+}
+.plan-elite {
+  background: linear-gradient(160deg, var(--color-surface, #111) 60%, rgba(0,230,185,0.05));
+}
+.plan-badge-elite {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-accent);
+  color: #000;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 12px;
+  border-radius: 20px;
+}
+.plan-badge-activo {
+  text-align: center;
+  margin-top: 1.2rem;
+  color: var(--color-accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.plan-header {
+  margin-bottom: 1.2rem;
+}
+.plan-nombre {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text, #eee);
+  margin-bottom: 0.4rem;
+}
+.plan-precio {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+.plan-monto {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--color-accent);
+}
+.plan-periodo {
+  color: var(--color-text-muted, #888);
+  font-size: 0.9rem;
+}
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.plan-features li {
+  color: var(--color-text, #ddd);
+  font-size: 0.9rem;
+}
+.plan-form { margin-top: auto; }
+.btn-plan {
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.btn-plan:hover {
+  background: var(--color-accent);
+  color: #000;
+}
+.btn-plan-elite {
+  background: var(--color-accent);
+  color: #000;
+}
+.btn-plan-elite:hover {
+  background: transparent;
+  color: var(--color-accent);
+}
+.planes-notas {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto 3rem;
+  padding: 0 1rem;
+  color: var(--color-text-muted, #888);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.planes-notas p { margin: 0.3rem 0; }
+.planes-footer-link {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.planes-footer-link a {
+  color: var(--color-accent);
+  font-size: 0.9rem;
+}
+</style>
+{% endblock %}

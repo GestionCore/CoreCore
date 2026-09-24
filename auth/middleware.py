@@ -18,6 +18,11 @@ _PERMITIDAS_DURANTE_SINCRONIZACION = {
     "api_estado_sincronizacion", "sincronizar_todo", "onboarding_vista", "onboarding_guardar", "onboarding_tutorial_visto",
 }
 _PERMITIDAS_DURANTE_ONBOARDING = {"logout", "reconectar", "conectar", "callback", "onboarding_vista", "onboarding_guardar"}
+_PERMITIDAS_SIN_SUSCRIPCION = {
+    "logout", "landing", "planes_vista", "suscripcion_iniciar", "suscripcion_retorno",
+    "suscripcion_vista", "suscripcion_cancelar", "webhook_mercadopago", "admin_panel",
+    "admin_usuarios", "admin_cambiar_plan",
+}
 
 
 def login_requerido(vista):
@@ -45,6 +50,20 @@ def login_requerido(vista):
                 fila = cursor.fetchone()
             if fila and not fila[0]:
                 return render_template("sincronizando.html")
+
+        # Verificar suscripción activa — trial vencido o plan cancelado → pantalla de planes
+        if request.endpoint not in _PERMITIDAS_SIN_SUSCRIPCION:
+            with db.conexion_usuario(usuario_id) as conexion:
+                cursor = conexion.cursor()
+                cursor.execute("SELECT plan, trial_termina_en FROM usuarios WHERE id = %s", (usuario_id,))
+                fila_plan = cursor.fetchone()
+            if fila_plan:
+                plan_actual, trial_termina_en = fila_plan
+                if plan_actual == "cancelado":
+                    return redirect(url_for("planes_vista"))
+                if plan_actual == "trial" and trial_termina_en:
+                    if datetime.now(timezone.utc) > trial_termina_en:
+                        return redirect(url_for("planes_vista"))
 
         # Racha de días activo: un flag de sesión evita pegarle a la base
         # en cada request — solo se actualiza la primera vez que se entra

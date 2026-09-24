@@ -65,6 +65,12 @@ FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "")
 # como variable de entorno del servidor.
 TOKEN_ENCRYPTION_KEY = os.getenv("TOKEN_ENCRYPTION_KEY", "")
 
+# --- Mercado Pago (pagos de suscripción de CoreLux) ---
+# Credenciales PROPIAS de CoreLux en MercadoPago, para cobrar a los usuarios.
+# No confundir con las credenciales de MeLi de cada usuario vendedor.
+# Obtené el access token en https://www.mercadopago.com.ar/developers/panel
+MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN", "")
+
 DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
 # Panel de administración — email del dueño de CoreLux. Agregar a .env:

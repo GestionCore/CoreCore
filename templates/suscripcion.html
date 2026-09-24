@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% block title %}Mi Suscripción — CoreLux{% endblock %}
+{% block content %}
+<div class="susc-wrap">
+  <h1 class="susc-titulo">Mi Suscripción</h1>
+
+  <!-- Estado actual -->
+  <div class="susc-card">
+    <div class="susc-row">
+      <span class="susc-label">Plan activo</span>
+      <span class="susc-valor plan-chip plan-{{ plan }}">
+        {% if plan == "trial" %}Prueba gratuita
+        {% elif plan == "base" %}Plan Base
+        {% elif plan == "elite" %}Plan Elite
+        {% elif plan == "cancelado" %}Cancelado
+        {% else %}{{ plan }}{% endif %}
+      </span>
+    </div>
+
+    {% if plan == "trial" and dias_trial is not none %}
+    <div class="susc-row">
+      <span class="susc-label">Días restantes de prueba</span>
+      <span class="susc-valor {% if dias_trial <= 3 %}susc-alerta{% endif %}">
+        {{ dias_trial }} día{{ "s" if dias_trial != 1 else "" }}
+      </span>
+    </div>
+    {% endif %}
+
+    {% if activada_en %}
+    <div class="susc-row">
+      <span class="susc-label">Suscripción activa desde</span>
+      <span class="susc-valor">{{ activada_en.strftime("%d/%m/%Y") }}</span>
+    </div>
+    {% endif %}
+
+    {% if email %}
+    <div class="susc-row">
+      <span class="susc-label">Email en Mercado Pago</span>
+      <span class="susc-valor">{{ email }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- CTAs según estado -->
+  {% if plan in ("trial", "cancelado") %}
+  <div class="susc-cta">
+    <p class="susc-cta-texto">
+      {% if plan == "cancelado" %}
+        Tu suscripción fue cancelada. Podés volver a suscribirte cuando quieras.
+      {% else %}
+        Pasate a un plan pago para mantener acceso cuando termine la prueba.
+      {% endif %}
+    </p>
+    <a href="/planes" class="btn-susc-planes">Ver planes disponibles</a>
+  </div>
+
+  {% elif plan in ("base", "elite") %}
+  <div class="susc-cta susc-cta-activo">
+    <p class="susc-cta-texto">
+      Tu suscripción se renueva automáticamente cada mes vía Mercado Pago.
+      Si necesitás cambiar el plan, primero cancelá y luego suscribite al nuevo.
+    </p>
+    {% if plan == "base" %}
+    <a href="/planes" class="btn-susc-upgrade">Mejorar a Plan Elite</a>
+    {% endif %}
+    <button class="btn-susc-cancelar" id="btn-cancelar"
+            onclick="confirmarCancelacion()">
+      Cancelar suscripción
+    </button>
+  </div>
+  {% endif %}
+
+  <div class="susc-nota">
+    <p>Los cobros son procesados por Mercado Pago. CoreLux nunca almacena datos de tu tarjeta.</p>
+    <p>Si tenés un problema con el cobro, contactá a Mercado Pago directamente o escribinos a soporte.</p>
+  </div>
+</div>
+
+<!-- Modal de confirmación de cancelación -->
+<div id="modal-cancelar" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <h3 class="modal-titulo">¿Cancelar suscripción?</h3>
+    <p class="modal-texto">
+      Perderás acceso a CoreLux al finalizar el período actual.
+      Esta acción se procesa en Mercado Pago y <strong>no se puede deshacer</strong>.
+    </p>
+    <div class="modal-acciones">
+      <button class="btn-modal-cancel" onclick="cerrarModal()">Volver</button>
+      <button class="btn-modal-confirm" id="btn-confirmar-cancelar" onclick="ejecutarCancelacion()">
+        Sí, cancelar
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+.susc-wrap {
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+.susc-titulo {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  margin-bottom: 1.5rem;
+}
+.susc-card {
+  background: var(--color-surface, #111);
+  border: 1px solid var(--color-border, #2a2a2a);
+  border-radius: 12px;
+  padding: 1.4rem;
+  margin-bottom: 1.5rem;
+}
+.susc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--color-border, #222);
+  gap: 1rem;
+}
+.susc-row:last-child { border-bottom: none; }
+.susc-label {
+  color: var(--color-text-muted, #888);
+  font-size: 0.9rem;
+}
+.susc-valor {
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-align: right;
+}
+.susc-alerta { color: #ff6b35; }
+.plan-chip {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.plan-trial  { background: rgba(255,200,0,0.15); color: #ffc800; border: 1px solid #ffc800; }
+.plan-base   { background: rgba(0,230,185,0.12); color: var(--color-accent); border: 1px solid var(--color-accent); }
+.plan-elite  { background: rgba(0,230,185,0.2); color: var(--color-accent); border: 1px solid var(--color-accent); box-shadow: 0 0 10px rgba(0,230,185,0.2); }
+.plan-cancelado { background: rgba(255,60,60,0.12); color: #ff4444; border: 1px solid #ff4444; }
+.susc-cta {
+  background: var(--color-surface, #111);
+  border: 1px solid var(--color-border, #2a2a2a);
+  border-radius: 12px;
+  padding: 1.3rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.susc-cta-activo { border-color: rgba(0,230,185,0.3); }
+.susc-cta-texto {
+  margin: 0;
+  color: var(--color-text-muted, #aaa);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.btn-susc-planes {
+  padding: 0.65rem 1.4rem;
+  border-radius: 8px;
+  background: var(--color-accent);
+  color: #000;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+.btn-susc-planes:hover { opacity: 0.85; }
+.btn-susc-upgrade {
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background 0.2s, color 0.2s;
+}
+.btn-susc-upgrade:hover { background: var(--color-accent); color: #000; }
+.btn-susc-cancelar {
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  border: 1px solid #ff4444;
+  background: transparent;
+  color: #ff4444;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.btn-susc-cancelar:hover { background: rgba(255,68,68,0.12); }
+.susc-nota {
+  color: var(--color-text-muted, #666);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  border-top: 1px solid var(--color-border, #222);
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+}
+.susc-nota p { margin: 0.25rem 0; }
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9000;
+}
+.modal-box {
+  background: var(--color-surface, #181818);
+  border: 1px solid #ff4444;
+  border-radius: 14px;
+  padding: 2rem;
+  max-width: 380px;
+  width: 90%;
+}
+.modal-titulo {
+  margin: 0 0 0.8rem;
+  font-size: 1.1rem;
+  color: #ff4444;
+}
+.modal-texto {
+  color: var(--color-text, #ddd);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 1.4rem;
+}
+.modal-acciones {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: flex-end;
+}
+.btn-modal-cancel {
+  padding: 0.55rem 1.1rem;
+  border-radius: 7px;
+  border: 1px solid var(--color-border, #333);
+  background: transparent;
+  color: var(--color-text, #ddd);
+  cursor: pointer;
+}
+.btn-modal-confirm {
+  padding: 0.55rem 1.2rem;
+  border-radius: 7px;
+  background: #ff4444;
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+</style>
+
+<script>
+function confirmarCancelacion() {
+  document.getElementById("modal-cancelar").hidden = false;
+}
+function cerrarModal() {
+  document.getElementById("modal-cancelar").hidden = true;
+}
+async function ejecutarCancelacion() {
+  const btn = document.getElementById("btn-confirmar-cancelar");
+  btn.disabled = true;
+  btn.textContent = "Cancelando…";
+  try {
+    const resp = await fetch("/suscripcion/cancelar", { method: "POST" });
+    const data = await resp.json();
+    if (data.ok) {
+      window.location.href = "/planes";
+    } else {
+      alert(data.detalle || "Error al cancelar. Intentá de nuevo.");
+      btn.disabled = false;
+      btn.textContent = "Sí, cancelar";
+    }
+  } catch {
+    alert("Error de conexión. Intentá de nuevo.");
+    btn.disabled = false;
+    btn.textContent = "Sí, cancelar";
+  }
+}
+</script>
+{% endblock %}

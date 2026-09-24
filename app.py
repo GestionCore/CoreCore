@@ -38,8 +38,9 @@ import timeline_publicacion
 import exportador_redes
 import scheduler
 import ventas_manuales
+import pagos
 from utils import formatear_moneda
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
@@ -2052,6 +2053,190 @@ def admin_toggle_activo(uid):
     return jsonify({"ok": True, "activo": fila[0]})
 
 # ── /Panel de administración ──────────────────────────────────────────────
+
+# ── Suscripciones / Pagos ─────────────────────────────────────────────────
+
+@app.route("/planes")
+def planes_vista():
+    """Página de precios — accesible sin login."""
+    usuario_id = session.get("usuario_id")
+    plan_actual = None
+    trial_termina_en = None
+    if usuario_id:
+        try:
+            with db.conexion_usuario(usuario_id) as conexion:
+                cursor = conexion.cursor()
+                cursor.execute("SELECT plan, trial_termina_en FROM usuarios WHERE id = %s", (usuario_id,))
+                fila = cursor.fetchone()
+            if fila:
+                plan_actual, trial_termina_en = fila
+        except Exception:
+            pass
+    dias_trial = None
+    if plan_actual == "trial" and trial_termina_en:
+        delta = trial_termina_en - datetime.now(timezone.utc)
+        dias_trial = max(0, delta.days)
+    return render_template("planes.html", plan_actual=plan_actual, dias_trial=dias_trial)
+
+
+@app.route("/suscripcion")
+@login_requerido
+def suscripcion_vista():
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            "SELECT plan, trial_termina_en, mp_suscripcion_id, suscripcion_activada_en, email FROM usuarios WHERE id = %s",
+            (g.usuario_id,)
+        )
+        fila = cursor.fetchone()
+    if not fila:
+        return redirect(url_for("planes_vista"))
+    plan, trial_termina_en, mp_id, activada_en, email = fila
+    dias_trial = None
+    if plan == "trial" and trial_termina_en:
+        delta = trial_termina_en - datetime.now(timezone.utc)
+        dias_trial = max(0, delta.days)
+    return render_template(
+        "suscripcion.html",
+        plan=plan, dias_trial=dias_trial,
+        mp_suscripcion_id=mp_id, activada_en=activada_en, email=email,
+        active_nav="suscripcion",
+    )
+
+
+@app.route("/suscripcion/iniciar", methods=["POST"])
+@login_requerido
+def suscripcion_iniciar():
+    """Crea el link de pago en MP y redirige al usuario."""
+    if not config.MP_ACCESS_TOKEN:
+        return jsonify({"ok": False, "detalle": "Pagos no configurados — contactá al soporte."}), 503
+
+    plan = request.form.get("plan", "")
+    if plan not in ("base", "elite"):
+        return jsonify({"ok": False, "detalle": "Plan inválido."}), 400
+
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT email FROM usuarios WHERE id = %s", (g.usuario_id,))
+        fila = cursor.fetchone()
+    email = fila[0] if fila else f"usuario{g.usuario_id}@corelux.app"
+
+    back_url = url_for("suscripcion_retorno", _external=True)
+    try:
+        init_point, preapproval_id = pagos.crear_link_suscripcion(plan, g.usuario_id, email, back_url)
+    except Exception as e:
+        print(f"[Pagos] ❌ Error creando suscripción para usuario {g.usuario_id}: {e}")
+        return jsonify({"ok": False, "detalle": "Error conectando con Mercado Pago. Intentá de nuevo."}), 502
+
+    # Guardamos el preapproval_id antes de redirigir para poder actualizar el estado en el retorno
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            "UPDATE usuarios SET mp_suscripcion_id = %s WHERE id = %s",
+            (preapproval_id, g.usuario_id)
+        )
+
+    return redirect(init_point)
+
+
+@app.route("/suscripcion/retorno")
+@login_requerido
+def suscripcion_retorno():
+    """
+    MP redirige acá después de que el usuario autoriza (o rechaza) la suscripción.
+    Consultamos el estado real de MP para actualizar el plan.
+    """
+    if not config.MP_ACCESS_TOKEN:
+        return redirect(url_for("suscripcion_vista"))
+
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT mp_suscripcion_id FROM usuarios WHERE id = %s", (g.usuario_id,))
+        fila = cursor.fetchone()
+
+    mp_id = fila[0] if fila else None
+    if not mp_id:
+        return redirect(url_for("suscripcion_vista"))
+
+    info = pagos.obtener_estado_suscripcion(mp_id)
+    if info:
+        status = info.get("status", "")
+        ext_ref = info.get("external_reference", "")
+        plan_str = ext_ref.split("|")[0] if "|" in ext_ref else ""
+        if status == "authorized" and plan_str in ("base", "elite"):
+            with db.conexion_usuario(g.usuario_id) as conexion:
+                cursor = conexion.cursor()
+                cursor.execute(
+                    "UPDATE usuarios SET plan = %s, suscripcion_activada_en = now() WHERE id = %s",
+                    (plan_str, g.usuario_id)
+                )
+            print(f"[Pagos] ✅ Usuario {g.usuario_id} activó plan {plan_str} vía retorno MP.")
+
+    return redirect(url_for("suscripcion_vista"))
+
+
+@app.route("/suscripcion/cancelar", methods=["POST"])
+@login_requerido
+def suscripcion_cancelar():
+    """Cancela la suscripción activa en MP y actualiza el plan."""
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT mp_suscripcion_id, plan FROM usuarios WHERE id = %s", (g.usuario_id,))
+        fila = cursor.fetchone()
+
+    if not fila or not fila[0]:
+        return jsonify({"ok": False, "detalle": "No hay suscripción activa para cancelar."}), 400
+
+    mp_id, plan_actual = fila
+    if plan_actual not in ("base", "elite"):
+        return jsonify({"ok": False, "detalle": "Solo podés cancelar una suscripción paga."}), 400
+
+    ok = pagos.cancelar_suscripcion(mp_id)
+    if ok:
+        with db.conexion_usuario(g.usuario_id) as conexion:
+            cursor = conexion.cursor()
+            cursor.execute(
+                "UPDATE usuarios SET plan = 'cancelado' WHERE id = %s",
+                (g.usuario_id,)
+            )
+        print(f"[Pagos] ⚠️ Usuario {g.usuario_id} canceló su suscripción {mp_id}.")
+        return jsonify({"ok": True})
+    else:
+        return jsonify({"ok": False, "detalle": "No se pudo cancelar en Mercado Pago. Intentá de nuevo o contactá soporte."}), 502
+
+
+@app.route("/webhook/mercadopago", methods=["POST"])
+def webhook_mercadopago():
+    """
+    Webhook de MP para actualizar estado de suscripciones automáticamente.
+    MP manda esto cuando: cobro mensual exitoso, cobro fallido, cancelación.
+    No requiere login — MP lo llama directamente.
+    """
+    data = request.get_json(silent=True) or {}
+    resultado = pagos.procesar_webhook(data)
+    if not resultado:
+        return "", 200  # MP espera 200 aunque ignoremos el evento
+
+    usuario_id, nuevo_plan, preapproval_id = resultado
+    try:
+        with db.conexion_admin() as conexion:
+            cursor = conexion.cursor()
+            if nuevo_plan in ("base", "elite"):
+                cursor.execute(
+                    "UPDATE usuarios SET plan = %s, mp_suscripcion_id = %s, suscripcion_activada_en = COALESCE(suscripcion_activada_en, now()) WHERE id = %s",
+                    (nuevo_plan, preapproval_id, usuario_id)
+                )
+            elif nuevo_plan == "cancelado":
+                cursor.execute(
+                    "UPDATE usuarios SET plan = 'cancelado' WHERE id = %s",
+                    (usuario_id,)
+                )
+        print(f"[Pagos] 🔔 Webhook MP: usuario {usuario_id} → plan {nuevo_plan} (preapproval {preapproval_id})")
+    except Exception as e:
+        print(f"[Pagos] ❌ Error procesando webhook para usuario {usuario_id}: {e}")
+        return "", 500
+
+    return "", 200
 
 # ─────────────────────────────────────────────────────────
 
