@@ -26,6 +26,13 @@
     </div>
     {% endif %}
 
+    {% if precio_mensual %}
+    <div class="susc-row">
+      <span class="susc-label">Precio</span>
+      <span class="susc-valor">${{ "{:,.0f}".format(precio_mensual).replace(",", ".") }} / mes <span class="susc-precio-dia">(${{ "{:,.0f}".format(precio_por_dia).replace(",", ".") }} por día)</span></span>
+    </div>
+    {% endif %}
+
     {% if activada_en %}
     <div class="susc-row">
       <span class="susc-label">Suscripción activa desde</span>
@@ -131,6 +138,7 @@
   text-align: right;
 }
 .susc-alerta { color: #ff6b35; }
+.susc-precio-dia { font-weight: 400; font-size: 0.85em; color: var(--color-text-muted, #888); }
 .plan-chip {
   display: inline-block;
   padding: 3px 12px;

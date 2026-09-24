@@ -54,6 +54,37 @@ def obtener_ventas_hoy(usuario_id):
     }
 
 
+def obtener_ventas_por_provincia(usuario_id, dias=30):
+    """
+    Ranking de provincias por facturación (F1). `provincia` sale del
+    envío de MeLi — ventas manuales o ventas ya sincronizadas antes de
+    que se empezara a guardar este dato quedan afuera del ranking
+    (NULL), no se cuentan como "Sin dato" para no inflar ninguna barra.
+    """
+    desde = (datetime.now(timezone.utc) - timedelta(days=dias)).strftime("%Y-%m-%d")
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT provincia, COUNT(DISTINCT id_orden) AS ventas, COALESCE(SUM(precio_venta * cantidad), 0) AS facturado
+            FROM ventas
+            WHERE fecha_venta >= %s AND origen = 'meli' AND provincia IS NOT NULL AND eliminado_en IS NULL
+            GROUP BY provincia
+            ORDER BY facturado DESC
+        """, (desde,))
+        filas = cursor.fetchall()
+
+    if not filas:
+        return None
+    total_facturado = sum(float(f[2]) for f in filas)
+    return [
+        {
+            "provincia": f[0], "ventas": int(f[1]), "facturado_formateado": formatear_moneda(f[2]),
+            "pct": round(float(f[2]) / total_facturado * 100, 1) if total_facturado else 0,
+        }
+        for f in filas
+    ]
+
+
 def obtener_ticker(usuario_id, cuenta_id=None):
     # Mismo criterio que obtener_ventas_hoy: "hoy" es el día en Argentina
     # (UTC-3), no el del reloj del sistema donde corra el proceso — si

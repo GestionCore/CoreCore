@@ -62,6 +62,10 @@ def _obtener_pagina_ordenes(access_token, seller_id, fecha_desde, fecha_hasta, o
 # es un ID de MeLi único a nivel global (no por cuenta), así que compartir
 # este caché entre cuentas no mezcla datos de tenants distintos.
 _cache_shipment = {}
+# Provincia de destino — separada del caché de costo porque la dirección
+# no cambia con el tiempo (se puede cachear siempre que se consiga, a
+# diferencia del costo 0 de abajo, que a propósito NO se cachea).
+_cache_provincia_envio = {}
 LIMITE_CACHE_SHIPMENT = 20000
 
 
@@ -76,6 +80,10 @@ def _obtener_costo_envio(access_token, shipment_id):
     pasada (colchón) nunca volvería a consultar MeLi y el costo quedaría
     en 0 clavado para siempre mientras el proceso siga vivo, aunque MeLi
     ya haya liquidado el envío hace rato.
+
+    De paso deja la provincia del comprador en _cache_provincia_envio —
+    mismo recurso /shipments/{id}, así que sale gratis (sin pegarle de
+    nuevo a la API).
     """
     if shipment_id in _cache_shipment:
         return _cache_shipment[shipment_id]
@@ -89,6 +97,13 @@ def _obtener_costo_envio(access_token, shipment_id):
         if costo is None:
             costo = data.get("cost_components", {}).get("seller", 0) if isinstance(data.get("cost_components"), dict) else 0
         costo = float(costo or 0.0)
+
+        provincia = ((data.get("receiver_address", {}) or {}).get("state", {}) or {}).get("name")
+        if provincia:
+            if len(_cache_provincia_envio) >= LIMITE_CACHE_SHIPMENT:
+                _cache_provincia_envio.clear()
+            _cache_provincia_envio[shipment_id] = provincia
+
         if costo:
             if len(_cache_shipment) >= LIMITE_CACHE_SHIPMENT:
                 _cache_shipment.clear()
@@ -140,6 +155,7 @@ def _extraer_filas_de_orden(orden, access_token):
     shipping_info = orden.get("shipping", {}) or {}
     shipment_id = shipping_info.get("id")
     costo_envio_total = _obtener_costo_envio(access_token, str(shipment_id)) if shipment_id else 0.0
+    provincia = _cache_provincia_envio.get(str(shipment_id)) if shipment_id else None
     facturado_total_orden = sum(float(it.get("unit_price") or 0) * int(it.get("quantity") or 1) for it in items) or 1.0
 
     buyer = orden.get("buyer", {}) or {}
@@ -173,7 +189,7 @@ def _extraer_filas_de_orden(orden, access_token):
             "envio_estado": shipping_info.get("status"),
             "despachado": shipping_info.get("status") in ("shipped", "delivered"),
             "comprador_nickname": buyer.get("nickname"), "comprador_nombre": buyer.get("first_name"),
-            "cuotas": cuotas_orden,
+            "cuotas": cuotas_orden, "provincia": provincia,
         })
     return filas
 
@@ -187,15 +203,16 @@ def _escribir_pagina(cursor, cuenta_id, ordenes, access_token):
             cursor.execute("""
                 INSERT INTO ventas (cuenta_id, id_orden, id_meli, id_variante, titulo, cantidad, precio_venta,
                                      cargo_venta, costo_envio, fecha_venta, hora_venta, shipment_id, envio_estado,
-                                     despachado, comprador_nickname, comprador_nombre, cuotas)
+                                     despachado, comprador_nickname, comprador_nombre, cuotas, provincia)
                 VALUES (%(cuenta_id)s, %(id_orden)s, %(id_meli)s, %(id_variante)s, %(titulo)s, %(cantidad)s,
                         %(precio_venta)s, %(cargo_venta)s, %(costo_envio)s, %(fecha_venta)s, %(hora_venta)s,
-                        %(shipment_id)s, %(envio_estado)s, %(despachado)s, %(comprador_nickname)s, %(comprador_nombre)s, %(cuotas)s)
+                        %(shipment_id)s, %(envio_estado)s, %(despachado)s, %(comprador_nickname)s, %(comprador_nombre)s, %(cuotas)s, %(provincia)s)
                 ON CONFLICT (cuenta_id, id_orden, id_meli) DO UPDATE SET
                     cantidad = excluded.cantidad, precio_venta = excluded.precio_venta,
                     cargo_venta = COALESCE(excluded.cargo_venta, ventas.cargo_venta),
                     costo_envio = excluded.costo_envio, envio_estado = excluded.envio_estado,
-                    despachado = excluded.despachado, cuotas = COALESCE(excluded.cuotas, ventas.cuotas)
+                    despachado = excluded.despachado, cuotas = COALESCE(excluded.cuotas, ventas.cuotas),
+                    provincia = COALESCE(excluded.provincia, ventas.provincia)
             """, {**f, "cuenta_id": cuenta_id})
             filas_insertadas += 1
     return len(ordenes), filas_insertadas

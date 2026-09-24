@@ -621,7 +621,15 @@ def dashboard_personalizable():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
     mono = monotributo.evaluar_categoria(g.usuario_id, g.cuenta_id)
-    return render_template("dashboard_personalizable.html", active_nav="dashboard", mono=mono)
+    ventas_por_provincia = None
+    try:
+        ventas_por_provincia = dashboard_mod.obtener_ventas_por_provincia(g.usuario_id)
+    except Exception as e:
+        print(f"[Dashboard] ⚠️ Error calculando ventas por provincia: {e}")
+    return render_template(
+        "dashboard_personalizable.html", active_nav="dashboard", mono=mono,
+        ventas_por_provincia=ventas_por_provincia,
+    )
 
 
 @app.route("/metricas")
@@ -2332,10 +2340,18 @@ def suscripcion_vista():
     if plan == "trial" and trial_termina_en:
         delta = trial_termina_en - datetime.now(timezone.utc)
         dias_trial = max(0, delta.days)
+
+    # G4: mostrar el precio también como $/día — el mismo monto mensual
+    # se siente más chico así, y ayuda a justificar el gasto de un
+    # vistazo sin tener que hacer la cuenta uno mismo.
+    precio_mensual = pagos.PRECIOS_PLAN.get(plan)
+    precio_por_dia = round(precio_mensual / 30) if precio_mensual else None
+
     return render_template(
         "suscripcion.html",
         plan=plan, dias_trial=dias_trial,
         mp_suscripcion_id=mp_id, activada_en=activada_en, email=email,
+        precio_mensual=precio_mensual, precio_por_dia=precio_por_dia,
         active_nav="suscripcion",
     )
 

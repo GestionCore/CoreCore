@@ -107,6 +107,25 @@
 
 <div id="grid-widgets-dashboard" class="grid-dashboard"></div>
 
+{% if ventas_por_provincia %}
+<div class="panel">
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-map-pin"/></svg> Ventas por Provincia</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">Últimos 30 días, según el destino del envío.</div>
+    <div class="pl-detalle-tabla">
+        {% for p in ventas_por_provincia[:10] %}
+        <div class="pl-detalle-fila">
+            <span class="pl-detalle-label">{{ p.provincia }}</span>
+            <div class="checklist-barra" style="flex:1;"><div class="checklist-fill" style="width:{{ p.pct }}%;"></div></div>
+            <span class="pl-detalle-valor">${{ p.facturado_formateado }} <span style="color:var(--text-faint); font-size:0.82em;">({{ p.ventas }})</span></span>
+        </div>
+        {% endfor %}
+    </div>
+    {% if ventas_por_provincia|length > 10 %}
+    <div class="text-muted" style="font-size:0.76em; margin-top:10px;">+{{ ventas_por_provincia|length - 10 }} provincias más con ventas menores.</div>
+    {% endif %}
+</div>
+{% endif %}
+
 {% if mono %}
 <div class="panel panel-colapsable {% if mono.alertas %}abierto{% endif %}" id="panel-monotributo" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
     <div class="panel-title">
