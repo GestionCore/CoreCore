@@ -74,7 +74,7 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
             resp = meli_http.get(
                 "https://api.mercadolibre.com/post-purchase/v1/claims/search",
                 headers=headers,
-                params={"player.user_id": seller_id, "player.role": "respondent", "offset": offset, "limit": TAMANO_PAGINA},
+                params={"player.user_id": seller_id, "player.role": "respondent", "status": "opened", "offset": offset, "limit": TAMANO_PAGINA},
                 timeout=15,
             )
         except Exception as e:

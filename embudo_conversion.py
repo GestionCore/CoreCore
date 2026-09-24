@@ -16,32 +16,39 @@ _cache_zombies = {}
 TTL_SEGUNDOS = 900
 
 
+def _obtener_visitas_un_item(headers, id_item, date_from, date_to):
+    try:
+        resp = requests.get(
+            f"https://api.mercadolibre.com/items/{id_item}/visits",
+            headers=headers, params={"date_from": date_from, "date_to": date_to}, timeout=8
+        )
+        if resp.status_code != 200:
+            return id_item, 0
+        data = resp.json()
+        if isinstance(data, dict):
+            visitas = data.get("total_visits") or data.get("visits") or data.get("quantity") or 0
+            return id_item, visitas
+        if isinstance(data, list) and data:
+            visitas = data[0].get("total_visits") or data[0].get("visits") or data[0].get("quantity") or 0
+            return id_item, visitas
+    except Exception:
+        pass
+    return id_item, 0
+
+
 def obtener_visitas_items(headers, ids_lista, date_from, date_to):
     if not ids_lista:
         return {}
-    ids_param = ",".join(ids_lista)
-    try:
-        resp = requests.get(
-            "https://api.mercadolibre.com/items/visits",
-            headers=headers, params={"ids": ids_param, "date_from": date_from, "date_to": date_to}, timeout=10
-        )
-        if resp.status_code != 200:
-            print(f"[Embudo] ⚠️ Error consultando visitas: {resp.status_code} - {resp.text[:200]}")
-            return {}
-        data = resp.json()
-        if isinstance(data, dict):
-            return dict(data)
-        if isinstance(data, list):
-            resultado = {}
-            for fila in data:
-                id_item = fila.get("item_id") or fila.get("id")
-                visitas = fila.get("total_visits") or fila.get("visits") or fila.get("quantity") or 0
-                if id_item:
-                    resultado[id_item] = visitas
-            return resultado
-    except Exception as e:
-        print(f"[Embudo] ❌ Error de conexión consultando visitas: {e}")
-    return {}
+    resultado = {}
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futuros = {pool.submit(_obtener_visitas_un_item, headers, id_item, date_from, date_to): id_item for id_item in ids_lista}
+        for futuro in as_completed(futuros):
+            try:
+                id_item, visitas = futuro.result()
+                resultado[id_item] = visitas
+            except Exception:
+                pass
+    return resultado
 
 
 def _obtener_cantidad_preguntas(headers, id_meli):
