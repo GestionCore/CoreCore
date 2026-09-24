@@ -265,15 +265,21 @@
 
 <div class="panel" data-mostrar-mas-scope>
     <div class="panel-title">Consolidado por Modelo — promedios ponderados reales</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">Total en pesos dividido unidades vendidas — nunca un promedio simple de talles.</div>
+    <div class="page-subtitle" style="margin-bottom:10px;">Total en pesos dividido unidades vendidas — nunca un promedio simple de talles.</div>
     {% if not consolidados %}
     <div class="alert-empty">No hay ventas registradas en este período.</div>
     {% else %}
+    <div class="margen-leyenda">
+        <span><span class="margen-dot margen-dot-ok"></span>Deja plata (≥15%)</span>
+        <span><span class="margen-dot margen-dot-limite"></span>Margen al límite (0-15%)</span>
+        <span><span class="margen-dot margen-dot-pierde"></span>Pierde plata (&lt;0%)</span>
+    </div>
     <table class="data-table">
         <thead><tr><th>Modelo</th><th class="num">Unidades</th><th class="num">Precio prom.</th><th class="num">Comisión u.</th><th class="num">Envío u.</th><th class="num">Ads u.</th><th class="num">Costo u.</th><th class="num">Neto u.</th><th class="num">Neto total</th></tr></thead>
         <tbody>
             {% for c in consolidados %}
-            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
+            {% set margen_pct = ((c.raw.neto_total / c.raw.total_facturado * 100) if c.raw.total_facturado else 0) %}
+            <tr class="fila-margen-{{ 'ok' if margen_pct >= 15 else ('limite' if margen_pct >= 0 else 'pierde') }} {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
                 <td><strong>{{ c.titulo }}</strong></td>
                 <td class="num">{{ c.unidades }}</td>
                 <td class="num">${{ c.precio_promedio }}</td>
@@ -292,6 +298,18 @@
     {% endif %}
     {% endif %}
 </div>
+
+{% if pareto_ganancia %}
+<div class="panel">
+    <div class="panel-title">Concentración de la Ganancia</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        <strong>{{ pareto_ganancia.productos_80 }} de {{ pareto_ganancia.total_productos }}</strong> modelos generan el 80% de tu ganancia de este período — cuidalos primero.
+    </div>
+    <div style="position:relative; height:220px;">
+        <canvas id="canvas-pareto-ganancia"></canvas>
+    </div>
+</div>
+{% endif %}
 
 <div class="panel" data-mostrar-mas-scope>
     <div class="panel-title">Historial de Ventas Detallado ({{ ventas|length }})</div>
@@ -406,6 +424,43 @@
             scales: {
                 x: { ticks: { color: colorFaint }, grid: { display: false } },
                 y: { ticks: { color: colorFaint, callback: v => '$' + v.toLocaleString('es-AR') }, grid: { color: 'rgba(255,255,255,0.04)' } }
+            }
+        }
+    });
+})();
+
+// ── Concentración de la ganancia (Pareto) ────────────────────────────────────
+(function () {
+    const canvas = document.getElementById('canvas-pareto-ganancia');
+    if (!canvas || !window.Chart) return;
+    const serie = {{ (pareto_ganancia.serie if pareto_ganancia else []) | tojson }};
+    if (!serie.length) return;
+    const root = getComputedStyle(document.documentElement);
+    const colorPrimario = root.getPropertyValue('--accent-primary').trim() || '#b06bff';
+    const colorGold = root.getPropertyValue('--accent-brand').trim() || '#f5a623';
+    const colorFaint = root.getPropertyValue('--text-faint').trim() || '#56567a';
+    new Chart(canvas, {
+        data: {
+            labels: serie.map(p => p.titulo.length > 18 ? p.titulo.slice(0, 18) + '…' : p.titulo),
+            datasets: [
+                { type: 'bar', label: 'Ganancia', data: serie.map(p => p.ganancia), backgroundColor: colorPrimario, borderRadius: 4, yAxisID: 'y' },
+                { type: 'line', label: '% acumulado', data: serie.map(p => p.pct_acumulado), borderColor: colorGold, backgroundColor: colorGold, borderWidth: 2, pointRadius: 3, tension: 0.2, yAxisID: 'y1' },
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            animation: { duration: 500 },
+            plugins: {
+                legend: { position: 'top', labels: { color: colorFaint, boxWidth: 12, font: { size: 11 } } },
+                tooltip: {
+                    backgroundColor: 'rgba(18,21,48,0.92)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff',
+                    callbacks: { label: ctx => ctx.dataset.yAxisID === 'y1' ? `Acumulado: ${ctx.raw}%` : `Ganancia: $${ctx.raw.toLocaleString('es-AR', {maximumFractionDigits:0})}` }
+                }
+            },
+            scales: {
+                x: { ticks: { color: colorFaint, maxRotation: 40, minRotation: 40 }, grid: { display: false } },
+                y: { position: 'left', ticks: { color: colorFaint, callback: v => '$' + v.toLocaleString('es-AR') }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                y1: { position: 'right', min: 0, max: 100, ticks: { color: colorFaint, callback: v => v + '%' }, grid: { display: false } },
             }
         }
     });

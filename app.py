@@ -692,6 +692,33 @@ def metricas_vista():
     except Exception as e:
         print(f"[Métricas] ⚠️ Error calculando analítica de clientes: {e}")
 
+    # Concentración de la ganancia (E2) — Pareto: solo entre los
+    # modelos que SÍ dejan plata (los que pierden son un problema de
+    # catálogo aparte, mezclarlos distorsiona la curva acumulada).
+    pareto_ganancia = None
+    try:
+        ganadores = sorted(
+            [c for c in datos["consolidados"] if c["raw"]["neto_total"] > 0],
+            key=lambda c: -c["raw"]["neto_total"]
+        )
+        ganancia_total_positiva = sum(c["raw"]["neto_total"] for c in ganadores)
+        if ganadores and ganancia_total_positiva > 0:
+            acumulado = 0.0
+            productos_80 = 0
+            serie_pareto = []
+            for i, c in enumerate(ganadores):
+                acumulado += c["raw"]["neto_total"]
+                pct_acumulado = round(acumulado / ganancia_total_positiva * 100, 1)
+                serie_pareto.append({"titulo": c["titulo"], "ganancia": round(c["raw"]["neto_total"], 2), "pct_acumulado": pct_acumulado})
+                if productos_80 == 0 and pct_acumulado >= 80:
+                    productos_80 = i + 1
+            pareto_ganancia = {
+                "productos_80": productos_80 or len(ganadores), "total_productos": len(ganadores),
+                "serie": serie_pareto[:15],
+            }
+    except Exception as e:
+        print(f"[Métricas] ⚠️ Error calculando concentración de ganancia: {e}")
+
     return render_template(
         "metricas.html", ventas=datos["ventas"], consolidados=datos["consolidados"],
         resumen=datos["resumen"], ads_disponible=datos["ads_disponible"],
@@ -701,7 +728,7 @@ def metricas_vista():
         punto_equilibrio=punto_equilibrio, canales_envio=canales_envio,
         factura_meli=factura_meli, evolucion_mensual=evolucion_mensual,
         total_unidades_periodo=total_unidades_periodo, ganancia_por_unidad=ganancia_por_unidad,
-        analitica_clientes=analitica_clientes,
+        analitica_clientes=analitica_clientes, pareto_ganancia=pareto_ganancia,
         active_nav="metricas"
     )
 

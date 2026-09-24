@@ -664,6 +664,16 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .split-bar-dot-directa { background: var(--accent-brand); }
 .split-bar-dot-indirecta { background: rgba(255,255,255,0.3); }
 
+/* ---------- Color-code de margen por producto (Ganancia Real) ---------- */
+.margen-leyenda { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.78em; color: var(--text-secondary); margin-bottom: 12px; }
+.margen-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.margen-dot-ok { background: var(--success); }
+.margen-dot-limite { background: var(--semantic-warning, #e8822e); }
+.margen-dot-pierde { background: var(--danger); }
+.fila-margen-ok { border-left: 3px solid var(--success); }
+.fila-margen-limite { border-left: 3px solid var(--semantic-warning, #e8822e); }
+.fila-margen-pierde { border-left: 3px solid var(--danger); background: rgba(255, 77, 125, 0.04); }
+
 /* ---------- Skeleton loaders ---------- */
 .skeleton {
     display: inline-block; background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.05) 63%);
