@@ -647,6 +647,23 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .canal-envio-nombre { font-size: 0.85em; font-weight: 600; color: var(--text-primary); }
 .canal-envio-valores { display: flex; justify-content: space-between; font-size: 0.82em; color: var(--text-secondary); }
 
+/* ---------- ROAS vs. punto de equilibrio (Publicidad) ---------- */
+.roas-slider { margin-top: 20px; max-width: 420px; margin-left: auto; margin-right: auto; }
+.roas-slider-track { position: relative; height: 10px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: visible; }
+.roas-slider-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-brand), var(--success)); transition: width 0.5s cubic-bezier(0.16,1,0.3,1); }
+.roas-slider-fill-riesgo { background: linear-gradient(90deg, var(--danger), var(--semantic-warning, #e8822e)); }
+.roas-slider-marca { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--text-primary); opacity: 0.55; }
+.roas-slider-etiquetas { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.74em; color: var(--text-faint); }
+
+/* ---------- Barra partida directa/indirecta, pago/orgánico (Publicidad) ---------- */
+.split-bar { display: flex; height: 14px; border-radius: 99px; overflow: hidden; }
+.split-bar-directa { background: var(--accent-brand); }
+.split-bar-indirecta { background: rgba(255,255,255,0.1); }
+.split-bar-leyenda { display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.8em; color: var(--text-secondary); flex-wrap: wrap; gap: 6px; }
+.split-bar-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.split-bar-dot-directa { background: var(--accent-brand); }
+.split-bar-dot-indirecta { background: rgba(255,255,255,0.3); }
+
 /* ---------- Skeleton loaders ---------- */
 .skeleton {
     display: inline-block; background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.05) 63%);

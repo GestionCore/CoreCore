@@ -26,10 +26,39 @@
 {% else %}
 
 <div class="panel" style="text-align:center; padding:34px 26px;">
-    <div class="stat-chip-label" style="margin-bottom:6px;">Invertido en el período</div>
-    <div class="hero-number">${{ costo_total_formateado }}</div>
-    <div class="text-muted" style="font-size:0.85em; margin-top:6px;">Generó ${{ ventas_atribuidas_formateado }} en ventas atribuidas a publicidad</div>
-    <div class="text-muted" style="font-size:0.76em; margin-top:10px;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg>Este monto viene directo de la API de Ads de MeLi (campo "cost") — históricamente NO incluye IVA. Si tu Facturación de MeLi muestra un número más alto para publicidad, es probablemente por eso, no un error de cálculo acá.</div>
+    <div class="stat-chip-label" style="margin-bottom:6px;">Retorno de la Publicidad (ROAS)</div>
+    <div class="hero-number">{{ roas_general if roas_general is not none else '—' }}{% if roas_general %}x{% endif %}</div>
+    <div class="text-muted" style="font-size:0.85em; margin-top:6px;">
+        {% if roas_general is not none %}
+        Por cada $1 en pauta, volvieron ${{ roas_general }} en ventas atribuidas — invertiste ${{ costo_total_formateado }} y generó ${{ ventas_atribuidas_formateado }}.
+        {% else %}
+        Todavía no hay datos suficientes para calcular el retorno en este período.
+        {% endif %}
+    </div>
+
+    {% if te_deja_ganancia is not none %}
+    <div style="margin-top:16px;">
+        <span class="pe-badge {% if te_deja_ganancia %}pe-badge-ok{% else %}pe-badge-falta{% endif %}">
+            {% if te_deja_ganancia %}Te deja ganancia{% else %}Te está achicando el margen{% endif %}
+        </span>
+    </div>
+    {% endif %}
+
+    {% if roas_slider %}
+    <div class="roas-slider">
+        <div class="roas-slider-track">
+            <div class="roas-slider-fill {% if not te_deja_ganancia %}roas-slider-fill-riesgo{% endif %}" style="width:{{ roas_slider.pct_actual }}%;"></div>
+            <div class="roas-slider-marca" style="left:{{ roas_slider.pct_equilibrio }}%;" title="Punto de equilibrio: {{ roas_equilibrio }}x — por debajo de esto, la pauta te come margen"></div>
+        </div>
+        <div class="roas-slider-etiquetas">
+            <span>0x</span>
+            <span>Equilibrio: {{ roas_equilibrio }}x</span>
+            <span>Tu ROAS: {{ roas_general }}x</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="text-muted" style="font-size:0.76em; margin-top:14px;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg>Este monto viene directo de la API de Ads de MeLi (campo "cost") — históricamente NO incluye IVA. Si tu Facturación de MeLi muestra un número más alto para publicidad, es probablemente por eso, no un error de cálculo acá.</div>
 </div>
 
 <div class="stat-strip">
@@ -54,6 +83,39 @@
         <div class="stat-chip-desc">{{ clicks_total }} clicks totales</div>
     </div>
 </div>
+
+{% if pct_venta_directa is not none or pct_origen_pagado is not none %}
+<div class="filter-row" style="align-items:stretch;">
+    {% if pct_venta_directa is not none %}
+    <div class="panel" style="flex:1; min-width:280px;">
+        <div class="panel-title">Directa vs. Indirecta</div>
+        <div class="page-subtitle" style="margin-bottom:14px;">De las ventas atribuidas a Ads: cuántas fueron del producto anunciado vs. otro producto del catálogo.</div>
+        <div class="split-bar">
+            <div class="split-bar-directa" style="width:{{ pct_venta_directa }}%;"></div>
+            <div class="split-bar-indirecta" style="width:{{ pct_venta_indirecta }}%;"></div>
+        </div>
+        <div class="split-bar-leyenda">
+            <span><span class="split-bar-dot split-bar-dot-directa"></span>Directa {{ pct_venta_directa }}% · ${{ venta_directa_formateada }}</span>
+            <span><span class="split-bar-dot split-bar-dot-indirecta"></span>Indirecta {{ pct_venta_indirecta }}% · ${{ venta_indirecta_formateada }}</span>
+        </div>
+    </div>
+    {% endif %}
+    {% if pct_origen_pagado is not none %}
+    <div class="panel" style="flex:1; min-width:280px;">
+        <div class="panel-title">Origen de tus Ventas</div>
+        <div class="page-subtitle" style="margin-bottom:14px;">De toda tu facturación del período: cuánto vino de un click pago vs. orgánico.</div>
+        <div class="split-bar">
+            <div class="split-bar-directa" style="width:{{ pct_origen_pagado }}%;"></div>
+            <div class="split-bar-indirecta" style="width:{{ pct_origen_organico }}%;"></div>
+        </div>
+        <div class="split-bar-leyenda">
+            <span><span class="split-bar-dot split-bar-dot-directa"></span>Con publicidad {{ pct_origen_pagado }}% · ${{ ventas_atribuidas_formateado }}</span>
+            <span><span class="split-bar-dot split-bar-dot-indirecta"></span>Orgánicas {{ pct_origen_organico }}% · ${{ ventas_organicas_formateada }}</span>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
 
 <div class="panel">
     <div class="panel-title">Gasto vs. Ventas atribuidas por día</div>

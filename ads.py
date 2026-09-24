@@ -121,6 +121,12 @@ def obtener_campanas_con_metricas(access_token, advertiser_id, fecha_desde, fech
                 "cpc": metricas.get("cpc", 0) or 0, "roas": metricas.get("roas"), "acos": metricas.get("acos"),
                 "cvr": round((metricas.get("cvr") or 0) * 100, 2), "unidades": metricas.get("units_quantity", 0),
                 "ventas_atribuidas": metricas.get("total_amount", 0) or 0,
+                # direct = vendiste el ítem que anunciaste; indirect = el
+                # comprador llegó por el anuncio pero terminó comprando
+                # otro producto del catálogo. MeLi ya lo manda separado
+                # en la métrica, antes se pedía pero se descartaba acá.
+                "venta_directa": metricas.get("direct_amount", 0) or 0,
+                "venta_indirecta": metricas.get("indirect_amount", 0) or 0,
             })
         return campanas
     except Exception as e:
