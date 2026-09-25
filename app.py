@@ -46,6 +46,7 @@ import analisis_stock
 import onboarding
 import monotributo
 import costos_chat
+import chat_ia
 import db
 import nav_config
 import timeline_publicacion
@@ -204,6 +205,104 @@ def landing():
 
     productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id)
     return render_template("index.html", productos=productos, stats=stats, active_nav="stock")
+
+
+@app.route("/exportar_planilla_stock")
+@login_requerido
+def exportar_planilla_stock():
+    """
+    "Exportar CSV" en Stock — nunca había tenido backend (404 directo).
+    Un renglón por publicación/talle, con el mismo dato que ya se ve en
+    pantalla — sin pegarle a MeLi, sale directo de la base local.
+    """
+    import csv
+    from io import BytesIO, StringIO
+
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT p.id_meli, p.titulo, COALESCE(v.talle, 'Único') AS talle, v.color, p.precio, p.estado,
+                   COALESCE(v.stock_propio, 0), COALESCE(v.stock_full, 0)
+            FROM productos_padre p
+            LEFT JOIN productos_variantes v ON v.id_padre = p.id
+            ORDER BY p.titulo, talle
+        """)
+        filas = cursor.fetchall()
+
+    buffer_texto = StringIO()
+    # ; como separador (no ,) porque Excel en configuración regional
+    # es-AR usa la coma como separador decimal — con "," como
+    # delimitador, un precio "1234,50" en una celda rompe las columnas.
+    writer = csv.writer(buffer_texto, delimiter=';')
+    writer.writerow(["ID MeLi", "Título", "Talle", "Color", "Precio", "Estado", "Stock Propio", "Stock FULL"])
+    for id_meli, titulo, talle, color, precio, estado, stock_propio, stock_full in filas:
+        writer.writerow([id_meli, titulo, talle, color or "", precio, estado, stock_propio, stock_full])
+
+    # utf-8-sig (con BOM): sin esto Excel interpreta los acentos/ñ como
+    # caracteres sueltos en vez de UTF-8 al abrir el archivo.
+    buffer_bytes = BytesIO(buffer_texto.getvalue().encode("utf-8-sig"))
+    return send_file(
+        buffer_bytes, mimetype="text/csv", as_attachment=True,
+        download_name=f"stock_{datetime.now().strftime('%Y-%m-%d')}.csv"
+    )
+
+
+@app.route("/actualizar_precios_masivo", methods=["POST"])
+@login_requerido
+def actualizar_precios_masivo():
+    """
+    "Aplicar Masivo" en Stock (subir/bajar % el precio de todo el
+    catálogo activo) — nunca había tenido backend; el modal de
+    confirmación ("¿Modificar precios de TODO el catálogo?") se
+    mostraba pero después no pasaba nada.
+    """
+    from urllib.parse import urlencode
+    accion = request.form.get("accion")
+    try:
+        porcentaje = float(request.form.get("porcentaje", ""))
+    except (ValueError, TypeError):
+        return redirect(f"/?{urlencode({'msg': 'Porcentaje inválido.', 'tipo': 'error'})}")
+    if accion not in ("aumentar", "descontar") or porcentaje <= 0:
+        return redirect(f"/?{urlencode({'msg': 'Datos inválidos.', 'tipo': 'error'})}")
+
+    factor = 1 + (porcentaje / 100) if accion == "aumentar" else 1 - (porcentaje / 100)
+
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return redirect(url_for("reconectar"))
+
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+    actualizados, fallidos = 0, 0
+
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT id_meli, precio FROM productos_padre WHERE estado = 'active'")
+        productos = cursor.fetchall()
+
+        for id_meli, precio_actual in productos:
+            nuevo_precio = round(float(precio_actual or 0) * factor, 2)
+            if nuevo_precio <= 0:
+                fallidos += 1
+                continue
+            try:
+                r = meli_http.put(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, json={"price": nuevo_precio})
+                if r.status_code not in (200, 201):
+                    print(f"[PreciosMasivo] ⚠️ MeLi rechazó el precio de {id_meli}: {r.status_code} - {r.text[:200]}")
+                    fallidos += 1
+                    continue
+            except Exception as e:
+                print(f"[PreciosMasivo] ⚠️ Error actualizando {id_meli}: {e}")
+                fallidos += 1
+                continue
+            cursor.execute("UPDATE productos_padre SET precio = %s WHERE id_meli = %s", (nuevo_precio, id_meli))
+            actualizados += 1
+
+    mensaje = f"{actualizados} publicación(es) actualizada(s)."
+    if fallidos:
+        mensaje += f" {fallidos} con error."
+    tipo = "success" if (actualizados and not fallidos) else ("error" if not actualizados else "info")
+    return redirect(f"/?{urlencode({'msg': mensaje, 'tipo': tipo})}")
 
 
 @app.route("/conectar")
@@ -1061,6 +1160,31 @@ def api_curva_talles():
     return jsonify(resultado)
 
 
+@app.route("/api/buscar")
+@login_requerido
+def api_buscar():
+    """
+    Búsqueda de publicaciones para el comando rápido (Ctrl+K) — el
+    frontend ya la llamaba desde antes, pero nunca había tenido
+    backend: escribir un nombre de producto no devolvía nada, sin
+    ningún error visible (el catch de la búsqueda solo loguea a
+    consola).
+    """
+    q = (request.args.get("q") or "").strip()
+    if len(q) < 2:
+        return jsonify([])
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT id_meli, titulo FROM productos_padre
+            WHERE titulo ILIKE %s OR id_meli ILIKE %s
+            ORDER BY CASE WHEN estado = 'active' THEN 0 ELSE 1 END, titulo
+            LIMIT 8
+        """, (f"%{q}%", f"%{q}%"))
+        filas = cursor.fetchall()
+    return jsonify([{"id": f[0], "titulo": f[1]} for f in filas])
+
+
 @app.route("/api/oportunidades_seo")
 @login_requerido
 def api_oportunidades_seo():
@@ -1246,6 +1370,24 @@ def api_costos_chat_confirmar():
         return jsonify({"ok": False, "error": "Falta la propuesta."}), 400
     ok, mensaje = costos_chat.confirmar_y_guardar(g.usuario_id, g.cuenta_id, propuesta)
     return jsonify({"ok": ok, "error": None if ok else mensaje})
+
+
+@app.route("/api/chat_ia", methods=["POST"])
+@login_requerido
+def api_chat_ia():
+    """
+    El Asistente de Operaciones (botón flotante) — existía en el
+    frontend desde antes pero nunca había tenido backend; el fetch
+    siempre daba 404 y el usuario veía "Error de comunicación.".
+    """
+    datos = request.get_json(silent=True) or {}
+    pregunta = datos.get("pregunta") or ""
+    try:
+        respuesta = chat_ia.responder_pregunta(g.usuario_id, pregunta)
+    except Exception as e:
+        print(f"[ChatIA] ⚠️ Error respondiendo: {e}")
+        respuesta = "Tuve un problema respondiendo eso — probá de nuevo en un rato."
+    return jsonify({"respuesta": respuesta})
 
 
 @app.route("/facturacion")
@@ -1506,6 +1648,71 @@ def despacho_vista():
     )
 
 
+@app.route("/sincronizar_hoy")
+@login_requerido
+def sincronizar_hoy():
+    """
+    "Sincronizar ventas de hoy" en Despacho — nunca tuvo backend (el
+    link apuntaba a una URL que no existía). En la práctica dispara la
+    misma sincronización completa que "Sincronizar Todo" del navbar
+    (ya es incremental por cuenta, no reprocesa desde cero) — separarla
+    en una sync "solo de hoy" pelearía contra el bookmark de
+    ultima_sincronizacion_ventas y podría dejar huecos entre syncs.
+    """
+    sincronizador.sincronizar_todo(g.usuario_id, g.cuenta_id)
+    return redirect(url_for("despacho_vista", fecha=request.args.get("fecha")))
+
+
+@app.route("/despacho/etiquetas_pdf")
+@login_requerido
+def despacho_etiquetas_pdf():
+    """
+    Descarga en un solo PDF las etiquetas de envío del día — nunca
+    había tenido backend. MeLi ya arma el PDF combinado del lado de
+    ellos (shipment_labels con varios ids), así que esto solo reúne
+    los shipment_id del día y devuelve ese PDF tal cual, sin generar
+    nada acá.
+    """
+    from io import BytesIO
+    fecha = request.args.get("fecha") or datetime.now().strftime("%Y-%m-%d")
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return redirect(url_for("reconectar"))
+
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
+        fila = cursor.fetchone()
+    seller_id = fila[0] if fila else None
+
+    hora_corte = 11
+    if seller_id:
+        hora_real = logistica.obtener_horario_corte_hoy(access_token, seller_id, "drop_off")
+        if hora_real is not None:
+            hora_corte = hora_real
+    offset_horas = 24 - hora_corte
+
+    shipment_ids = despacho_mod.obtener_shipment_ids_del_dia(g.usuario_id, fecha, offset_horas)
+    if not shipment_ids:
+        return "No hay etiquetas para descargar en esta fecha.", 404
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        resp = requests.get(
+            "https://api.mercadolibre.com/shipment_labels",
+            headers=headers,
+            params={"shipment_ids": ",".join(str(s) for s in shipment_ids), "response_type": "pdf"},
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            return f"MeLi no pudo generar las etiquetas ahora mismo ({resp.status_code}). Probá de nuevo en un rato.", 502
+    except Exception as e:
+        return f"Error consultando MeLi: {e}", 502
+
+    return send_file(BytesIO(resp.content), mimetype="application/pdf", as_attachment=True, download_name=f"etiquetas_{fecha}.pdf")
+
+
 @app.route("/api/calculadora_categorias")
 @login_requerido
 def api_calculadora_categorias():
@@ -1589,11 +1796,150 @@ def api_calculadora_costos():
     return jsonify(resultado)
 
 
+@app.route("/api/simular_costo")
+@login_requerido
+def api_simular_costo():
+    """
+    Simulador de impacto en margen al crear un descuento (Promociones)
+    — el frontend ya lo llamaba, sin backend detrás (se quedaba
+    colgado en "Calculando impacto en margen..." para siempre).
+    Reusa calculadora_costos.calcular_desglose_real, la misma fuente
+    real de MeLi que ya usa la Calculadora de Comisiones, en vez de
+    inventar un % de comisión aparte para este simulador.
+    """
+    try:
+        precio = float(request.args.get("precio", ""))
+    except ValueError:
+        return jsonify({"error": "Precio inválido."}), 400
+    if precio <= 0:
+        return jsonify({"error": "Precio inválido."}), 400
+    try:
+        costo = float(request.args.get("costo", "0") or 0)
+    except ValueError:
+        costo = 0.0
+
+    id_meli = request.args.get("id_meli")
+    if not id_meli:
+        return jsonify({"error": "Falta indicar la publicación."}), 400
+
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return jsonify({"error": "Tu cuenta de MeLi está desconectada."}), 401
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        resp = meli_http.get(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers)
+        if resp.status_code != 200:
+            return jsonify({"error": "No se pudo consultar la publicación en MeLi."}), 502
+        category_id = resp.json().get("category_id")
+    except Exception as e:
+        return jsonify({"error": f"Error consultando MeLi: {e}"}), 502
+    if not category_id:
+        return jsonify({"error": "No se pudo determinar la categoría de la publicación."}), 502
+
+    desglose = calculadora_costos.calcular_desglose_real(access_token, precio, category_id, "gold_special", ofrece_cuotas=False)
+    if "error" in desglose:
+        return jsonify(desglose), 502
+
+    ganancia_neta = round(desglose["recibis"] - costo, 2)
+    margen_pct = round((ganancia_neta / precio) * 100, 1)
+    return jsonify({
+        "ganancia_neta": ganancia_neta, "margen_pct": margen_pct,
+        "comision_total": desglose["comision_total"], "costo_envio": desglose["costo_envio"],
+    })
+
+
 @app.route("/stock_masivo")
 @login_requerido
 def stock_masivo_vista():
     modelos = stock_masivo_mod.obtener_modelos_agrupados(g.usuario_id)
     return render_template("stock_masivo.html", modelos=modelos, active_nav="stock_masivo")
+
+
+@app.route("/actualizar_stock_multiple", methods=["POST"])
+@login_requerido
+def actualizar_stock_multiple():
+    """
+    "Aplicar cambios a Mercado Libre" en Stock Masivo — nunca había
+    tenido backend (el form apuntaba a una URL que no existía).
+
+    Cada input del form es stock_<id_meli> — en este catálogo cada
+    "talle" es una PUBLICACIÓN separada (ver stock_masivo.py), no una
+    variación de MeLi dentro de un mismo item. Ojo con los pocos
+    items que SÍ tienen variaciones reales de MeLi (más de una fila en
+    productos_variantes para el mismo id_meli — típicamente colores
+    distintos dentro del mismo talle): el input de esta pantalla es UN
+    solo número que representa la SUMA de esas variaciones. Repartir
+    esa suma entre colores sin que el usuario diga cómo sería inventar
+    un número en el stock real — esos casos se saltean a propósito y
+    se reportan aparte, nunca se escribe una distribución adivinada.
+    """
+    from urllib.parse import urlencode
+    volver_a = request.form.get("volver_a") or "/stock_masivo"
+    campos_stock = {k[len("stock_"):]: v for k, v in request.form.items() if k.startswith("stock_")}
+    if not campos_stock:
+        return redirect(f"{volver_a}?{urlencode({'msg': 'No había ningún cambio para aplicar.', 'tipo': 'info'})}")
+
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return redirect(url_for("reconectar"))
+
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+    actualizados, saltados, fallidos = 0, 0, 0
+
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        for id_meli, valor in campos_stock.items():
+            try:
+                nuevo_stock = int(valor)
+            except (ValueError, TypeError):
+                fallidos += 1
+                continue
+            if nuevo_stock < 0:
+                fallidos += 1
+                continue
+
+            cursor.execute(
+                "SELECT id_variante FROM productos_variantes WHERE id_padre = (SELECT id FROM productos_padre WHERE id_meli = %s)",
+                (id_meli,)
+            )
+            variantes_del_item = cursor.fetchall()
+
+            if len(variantes_del_item) > 1:
+                saltados += 1
+                continue
+
+            try:
+                if len(variantes_del_item) == 1:
+                    payload = {"variations": [{"id": variantes_del_item[0][0], "available_quantity": nuevo_stock}]}
+                else:
+                    payload = {"available_quantity": nuevo_stock}
+                r = meli_http.put(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, json=payload)
+                if r.status_code not in (200, 201):
+                    print(f"[StockMasivo] ⚠️ MeLi rechazó el stock de {id_meli}: {r.status_code} - {r.text[:200]}")
+                    fallidos += 1
+                    continue
+            except Exception as e:
+                print(f"[StockMasivo] ⚠️ Error actualizando {id_meli}: {e}")
+                fallidos += 1
+                continue
+
+            cursor.execute(
+                "UPDATE productos_variantes SET stock_propio = %s WHERE id_padre = (SELECT id FROM productos_padre WHERE id_meli = %s)",
+                (nuevo_stock, id_meli)
+            )
+            actualizados += 1
+
+    partes = [f"{actualizados} actualizada(s)"]
+    if saltados:
+        partes.append(f"{saltados} con varios colores (revisalas a mano en MeLi)")
+    if fallidos:
+        partes.append(f"{fallidos} con error")
+    mensaje = ", ".join(partes) + "."
+    tipo = "success" if (actualizados and not fallidos and not saltados) else ("error" if not actualizados else "info")
+    return redirect(f"{volver_a}?{urlencode({'msg': mensaje, 'tipo': tipo})}")
 
 
 @app.route("/despacho/marcar", methods=["POST"])

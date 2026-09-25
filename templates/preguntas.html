@@ -118,7 +118,7 @@ function renderTabla(preguntas) {
                 <button type="button" class="btn btn-secondary" style="font-size:0.78em;padding:3px 10px;" onclick="abrirRespuesta('${escapeAttr(p.question_id)}')">Responder</button>
                 ` : ''}
                 ${p.estado !== 'ignorada' && p.texto ? `
-                <a href="/stock?drawer=${escapeAttr(p.item_id)}" class="btn btn-secondary" style="font-size:0.78em;padding:3px 10px;" title="Ver publicación">Ver pub.</a>
+                <a href="/?drawer=${escapeAttr(p.item_id)}" class="btn btn-secondary" style="font-size:0.78em;padding:3px 10px;" title="Ver publicación">Ver pub.</a>
                 ` : ''}
             </td>
         </tr>

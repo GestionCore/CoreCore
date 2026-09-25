@@ -251,7 +251,21 @@
         aplicarFiltros();
         cargarRiesgoStock();
         cargarResumenDiario();
+        abrirDrawerDesdeURL();
     };
+
+    // Permite llegar acá desde otra página (ej. Preguntas, "Ver pub.")
+    // con /?drawer=<id_meli> y que abra directo la ficha de gestión,
+    // en vez de que el usuario tenga que buscar el producto a mano.
+    function abrirDrawerDesdeURL() {
+        const params = new URLSearchParams(window.location.search);
+        const idMeli = params.get('drawer');
+        if (!idMeli) return;
+        abrirDrawer(idMeli);
+        params.delete('drawer');
+        const nuevaUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState({}, '', nuevaUrl);
+    }
 
     async function cargarResumenDiario() {
         const cont = document.getElementById('resumen-diario-contenido');

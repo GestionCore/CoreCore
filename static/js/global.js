@@ -895,7 +895,6 @@ const ATAJOS_COMANDO = [
     { alias: ['gan', 'ganancia', 'metricas'], texto: 'Ir a Ganancia Real', url: '/metricas' },
     { alias: ['fac', 'facturacion'], texto: 'Ir a Facturación', url: '/facturacion' },
     { alias: ['cos', 'costos'], texto: 'Ir a Costos', url: '/costos' },
-    { alias: ['flujo', 'caja'], texto: 'Ir a Flujo de Caja', url: '/flujo_caja' },
     { alias: ['full', 'logistica', 'comparador'], texto: 'Ir a Propia vs FULL', url: '/comparador_logistica' },
     { alias: ['hist', 'precios', 'historial'], texto: 'Ir a Historial de Precios', url: '/historial_precios' },
     { alias: ['mono', 'monotributo'], texto: 'Ir a Monotributo', url: '/monotributo' },
@@ -931,7 +930,10 @@ function renderizarResultadosComando(items) {
     cont.innerHTML = items.map((item, i) => {
         const claseActiva = i === _comandoIndiceActivo ? ' activo' : '';
         const etiqueta = `<span>${item.texto}</span>${item.tag ? `<span class="badge badge-neutral">${item.tag}</span>` : ''}`;
-        return item.accion
+        // Un resultado de producto (idMeli) abre el drawer de gestión — no
+        // navega a una página aparte, mismo comportamiento que el botón
+        // "Gestionar" del listado de Stock.
+        return (item.accion || item.idMeli)
             ? `<a href="#" class="command-item${claseActiva}" data-idx="${i}" onclick="event.preventDefault(); ejecutarItemComando(${i});">${etiqueta}</a>`
             : `<a href="${item.url}" class="command-item${claseActiva}" data-idx="${i}">${etiqueta}</a>`;
     }).join('');
@@ -943,6 +945,9 @@ function ejecutarItemComando(i) {
         cerrarComando();
         const fn = window[item.accion];
         if (typeof fn === 'function') fn();
+    } else if (item.idMeli) {
+        cerrarComando();
+        abrirDrawer(item.idMeli);
     } else if (item.url) {
         window.location.href = item.url;
     }
@@ -979,7 +984,7 @@ function inicializarComando() {
             try {
                 const resp = await fetch('/api/buscar?q=' + encodeURIComponent(q));
                 const productos = await resp.json();
-                const itemsProductos = productos.map(p => ({ texto: p.titulo, url: '/gestion_modelo/' + p.id, tag: p.id }));
+                const itemsProductos = productos.map(p => ({ texto: p.titulo, idMeli: p.id, tag: p.id }));
                 renderizarResultadosComando([...acciones, ...secciones, ...itemsProductos]);
             } catch (err) { console.error(err); }
         }, 200);

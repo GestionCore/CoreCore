@@ -79,3 +79,26 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
     total = len(paquetes)
     listos = sum(1 for p in paquetes if p["despachado"])
     return paquetes, total, listos, len(shipment_ids_del_dia)
+
+
+def obtener_shipment_ids_del_dia(usuario_id, fecha, offset_horas):
+    """
+    Versión liviana de obtener_paquetes_del_dia, para cuando lo único
+    que hace falta son los shipment_id del día (descargar etiquetas) —
+    sin la verificación de estado contra MeLi que hace la otra función
+    (esa sí pega un GET por cada envío pendiente, innecesario acá).
+    Mismo filtro WHERE que la otra, para que sea el mismo conjunto de
+    envíos en las dos pantallas.
+    """
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT DISTINCT v.shipment_id
+            FROM ventas v
+            LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            WHERE (v.fecha_venta + COALESCE(v.hora_venta, '00:00'::time) + (%s || ' hours')::interval)::date = %s
+              AND COALESCE(p.tipo_logistica, '') != 'fulfillment'
+              AND v.origen = 'meli'
+              AND v.shipment_id IS NOT NULL
+        """, (offset_horas, fecha))
+        return [r[0] for r in cursor.fetchall()]

@@ -202,7 +202,7 @@
         cont.style.display = 'block';
         cont.innerHTML = 'Calculando impacto en margen...';
         try {
-            const resp = await fetch(`/api/simular_costo?precio=${precioDeal}&costo=${costo}`);
+            const resp = await fetch(`/api/simular_costo?precio=${precioDeal}&costo=${costo}&id_meli=${encodeURIComponent(opcion.value)}`);
             const data = await resp.json();
             if (data.error) { cont.innerHTML = `<span class="text-danger">${data.error}</span>`; return; }
             const color = data.ganancia_neta >= 0 ? 'text-success' : 'text-danger';
