@@ -56,7 +56,7 @@ def _tarea_relevar_competencia():
         try:
             with db.conexion_usuario(usuario_id) as conexion:
                 cursor = conexion.cursor()
-                relevados = espia_competencia.relevar_competidores(cursor)
+                relevados = espia_competencia.relevar_competidores(cursor, cuenta_id)
                 if relevados:
                     print(f"[Scheduler APScheduler] 🔍 Cuenta {cuenta_id}: {relevados} rival(es) relevado(s).")
         except Exception as e:

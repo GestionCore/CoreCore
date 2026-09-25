@@ -1156,7 +1156,7 @@ def competencia_vista():
     import db
     with db.conexion_usuario(g.usuario_id) as conexion:
         cursor = conexion.cursor()
-        rivales = espia_competencia.obtener_panorama_competencia(cursor)
+        rivales = espia_competencia.obtener_panorama_competencia(cursor, g.cuenta_id)
     return render_template("competencia.html", rivales=rivales, active_nav="competencia")
 
 
@@ -1179,7 +1179,7 @@ def competencia_eliminar(id_meli_rival):
     import db
     with db.conexion_usuario(g.usuario_id) as conexion:
         cursor = conexion.cursor()
-        espia_competencia.eliminar_competidor(cursor, id_meli_rival)
+        espia_competencia.eliminar_competidor(cursor, g.cuenta_id, id_meli_rival)
     return redirect("/competencia")
 
 

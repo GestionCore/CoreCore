@@ -16,13 +16,13 @@ def agregar_competidor(cursor, cuenta_id, id_meli_rival, alias=""):
     """, (cuenta_id, id_meli_rival.upper(), alias, ahora))
 
 
-def eliminar_competidor(cursor, id_meli_rival):
-    cursor.execute("DELETE FROM competidores_seguimiento WHERE id_meli_rival = %s", (id_meli_rival.upper(),))
-    cursor.execute("DELETE FROM competidores_historial WHERE id_meli_rival = %s", (id_meli_rival.upper(),))
+def eliminar_competidor(cursor, cuenta_id, id_meli_rival):
+    cursor.execute("DELETE FROM competidores_seguimiento WHERE cuenta_id = %s AND id_meli_rival = %s", (cuenta_id, id_meli_rival.upper()))
+    cursor.execute("DELETE FROM competidores_historial WHERE cuenta_id = %s AND id_meli_rival = %s", (cuenta_id, id_meli_rival.upper()))
 
 
-def relevar_competidores(cursor):
-    cursor.execute("SELECT id_meli_rival FROM competidores_seguimiento")
+def relevar_competidores(cursor, cuenta_id):
+    cursor.execute("SELECT id_meli_rival FROM competidores_seguimiento WHERE cuenta_id = %s", (cuenta_id,))
     rivales = [r[0] for r in cursor.fetchall()]
     if not rivales:
         return 0
@@ -44,19 +44,25 @@ def relevar_competidores(cursor):
             fotos = item.get("pictures", []) or []
             foto_principal_id = fotos[0].get("id") if fotos else None
 
-            cursor.execute("SELECT foto_principal_id FROM competidores_historial WHERE id_meli_rival = %s ORDER BY fecha DESC LIMIT 1", (id_rival,))
+            cursor.execute(
+                "SELECT foto_principal_id FROM competidores_historial WHERE cuenta_id = %s AND id_meli_rival = %s ORDER BY fecha DESC LIMIT 1",
+                (cuenta_id, id_rival)
+            )
             fila_anterior = cursor.fetchone()
             foto_cambio = bool(fila_anterior and fila_anterior[0] and foto_principal_id and fila_anterior[0] != foto_principal_id)
 
-            cursor.execute("UPDATE competidores_seguimiento SET titulo_actual = %s WHERE id_meli_rival = %s", (titulo, id_rival))
+            cursor.execute(
+                "UPDATE competidores_seguimiento SET titulo_actual = %s WHERE cuenta_id = %s AND id_meli_rival = %s",
+                (titulo, cuenta_id, id_rival)
+            )
             cursor.execute("""
-                INSERT INTO competidores_historial (id_meli_rival, fecha, precio, stock_disponible, es_full, sold_quantity, foto_principal_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO competidores_historial (cuenta_id, id_meli_rival, fecha, precio, stock_disponible, es_full, sold_quantity, foto_principal_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (cuenta_id, id_meli_rival, fecha) DO UPDATE SET
                     precio = excluded.precio, stock_disponible = excluded.stock_disponible,
                     es_full = excluded.es_full, sold_quantity = excluded.sold_quantity,
                     foto_principal_id = excluded.foto_principal_id
-            """, (id_rival, hoy, precio, stock, es_full, sold_quantity, foto_principal_id))
+            """, (cuenta_id, id_rival, hoy, precio, stock, es_full, sold_quantity, foto_principal_id))
 
             if foto_cambio:
                 print(f"[Espía Competencia] 📸 '{titulo}' ({id_rival}) cambió su foto principal.")
@@ -69,16 +75,19 @@ def relevar_competidores(cursor):
     return relevados
 
 
-def obtener_panorama_competencia(cursor):
-    cursor.execute("SELECT id_meli_rival, alias, titulo_actual FROM competidores_seguimiento ORDER BY agregado_en DESC")
+def obtener_panorama_competencia(cursor, cuenta_id):
+    cursor.execute(
+        "SELECT id_meli_rival, alias, titulo_actual FROM competidores_seguimiento WHERE cuenta_id = %s ORDER BY agregado_en DESC",
+        (cuenta_id,)
+    )
     rivales = cursor.fetchall()
 
     panorama = []
     for id_rival, alias, titulo_actual in rivales:
         cursor.execute("""
             SELECT fecha, precio, stock_disponible, es_full, sold_quantity
-            FROM competidores_historial WHERE id_meli_rival = %s ORDER BY fecha DESC LIMIT 7
-        """, (id_rival,))
+            FROM competidores_historial WHERE cuenta_id = %s AND id_meli_rival = %s ORDER BY fecha DESC LIMIT 7
+        """, (cuenta_id, id_rival))
         historial = cursor.fetchall()
 
         tendencia_precio = None
