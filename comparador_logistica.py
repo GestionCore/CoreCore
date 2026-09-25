@@ -44,7 +44,7 @@ def calcular_comparacion(usuario_id, cuenta_id, access_token, fecha_desde, fecha
     try:
         if access_token:
             period_key = fecha_hasta[:7] + "-01"
-            costo_almacenamiento_full, cantidad_cargos_almacenamiento = facturacion.obtener_costo_almacenamiento_full(access_token, period_key)
+            costo_almacenamiento_full, cantidad_cargos_almacenamiento = facturacion.obtener_costo_almacenamiento_full(access_token, cuenta_id, period_key)
     except Exception as e:
         print(f"[Comparador Logística] ⚠️ No se pudo traer el costo de almacenamiento: {e}")
 

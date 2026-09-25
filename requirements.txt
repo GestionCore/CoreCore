@@ -14,3 +14,7 @@ celery[redis]>=5.3.6
 redis>=5.0.0
 sentry-sdk[flask]>=2.0.0
 waitress>=3.0.0
+
+# --- Producción en Linux (Waitress arriba es solo para Windows) ---
+gunicorn>=23.0.0
+gevent>=24.11.1

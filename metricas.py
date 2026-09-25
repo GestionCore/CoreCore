@@ -5,6 +5,7 @@ devoluciones_sync.py).
 """
 from datetime import date, timedelta
 from io import BytesIO
+from concurrent.futures import ThreadPoolExecutor
 from psycopg.rows import dict_row
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
@@ -52,12 +53,21 @@ def obtener_evolucion_mensual(usuario_id, cuenta_id, access_token, meses=6):
     try:
         advertiser_id = ads.obtener_advertiser_id(access_token, cuenta_id)
         if advertiser_id:
-            for inicio in inicios_mes:
+            # Las 6 llamadas a Ads son independientes entre sí (un mes no
+            # depende del otro) — pedirlas en paralelo en vez de una por
+            # una es la diferencia entre ~6 x 300ms y ~300ms totales.
+            # Mismo patrón que ya usa ads.obtener_serie_diaria_ads.
+            def _gasto_del_mes(inicio):
                 fin = min((inicio.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1), hoy)
                 etiqueta = inicio.strftime("%Y-%m")
-                gasto_ads_por_mes[etiqueta] = ads.obtener_gasto_ads_total_periodo(
+                gasto = ads.obtener_gasto_ads_total_periodo(
                     access_token, advertiser_id, inicio.strftime("%Y-%m-%d"), fin.strftime("%Y-%m-%d")
-                ) or 0.0
+                )
+                return etiqueta, (gasto or 0.0)
+
+            with ThreadPoolExecutor(max_workers=6) as pool:
+                for etiqueta, gasto in pool.map(_gasto_del_mes, inicios_mes):
+                    gasto_ads_por_mes[etiqueta] = gasto
     except Exception as e:
         print(f"[Metricas] ⚠️ Error trayendo evolución de Ads: {e}")
 

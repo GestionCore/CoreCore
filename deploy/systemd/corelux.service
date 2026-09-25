@@ -1,0 +1,18 @@
+[Unit]
+Description=CoreLux - Flask app (Gunicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=corelux
+Group=corelux
+WorkingDirectory=/opt/corelux
+EnvironmentFile=/opt/corelux/.env
+ExecStart=/opt/corelux/venv/bin/gunicorn -c deploy/gunicorn_config.py app:app
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

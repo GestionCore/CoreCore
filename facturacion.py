@@ -60,7 +60,10 @@ def obtener_resumen_periodo(access_token, cuenta_id, key, group="ML"):
     return cacheado["data"] if cacheado else None
 
 
-def obtener_costo_almacenamiento_full(access_token, period_key, group="ML"):
+_cache_almacenamiento = {}
+
+
+def obtener_costo_almacenamiento_full(access_token, cuenta_id, period_key, group="ML"):
     """
     Busca cargos de almacenamiento prolongado en FULL dentro del detalle de
     conciliación de un período mensual. MeLi no documenta un código de
@@ -68,7 +71,21 @@ def obtener_costo_almacenamiento_full(access_token, period_key, group="ML"):
     cargo (transaction_detail) — si no encuentra nada, no significa
     necesariamente que no haya cargo, conviene confirmar con un período
     real que sepas que tuvo este cargo.
+
+    Cacheado 10 min por cuenta — antes se pedía sin caché en cada carga
+    de /metricas (vía comparador_logistica), sumando una llamada extra
+    a la API en cada visita a la página aunque el período no hubiera
+    cambiado. cuenta_id va en la clave del caché a propósito: la misma
+    familia de bug que ya se corrigió en ads.py y acá mismo (arriba,
+    _cache_periodos/_cache_resumenes) — sin cuenta_id, dos cuentas
+    consultando el mismo period_key se pisarían el resultado.
     """
+    ahora = time.time()
+    clave = (cuenta_id, group, period_key)
+    cacheado = _cache_almacenamiento.get(clave)
+    if cacheado and (ahora - cacheado["timestamp"]) < TTL_SEGUNDOS:
+        return cacheado["data"]
+
     headers = {"Authorization": f"Bearer {access_token}"}
     palabras_clave = ["almacenamiento", "storage", "stock antiguo", "bodega"]
     total = 0.0
@@ -80,7 +97,7 @@ def obtener_costo_almacenamiento_full(access_token, period_key, group="ML"):
         )
         if resp.status_code != 200:
             print(f"[Facturación] ⚠️ No se pudo traer el detalle de conciliación: {resp.status_code} - {resp.text[:300]}")
-            return None, 0
+            return cacheado["data"] if cacheado else (None, 0)
         data = resp.json()
         resultados = data if isinstance(data, list) else data.get("results", [])
         for detalle in resultados:
@@ -89,10 +106,12 @@ def obtener_costo_almacenamiento_full(access_token, period_key, group="ML"):
             if any(palabra in texto for palabra in palabras_clave):
                 total += float(info.get("detail_amount", 0) or 0)
                 cantidad += 1
-        return round(total, 2), cantidad
+        resultado = (round(total, 2), cantidad)
+        _cache_almacenamiento[clave] = {"data": resultado, "timestamp": ahora}
+        return resultado
     except Exception as e:
         print(f"[Facturación] ❌ Error buscando costo de almacenamiento: {e}")
-        return None, 0
+        return cacheado["data"] if cacheado else (None, 0)
 
 
 def resumen_condensado_periodo_actual(access_token, cuenta_id, group="ML"):

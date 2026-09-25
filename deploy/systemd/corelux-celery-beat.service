@@ -1,0 +1,18 @@
+[Unit]
+Description=CoreLux - Celery beat (scheduler periodico)
+After=network.target redis-server.service
+
+[Service]
+Type=simple
+User=corelux
+Group=corelux
+WorkingDirectory=/opt/corelux
+EnvironmentFile=/opt/corelux/.env
+ExecStart=/opt/corelux/venv/bin/celery -A celery_app beat --loglevel=info
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

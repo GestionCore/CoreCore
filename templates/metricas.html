@@ -251,17 +251,20 @@
 </div>
 {% endif %}
 
-<div class="panel">
-    <div class="panel-title">Evolución Mensual — Costos vs. Resultado Neto</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">Últimos {{ evolucion_mensual|length }} meses, incluyendo el actual en curso.</div>
-    {% if evolucion_mensual %}
-    <div style="position:relative; height:240px;">
-        <canvas id="canvas-evolucion-mensual"></canvas>
+{% if evolucion_mensual %}
+<div class="panel panel-colapsable" id="panel-evolucion-mensual" onclick="if(event.target.closest('.contenido-colapsable')) return; _abrirPanelConGrafico(this, _iniciarChartEvolucionMensual);">
+    <div class="panel-title">
+        <span>Evolución Mensual — Costos vs. Resultado Neto</span>
+        <span class="chevron-colapsable">▾</span>
     </div>
-    {% else %}
-    <div class="alert-empty">Sin datos suficientes todavía.</div>
-    {% endif %}
+    <div class="page-subtitle" style="margin-bottom:0;">Últimos {{ evolucion_mensual|length }} meses, incluyendo el actual en curso. Click para ver el gráfico.</div>
+    <div class="contenido-colapsable">
+        <div style="position:relative; height:240px; margin-top:14px;">
+            <canvas id="canvas-evolucion-mensual"></canvas>
+        </div>
+    </div>
 </div>
+{% endif %}
 
 <div class="panel" data-mostrar-mas-scope>
     <div class="panel-title">Consolidado por Modelo — promedios ponderados reales</div>
@@ -300,13 +303,18 @@
 </div>
 
 {% if pareto_ganancia %}
-<div class="panel">
-    <div class="panel-title">Concentración de la Ganancia</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">
-        <strong>{{ pareto_ganancia.productos_80 }} de {{ pareto_ganancia.total_productos }}</strong> modelos generan el 80% de tu ganancia de este período — cuidalos primero.
+<div class="panel panel-colapsable" id="panel-pareto-ganancia" onclick="if(event.target.closest('.contenido-colapsable')) return; _abrirPanelConGrafico(this, _iniciarChartPareto);">
+    <div class="panel-title">
+        <span>Concentración de la Ganancia</span>
+        <span class="chevron-colapsable">▾</span>
     </div>
-    <div style="position:relative; height:220px;">
-        <canvas id="canvas-pareto-ganancia"></canvas>
+    <div class="page-subtitle" style="margin-bottom:0;">
+        <strong>{{ pareto_ganancia.productos_80 }} de {{ pareto_ganancia.total_productos }}</strong> modelos generan el 80% de tu ganancia de este período — cuidalos primero. Click para ver el gráfico.
+    </div>
+    <div class="contenido-colapsable">
+        <div style="position:relative; height:220px; margin-top:14px;">
+            <canvas id="canvas-pareto-ganancia"></canvas>
+        </div>
     </div>
 </div>
 {% endif %}
@@ -392,8 +400,25 @@
     });
 })();
 
-// ── Evolución mensual: costos vs. resultado neto ─────────────────────────────
-(function () {
+// ── Evolución mensual y Pareto viven en paneles colapsables (cerrados
+// por default, para no alargar tanto la página) — Chart.js mide el
+// tamaño del canvas al crearlo, y si lo crea mientras el panel está
+// oculto (display:none) el gráfico queda con tamaño 0 y no se
+// recupera solo al abrir. Por eso estos dos NO se crean en el load de
+// la página: se arman recién la primera vez que el panel se abre,
+// cuando el canvas ya tiene un tamaño real. `_abrirPanelConGrafico`
+// hace de puente entre el onclick del panel y el init de cada charto.
+const _graficosInicializados = {};
+
+function _abrirPanelConGrafico(panelEl, iniciarFn) {
+    panelEl.classList.toggle('abierto');
+    if (panelEl.classList.contains('abierto') && !_graficosInicializados[panelEl.id]) {
+        _graficosInicializados[panelEl.id] = true;
+        requestAnimationFrame(iniciarFn);
+    }
+}
+
+function _iniciarChartEvolucionMensual() {
     const canvas = document.getElementById('canvas-evolucion-mensual');
     if (!canvas || !window.Chart) return;
     const serie = {{ evolucion_mensual | tojson }};
@@ -427,10 +452,9 @@
             }
         }
     });
-})();
+}
 
-// ── Concentración de la ganancia (Pareto) ────────────────────────────────────
-(function () {
+function _iniciarChartPareto() {
     const canvas = document.getElementById('canvas-pareto-ganancia');
     if (!canvas || !window.Chart) return;
     const serie = {{ (pareto_ganancia.serie if pareto_ganancia else []) | tojson }};
@@ -464,7 +488,7 @@
             }
         }
     });
-})();
+}
 
 // ── Correlación precio vs ventas ─────────────────────────────────────────────
 (function () {

@@ -4,3 +4,10 @@ __pycache__/
 .env
 *.log
 .vscode/
+
+# Estado local de Celery Beat corriendo en dev — no es código, es una
+# base SQLite de runtime, cambia en cada arranque y no aporta nada
+# versionado (además pisa el archivo de otro dev sin sentido).
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal

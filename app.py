@@ -53,7 +53,7 @@ import exportador_redes
 import scheduler
 import ventas_manuales
 import pagos
-from utils import formatear_moneda
+from utils import formatear_moneda, formatear_moneda_entera
 from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__)
@@ -530,7 +530,7 @@ def api_dashboard_ganancia_dia_vs_promedio():
         variacion_pct = round(((ganancia_hoy - ganancia_promedio_diario) / abs(ganancia_promedio_diario)) * 100, 1)
 
     def _f(n):
-        return f"${n:,.0f}".replace(",", ".")
+        return f"${formatear_moneda_entera(n)}"
 
     return jsonify({
         "hoy": {

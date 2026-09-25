@@ -1,0 +1,10 @@
+# Los scripts y configs de deploy/ corren en el servidor Linux — si
+# quedan con saltos de línea CRLF (lo que Windows/git puede hacer sin
+# este archivo, según cómo esté configurado core.autocrlf en cada
+# máquina), bash los rechaza con "bad interpreter: /bin/bash^M: no
+# such file or directory". Forzar LF acá saca esa duda de en medio.
+deploy/**/*.sh text eol=lf
+deploy/**/*.service text eol=lf
+deploy/**/*.conf text eol=lf
+deploy/**/*.py text eol=lf
+migrations/*.sql text eol=lf
