@@ -4,7 +4,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Panel de Stock & Modelos</h1>
-        <div class="page-subtitle">Sincronización en tiempo real vía Webhooks + Auto-Sync cada 20 min</div>
+        <div class="page-subtitle">Sincronización en tiempo real vía Webhooks + Auto-Sync cada 4 min</div>
     </div>
     <div class="flex-gap">
         <button class="btn btn-denim" id="btn-sync" onclick="ejecutarSincro()">
@@ -217,7 +217,7 @@
         const btn = document.getElementById('btn-sync');
         btn.disabled = true;
         btn.innerText = 'Sincronizando...';
-        fetch('/sincronizar_manual')
+        fetch('/sincronizar_todo')
             .then(() => window.location.reload())
             .catch(() => window.location.reload());
     }
