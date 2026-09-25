@@ -16,7 +16,6 @@ hace lo mismo con el patrón que sí confirmamos que funciona, y ya la
 reemplazaba en la práctica.
 """
 import time
-import requests
 import meli_http
 import concurrent.futures
 from datetime import datetime, timedelta
@@ -31,7 +30,7 @@ METRICAS_CAMPANA = "clicks,prints,ctr,cost,cpc,acos,roas,cvr,units_quantity,dire
 def obtener_ad_de_item(access_token, id_meli):
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/advertising/product_ads/items/{id_meli}", headers=headers, timeout=8)
+        resp = meli_http.get(f"https://api.mercadolibre.com/advertising/product_ads/items/{id_meli}", headers=headers, timeout=8)
         if resp.status_code != 200:
             return None
         data = resp.json()
@@ -44,7 +43,7 @@ def obtener_ad_de_item(access_token, id_meli):
 def pausar_ad_item(access_token, id_meli):
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     try:
-        resp = requests.put(
+        resp = meli_http.put(
             f"https://api.mercadolibre.com/advertising/product_ads/items/{id_meli}",
             json={"status": "paused"}, headers=headers, timeout=10
         )
@@ -99,7 +98,7 @@ def obtener_campanas_con_metricas(access_token, advertiser_id, fecha_desde, fech
         f"?limit=50&offset=0&date_from={fecha_desde}&date_to={fecha_hasta}&metrics={METRICAS_CAMPANA}&metrics_summary=true"
     )
     try:
-        resp = requests.get(url, headers=headers, timeout=15)
+        resp = meli_http.get(url, headers=headers, timeout=15)
         if resp.status_code != 200:
             print(f"[Ads] ⚠️ Error trayendo campañas: {resp.status_code} - {resp.text[:300]}")
             return []
@@ -147,7 +146,7 @@ def obtener_serie_diaria_ads(access_token, advertiser_id, fecha_desde, fecha_has
             f"?limit=50&offset=0&date_from={fecha}&date_to={fecha}&metrics=cost,total_amount,units_quantity"
         )
         try:
-            resp = requests.get(url, headers=headers, timeout=10)
+            resp = meli_http.get(url, headers=headers, timeout=10)
             if resp.status_code != 200:
                 return fecha, 0.0, 0.0, 0
             data = resp.json()
@@ -172,7 +171,7 @@ def obtener_gasto_ads_total_periodo(access_token, advertiser_id, fecha_desde, fe
         f"?limit=50&offset=0&date_from={fecha_desde}&date_to={fecha_hasta}&metrics=cost"
     )
     try:
-        resp = requests.get(url, headers=headers, timeout=15)
+        resp = meli_http.get(url, headers=headers, timeout=15)
         if resp.status_code != 200:
             print(f"[Ads] ⚠️ Error consultando gasto total: {resp.status_code} - {resp.text[:300]}")
             return None

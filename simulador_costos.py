@@ -1,4 +1,4 @@
-import requests
+import meli_http
 from datetime import datetime, timedelta
 
 def simular_bajar_precio_vs_pausar(precio_actual, costo_fabricacion, reduccion_pct, unidades_vendidas_30d, headers, site_id="MLA", listing_type_id="gold_special"):
@@ -50,7 +50,7 @@ def simular_bajar_precio_vs_pausar(precio_actual, costo_fabricacion, reduccion_p
 def simular_costos(precio, costo_fabricacion, headers, site_id="MLA", listing_type_id="gold_special"):
     comision = None
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/sites/{site_id}/listing_prices", headers=headers, params={"price": precio}, timeout=8)
+        resp = meli_http.get(f"https://api.mercadolibre.com/sites/{site_id}/listing_prices", headers=headers, params={"price": precio}, timeout=8)
         if resp.status_code == 200:
             opciones = resp.json()
             match = next((o for o in opciones if o.get("listing_type_id") == listing_type_id), None)
@@ -82,7 +82,7 @@ def calcular_precio_objetivo(ganancia_deseada, costo_fabricacion, costo_envio_es
     comision = 0.0
     for _ in range(6):
         try:
-            resp = requests.get(
+            resp = meli_http.get(
                 f"https://api.mercadolibre.com/sites/{site_id}/listing_prices",
                 headers=headers, params={"price": round(precio_estimado, 2)}, timeout=8
             )
@@ -124,14 +124,14 @@ def comparar_listing_types(precio, costo_fabricacion, headers, site_id="MLA", id
     tipo_actual = None
     if id_meli:
         try:
-            resp_item = requests.get(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, timeout=8)
+            resp_item = meli_http.get(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, timeout=8)
             if resp_item.status_code == 200:
                 tipo_actual = resp_item.json().get("listing_type_id")
         except Exception:
             pass
 
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/sites/{site_id}/listing_prices", headers=headers, params={"price": precio}, timeout=8)
+        resp = meli_http.get(f"https://api.mercadolibre.com/sites/{site_id}/listing_prices", headers=headers, params={"price": precio}, timeout=8)
         if resp.status_code != 200:
             return None
         opciones = resp.json()

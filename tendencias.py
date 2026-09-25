@@ -13,7 +13,8 @@ el esquema multi-tenant), y el "INSERT OR IGNORE" de SQLite se
 resuelve con "ON CONFLICT DO NOTHING" en Postgres.
 """
 import re
-import requests
+import meli_http
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 
 PALABRAS_CLAVE_RUBRO = [
@@ -50,14 +51,14 @@ def obtener_categoria_principal(access_token, cuenta_id, cursor, site_id="MLA"):
         return None, None
 
     try:
-        resp_item = requests.get(f"https://api.mercadolibre.com/items/{fila[0]}", headers=headers, timeout=8)
+        resp_item = meli_http.get(f"https://api.mercadolibre.com/items/{fila[0]}", headers=headers, timeout=8)
         if resp_item.status_code != 200:
             return None, None
         category_id = resp_item.json().get("category_id")
         if not category_id:
             return None, None
 
-        resp_cat = requests.get(f"https://api.mercadolibre.com/categories/{category_id}", timeout=8)
+        resp_cat = meli_http.get(f"https://api.mercadolibre.com/categories/{category_id}", timeout=8)
         if resp_cat.status_code != 200:
             return category_id, None
 
@@ -138,7 +139,7 @@ def explorar_demanda(access_token, termino=None, category_id=None, site_id="MLA"
     if termino:
         params["q"] = termino
     try:
-        resp = requests.get(
+        resp = meli_http.get(
             f"https://api.mercadolibre.com/sites/{site_id}/search",
             headers=headers, params=params, timeout=10
         )
@@ -245,7 +246,7 @@ def estimar_margen_categoria(access_token, category_id, precio_referencia, costo
 def obtener_categorias_raiz(site_id="MLA"):
     """Categorías de primer nivel de MeLi — punto de partida para navegar ramas de cualquier rubro, no solo el propio."""
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/sites/{site_id}/categories", timeout=8)
+        resp = meli_http.get(f"https://api.mercadolibre.com/sites/{site_id}/categories", timeout=8)
         if resp.status_code != 200:
             return []
         return [{"id": c["id"], "nombre": c["name"]} for c in resp.json()]
@@ -257,7 +258,7 @@ def obtener_categorias_raiz(site_id="MLA"):
 def obtener_rama_categoria(category_id):
     """Subcategorías + camino (breadcrumb) de una categoría — para ir bajando ramas dentro de un rubro."""
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/categories/{category_id}", timeout=8)
+        resp = meli_http.get(f"https://api.mercadolibre.com/categories/{category_id}", timeout=8)
         if resp.status_code != 200:
             return None
         data = resp.json()
@@ -319,7 +320,7 @@ def _tomar_snapshot(access_token, seguimiento, site_id="MLA"):
     else:
         params["q"] = seguimiento["valor"]
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/sites/{site_id}/search", headers=headers, params=params, timeout=10)
+        resp = meli_http.get(f"https://api.mercadolibre.com/sites/{site_id}/search", headers=headers, params=params, timeout=10)
         if resp.status_code != 200:
             return None
         data = resp.json()
@@ -352,8 +353,15 @@ def relevar_snapshots_tendencias(access_token, cursor, cuenta_id, site_id="MLA")
 
     hoy = datetime.now().strftime("%Y-%m-%d")
     relevados = 0
-    for s in seguimientos:
-        datos = _tomar_snapshot(access_token, s, site_id)
+
+    # Consultas independientes entre sí — se resuelven en paralelo antes
+    # de escribir, así una cuenta que sigue muchos términos/categorías no
+    # bloquea el hilo del fallback de APScheduler (sin Redis) esperando
+    # una request a la vez (mismo patrón que ads.py/despacho.py).
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        snapshots = list(pool.map(lambda s: _tomar_snapshot(access_token, s, site_id), seguimientos))
+
+    for s, datos in zip(seguimientos, snapshots):
         if not datos:
             continue
         cursor.execute("""
@@ -433,7 +441,7 @@ def obtener_tendencias(access_token, site_id="MLA", category_id=None):
     if category_id:
         url += f"/{category_id}"
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = meli_http.get(url, headers=headers, timeout=10)
         if resp.status_code != 200:
             print(f"[Tendencias] ⚠️ Error consultando tendencias: {resp.status_code} - {resp.text[:200]}")
             return []

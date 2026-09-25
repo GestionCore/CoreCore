@@ -4,7 +4,7 @@ de corte distinto según cómo lo tenga configurado en Mercado Libre, así
 que lo consultamos en vez de asumir un horario fijo para todos.
 """
 import time
-import requests
+import meli_http
 from datetime import datetime
 
 DIAS_SEMANA_EN = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -29,7 +29,7 @@ def obtener_horario_corte_hoy(access_token, user_id, logistic_type="drop_off"):
 
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/users/{user_id}/shipping/schedule/{logistic_type}", headers=headers, timeout=8)
+        resp = meli_http.get(f"https://api.mercadolibre.com/users/{user_id}/shipping/schedule/{logistic_type}", headers=headers, timeout=8)
         if resp.status_code != 200:
             print(f"[Logística] ⚠️ No se pudo traer el horario de {logistic_type}: {resp.status_code} - {resp.text[:200]}")
             _cache_horarios[clave_cache] = {"data": None, "timestamp": ahora}
@@ -71,7 +71,7 @@ def tiene_flex_habilitado(access_token, site_id, user_id):
 
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/shipping/flex/sites/{site_id}/users/{user_id}/subscriptions/v1", headers=headers, timeout=8)
+        resp = meli_http.get(f"https://api.mercadolibre.com/shipping/flex/sites/{site_id}/users/{user_id}/subscriptions/v1", headers=headers, timeout=8)
         habilitado = resp.status_code == 200 and bool(resp.json())
         _cache_flex_habilitado[user_id] = {"data": habilitado, "timestamp": ahora}
         return habilitado

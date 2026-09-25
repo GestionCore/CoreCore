@@ -6,7 +6,7 @@ Promociones — portado de Santi Mens. Cambios reales (no cosméticos):
 - El join de variantes pasa a usar productos_padre.id (igual que en el
   resto del port), no id_meli.
 """
-import requests
+import meli_http
 from datetime import datetime, timedelta
 
 APP_VERSION = "v2"
@@ -120,7 +120,7 @@ def sugerir_candidatos_promocion(cursor, umbral_dias_sin_rotar=20):
 def obtener_promociones_usuario(access_token, user_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/seller-promotions/users/{user_id}", headers=headers, params={"app_version": APP_VERSION}, timeout=10)
+        resp = meli_http.get(f"https://api.mercadolibre.com/seller-promotions/users/{user_id}", headers=headers, params={"app_version": APP_VERSION}, timeout=10)
         if resp.status_code == 200:
             return resp.json().get("results", [])
         print(f"[Promociones] ⚠️ No se pudieron traer las campañas: {resp.status_code} - {resp.text}")
@@ -132,7 +132,7 @@ def obtener_promociones_usuario(access_token, user_id):
 def obtener_items_oferta_relampago(access_token, promotion_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/seller-promotions/promotions/{promotion_id}/items",
+        resp = meli_http.get(f"https://api.mercadolibre.com/seller-promotions/promotions/{promotion_id}/items",
                              headers=headers, params={"app_version": APP_VERSION, "promotion_type": "LIGHTNING"}, timeout=10)
         if resp.status_code == 200:
             return resp.json().get("results", [])
@@ -145,7 +145,7 @@ def crear_descuento_individual(access_token, item_id, deal_price, fecha_desde, f
     headers = {"Authorization": f"Bearer {access_token}"}
     body = {"deal_price": deal_price, "start_date": f"{fecha_desde}T00:00:00", "finish_date": f"{fecha_hasta}T23:59:59", "promotion_type": "PRICE_DISCOUNT"}
     try:
-        resp = requests.post(f"https://api.mercadolibre.com/seller-promotions/items/{item_id}", headers=headers, params={"app_version": APP_VERSION}, json=body, timeout=10)
+        resp = meli_http.post(f"https://api.mercadolibre.com/seller-promotions/items/{item_id}", headers=headers, params={"app_version": APP_VERSION}, json=body, timeout=10)
         if resp.status_code in (200, 201):
             return True, resp.json()
         return False, f"{resp.status_code} - {resp.text}"
@@ -156,7 +156,7 @@ def crear_descuento_individual(access_token, item_id, deal_price, fecha_desde, f
 def eliminar_promocion_item(access_token, item_id, promotion_type):
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.delete(f"https://api.mercadolibre.com/seller-promotions/items/{item_id}", headers=headers, params={"app_version": APP_VERSION, "promotion_type": promotion_type}, timeout=10)
+        resp = meli_http.delete(f"https://api.mercadolibre.com/seller-promotions/items/{item_id}", headers=headers, params={"app_version": APP_VERSION, "promotion_type": promotion_type}, timeout=10)
         return resp.status_code == 200, f"{resp.status_code}"
     except Exception as e:
         return False, str(e)
@@ -165,7 +165,7 @@ def eliminar_promocion_item(access_token, item_id, promotion_type):
 def participar_oferta_relampago(access_token, item_id, deal_price, stock):
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.post(f"https://api.mercadolibre.com/seller-promotions/promotions/items/{item_id}",
+        resp = meli_http.post(f"https://api.mercadolibre.com/seller-promotions/promotions/items/{item_id}",
                               headers=headers, params={"app_version": APP_VERSION}, json={"deal_price": deal_price, "stock_quantity": stock, "promotion_type": "LIGHTNING"}, timeout=10)
         if resp.status_code in (200, 201):
             return True, resp.json()

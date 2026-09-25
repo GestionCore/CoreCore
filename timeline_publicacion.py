@@ -1,5 +1,5 @@
 """Línea de Tiempo de una publicación — portado de Santi Mens."""
-import requests
+import meli_http
 
 
 def _fecha_str(valor):
@@ -13,7 +13,7 @@ def _fecha_str(valor):
 def obtener_fecha_creacion(access_token, id_meli):
     try:
         headers = {"Authorization": f"Bearer {access_token}"}
-        resp = requests.get(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, timeout=8)
+        resp = meli_http.get(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, timeout=8)
         if resp.status_code == 200:
             fecha = resp.json().get("date_created")
             return fecha[:10] if fecha else None

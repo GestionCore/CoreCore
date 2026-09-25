@@ -201,6 +201,17 @@
     ];
     const CLAVE_PREFS_DASHBOARD = 'dashboard_widgets_activos';
 
+    // El widget "Salud de Cuenta" del grid y el chip de salud del hero
+    // strip piden los mismos datos — se comparte una sola promesa en
+    // vez de disparar /api/ticker dos veces en la misma carga de página.
+    let _tickerPromiseCache = null;
+    function _fetchTickerCompartido() {
+        if (!_tickerPromiseCache) {
+            _tickerPromiseCache = fetch('/api/ticker').then(r => r.json());
+        }
+        return _tickerPromiseCache;
+    }
+
     function obtenerPrefsDashboard() {
         const guardado = localStorage.getItem(CLAVE_PREFS_DASHBOARD);
         if (guardado) return JSON.parse(guardado);
@@ -368,7 +379,7 @@
         if (prefs.salud) {
             const w = crearTarjetaWidget('salud', '/');
             grid.appendChild(w);
-            fetch('/api/ticker').then(r => r.json()).then(d => {
+            _fetchTickerCompartido().then(d => {
                 let color = 'var(--success)';
                 if (d.salud_score < 45) color = 'var(--danger)'; else if (d.salud_score < 65) color = 'var(--semantic-warning)';
                 w.innerHTML = `<div class="stat-chip-label">Salud de Cuenta</div><div class="hero-number" style="font-size:1.9em; background:none; -webkit-text-fill-color:${color}; color:${color};">${d.salud_score ?? '—'}</div>
@@ -506,7 +517,7 @@
             fetch('/api/resumen_diario').then(r => r.json()),
             fetch('/api/hoy').then(r => r.json()),
             fetch('/api/dashboard/tendencia_ventas').then(r => r.json()),
-            fetch('/api/ticker').then(r => r.json()),
+            _fetchTickerCompartido(),
         ]);
 
         if (resumen.status === 'fulfilled' && resumen.value) {

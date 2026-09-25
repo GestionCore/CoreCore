@@ -5,7 +5,16 @@ mostrar el desglose completo (comisión base vs. costo de cuotas) y el
 costo de envío real para un precio dado, sin inventar ningún porcentaje
 de blogs de terceros.
 """
+import time
+from concurrent.futures import ThreadPoolExecutor
 import meli_http
+
+# Nombre de categoría por category_id — es un dato global de MeLi (no
+# depende de la cuenta), así que a diferencia de las otras cachés del
+# proyecto no necesita ir indexado por cuenta_id. Las categorías casi
+# no cambian de nombre, TTL largo como en logistica.py.
+_cache_nombre_categoria = {}
+TTL_SEGUNDOS = 6 * 3600
 
 
 def obtener_categorias_del_catalogo(headers, cursor, limite=30):
@@ -19,22 +28,39 @@ def obtener_categorias_del_catalogo(headers, cursor, limite=30):
     if not ids:
         return []
 
-    categorias_vistas = {}
-    for id_meli in ids:
+    def _category_id_de(id_meli):
         try:
             resp = meli_http.get(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers)
             if resp.status_code != 200:
-                continue
-            data = resp.json()
-            cat_id = data.get("category_id")
-            if cat_id and cat_id not in categorias_vistas:
-                resp_cat = meli_http.get(f"https://api.mercadolibre.com/categories/{cat_id}")
-                nombre = resp_cat.json().get("name", cat_id) if resp_cat.status_code == 200 else cat_id
-                categorias_vistas[cat_id] = nombre
+                return None
+            return resp.json().get("category_id")
         except Exception:
-            continue
+            return None
 
-    return [{"id": k, "nombre": v} for k, v in categorias_vistas.items()]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        category_ids = list(pool.map(_category_id_de, ids))
+
+    cat_ids_unicos = []
+    for cat_id in category_ids:
+        if cat_id and cat_id not in cat_ids_unicos:
+            cat_ids_unicos.append(cat_id)
+
+    def _nombre_de(cat_id):
+        cacheado = _cache_nombre_categoria.get(cat_id)
+        if cacheado and (time.time() - cacheado[1]) < TTL_SEGUNDOS:
+            return cat_id, cacheado[0]
+        try:
+            resp_cat = meli_http.get(f"https://api.mercadolibre.com/categories/{cat_id}")
+            nombre = resp_cat.json().get("name", cat_id) if resp_cat.status_code == 200 else cat_id
+        except Exception:
+            nombre = cat_id
+        _cache_nombre_categoria[cat_id] = (nombre, time.time())
+        return cat_id, nombre
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        pares = list(pool.map(_nombre_de, cat_ids_unicos))
+
+    return [{"id": cat_id, "nombre": nombre} for cat_id, nombre in pares]
 
 
 def calcular_desglose_real(access_token, precio, category_id, listing_type_id, ofrece_cuotas, site_id="MLA"):

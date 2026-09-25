@@ -4,7 +4,7 @@ Reputación y Confianza: datos reales y oficiales de tu cuenta en MeLi
 métricas de calidad que arman ese nivel) — todo desde /users/$USER_ID,
 el mismo recurso oficial que usa MeLi para calcular tu reputación.
 """
-import requests
+import meli_http
 
 NOMBRES_NIVEL = {
     "5_green": "Excelente (verde)",
@@ -24,7 +24,7 @@ NOMBRES_POWER_SELLER = {
 def obtener_reputacion(access_token, user_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/users/{user_id}", headers=headers, timeout=10)
+        resp = meli_http.get(f"https://api.mercadolibre.com/users/{user_id}", headers=headers, timeout=10)
         if resp.status_code != 200:
             print(f"[Reputación] ⚠️ Error consultando reputación: {resp.status_code} - {resp.text[:200]}")
             return None

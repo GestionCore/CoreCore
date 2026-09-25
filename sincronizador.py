@@ -15,8 +15,8 @@ Cambios reales (no cosméticos):
 """
 import re
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-import requests
 import meli_http
 import validacion_meli
 import db
@@ -102,7 +102,7 @@ def _consultar_stock_convivencia(user_product_id, headers):
     if not user_product_id:
         return None, None
     try:
-        resp = requests.get(f"https://api.mercadolibre.com/user-products/{user_product_id}/stock", headers=headers, timeout=6)
+        resp = meli_http.get(f"https://api.mercadolibre.com/user-products/{user_product_id}/stock", headers=headers, timeout=6)
         if resp.status_code != 200:
             return None, None
         propio, full = None, None
@@ -319,6 +319,7 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
             return
 
         items_procesados = []
+        pendientes_convivencia = []  # (índice en items_procesados, user_product_id)
         lote_size = 50
 
         for i in range(0, len(lista_ids), lote_size):
@@ -335,16 +336,27 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
                     tipo_logistica = validacion_meli.campo_seguro(p, "shipping.logistic_type", default=None, tipo_esperado=str, contexto=f"item {p.get('id')}")
                     shipping_tags = validacion_meli.campo_seguro(p, "shipping.tags", default=[], tipo_esperado=list, contexto=f"item {p.get('id')}")
                     es_convivencia = (tipo_logistica == "fulfillment") and "self_service_in" in shipping_tags
-                    stock_convivencia = None
-                    if es_convivencia:
-                        user_product_id = validacion_meli.campo_seguro(p, "user_product_id", default=None, tipo_esperado=str, contexto=f"item {p.get('id')}")
-                        if user_product_id:
-                            stock_convivencia = _consultar_stock_convivencia(user_product_id, headers)
 
                     items_procesados.append({
                         "id_item": p.get("id"), "detalle": p, "precio_original": p.get("original_price"),
-                        "recibis_estimado": None, "stock_convivencia": stock_convivencia
+                        "recibis_estimado": None, "stock_convivencia": None
                     })
+                    if es_convivencia:
+                        user_product_id = validacion_meli.campo_seguro(p, "user_product_id", default=None, tipo_esperado=str, contexto=f"item {p.get('id')}")
+                        if user_product_id:
+                            pendientes_convivencia.append((len(items_procesados) - 1, user_product_id))
+
+        # Las consultas de stock de convivencia son independientes entre
+        # sí — se resuelven todas en paralelo al final en vez de una por
+        # una intercaladas con la descarga de los lotes (mismo patrón que
+        # ya se usa en ads.py/metricas.py/despacho.py).
+        if pendientes_convivencia:
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                resultados_convivencia = list(pool.map(
+                    lambda item: _consultar_stock_convivencia(item[1], headers), pendientes_convivencia
+                ))
+            for (indice, _), stock_convivencia in zip(pendientes_convivencia, resultados_convivencia):
+                items_procesados[indice]["stock_convivencia"] = stock_convivencia
 
         with db.conexion_usuario(usuario_id) as conexion:
             cursor = conexion.cursor()

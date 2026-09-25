@@ -4,8 +4,9 @@ CoreLux todavía, así que el aviso de "competidor cambió de foto" queda
 comentado (la DETECCIÓN sigue funcionando y quedando guardada, solo no
 se manda el mensaje) — se reactiva cuando portemos ese puente.
 """
-import requests
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+import meli_http
 
 
 def agregar_competidor(cursor, cuenta_id, id_meli_rival, alias=""):
@@ -21,6 +22,17 @@ def eliminar_competidor(cursor, cuenta_id, id_meli_rival):
     cursor.execute("DELETE FROM competidores_historial WHERE cuenta_id = %s AND id_meli_rival = %s", (cuenta_id, id_meli_rival.upper()))
 
 
+def _consultar_rival(id_rival):
+    try:
+        resp = meli_http.get(f"https://api.mercadolibre.com/items/{id_rival}", timeout=8)
+        if resp.status_code != 200:
+            return id_rival, None
+        return id_rival, resp.json()
+    except Exception as e:
+        print(f"[Espía Competencia] ⚠️ Error consultando {id_rival}: {e}")
+        return id_rival, None
+
+
 def relevar_competidores(cursor, cuenta_id):
     cursor.execute("SELECT id_meli_rival FROM competidores_seguimiento WHERE cuenta_id = %s", (cuenta_id,))
     rivales = [r[0] for r in cursor.fetchall()]
@@ -30,12 +42,16 @@ def relevar_competidores(cursor, cuenta_id):
     hoy = datetime.now().strftime("%Y-%m-%d")
     relevados = 0
 
-    for id_rival in rivales:
+    # Las consultas a MeLi son independientes entre sí — se resuelven en
+    # paralelo, y después se escribe todo secuencial sobre el mismo cursor
+    # (mismo patrón que ads.py/metricas.py/despacho.py/sincronizador.py).
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        resultados = list(pool.map(_consultar_rival, rivales))
+
+    for id_rival, item in resultados:
+        if item is None:
+            continue
         try:
-            resp = requests.get(f"https://api.mercadolibre.com/items/{id_rival}", timeout=8)
-            if resp.status_code != 200:
-                continue
-            item = resp.json()
             precio = item.get("price")
             stock = item.get("available_quantity", 0)
             es_full = item.get("shipping", {}).get("logistic_type") == "fulfillment"
@@ -70,7 +86,7 @@ def relevar_competidores(cursor, cuenta_id):
 
             relevados += 1
         except Exception as e:
-            print(f"[Espía Competencia] ⚠️ Error consultando {id_rival}: {e}")
+            print(f"[Espía Competencia] ⚠️ Error guardando {id_rival}: {e}")
 
     return relevados
 

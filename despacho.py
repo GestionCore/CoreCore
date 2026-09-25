@@ -6,6 +6,7 @@ Postgres se arma sumando un INTERVAL directamente sobre el timestamp
 combinado de fecha_venta + hora_venta.
 """
 import re
+from concurrent.futures import ThreadPoolExecutor
 from psycopg.rows import dict_row
 import db
 import meli_http
@@ -54,27 +55,41 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
         # Cruzamos el estado real del envío en MeLi para los pendientes —
         # si ya está shipped/delivered o la etiqueta figura impresa, es
         # porque ya se despachó de verdad y el sistema no se enteró.
+        # Las consultas GET son independientes entre sí, así que se
+        # paralelizan (mismo patrón que ads.py/metricas.py) — con 30-50
+        # pendientes en un día de mucho movimiento, hacerlas una por una
+        # tardaba 10-15s en cargar la pantalla que se abre todos los días.
         if pendientes_a_verificar and access_token:
             headers_shipment = {"Authorization": f"Bearer {access_token}", "x-format-new": "true"}
             paquetes_por_clave = {p["clave"]: p for p in paquetes}
-            for clave, id_orden, id_meli, id_variante, shipment_id in pendientes_a_verificar:
+
+            def _verificar_envio(item):
+                clave, id_orden, id_meli, id_variante, shipment_id = item
                 try:
                     resp = meli_http.get(f"https://api.mercadolibre.com/shipments/{shipment_id}", headers=headers_shipment, timeout=6)
                     if resp.status_code != 200:
-                        continue
+                        return None
                     info_envio = resp.json()
-                    status = info_envio.get("status")
-                    substatus = info_envio.get("substatus")
-                    if status in ("shipped", "delivered", "not_delivered"):
-                        cursor.execute(
-                            "UPDATE ventas SET despachado = true WHERE cuenta_id = %s AND id_orden = %s AND id_meli = %s AND id_variante = %s",
-                            (cuenta_id, id_orden, id_meli, id_variante)
-                        )
-                        paquetes_por_clave[clave]["despachado"] = True
-                    elif substatus == "printed":
-                        paquetes_por_clave[clave]["etiqueta_impresa"] = True
+                    return (clave, id_orden, id_meli, id_variante, shipment_id, info_envio.get("status"), info_envio.get("substatus"))
                 except Exception as e:
                     print(f"[Despacho] ⚠️ No se pudo verificar el envío {shipment_id}: {e}")
+                    return None
+
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                resultados = list(pool.map(_verificar_envio, pendientes_a_verificar))
+
+            for resultado in resultados:
+                if resultado is None:
+                    continue
+                clave, id_orden, id_meli, id_variante, shipment_id, status, substatus = resultado
+                if status in ("shipped", "delivered", "not_delivered"):
+                    cursor.execute(
+                        "UPDATE ventas SET despachado = true WHERE cuenta_id = %s AND id_orden = %s AND id_meli = %s AND id_variante = %s",
+                        (cuenta_id, id_orden, id_meli, id_variante)
+                    )
+                    paquetes_por_clave[clave]["despachado"] = True
+                elif substatus == "printed":
+                    paquetes_por_clave[clave]["etiqueta_impresa"] = True
 
     total = len(paquetes)
     listos = sum(1 for p in paquetes if p["despachado"])

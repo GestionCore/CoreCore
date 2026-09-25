@@ -6,7 +6,7 @@ sendos slots globales únicos — la primera cuenta que consultara dejaba
 SU embudo/zombies cacheado para cualquier otra cuenta que consultara
 después. Ahora ambas cachés se indexan por cuenta_id.
 """
-import requests
+import meli_http
 import time
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -18,7 +18,7 @@ TTL_SEGUNDOS = 900
 
 def _obtener_visitas_un_item(headers, id_item, date_from, date_to):
     try:
-        resp = requests.get(
+        resp = meli_http.get(
             f"https://api.mercadolibre.com/items/{id_item}/visits",
             headers=headers, params={"date_from": date_from, "date_to": date_to}, timeout=8
         )
@@ -53,7 +53,7 @@ def obtener_visitas_items(headers, ids_lista, date_from, date_to):
 
 def _obtener_cantidad_preguntas(headers, id_meli):
     try:
-        resp = requests.get("https://api.mercadolibre.com/questions/search", params={"item": id_meli, "limit": 1}, headers=headers, timeout=6)
+        resp = meli_http.get("https://api.mercadolibre.com/questions/search", params={"item": id_meli, "limit": 1}, headers=headers, timeout=6)
         if resp.status_code == 200:
             return resp.json().get("total", 0)
     except Exception as e:

@@ -16,7 +16,6 @@ for _stream in (sys.stdout, sys.stderr):
         except Exception:
             pass
 
-import requests
 from flask import Flask, request, session, redirect, url_for, render_template, g, jsonify, send_file, stream_with_context, Response
 import config
 from auth import oauth_meli, registro, token_manager
@@ -1390,7 +1389,7 @@ def exportar_publicacion_red(id_meli):
     try:
         access_token = token_manager.asegurar_token_valido(g.cuenta_id)
         headers = {"Authorization": f"Bearer {access_token}"}
-        resp = requests.get(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, timeout=8)
+        resp = meli_http.get(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, timeout=8)
         if resp.status_code == 200:
             fotos = resp.json().get("pictures", [])
             if fotos:
@@ -1779,7 +1778,7 @@ def despacho_etiquetas_pdf():
 
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.get(
+        resp = meli_http.get(
             "https://api.mercadolibre.com/shipment_labels",
             headers=headers,
             params={"shipment_ids": ",".join(str(s) for s in shipment_ids), "response_type": "pdf"},
@@ -1971,6 +1970,23 @@ def actualizar_stock_multiple():
 
     with db.conexion_usuario(g.usuario_id) as conexion:
         cursor = conexion.cursor()
+
+        # Un solo roundtrip para las variantes de TODOS los id_meli del
+        # lote, en vez de una subquery por ítem dentro del loop (N+1).
+        ids_meli = list(campos_stock.keys())
+        cursor.execute(
+            """
+            SELECT p.id_meli, v.id_variante
+            FROM productos_padre p
+            JOIN productos_variantes v ON v.id_padre = p.id
+            WHERE p.id_meli = ANY(%s)
+            """,
+            (ids_meli,)
+        )
+        variantes_por_item = {}
+        for id_meli_fila, id_variante in cursor.fetchall():
+            variantes_por_item.setdefault(id_meli_fila, []).append(id_variante)
+
         for id_meli, valor in campos_stock.items():
             try:
                 nuevo_stock = int(valor)
@@ -1981,11 +1997,7 @@ def actualizar_stock_multiple():
                 fallidos += 1
                 continue
 
-            cursor.execute(
-                "SELECT id_variante FROM productos_variantes WHERE id_padre = (SELECT id FROM productos_padre WHERE id_meli = %s)",
-                (id_meli,)
-            )
-            variantes_del_item = cursor.fetchall()
+            variantes_del_item = variantes_por_item.get(id_meli, [])
 
             if len(variantes_del_item) > 1:
                 saltados += 1
@@ -1993,7 +2005,7 @@ def actualizar_stock_multiple():
 
             try:
                 if len(variantes_del_item) == 1:
-                    payload = {"variations": [{"id": variantes_del_item[0][0], "available_quantity": nuevo_stock}]}
+                    payload = {"variations": [{"id": variantes_del_item[0], "available_quantity": nuevo_stock}]}
                 else:
                     payload = {"available_quantity": nuevo_stock}
                 r = meli_http.put(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, json=payload)
