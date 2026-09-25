@@ -191,8 +191,64 @@
         .lp-footer a { color: var(--text-muted); text-decoration: none; }
         .lp-footer a:hover { color: var(--text-primary); }
 
+        /* ── Cómo funciona (pasos) ─────────────────────── */
+        .lp-pasos {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 28px; max-width: 900px; margin: 0 auto;
+        }
+        .lp-paso { text-align: center; padding: 0 12px; }
+        .lp-paso-num {
+            width: 42px; height: 42px; border-radius: 50%; margin: 0 auto 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-display); font-weight: 800; font-size: 1.1em;
+            background: linear-gradient(135deg, var(--accent-brand), var(--accent-cyan));
+            color: #14100a;
+        }
+        .lp-paso-titulo { font-weight: 700; margin-bottom: 8px; }
+        .lp-paso-desc { color: var(--text-secondary); font-size: 0.88em; line-height: 1.55; }
+
+        /* ── Funciones agrupadas por categoría ─────────── */
+        .lp-categoria { margin-bottom: 44px; }
+        .lp-categoria:last-child { margin-bottom: 0; }
+        .lp-categoria-titulo {
+            font-size: 0.78em; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+            color: var(--accent-brand); margin-bottom: 18px; padding-left: 2px;
+        }
+
+        /* ── Seguridad / confianza ──────────────────────── */
+        .lp-seguridad-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+        }
+        .lp-seguridad-item { text-align: center; padding: 0 8px; }
+        .lp-seguridad-item svg { width: 30px; height: 30px; color: var(--accent-cyan); margin-bottom: 14px; }
+        .lp-seguridad-titulo { font-weight: 700; font-size: 0.95em; margin-bottom: 8px; }
+        .lp-seguridad-desc { color: var(--text-secondary); font-size: 0.85em; line-height: 1.55; }
+
+        /* ── FAQ ─────────────────────────────────────────── */
+        .lp-faq-lista { display: flex; flex-direction: column; gap: 10px; max-width: 760px; margin: 0 auto; }
+        .lp-faq-item {
+            border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+            background: var(--glass-bg); overflow: hidden; transition: border-color 0.2s;
+        }
+        .lp-faq-item.abierto { border-color: var(--accent-brand); }
+        .lp-faq-pregunta {
+            width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            background: none; border: none; cursor: pointer; text-align: left;
+            padding: 18px 20px; font-family: var(--font-ui); font-size: 0.95em; font-weight: 600; color: var(--text-primary);
+        }
+        .lp-faq-chevron { transition: transform 0.2s; color: var(--text-faint); flex-shrink: 0; font-size: 0.8em; }
+        .lp-faq-item.abierto .lp-faq-chevron { transform: rotate(180deg); color: var(--accent-brand); }
+        .lp-faq-respuesta {
+            max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease;
+            padding: 0 20px; color: var(--text-secondary); font-size: 0.88em; line-height: 1.6;
+        }
+        .lp-faq-item.abierto .lp-faq-respuesta { max-height: 320px; padding: 0 20px 20px; }
+
         @media (max-width: 600px) {
             .lp-nav { padding: 12px 16px; }
+            .lp-nav-links { gap: 10px; }
+            .lp-nav-link { display: none; }
             .lp-seccion { padding: 56px 16px; }
             .lp-stats { gap: 20px; }
             .lp-plan.destacado { margin-top: 12px; }
@@ -259,75 +315,204 @@
     </div>
 </section>
 
+<!-- CÓMO FUNCIONA -->
+<section class="lp-seccion" style="padding-bottom:40px;">
+    <div class="lp-divider" style="margin-bottom:48px;"></div>
+    <h2 class="lp-seccion-titulo">De cero a tus números reales, en minutos</h2>
+    <p class="lp-seccion-subtitulo">Sin planillas, sin cargar nada a mano. Todo sale de tu cuenta real de Mercado Libre.</p>
+    <div class="lp-pasos">
+        <div class="lp-paso">
+            <div class="lp-paso-num">1</div>
+            <div class="lp-paso-titulo">Conectás tu cuenta</div>
+            <div class="lp-paso-desc">Autorización oficial de Mercado Libre — el mismo login de siempre. Nunca vemos ni guardamos tu contraseña.</div>
+        </div>
+        <div class="lp-paso">
+            <div class="lp-paso-num">2</div>
+            <div class="lp-paso-titulo">Sincronizamos todo</div>
+            <div class="lp-paso-desc">Catálogo, ventas, publicidad y reclamos de los últimos 12 meses. Después, automático cada 4 minutos.</div>
+        </div>
+        <div class="lp-paso">
+            <div class="lp-paso-num">3</div>
+            <div class="lp-paso-titulo">Decidís con datos reales</div>
+            <div class="lp-paso-desc">Ganancia real, qué se vende, qué te está costando de más — todo en un dashboard, no en cinco pestañas de Excel.</div>
+        </div>
+    </div>
+</section>
+
 <!-- FUNCIONES -->
 <section id="funciones" class="lp-seccion">
     <div class="lp-divider" style="margin-bottom:48px;"></div>
     <h2 class="lp-seccion-titulo">Todo lo que necesitás para crecer</h2>
     <p class="lp-seccion-subtitulo">Cada función está diseñada para responder una pregunta real de tu negocio.</p>
 
-    <div class="lp-features">
-        <div class="lp-feature-card">
-            <div class="lp-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="8"/><rect x="11" y="7" width="3" height="13"/><rect x="16" y="14" width="3" height="6"/></svg>
+    <div class="lp-categoria">
+        <div class="lp-categoria-titulo">Finanzas y rentabilidad</div>
+        <div class="lp-features">
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="8"/><rect x="11" y="7" width="3" height="13"/><rect x="16" y="14" width="3" height="6"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Ganancia Neta Real</div>
+                <div class="lp-feature-desc">Lo que te queda de cada venta, descontando comisiones, envíos, publicidad y costo de fabricación. Sin estimaciones: números reales de tu cuenta.</div>
             </div>
-            <div class="lp-feature-titulo">Ganancia Neta Real</div>
-            <div class="lp-feature-desc">Calculá lo que te queda de cada venta descontando comisiones, envíos, fabricación y gastos operativos. Sin estimaciones: números reales de tu cuenta.</div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 4 14 11 14 10 22 20 9 13 9 13 2"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Punto de Equilibrio</div>
+                <div class="lp-feature-desc">Cuánto tenés que facturar para cubrir tus costos fijos, y por cuánto ya lo superaste este mes. Un número, no una planilla aparte.</div>
+            </div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21V3z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Monotributo sin sorpresas</div>
+                <div class="lp-feature-desc">Comparamos tu facturación real de los últimos 12 meses contra las escalas vigentes de AFIP y te avisamos antes de que te cambien de categoría solos.</div>
+            </div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21V3z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Reporte Fiscal</div>
+                <div class="lp-feature-desc">Resumen mensual de facturación, cargos y ganancia estimada — listo para compartir con tu contador. Exportable a Excel con un clic.</div>
+            </div>
         </div>
+    </div>
 
-        <div class="lp-feature-card">
-            <div class="lp-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 4 3 8l9 4 9-4z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/></svg>
+    <div class="lp-categoria">
+        <div class="lp-categoria-titulo">Ventas y clientes</div>
+        <div class="lp-features">
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Clientes que vuelven</div>
+                <div class="lp-feature-desc">Qué porcentaje de tus ventas son de gente que ya te había comprado, y cuántas veces vuelve cada uno. Retención real, no una intuición.</div>
             </div>
-            <div class="lp-feature-titulo">Control de Stock</div>
-            <div class="lp-feature-desc">Visualizá el stock de todos tus productos y variantes. Alertas automáticas de quiebre y curvas de talle para detectar problemas antes de perder ventas.</div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Cuotas vs. contado</div>
+                <div class="lp-feature-desc">Cómo te paga realmente tu comprador y qué te cuesta financiar cada cuota — para entender de dónde sale tu margen de verdad.</div>
+            </div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="12" height="9"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
+                </div>
+                <div class="lp-feature-titulo">FULL, Flex y envíos propios</div>
+                <div class="lp-feature-desc">Comparamos tu margen real según cómo despachaste cada venta — para saber qué canal te conviene empujar y cuál te está comiendo ganancia.</div>
+            </div>
         </div>
+    </div>
 
-        <div class="lp-feature-card">
-            <div class="lp-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>
+    <div class="lp-categoria">
+        <div class="lp-categoria-titulo">Publicidad</div>
+        <div class="lp-features">
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="8" y1="16" x2="16" y2="8"/><circle cx="9" cy="9" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1" fill="currentColor" stroke="none"/></svg>
+                </div>
+                <div class="lp-feature-titulo">ROAS con contexto</div>
+                <div class="lp-feature-desc">No solo "cuánto volvió por cada peso" — te decimos si ese ROAS te está dejando ganancia o comiéndote margen, según tu propio punto de equilibrio.</div>
             </div>
-            <div class="lp-feature-titulo">Tendencias de Mercado</div>
-            <div class="lp-feature-desc">Analizá qué se está vendiendo en tu categoría antes de invertir en nuevo stock. Datos de demanda real directamente de Mercado Libre.</div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Directa vs. indirecta</div>
+                <div class="lp-feature-desc">Cuánto de lo que vendés con ads es del producto que anunciaste, y cuánto es otra cosa del catálogo que se coló por el mismo click.</div>
+            </div>
         </div>
+    </div>
 
-        <div class="lp-feature-card">
-            <div class="lp-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="8" y1="16" x2="16" y2="8"/><circle cx="9" cy="9" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1" fill="currentColor" stroke="none"/></svg>
+    <div class="lp-categoria">
+        <div class="lp-categoria-titulo">Stock y catálogo</div>
+        <div class="lp-features">
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 4 3 8l9 4 9-4z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Control de Stock</div>
+                <div class="lp-feature-desc">Todos tus productos y variantes en un solo lugar. Alertas automáticas de quiebre y curvas de talle rotas antes de que te hagan perder ventas.</div>
             </div>
-            <div class="lp-feature-titulo">Publicidad MeLi</div>
-            <div class="lp-feature-desc">Seguí el gasto real en ads y medí su impacto en tu ganancia. ¿El costo de publicidad está comiendo tus márgenes? Lo ves al instante.</div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 21 8 12 13 3 8 12 3"/><polyline points="3 13 12 18 21 13"/><polyline points="3 17.5 12 22 21 17.5"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Qué productos te sostienen</div>
+                <div class="lp-feature-desc">Cuántos modelos de tu catálogo generan el 80% de tu ganancia real — para saber a cuáles cuidar primero cuando el stock aprieta.</div>
+            </div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Tendencias de Mercado</div>
+                <div class="lp-feature-desc">Qué se está vendiendo en tu categoría antes de invertir en stock nuevo. Datos de demanda real, directo de Mercado Libre.</div>
+            </div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Espía de Competencia</div>
+                <div class="lp-feature-desc">Monitoreá los precios de tus competidores directos. Sabé cuándo bajaron el precio y cómo posicionarte mejor.</div>
+            </div>
         </div>
+    </div>
 
-        <div class="lp-feature-card">
-            <div class="lp-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+    <div class="lp-categoria">
+        <div class="lp-categoria-titulo">Operación del día a día</div>
+        <div class="lp-features">
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Asistente con IA</div>
+                <div class="lp-feature-desc">Preguntale por tus ventas de hoy, tu rentabilidad reciente o qué talles están por quebrar — responde con los datos reales de tu cuenta, no inventa nada.</div>
             </div>
-            <div class="lp-feature-titulo">Espía de Competencia</div>
-            <div class="lp-feature-desc">Monitoreá los precios de tus competidores directos. Sabé cuándo bajaron el precio, qué stock tienen y cómo posicionarte mejor.</div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Despacho sin errores</div>
+                <div class="lp-feature-desc">Checklist del día con las etiquetas del corte de hoy, para no mandar un pedido de más ni olvidarte de ninguno antes de que pase el camión.</div>
+            </div>
+            <div class="lp-feature-card">
+                <div class="lp-feature-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><rect x="7" y="5" width="10" height="4" rx="1"/><circle cx="8" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="14" r="1" fill="currentColor" stroke="none"/><circle cx="8" cy="18" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
+                </div>
+                <div class="lp-feature-titulo">Calculadora de Comisiones</div>
+                <div class="lp-feature-desc">Antes de publicar, sabés exactamente cuánto recibís por cada venta — comisión real, cuotas y envío incluidos, de cualquier categoría de MeLi.</div>
+            </div>
         </div>
+    </div>
+</section>
 
-        <div class="lp-feature-card">
-            <div class="lp-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            </div>
-            <div class="lp-feature-titulo">Preguntas en un solo lugar</div>
-            <div class="lp-feature-desc">Respondé preguntas de compradores directamente desde CoreLux. Incluye sugerencias de respuesta con IA para atender más rápido.</div>
+<!-- SEGURIDAD -->
+<section class="lp-seccion" style="max-width:920px;">
+    <div class="lp-divider" style="margin-bottom:48px;"></div>
+    <h2 class="lp-seccion-titulo">Tus datos, cuidados en serio</h2>
+    <p class="lp-seccion-subtitulo">Manejamos información de facturación real — la seguridad acá no es una frase de marketing.</p>
+    <div class="lp-seguridad-grid">
+        <div class="lp-seguridad-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div class="lp-seguridad-titulo">Nunca vemos tu contraseña</div>
+            <div class="lp-seguridad-desc">Te conectás con el login oficial de Mercado Libre (OAuth) — CoreLux nunca recibe ni guarda tu contraseña.</div>
         </div>
-
-        <div class="lp-feature-card">
-            <div class="lp-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21V3z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
-            </div>
-            <div class="lp-feature-titulo">Reporte Fiscal</div>
-            <div class="lp-feature-desc">Resumen mensual de facturación, cargos y ganancia estimada — listo para compartir con tu contador. Exportable a Excel con un clic.</div>
+        <div class="lp-seguridad-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div class="lp-seguridad-titulo">Credenciales cifradas</div>
+            <div class="lp-seguridad-desc">El acceso a tu cuenta se guarda cifrado en una tabla aparte, bloqueada incluso para el resto de nuestro propio sistema.</div>
         </div>
-
-        <div class="lp-feature-card">
-            <div class="lp-feature-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21V3z"/><rect x="7" y="5" width="10" height="4" rx="1"/></svg>
-            </div>
-            <div class="lp-feature-titulo">Calculadora de Comisiones</div>
-            <div class="lp-feature-desc">Calculá exactamente cuánto recibís por cada venta según el tipo de publicación y si ofrecés cuotas. Antes de publicar, sabés los números.</div>
+        <div class="lp-seguridad-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            <div class="lp-seguridad-titulo">Tus datos son solo tuyos</div>
+            <div class="lp-seguridad-desc">Aislamiento real entre cuentas a nivel de base de datos — no un simple filtro en la pantalla.</div>
+        </div>
+        <div class="lp-seguridad-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <div class="lp-seguridad-titulo">Desconectá cuando quieras</div>
+            <div class="lp-seguridad-desc">Revocás el acceso desde tu propia cuenta de Mercado Libre en cualquier momento, sin pedirnos permiso.</div>
         </div>
     </div>
 </section>
@@ -359,7 +544,7 @@
                 <div class="lp-plan-badge">Más popular</div>
                 <div class="lp-plan-nombre">Base</div>
                 <div class="lp-plan-precio"><span class="lp-plan-moneda">$</span>40.000</div>
-                <div class="lp-plan-periodo">por mes · ARS</div>
+                <div class="lp-plan-periodo">por mes · ARS <span style="color:var(--text-faint);">($1.333 por día)</span></div>
                 <ul class="lp-plan-features">
                     <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Todo lo del período de prueba</li>
                     <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>1 cuenta de Mercado Libre</li>
@@ -375,7 +560,7 @@
             <div class="lp-plan">
                 <div class="lp-plan-nombre">Elite</div>
                 <div class="lp-plan-precio"><span class="lp-plan-moneda">$</span>99.000</div>
-                <div class="lp-plan-periodo">por mes · ARS</div>
+                <div class="lp-plan-periodo">por mes · ARS <span style="color:var(--text-faint);">($3.300 por día)</span></div>
                 <ul class="lp-plan-features">
                     <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Todo lo del plan Base</li>
                     <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Múltiples cuentas de MeLi</li>
@@ -391,6 +576,57 @@
         <p style="text-align:center; color:var(--text-faint); font-size:0.78em; margin-top:28px;">
             Los precios son en pesos argentinos (ARS) e incluyen IVA. Sujetos a actualización periódica.
         </p>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section class="lp-seccion">
+    <div class="lp-divider" style="margin-bottom:48px;"></div>
+    <h2 class="lp-seccion-titulo">Preguntas frecuentes</h2>
+    <p class="lp-seccion-subtitulo">Lo que más nos preguntan antes de conectar la cuenta.</p>
+    <div class="lp-faq-lista">
+        <div class="lp-faq-item">
+            <button type="button" class="lp-faq-pregunta" onclick="this.parentElement.classList.toggle('abierto')">
+                <span>¿Es seguro conectar mi cuenta de Mercado Libre?</span>
+                <span class="lp-faq-chevron">▾</span>
+            </button>
+            <div class="lp-faq-respuesta">Sí. Usamos el sistema oficial de autorización de Mercado Libre (OAuth 2.0) — nunca vemos ni pedimos tu contraseña. Podés revocar el acceso vos mismo desde tu cuenta de Mercado Libre en cualquier momento, sin avisarnos.</div>
+        </div>
+        <div class="lp-faq-item">
+            <button type="button" class="lp-faq-pregunta" onclick="this.parentElement.classList.toggle('abierto')">
+                <span>¿Necesito tarjeta para probar los 14 días gratis?</span>
+                <span class="lp-faq-chevron">▾</span>
+            </button>
+            <div class="lp-faq-respuesta">No. Te conectás con tu cuenta de Mercado Libre y arrancás a usar CoreLux completo, sin cargar ningún medio de pago hasta que decidas seguir.</div>
+        </div>
+        <div class="lp-faq-item">
+            <button type="button" class="lp-faq-pregunta" onclick="this.parentElement.classList.toggle('abierto')">
+                <span>¿CoreLux modifica mis publicaciones sin que yo lo sepa?</span>
+                <span class="lp-faq-chevron">▾</span>
+            </button>
+            <div class="lp-faq-respuesta">No. CoreLux solo lee tus datos para mostrarte los números. Las pocas acciones que sí pueden cambiar algo en tu cuenta de Mercado Libre (como actualizar precios o stock de forma masiva) siempre te piden confirmación explícita antes de tocar nada real.</div>
+        </div>
+        <div class="lp-faq-item">
+            <button type="button" class="lp-faq-pregunta" onclick="this.parentElement.classList.toggle('abierto')">
+                <span>¿Funciona si vendo con FULL de Mercado Libre?</span>
+                <span class="lp-faq-chevron">▾</span>
+            </button>
+            <div class="lp-faq-respuesta">Sí. Vas a ver tu stock en FULL igual que el resto — en modo de solo lectura, porque ese inventario lo controla Mercado Libre, no nosotros.</div>
+        </div>
+        <div class="lp-faq-item">
+            <button type="button" class="lp-faq-pregunta" onclick="this.parentElement.classList.toggle('abierto')">
+                <span>¿Puedo cancelar cuando quiera?</span>
+                <span class="lp-faq-chevron">▾</span>
+            </button>
+            <div class="lp-faq-respuesta">Sí, sin permanencia mínima. Cancelás vos mismo desde "Mi cuenta" dentro de CoreLux, en cualquier momento.</div>
+        </div>
+        <div class="lp-faq-item">
+            <button type="button" class="lp-faq-pregunta" onclick="this.parentElement.classList.toggle('abierto')">
+                <span>¿Sirve si tengo más de una cuenta de Mercado Libre?</span>
+                <span class="lp-faq-chevron">▾</span>
+            </button>
+            <div class="lp-faq-respuesta">Sí — el Plan Elite está pensado justo para eso: gestionar varias cuentas de Mercado Libre desde un mismo lugar.</div>
+        </div>
     </div>
 </section>
 
