@@ -74,6 +74,10 @@ celery.conf.update(
             "task": "tasks.sync_tasks.tarea_relevar_competencia",
             "schedule": 86400.0,  # cada 24 horas
         },
+        "relevar-tendencias": {
+            "task": "tasks.sync_tasks.tarea_relevar_tendencias",
+            "schedule": 86400.0,  # cada 24 horas
+        },
         "analizar-combos": {
             "task": "tasks.sync_tasks.tarea_analizar_combos",
             "schedule": 604800.0,  # cada 7 días

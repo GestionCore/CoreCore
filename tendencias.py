@@ -71,7 +71,45 @@ def obtener_categoria_principal(access_token, cuenta_id, cursor, site_id="MLA"):
         return None, None
 
 
-def explorar_demanda(access_token, termino, site_id="MLA", limite=50):
+def _armar_veredicto(presion_demanda, concentracion_top3_pct):
+    """
+    Traduce los números crudos a un veredicto en texto plano — "¿vale
+    la pena meterse acá?". Los umbrales son heurísticas declaradas
+    (no una ciencia exacta): mejor ser honesto con eso que fingir una
+    precisión que la muestra no tiene.
+    """
+    if presion_demanda >= 5:
+        demanda_texto, demanda_nivel = "Alta demanda por publicación", "alta"
+    elif presion_demanda >= 1:
+        demanda_texto, demanda_nivel = "Demanda moderada", "media"
+    else:
+        demanda_texto, demanda_nivel = "Demanda baja o muy repartida", "baja"
+
+    if concentracion_top3_pct is not None and concentracion_top3_pct >= 50:
+        saturacion_texto, saturacion_nivel = "Concentrado en pocos vendedores — más difícil de romper salvo que ofrezcas algo distinto", "alta"
+    elif concentracion_top3_pct is not None and concentracion_top3_pct >= 25:
+        saturacion_texto, saturacion_nivel = "Medianamente repartido entre varios vendedores", "media"
+    else:
+        saturacion_texto, saturacion_nivel = "Fragmentado — hay lugar para entrar sin pelear contra 2-3 gigantes", "baja"
+
+    if demanda_nivel == "alta" and saturacion_nivel == "baja":
+        resumen = "Buena señal: se vende bien y no está copado de competidores grandes."
+    elif demanda_nivel == "alta" and saturacion_nivel == "alta":
+        resumen = "Se vende, pero pocos vendedores se llevan la mayoría — entrar requiere diferenciarte, no solo bajar precio."
+    elif demanda_nivel == "baja" and saturacion_nivel == "baja":
+        resumen = "Poca pelea, pero también poca demanda comprobada — nicho chico, no necesariamente malo."
+    else:
+        resumen = "Mercado mixto — conviene mirar precio, marcas y tu propio margen antes de decidir."
+
+    return {
+        "demanda_texto": demanda_texto, "demanda_nivel": demanda_nivel,
+        "saturacion_texto": saturacion_texto, "saturacion_nivel": saturacion_nivel,
+        "resumen": resumen,
+        "nota": "Estimado sobre una muestra de hasta 50 publicaciones — no es el dataset completo del mercado.",
+    }
+
+
+def explorar_demanda(access_token, termino=None, category_id=None, site_id="MLA", limite=50):
     """
     Buscador/explorador de demanda real — reemplaza la dependencia del
     endpoint /trends, que MeLi viene devolviendo 404 "Not found public
@@ -80,32 +118,44 @@ def explorar_demanda(access_token, termino, site_id="MLA", limite=50):
 
     En vez de eso, usa /sites/{site}/search — el buscador público de
     MeLi, estable y sin permisos especiales — para armar una foto real
-    de demanda: cuánta competencia hay para ese término, cuánto se está
-    vendiendo (sold_quantity de los resultados, como proxy de demanda),
-    en qué rango de precio, y quién está ganando esa búsqueda.
+    de demanda: cuánta competencia hay, cuánto se está vendiendo
+    (sold_quantity de los resultados, como proxy de demanda), en qué
+    rango de precio, cuán concentrado está entre pocos vendedores, y
+    un veredicto en texto plano.
+
+    Acepta termino (búsqueda libre) O category_id (para navegar
+    cualquier rama de MeLi y evaluar un nicho nuevo, no solo lo que ya
+    vendés) — al menos uno de los dos es obligatorio.
     """
     termino = (termino or "").strip()
-    if not termino:
+    if not termino and not category_id:
         return None
 
     headers = {"Authorization": f"Bearer {access_token}"} if access_token else {}
+    params = {"limit": limite}
+    if category_id:
+        params["category"] = category_id
+    if termino:
+        params["q"] = termino
     try:
         resp = requests.get(
             f"https://api.mercadolibre.com/sites/{site_id}/search",
-            headers=headers, params={"q": termino, "limit": limite}, timeout=10
+            headers=headers, params=params, timeout=10
         )
         if resp.status_code != 200:
-            return {"termino": termino, "error": f"MeLi devolvió {resp.status_code} — probá con otro término."}
+            return {"termino": termino, "error": f"MeLi devolvió {resp.status_code} — probá con otro término o categoría."}
     except Exception as e:
         return {"termino": termino, "error": f"Error de conexión: {e}"}
 
     data = resp.json()
     resultados = data.get("results", []) or []
     if not resultados:
-        return {"termino": termino, "error": "No se encontraron publicaciones para ese término."}
+        return {"termino": termino, "error": "No se encontraron publicaciones para esta búsqueda."}
 
     precios = [r.get("price") for r in resultados if r.get("price")]
-    ventas_muestra = [r.get("sold_quantity") or 0 for r in resultados]
+    ventas_muestra_lista = [r.get("sold_quantity") or 0 for r in resultados]
+    ventas_totales_muestra = sum(ventas_muestra_lista)
+    total_publicaciones = (data.get("paging", {}) or {}).get("total", len(resultados))
 
     ventas_por_vendedor = {}
     for r in resultados:
@@ -113,15 +163,47 @@ def explorar_demanda(access_token, termino, site_id="MLA", limite=50):
         ventas_por_vendedor[vendedor] = ventas_por_vendedor.get(vendedor, 0) + (r.get("sold_quantity") or 0)
     ranking_vendedores = sorted(ventas_por_vendedor.items(), key=lambda x: -x[1])[:5]
 
+    concentracion_top3_pct = None
+    if ventas_totales_muestra > 0:
+        top3 = sum(v for _, v in sorted(ventas_por_vendedor.items(), key=lambda x: -x[1])[:3])
+        concentracion_top3_pct = round((top3 / ventas_totales_muestra) * 100, 1)
+
+    presion_demanda = round(ventas_totales_muestra / total_publicaciones, 2) if total_publicaciones else 0.0
+
+    marcas_distintas = None
+    for filtro in (data.get("available_filters") or []):
+        if filtro.get("id") == "BRAND":
+            marcas_distintas = len(filtro.get("values") or [])
+            break
+
+    distribucion_precios = []
+    if precios:
+        p_min, p_max = min(precios), max(precios)
+        if p_max > p_min:
+            ancho = (p_max - p_min) / 5
+            for i in range(5):
+                desde = p_min + ancho * i
+                hasta = p_min + ancho * (i + 1)
+                cantidad = sum(1 for p in precios if desde <= p <= hasta) if i == 4 else sum(1 for p in precios if desde <= p < hasta)
+                distribucion_precios.append({"desde": round(desde), "hasta": round(hasta), "cantidad": cantidad})
+        else:
+            distribucion_precios.append({"desde": round(p_min), "hasta": round(p_max), "cantidad": len(precios)})
+
     top_publicaciones = sorted(resultados, key=lambda r: -(r.get("sold_quantity") or 0))[:10]
 
     return {
-        "termino": termino,
-        "total_publicaciones": (data.get("paging", {}) or {}).get("total", len(resultados)),
-        "ventas_totales_muestra": sum(ventas_muestra),
+        "termino": termino, "category_id": category_id,
+        "total_publicaciones": total_publicaciones,
+        "ventas_totales_muestra": ventas_totales_muestra,
         "precio_minimo": min(precios) if precios else None,
         "precio_promedio": round(sum(precios) / len(precios), 2) if precios else None,
         "precio_maximo": max(precios) if precios else None,
+        "vendedores_distintos": len(ventas_por_vendedor),
+        "concentracion_top3_pct": concentracion_top3_pct,
+        "presion_demanda": presion_demanda,
+        "marcas_distintas": marcas_distintas,
+        "distribucion_precios": distribucion_precios,
+        "veredicto": _armar_veredicto(presion_demanda, concentracion_top3_pct),
         "top_publicaciones": [
             {"titulo": r.get("title"), "precio": r.get("price"), "vendidas": r.get("sold_quantity") or 0,
              "permalink": r.get("permalink"), "thumbnail": (r.get("thumbnail") or "").replace("http://", "https://")}
@@ -129,6 +211,220 @@ def explorar_demanda(access_token, termino, site_id="MLA", limite=50):
         ],
         "ranking_vendedores": [{"nombre": n, "vendidas": v} for n, v in ranking_vendedores],
     }
+
+
+def estimar_margen_categoria(access_token, category_id, precio_referencia, costo_fabricacion=None):
+    """
+    Cruza el precio promedio de una categoría/búsqueda con la comisión
+    REAL de MeLi para esa categoría (misma fuente que la Calculadora de
+    Comisiones) y, si el usuario tipea un costo de fabricación
+    estimado, con la ganancia neta esperada. Ni Nubimetrics ni Real
+    Trends pueden hacer este cruce — no tienen tu estructura de costos.
+    """
+    import calculadora_costos
+    if not category_id or not precio_referencia or precio_referencia <= 0:
+        return None
+    desglose = calculadora_costos.calcular_desglose_real(access_token, precio_referencia, category_id, "gold_special", ofrece_cuotas=False)
+    if not desglose or "error" in desglose:
+        return None
+
+    resultado = {
+        "precio_referencia": precio_referencia,
+        "comision_estimada": desglose.get("comision_total"),
+        "costo_envio_estimado": desglose.get("costo_envio"),
+        "recibis_estimado": desglose.get("recibis"),
+        "ganancia_neta_estimada": None, "margen_pct_estimado": None,
+    }
+    if costo_fabricacion is not None and costo_fabricacion > 0 and resultado["recibis_estimado"] is not None:
+        ganancia_neta = resultado["recibis_estimado"] - costo_fabricacion
+        resultado["ganancia_neta_estimada"] = round(ganancia_neta, 2)
+        resultado["margen_pct_estimado"] = round((ganancia_neta / precio_referencia) * 100, 1)
+    return resultado
+
+
+def obtener_categorias_raiz(site_id="MLA"):
+    """Categorías de primer nivel de MeLi — punto de partida para navegar ramas de cualquier rubro, no solo el propio."""
+    try:
+        resp = requests.get(f"https://api.mercadolibre.com/sites/{site_id}/categories", timeout=8)
+        if resp.status_code != 200:
+            return []
+        return [{"id": c["id"], "nombre": c["name"]} for c in resp.json()]
+    except Exception as e:
+        print(f"[Tendencias] ⚠️ Error trayendo categorías raíz: {e}")
+        return []
+
+
+def obtener_rama_categoria(category_id):
+    """Subcategorías + camino (breadcrumb) de una categoría — para ir bajando ramas dentro de un rubro."""
+    try:
+        resp = requests.get(f"https://api.mercadolibre.com/categories/{category_id}", timeout=8)
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        return {
+            "id": data.get("id"), "nombre": data.get("name"),
+            "camino": [{"id": p["id"], "nombre": p["name"]} for p in (data.get("path_from_root") or [])],
+            "subcategorias": [
+                {"id": h["id"], "nombre": h["name"], "cantidad_publicaciones": h.get("total_items_in_this_category")}
+                for h in (data.get("children_categories") or [])
+            ],
+        }
+    except Exception as e:
+        print(f"[Tendencias] ⚠️ Error trayendo la categoría {category_id}: {e}")
+        return None
+
+
+# ============================================================
+# Seguimiento de tendencias — construye un historial REAL en el
+# tiempo (nadie más lo tiene: Real Trends solo pone una flechita de
+# ">20%", nosotros guardamos snapshots de verdad). Arranca vacío por
+# cuenta y se va llenando con el uso, nunca se inventa historial.
+# ============================================================
+
+def agregar_seguimiento(cursor, cuenta_id, tipo, valor, etiqueta, automatico=False):
+    if tipo not in ("termino", "categoria"):
+        return None
+    cursor.execute("""
+        INSERT INTO tendencias_seguimiento (cuenta_id, tipo, valor, etiqueta, automatico)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (cuenta_id, tipo, valor) DO UPDATE SET etiqueta = excluded.etiqueta
+        RETURNING id
+    """, (cuenta_id, tipo, valor, etiqueta, automatico))
+    return cursor.fetchone()[0]
+
+
+def eliminar_seguimiento(cursor, cuenta_id, seguimiento_id):
+    # A propósito no se puede borrar el seguimiento automático de la
+    # categoría principal desde acá — se recalcula solo si el usuario
+    # cambia de rubro.
+    cursor.execute(
+        "DELETE FROM tendencias_seguimiento WHERE cuenta_id = %s AND id = %s AND automatico = false",
+        (cuenta_id, seguimiento_id)
+    )
+    return cursor.rowcount > 0
+
+
+def asegurar_seguimiento_categoria_principal(cursor, cuenta_id, category_id, category_nombre):
+    if not category_id:
+        return
+    agregar_seguimiento(cursor, cuenta_id, "categoria", category_id, category_nombre or category_id, automatico=True)
+
+
+def _tomar_snapshot(access_token, seguimiento, site_id="MLA"):
+    """Una sola consulta a MeLi — devuelve los números del día para un seguimiento, sin tocar la base."""
+    headers = {"Authorization": f"Bearer {access_token}"} if access_token else {}
+    params = {"limit": 50}
+    if seguimiento["tipo"] == "categoria":
+        params["category"] = seguimiento["valor"]
+    else:
+        params["q"] = seguimiento["valor"]
+    try:
+        resp = requests.get(f"https://api.mercadolibre.com/sites/{site_id}/search", headers=headers, params=params, timeout=10)
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        resultados = data.get("results", []) or []
+        precios = [r.get("price") for r in resultados if r.get("price")]
+        ventas = sum(r.get("sold_quantity") or 0 for r in resultados)
+        vendedores = {(r.get("seller") or {}).get("id") for r in resultados if (r.get("seller") or {}).get("id")}
+        total_pub = (data.get("paging", {}) or {}).get("total", len(resultados))
+        return {
+            "total_publicaciones": total_pub, "ventas_muestra": ventas,
+            "precio_promedio": round(sum(precios) / len(precios), 2) if precios else None,
+            "vendedores_distintos": len(vendedores),
+        }
+    except Exception as e:
+        print(f"[Tendencias] ⚠️ Error tomando snapshot de '{seguimiento.get('etiqueta')}': {e}")
+        return None
+
+
+def relevar_snapshots_tendencias(access_token, cursor, cuenta_id, site_id="MLA"):
+    """
+    Corre una vez por día (scheduler) — toma un snapshot de HOY para
+    cada término/categoría que la cuenta sigue. UPSERT por fecha, así
+    una corrida repetida el mismo día no duplica ni pisa con un dato
+    peor si ya se tomó temprano.
+    """
+    cursor.execute("SELECT id, tipo, valor, etiqueta FROM tendencias_seguimiento WHERE cuenta_id = %s", (cuenta_id,))
+    seguimientos = [{"id": r[0], "tipo": r[1], "valor": r[2], "etiqueta": r[3]} for r in cursor.fetchall()]
+    if not seguimientos:
+        return 0
+
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    relevados = 0
+    for s in seguimientos:
+        datos = _tomar_snapshot(access_token, s, site_id)
+        if not datos:
+            continue
+        cursor.execute("""
+            INSERT INTO tendencias_snapshots (cuenta_id, seguimiento_id, fecha, total_publicaciones, ventas_muestra, precio_promedio, vendedores_distintos)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (cuenta_id, seguimiento_id, fecha) DO UPDATE SET
+                total_publicaciones = excluded.total_publicaciones, ventas_muestra = excluded.ventas_muestra,
+                precio_promedio = excluded.precio_promedio, vendedores_distintos = excluded.vendedores_distintos
+        """, (cuenta_id, s["id"], hoy, datos["total_publicaciones"], datos["ventas_muestra"], datos["precio_promedio"], datos["vendedores_distintos"]))
+        relevados += 1
+    return relevados
+
+
+def listar_seguimientos_con_historial(cursor, cuenta_id, dias=60):
+    cursor.execute("""
+        SELECT id, tipo, valor, etiqueta, automatico FROM tendencias_seguimiento
+        WHERE cuenta_id = %s ORDER BY automatico DESC, agregado_en DESC
+    """, (cuenta_id,))
+    seguimientos = cursor.fetchall()
+    if not seguimientos:
+        return []
+
+    desde = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
+    resultado = []
+    for sid, tipo, valor, etiqueta, automatico in seguimientos:
+        cursor.execute("""
+            SELECT fecha, total_publicaciones, ventas_muestra, precio_promedio
+            FROM tendencias_snapshots WHERE seguimiento_id = %s AND fecha >= %s ORDER BY fecha ASC
+        """, (sid, desde))
+        historial = cursor.fetchall()
+        serie = [
+            {"fecha": f.strftime("%Y-%m-%d") if hasattr(f, "strftime") else f, "publicaciones": p, "ventas": v,
+             "precio_promedio": float(pp) if pp is not None else None}
+            for f, p, v, pp in historial
+        ]
+        tendencia_pct = None
+        if len(serie) >= 2 and serie[0]["ventas"]:
+            tendencia_pct = round(((serie[-1]["ventas"] - serie[0]["ventas"]) / serie[0]["ventas"]) * 100, 1)
+        resultado.append({
+            "id": sid, "tipo": tipo, "valor": valor, "etiqueta": etiqueta, "automatico": automatico,
+            "serie": serie, "tendencia_pct": tendencia_pct, "tiene_historial_suficiente": len(serie) >= 2,
+        })
+    return resultado
+
+
+def detectar_movimiento_categoria_principal(cursor, cuenta_id, umbral_pct=15):
+    """Para la alerta proactiva en Logros — solo dispara si el movimiento entre los últimos 2 snapshots es significativo."""
+    cursor.execute("""
+        SELECT id, etiqueta FROM tendencias_seguimiento
+        WHERE cuenta_id = %s AND automatico = true AND tipo = 'categoria' LIMIT 1
+    """, (cuenta_id,))
+    fila = cursor.fetchone()
+    if not fila:
+        return None
+    seguimiento_id, etiqueta = fila
+
+    cursor.execute("""
+        SELECT fecha, ventas_muestra FROM tendencias_snapshots
+        WHERE seguimiento_id = %s ORDER BY fecha DESC LIMIT 2
+    """, (seguimiento_id,))
+    filas = cursor.fetchall()
+    if len(filas) < 2:
+        return None
+
+    (_, ventas_ultima), (_, ventas_anterior) = filas
+    if not ventas_anterior:
+        return None
+    variacion = ((ventas_ultima - ventas_anterior) / ventas_anterior) * 100
+    if abs(variacion) < umbral_pct:
+        return None
+    return {"categoria": etiqueta, "variacion_pct": round(variacion, 1), "subio": variacion > 0}
 
 
 def obtener_tendencias(access_token, site_id="MLA", category_id=None):

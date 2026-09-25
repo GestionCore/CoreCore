@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Tendencias · Santi Mens{% endblock %}
+{% block title %}Tendencias y Demanda · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
         <h1 class="page-title">Tendencias y Demanda</h1>
         <div class="page-subtitle">
             {% if categoria_nombre %}
-                Radar de <strong>{{ categoria_nombre }}</strong> + explorador de demanda real de Mercado Libre
+                Radar de <strong>{{ categoria_nombre }}</strong> + explorador de demanda de cualquier categoría de Mercado Libre
             {% else %}
                 No pude detectar tu categoría — filtrando por palabras clave de indumentaria
             {% endif %}
@@ -14,18 +14,110 @@
     </div>
 </div>
 
-<div class="panel">
-    <div class="panel-title"><svg class="icon"><use href="#icon-search"/></svg> Explorador de Demanda</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">
-        Buscá cualquier término y te traemos cuánta competencia hay, cuánto se vendió entre los resultados (proxy real de demanda), el rango de precios, y quién está ganando esa búsqueda — directo del buscador público de MeLi.
-    </div>
-    <form id="form-explorar-demanda" class="filter-row" onsubmit="return buscarDemanda(event)">
-        <div class="field-group" style="flex:2; min-width:220px;">
-            <input type="text" id="input-demanda-termino" placeholder="Ej: campera de jean hombre" required>
+{% if analisis_categoria_principal and not analisis_categoria_principal.error %}
+{% set ap = analisis_categoria_principal %}
+{% set seg_auto = (seguimientos | selectattr('automatico'))|list|first %}
+<div class="panel" style="border-left:3px solid var(--accent-brand);">
+    <div class="panel-title">Tu categoría: {{ categoria_nombre or category_id_principal }}</div>
+    <div class="stat-strip" style="margin-bottom:16px;">
+        <div class="stat-chip accent-denim">
+            <div class="stat-chip-label">Competencia</div>
+            <div class="stat-chip-value">{{ "{:,}".format(ap.total_publicaciones).replace(",", ".") }}</div>
         </div>
-        <button type="submit" class="btn btn-primary">Buscar</button>
-    </form>
+        <div class="stat-chip accent-gold">
+            <div class="stat-chip-label">Ticket promedio</div>
+            <div class="stat-chip-value">${{ ap.precio_promedio and "{:,.0f}".format(ap.precio_promedio).replace(",", ".") or "—" }}</div>
+        </div>
+        <div class="stat-chip">
+            <div class="stat-chip-label">Vendedores en la muestra</div>
+            <div class="stat-chip-value">{{ ap.vendedores_distintos }}</div>
+        </div>
+        {% if seg_auto and seg_auto.tendencia_pct is not none %}
+        <div class="stat-chip {{ 'accent-success' if seg_auto.tendencia_pct >= 0 else 'accent-danger' }}">
+            <div class="stat-chip-label">Tendencia ({{ seg_auto.serie|length }} días de datos)</div>
+            <div class="stat-chip-value">{{ '+' if seg_auto.tendencia_pct >= 0 else '' }}{{ seg_auto.tendencia_pct }}%</div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="veredicto-caja">
+        <span class="badge {% if ap.veredicto.demanda_nivel == 'alta' %}badge-success{% elif ap.veredicto.demanda_nivel == 'media' %}badge-warning{% else %}badge-neutral{% endif %}">{{ ap.veredicto.demanda_texto }}</span>
+        <span class="badge {% if ap.veredicto.saturacion_nivel == 'alta' %}badge-danger{% elif ap.veredicto.saturacion_nivel == 'media' %}badge-warning{% else %}badge-success{% endif %}">{{ ap.veredicto.saturacion_texto }}</span>
+        <div class="text-muted" style="margin-top:10px; font-size:0.88em;">{{ ap.veredicto.resumen }}</div>
+    </div>
+    {% if not seg_auto or not seg_auto.tiene_historial_suficiente %}
+    <div class="text-muted" style="font-size:0.78em; margin-top:10px;">
+        <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
+        Todavía estamos acumulando historial de esta categoría — en unos días vas a ver acá también si la demanda sube o baja de verdad, no solo la foto de hoy.
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="panel">
+    <div class="panel-title"><svg class="icon"><use href="#icon-search"/></svg> Análisis de Categoría y Demanda</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        Sirve tanto para tus productos actuales como para evaluar si vale la pena meterte en una categoría nueva — cuánta competencia hay, si está concentrada en pocos vendedores o repartida, y qué precio maneja el mercado.
+    </div>
+
+    <div class="tendencias-tabs">
+        <button type="button" class="tendencias-tab activo" id="tab-btn-termino" onclick="cambiarTabExplorador('termino')">Buscar por término</button>
+        <button type="button" class="tendencias-tab" id="tab-btn-categoria" onclick="cambiarTabExplorador('categoria')">Explorar por categoría</button>
+    </div>
+
+    <div id="tab-termino-explorador">
+        <form id="form-explorar-demanda" class="filter-row" onsubmit="return buscarDemandaPorTermino(event)">
+            <div class="field-group" style="flex:2; min-width:220px;">
+                <input type="text" id="input-demanda-termino" placeholder="Ej: campera de jean hombre, o cualquier producto que quieras investigar" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </form>
+    </div>
+
+    <div id="tab-categoria-explorador" style="display:none;">
+        <div class="text-muted" style="font-size:0.82em; margin-bottom:10px;">Navegá las ramas de cualquier rubro — el tuyo o uno completamente nuevo que quieras evaluar.</div>
+        <div id="breadcrumb-categorias" class="flex-gap" style="margin-bottom:10px; font-size:0.85em;"></div>
+        <div id="lista-categorias" class="flex-gap" style="margin-bottom:14px;"></div>
+        <button type="button" class="btn btn-primary" id="btn-analizar-categoria" style="display:none;" onclick="analizarCategoriaActual()">Analizar esta categoría</button>
+    </div>
+
     <div id="resultado-demanda" style="margin-top:18px;"></div>
+</div>
+
+<div class="panel">
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-trend"/></svg> Seguimiento de Tendencias</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        Elegí qué términos o categorías querés seguir en el tiempo — acá se arma un historial real de evolución (un snapshot por día), no una foto fija de hoy.
+    </div>
+    <div id="lista-seguimientos">
+        {% if not seguimientos %}
+        <div class="alert-empty">Todavía no estás siguiendo nada — buscá un término o categoría arriba y tocá "Seguir esta tendencia".</div>
+        {% else %}
+        {% for s in seguimientos %}
+        <div class="seguimiento-fila" id="seguimiento-{{ s.id }}">
+            <div class="seguimiento-info">
+                <div class="seguimiento-etiqueta">
+                    {{ s.etiqueta }}
+                    {% if s.automatico %}<span class="badge badge-neutral" title="Se sigue sola, es tu categoría principal detectada">Tu categoría</span>{% endif %}
+                    <span class="badge badge-info" style="text-transform:capitalize;">{{ s.tipo }}</span>
+                </div>
+                {% if s.tiene_historial_suficiente %}
+                <div class="seguimiento-tendencia {{ 'text-success' if s.tendencia_pct >= 0 else 'text-danger' }}">
+                    {{ '▲' if s.tendencia_pct >= 0 else '▼' }} {{ s.tendencia_pct|abs }}% desde el primer día registrado ({{ s.serie|length }} días de datos)
+                </div>
+                {% else %}
+                <div class="text-muted" style="font-size:0.8em;">Acumulando datos — {{ s.serie|length }}/2 días necesarios para mostrar tendencia.</div>
+                {% endif %}
+            </div>
+            {% if s.tiene_historial_suficiente %}
+            <div style="position:relative; height:60px; width:180px;"><canvas id="chart-seg-{{ s.id }}"></canvas></div>
+            {% endif %}
+            {% if not s.automatico %}
+            <button type="button" class="btn btn-secondary" style="font-size:0.8em; padding:6px 12px;" onclick="dejarDeSeguir({{ s.id }})">Dejar de seguir</button>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
 </div>
 
 {% if calendario_estacional %}
@@ -137,7 +229,7 @@
 </div>
 {% endif %}
 {% else %}
-<div class="page-subtitle">📡 El radar de tendencias oficiales de MeLi no tiene datos disponibles ahora mismo para tu categoría — usá el Explorador de Demanda de arriba, que no depende de eso.</div>
+<div class="page-subtitle">📡 El radar de tendencias oficiales de MeLi no tiene datos disponibles ahora mismo para tu categoría — usá el Análisis de Categoría y Demanda de arriba, que no depende de eso.</div>
 {% endif %}
 
 {% if canibalismo %}
@@ -162,44 +254,289 @@
 </div>
 {% endif %}
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
-    async function buscarDemanda(evento) {
-        evento.preventDefault();
-        const termino = document.getElementById('input-demanda-termino').value.trim();
-        const cont = document.getElementById('resultado-demanda');
-        if (!termino) return false;
-        cont.innerHTML = '<div class="skeleton" style="height:120px;border-radius:10px;"></div>';
-        try {
-            const resp = await fetch('/api/tendencias/explorar_demanda?q=' + encodeURIComponent(termino));
-            const d = await resp.json();
-            if (!d || d.error) { cont.innerHTML = `<div class="alert-empty">${(d && d.error) || 'No se pudo consultar.'}</div>`; return false; }
+// ── Sparklines de los seguimientos con historial suficiente ─────────────────
+(function () {
+    const seguimientos = {{ seguimientos | tojson }};
+    if (!window.Chart) return;
+    const root = getComputedStyle(document.documentElement);
+    const colorPrimario = root.getPropertyValue('--accent-primary').trim() || '#b06bff';
+    seguimientos.forEach(s => {
+        if (!s.tiene_historial_suficiente) return;
+        const canvas = document.getElementById('chart-seg-' + s.id);
+        if (!canvas) return;
+        const colorLinea = s.tendencia_pct >= 0 ? (root.getPropertyValue('--success').trim() || '#29e6b0') : (root.getPropertyValue('--danger').trim() || '#ff4d7d');
+        new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: s.serie.map(p => p.fecha),
+                datasets: [{ data: s.serie.map(p => p.ventas), borderColor: colorLinea, borderWidth: 2, pointRadius: 0, tension: 0.3, fill: false }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: true, callbacks: { label: ctx => `${ctx.raw} vendidos (muestra)` } } },
+                scales: { x: { display: false }, y: { display: false, beginAtZero: true } }
+            }
+        });
+    });
+})();
 
-            const topHtml = d.top_publicaciones.map(p => `
-                <a href="${p.permalink}" target="_blank" class="flex-gap" style="align-items:center; padding:8px 0; border-bottom:1px solid var(--border-soft); text-decoration:none; color:inherit;">
-                    ${p.thumbnail ? `<img src="${p.thumbnail}" class="thumb-sm">` : ''}
-                    <span style="flex:1;">${p.titulo}</span>
-                    <span class="text-muted" style="font-size:0.85em;">$${p.precio ? p.precio.toLocaleString('es-AR') : '—'}</span>
-                    <span class="badge badge-success">${p.vendidas} vendidos</span>
-                </a>
-            `).join('');
-
-            const vendedoresHtml = d.ranking_vendedores.map(v => `<span class="badge badge-neutral">${v.nombre}: ${v.vendidas} vendidas</span>`).join(' ');
-
-            cont.innerHTML = `
-                <div class="stat-strip" style="margin-bottom:16px;">
-                    <div class="stat-chip accent-denim"><div class="stat-chip-label">Competencia</div><div class="stat-chip-value">${d.total_publicaciones.toLocaleString('es-AR')}</div></div>
-                    <div class="stat-chip accent-success"><div class="stat-chip-label">Vendidos (muestra top ${d.top_publicaciones.length ? 50 : 0})</div><div class="stat-chip-value">${d.ventas_totales_muestra.toLocaleString('es-AR')}</div></div>
-                    <div class="stat-chip accent-gold"><div class="stat-chip-label">Precio promedio</div><div class="stat-chip-value">$${d.precio_promedio ? Math.round(d.precio_promedio).toLocaleString('es-AR') : '—'}</div></div>
-                    <div class="stat-chip"><div class="stat-chip-label">Rango de precio</div><div class="stat-chip-value" style="font-size:1.1em;">$${d.precio_minimo ? Math.round(d.precio_minimo).toLocaleString('es-AR') : '—'} – $${d.precio_maximo ? Math.round(d.precio_maximo).toLocaleString('es-AR') : '—'}</div></div>
-                </div>
-                ${vendedoresHtml ? `<div class="page-subtitle" style="margin-bottom:8px;">Quién más vende esta búsqueda:</div><div class="flex-gap" style="margin-bottom:18px;">${vendedoresHtml}</div>` : ''}
-                <div class="page-subtitle" style="margin-bottom:6px;">Publicaciones que más venden para "${d.termino}":</div>
-                ${topHtml}
-            `;
-        } catch (e) {
-            cont.innerHTML = '<div class="alert-empty">Error consultando MeLi — probá de nuevo.</div>';
-        }
-        return false;
+// ── Explorador: toggle término / categoría ───────────────────────────────────
+function cambiarTabExplorador(tab) {
+    document.getElementById('tab-btn-termino').classList.toggle('activo', tab === 'termino');
+    document.getElementById('tab-btn-categoria').classList.toggle('activo', tab === 'categoria');
+    document.getElementById('tab-termino-explorador').style.display = tab === 'termino' ? '' : 'none';
+    document.getElementById('tab-categoria-explorador').style.display = tab === 'categoria' ? '' : 'none';
+    if (tab === 'categoria' && !document.getElementById('lista-categorias').dataset.cargado) {
+        cargarCategoriasRaiz();
     }
+}
+
+let _categoriaActual = null; // {id, nombre}
+let _caminoCategorias = [];
+
+// Botones/links de categoría se arman con createElement + addEventListener
+// a propósito (no innerHTML con onclick="..." armado a mano): el nombre de
+// una categoría es texto libre y podría traer comillas — insertarlo con
+// textContent es inmune a eso, un onclick-string no.
+function _crearBotonCategoria(id, nombre, cantidad) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'badge badge-neutral';
+    btn.style.cssText = 'cursor:pointer; border:none; font-size:0.85em; padding:8px 14px;';
+    btn.textContent = nombre + (cantidad !== null && cantidad !== undefined ? ` (${cantidad.toLocaleString('es-AR')})` : '');
+    btn.addEventListener('click', () => elegirCategoria(id, nombre));
+    return btn;
+}
+
+async function cargarCategoriasRaiz() {
+    const cont = document.getElementById('lista-categorias');
+    cont.dataset.cargado = '1';
+    cont.innerHTML = '<div class="skeleton" style="height:32px;width:220px;border-radius:8px;"></div>';
+    document.getElementById('btn-analizar-categoria').style.display = 'none';
+    try {
+        const resp = await fetch('/api/tendencias/categorias_raiz');
+        const categorias = await resp.json();
+        _caminoCategorias = [];
+        _categoriaActual = null;
+        renderizarBreadcrumb();
+        cont.innerHTML = '';
+        categorias.forEach(c => cont.appendChild(_crearBotonCategoria(c.id, c.nombre, null)));
+    } catch (e) {
+        cont.innerHTML = '<div class="alert-empty">No se pudieron cargar las categorías.</div>';
+    }
+}
+
+async function elegirCategoria(id, nombre) {
+    _categoriaActual = { id, nombre };
+    const cont = document.getElementById('lista-categorias');
+    cont.innerHTML = '<div class="skeleton" style="height:32px;width:220px;border-radius:8px;"></div>';
+    document.getElementById('btn-analizar-categoria').style.display = 'none';
+    try {
+        const resp = await fetch('/api/tendencias/subcategorias?category_id=' + encodeURIComponent(id));
+        const rama = await resp.json();
+        if (rama.error) { cont.innerHTML = `<div class="alert-empty">${rama.error}</div>`; return; }
+        _caminoCategorias = rama.camino;
+        renderizarBreadcrumb();
+        const btnAnalizar = document.getElementById('btn-analizar-categoria');
+        btnAnalizar.style.display = '';
+        btnAnalizar.textContent = `Analizar "${rama.nombre}"`;
+        if (!rama.subcategorias.length) { cont.innerHTML = '<div class="text-muted" style="font-size:0.85em;">Esta es una categoría final — no tiene más ramas debajo. Tocá "Analizar" para ver los números.</div>'; return; }
+        cont.innerHTML = '';
+        rama.subcategorias.forEach(sc => cont.appendChild(_crearBotonCategoria(sc.id, sc.nombre, sc.cantidad_publicaciones)));
+    } catch (e) {
+        cont.innerHTML = '<div class="alert-empty">Error consultando la categoría.</div>';
+    }
+}
+
+function renderizarBreadcrumb() {
+    const cont = document.getElementById('breadcrumb-categorias');
+    cont.innerHTML = '';
+    if (!_caminoCategorias.length) { cont.innerHTML = '<span class="text-muted">Elegí un rubro para empezar a bajar por sus ramas</span>'; return; }
+    _caminoCategorias.forEach((c, i) => {
+        const a = document.createElement('a');
+        a.href = 'javascript:void(0)';
+        a.style.textDecoration = 'none';
+        a.textContent = c.nombre;
+        a.addEventListener('click', () => elegirCategoria(c.id, c.nombre));
+        cont.appendChild(a);
+        if (i < _caminoCategorias.length - 1) cont.appendChild(document.createTextNode(' › '));
+    });
+    const volver = document.createElement('a');
+    volver.href = 'javascript:void(0)';
+    volver.className = 'text-muted';
+    volver.style.cssText = 'margin-left:10px; font-size:0.85em;';
+    volver.textContent = '(volver al inicio)';
+    volver.addEventListener('click', cargarCategoriasRaiz);
+    cont.appendChild(volver);
+}
+
+function analizarCategoriaActual() {
+    if (!_categoriaActual) return;
+    buscarDemanda({ categoryId: _categoriaActual.id, etiqueta: _categoriaActual.nombre, tipo: 'categoria' });
+}
+
+function buscarDemandaPorTermino(evento) {
+    evento.preventDefault();
+    const termino = document.getElementById('input-demanda-termino').value.trim();
+    if (!termino) return false;
+    buscarDemanda({ termino, etiqueta: termino, tipo: 'termino' });
+    return false;
+}
+
+async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
+    const cont = document.getElementById('resultado-demanda');
+    cont.innerHTML = '<div class="skeleton" style="height:160px;border-radius:10px;"></div>';
+    try {
+        const params = new URLSearchParams();
+        if (termino) params.set('q', termino);
+        if (categoryId) params.set('category_id', categoryId);
+        const resp = await fetch('/api/tendencias/explorar_demanda?' + params.toString());
+        const d = await resp.json();
+        if (!d || d.error) { cont.innerHTML = `<div class="alert-empty">${(d && d.error) || 'No se pudo consultar.'}</div>`; return; }
+
+        const v = d.veredicto || {};
+        const claseDemanda = v.demanda_nivel === 'alta' ? 'badge-success' : (v.demanda_nivel === 'media' ? 'badge-warning' : 'badge-neutral');
+        const claseSaturacion = v.saturacion_nivel === 'alta' ? 'badge-danger' : (v.saturacion_nivel === 'media' ? 'badge-warning' : 'badge-success');
+
+        const maxHist = Math.max(...(d.distribucion_precios || []).map(b => b.cantidad), 1);
+        const histogramaHtml = (d.distribucion_precios || []).map(b => `
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.78em;">
+                <span style="width:110px; flex-shrink:0; color:var(--text-faint);">$${Math.round(b.desde).toLocaleString('es-AR')}-${Math.round(b.hasta).toLocaleString('es-AR')}</span>
+                <div class="checklist-barra" style="flex:1;"><div class="checklist-fill" style="width:${Math.round(b.cantidad / maxHist * 100)}%;"></div></div>
+                <span style="width:24px; text-align:right;">${b.cantidad}</span>
+            </div>
+        `).join('');
+
+        const topHtml = d.top_publicaciones.map(p => `
+            <a href="${p.permalink}" target="_blank" class="flex-gap" style="align-items:center; padding:8px 0; border-bottom:1px solid var(--border-soft); text-decoration:none; color:inherit;">
+                ${p.thumbnail ? `<img src="${p.thumbnail}" class="thumb-sm">` : ''}
+                <span style="flex:1;">${p.titulo}</span>
+                <span class="text-muted" style="font-size:0.85em;">$${p.precio ? p.precio.toLocaleString('es-AR') : '—'}</span>
+                <span class="badge badge-success">${p.vendidas} vendidos</span>
+            </a>
+        `).join('');
+
+        const vendedoresHtml = d.ranking_vendedores.map(v2 => `<span class="badge badge-neutral">${v2.nombre}: ${v2.vendidas} vendidas</span>`).join(' ');
+
+        cont.innerHTML = `
+            <div class="veredicto-caja" style="margin-bottom:16px;">
+                <span class="badge ${claseDemanda}">${v.demanda_texto || ''}</span>
+                <span class="badge ${claseSaturacion}">${v.saturacion_texto || ''}</span>
+                <div style="margin-top:8px; font-size:0.88em;">${v.resumen || ''}</div>
+                <div class="text-muted" style="font-size:0.76em; margin-top:6px;">${v.nota || ''}</div>
+            </div>
+            <div class="stat-strip" style="margin-bottom:16px;">
+                <div class="stat-chip accent-denim"><div class="stat-chip-label">Competencia</div><div class="stat-chip-value">${d.total_publicaciones.toLocaleString('es-AR')}</div></div>
+                <div class="stat-chip accent-success"><div class="stat-chip-label">Vendidos (muestra)</div><div class="stat-chip-value">${d.ventas_totales_muestra.toLocaleString('es-AR')}</div></div>
+                <div class="stat-chip accent-gold"><div class="stat-chip-label">Ticket promedio</div><div class="stat-chip-value">$${d.precio_promedio ? Math.round(d.precio_promedio).toLocaleString('es-AR') : '—'}</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Rango de precio</div><div class="stat-chip-value" style="font-size:1.1em;">$${d.precio_minimo ? Math.round(d.precio_minimo).toLocaleString('es-AR') : '—'} – $${d.precio_maximo ? Math.round(d.precio_maximo).toLocaleString('es-AR') : '—'}</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Marcas distintas</div><div class="stat-chip-value">${d.marcas_distintas ?? '—'}</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Top 3 vendedores se llevan</div><div class="stat-chip-value">${d.concentracion_top3_pct !== null ? d.concentracion_top3_pct + '%' : '—'}</div></div>
+            </div>
+            ${histogramaHtml ? `<div class="page-subtitle" style="margin-bottom:8px;">Distribución de precios en la muestra:</div><div style="display:flex; flex-direction:column; gap:6px; margin-bottom:18px;">${histogramaHtml}</div>` : ''}
+            <div class="flex-gap" style="margin-bottom:18px;">
+                <button type="button" class="btn btn-secondary" id="btn-seguir-tendencia">
+                    <svg class="icon" style="width:14px;height:14px;"><use href="#icon-trend"/></svg> Seguir esta tendencia
+                </button>
+                ${categoryId ? `<button type="button" class="btn btn-secondary" id="btn-estimar-margen">Estimar mi margen acá</button>` : ''}
+            </div>
+            <div id="estimador-margen-cont"></div>
+            ${vendedoresHtml ? `<div class="page-subtitle" style="margin-bottom:8px;">Quién más vende esto:</div><div class="flex-gap" style="margin-bottom:18px;">${vendedoresHtml}</div>` : ''}
+            <div class="page-subtitle" style="margin-bottom:6px;">Publicaciones que más venden:</div>
+            ${topHtml}
+        `;
+        // Los handlers de estos dos botones se enganchan acá (no con
+        // onclick="..." en el string de arriba) a propósito: tipo,
+        // categoryId, termino y etiqueta pueden traer comillas si el
+        // usuario tipeó un término raro, y JSON.stringify-earlos dentro
+        // de un atributo HTML rompe el parseo — con addEventListener no
+        // hace falta serializar nada, se usan los valores de JS tal cual.
+        const btnSeguir = document.getElementById('btn-seguir-tendencia');
+        if (btnSeguir) btnSeguir.addEventListener('click', () => seguirTendencia(tipo, categoryId || termino, etiqueta));
+        const btnMargen = document.getElementById('btn-estimar-margen');
+        if (btnMargen) btnMargen.addEventListener('click', () => abrirEstimadorMargen(categoryId, d.precio_promedio || 0));
+    } catch (e) {
+        cont.innerHTML = '<div class="alert-empty">Error consultando MeLi — probá de nuevo.</div>';
+    }
+}
+
+function abrirEstimadorMargen(categoryId, precioSugerido) {
+    const cont = document.getElementById('estimador-margen-cont');
+    cont.innerHTML = `
+        <div style="background:rgba(255,255,255,0.03); border-radius:10px; padding:14px 16px; margin-bottom:18px;">
+            <div class="page-subtitle" style="margin-bottom:10px;">¿Cuánto te quedaría vendiendo a este precio? Metele tu costo de fabricación estimado — esto ni Nubimetrics ni Real Trends te lo pueden calcular, no tienen tu estructura de costos.</div>
+            <div class="filter-row" style="align-items:flex-end;">
+                <div class="field-group" style="max-width:160px;">
+                    <label class="field-label">Precio de venta</label>
+                    <input type="number" id="margen-precio" value="${Math.round(precioSugerido)}" min="1">
+                </div>
+                <div class="field-group" style="max-width:160px;">
+                    <label class="field-label">Tu costo de fabricación</label>
+                    <input type="number" id="margen-costo" placeholder="opcional">
+                </div>
+                <button type="button" class="btn btn-primary" id="btn-calcular-margen">Calcular</button>
+            </div>
+            <div id="resultado-margen-cont" style="margin-top:12px;"></div>
+        </div>
+    `;
+    document.getElementById('btn-calcular-margen').addEventListener('click', () => calcularEstimadorMargen(categoryId));
+}
+
+async function calcularEstimadorMargen(categoryId) {
+    const precio = parseFloat(document.getElementById('margen-precio').value);
+    const costo = document.getElementById('margen-costo').value;
+    const cont = document.getElementById('resultado-margen-cont');
+    if (!precio || precio <= 0) { cont.innerHTML = '<span class="text-danger">Precio inválido.</span>'; return; }
+    cont.innerHTML = '<div class="skeleton" style="height:40px;border-radius:8px;"></div>';
+    try {
+        const params = new URLSearchParams({ category_id: categoryId, precio });
+        if (costo) params.set('costo', costo);
+        const resp = await fetch('/api/tendencias/estimar_margen?' + params.toString());
+        const d = await resp.json();
+        if (d.error) { cont.innerHTML = `<span class="text-danger">${d.error}</span>`; return; }
+        let html = `
+            <div class="flex-gap" style="justify-content:space-between; font-size:0.88em;">
+                <span>Comisión estimada de MeLi</span><strong class="text-danger">-$${Math.round(d.comision_estimada).toLocaleString('es-AR')}</strong>
+            </div>
+            <div class="flex-gap" style="justify-content:space-between; font-size:0.88em; margin-top:4px;">
+                <span>Lo que recibirías</span><strong>$${Math.round(d.recibis_estimado).toLocaleString('es-AR')}</strong>
+            </div>
+        `;
+        if (d.ganancia_neta_estimada !== null && d.ganancia_neta_estimada !== undefined) {
+            const color = d.ganancia_neta_estimada >= 0 ? 'text-success' : 'text-danger';
+            html += `
+                <div class="flex-gap" style="justify-content:space-between; font-size:0.95em; margin-top:8px; border-top:1px solid var(--border-soft); padding-top:8px;">
+                    <span><strong>Ganancia neta estimada</strong></span><strong class="${color}">$${Math.round(d.ganancia_neta_estimada).toLocaleString('es-AR')} (${d.margen_pct_estimado}%)</strong>
+                </div>
+            `;
+        }
+        cont.innerHTML = html;
+    } catch (e) {
+        cont.innerHTML = '<span class="text-danger">No se pudo calcular.</span>';
+    }
+}
+
+async function seguirTendencia(tipo, valor, etiqueta) {
+    try {
+        const resp = await fetch('/api/tendencias/seguir', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo, valor, etiqueta })
+        });
+        const d = await resp.json();
+        if (d.ok) { mostrarToast('Ahora seguís "' + etiqueta + '" — en unos días vas a ver su evolución acá abajo.', 'success'); setTimeout(() => window.location.reload(), 1200); }
+        else { mostrarToast(d.detalle || 'No se pudo empezar a seguir esto.', 'error'); }
+    } catch (e) { mostrarToast('Error de conexión.', 'error'); }
+}
+
+async function dejarDeSeguir(id) {
+    try {
+        const resp = await fetch('/api/tendencias/dejar_de_seguir/' + id, { method: 'POST' });
+        const d = await resp.json();
+        if (d.ok) { document.getElementById('seguimiento-' + id).remove(); }
+        else { mostrarToast('No se pudo dejar de seguir.', 'error'); }
+    } catch (e) { mostrarToast('Error de conexión.', 'error'); }
+}
 </script>
 {% endblock %}

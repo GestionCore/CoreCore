@@ -20,6 +20,7 @@ import db
 import sincronizador
 import espia_competencia
 import motor_combos
+import tendencias as tendencias_mod
 from auth import token_manager
 
 _scheduler_apscheduler = None
@@ -62,6 +63,25 @@ def _tarea_relevar_competencia():
             print(f"[Scheduler APScheduler] ❌ Error competencia cuenta {cuenta_id}: {e}")
 
 
+def _tarea_relevar_tendencias():
+    for cuenta_id, usuario_id in _obtener_cuentas_activas():
+        try:
+            access_token = token_manager.asegurar_token_valido(cuenta_id)
+        except token_manager.CuentaDesconectada:
+            continue
+        except Exception as e:
+            print(f"[Scheduler APScheduler] ⚠️ No se pudo refrescar el token de la cuenta {cuenta_id} para tendencias: {e}")
+            continue
+        try:
+            with db.conexion_usuario(usuario_id) as conexion:
+                cursor = conexion.cursor()
+                relevados = tendencias_mod.relevar_snapshots_tendencias(access_token, cursor, cuenta_id)
+                if relevados:
+                    print(f"[Scheduler APScheduler] 📊 Cuenta {cuenta_id}: {relevados} snapshot(s) de tendencias tomados.")
+        except Exception as e:
+            print(f"[Scheduler APScheduler] ❌ Error tendencias cuenta {cuenta_id}: {e}")
+
+
 def _tarea_analizar_combos():
     for cuenta_id, usuario_id in _obtener_cuentas_activas():
         try:
@@ -101,6 +121,7 @@ def iniciar_scheduler():
     _scheduler_apscheduler = BackgroundScheduler(daemon=True)
     _scheduler_apscheduler.add_job(_tarea_sincronizar_todo, "interval", minutes=4, id="sync_todo")
     _scheduler_apscheduler.add_job(_tarea_relevar_competencia, "interval", hours=24, id="relevar")
+    _scheduler_apscheduler.add_job(_tarea_relevar_tendencias, "interval", hours=24, id="relevar_tendencias")
     _scheduler_apscheduler.add_job(_tarea_analizar_combos, "interval", days=7, id="combos")
     _scheduler_apscheduler.start()
     print("[Scheduler] ✅ APScheduler iniciado (sync cada 4 min, para todas las cuentas).")

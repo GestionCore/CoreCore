@@ -976,6 +976,17 @@ def tendencias_vista():
         coincide_con_competencia = tendencias_mod.cruzar_tendencias_con_competencia(relevantes, cursor)
         calendario_estacional = tendencias_mod.obtener_calendario_estacional()
 
+        # Aseguramos que la categoría principal quede en seguimiento
+        # automático — así el resumen de arriba y la alerta de Logros
+        # tienen algo para comparar apenas empiecen a acumularse
+        # snapshots (el primer día no hay historial todavía, es honesto).
+        tendencias_mod.asegurar_seguimiento_categoria_principal(cursor, g.cuenta_id, category_id, categoria_nombre)
+        seguimientos = tendencias_mod.listar_seguimientos_con_historial(cursor, g.cuenta_id)
+
+        analisis_categoria_principal = None
+        if category_id:
+            analisis_categoria_principal = tendencias_mod.explorar_demanda(access_token, category_id=category_id)
+
     for t in relevantes:
         opo = terminos_oportunidad.get(t.get("keyword"))
         t["es_oportunidad"] = opo is not None
@@ -987,7 +998,9 @@ def tendencias_vista():
     return render_template(
         "tendencias.html", relevantes=relevantes, resto=resto, canibalismo=canibalismo,
         seo_scores=seo_scores, coincide_con_competencia=coincide_con_competencia,
-        calendario_estacional=calendario_estacional, categoria_nombre=categoria_nombre, active_nav="tendencias"
+        calendario_estacional=calendario_estacional, categoria_nombre=categoria_nombre,
+        category_id_principal=category_id, seguimientos=seguimientos,
+        analisis_categoria_principal=analisis_categoria_principal, active_nav="tendencias"
     )
 
 
@@ -995,13 +1008,80 @@ def tendencias_vista():
 @login_requerido
 def api_tendencias_explorar_demanda():
     termino = request.args.get("q", "").strip()
-    if not termino:
-        return jsonify({"error": "Escribí un término para buscar."})
+    category_id = request.args.get("category_id", "").strip() or None
+    if not termino and not category_id:
+        return jsonify({"error": "Escribí un término o elegí una categoría para buscar."})
     try:
         access_token = token_manager.asegurar_token_valido(g.cuenta_id)
     except token_manager.CuentaDesconectada:
         access_token = None  # /sites/{id}/search es publico, no hace falta token
-    resultado = tendencias_mod.explorar_demanda(access_token, termino)
+    resultado = tendencias_mod.explorar_demanda(access_token, termino=termino, category_id=category_id)
+    return jsonify(resultado)
+
+
+@app.route("/api/tendencias/categorias_raiz")
+@login_requerido
+def api_tendencias_categorias_raiz():
+    return jsonify(tendencias_mod.obtener_categorias_raiz())
+
+
+@app.route("/api/tendencias/subcategorias")
+@login_requerido
+def api_tendencias_subcategorias():
+    category_id = request.args.get("category_id", "").strip()
+    if not category_id:
+        return jsonify({"error": "Falta la categoría."}), 400
+    rama = tendencias_mod.obtener_rama_categoria(category_id)
+    if not rama:
+        return jsonify({"error": "No se pudo consultar esa categoría."}), 502
+    return jsonify(rama)
+
+
+@app.route("/api/tendencias/seguir", methods=["POST"])
+@login_requerido
+def api_tendencias_seguir():
+    datos = request.get_json(silent=True) or {}
+    tipo = datos.get("tipo")
+    valor = (datos.get("valor") or "").strip()
+    etiqueta = (datos.get("etiqueta") or valor).strip()
+    if tipo not in ("termino", "categoria") or not valor:
+        return jsonify({"ok": False, "detalle": "Datos inválidos."}), 400
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        seguimiento_id = tendencias_mod.agregar_seguimiento(cursor, g.cuenta_id, tipo, valor, etiqueta)
+    return jsonify({"ok": True, "id": seguimiento_id})
+
+
+@app.route("/api/tendencias/dejar_de_seguir/<int:seguimiento_id>", methods=["POST"])
+@login_requerido
+def api_tendencias_dejar_de_seguir(seguimiento_id):
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        eliminado = tendencias_mod.eliminar_seguimiento(cursor, g.cuenta_id, seguimiento_id)
+    return jsonify({"ok": eliminado})
+
+
+@app.route("/api/tendencias/estimar_margen")
+@login_requerido
+def api_tendencias_estimar_margen():
+    category_id = request.args.get("category_id", "").strip()
+    try:
+        precio = float(request.args.get("precio", ""))
+    except (ValueError, TypeError):
+        return jsonify({"error": "Precio inválido."}), 400
+    try:
+        costo_fabricacion = float(request.args.get("costo", "")) if request.args.get("costo") else None
+    except (ValueError, TypeError):
+        costo_fabricacion = None
+    if not category_id or precio <= 0:
+        return jsonify({"error": "Faltan datos (categoría y precio)."}), 400
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return jsonify({"error": "Tu cuenta de MeLi está desconectada."}), 401
+    resultado = tendencias_mod.estimar_margen_categoria(access_token, category_id, precio, costo_fabricacion)
+    if not resultado:
+        return jsonify({"error": "No se pudo estimar el margen para esta categoría."}), 502
     return jsonify(resultado)
 
 

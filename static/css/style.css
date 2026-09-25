@@ -674,6 +674,27 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .fila-margen-limite { border-left: 3px solid var(--semantic-warning, #e8822e); }
 .fila-margen-pierde { border-left: 3px solid var(--danger); background: rgba(255, 77, 125, 0.04); }
 
+/* ---------- Tendencias: tabs del explorador, veredicto, seguimientos ---------- */
+.tendencias-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--glass-border); }
+.tendencias-tab {
+    background: none; border: none; cursor: pointer; padding: 10px 16px;
+    font-family: var(--font-ui); font-size: 0.88em; font-weight: 600; color: var(--text-secondary);
+    border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
+}
+.tendencias-tab:hover { color: var(--text-primary); }
+.tendencias-tab.activo { color: var(--accent-brand); border-bottom-color: var(--accent-brand); }
+
+.veredicto-caja { background: rgba(255,255,255,0.03); border-radius: var(--radius-md); padding: 14px 16px; }
+
+.seguimiento-fila {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    padding: 14px 0; border-bottom: 1px solid var(--border-soft);
+}
+.seguimiento-fila:last-child { border-bottom: none; }
+.seguimiento-info { flex: 1; min-width: 200px; }
+.seguimiento-etiqueta { font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.seguimiento-tendencia { font-size: 0.85em; margin-top: 4px; }
+
 /* ---------- Skeleton loaders ---------- */
 .skeleton {
     display: inline-block; background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.05) 63%);

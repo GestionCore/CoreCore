@@ -18,7 +18,7 @@ import db
 PRIORIDAD_ORDEN = {"urgente": 0, "importante": 1, "opcional": 2}
 
 
-def _detectar_misiones_base(cursor):
+def _detectar_misiones_base(cursor, cuenta_id):
     misiones = []
 
     try:
@@ -114,6 +114,20 @@ def _detectar_misiones_base(cursor):
         print(f"[Logros] ⚠️ Error calculando SEO score: {e}")
 
     try:
+        movimiento = tendencias_mod.detectar_movimiento_categoria_principal(cursor, cuenta_id)
+        if movimiento:
+            direccion = "subió" if movimiento["subio"] else "cayó"
+            misiones.append({
+                "id": "tendencia_categoria", "categoria": "tendencias", "icono": "📈" if movimiento["subio"] else "📉",
+                "prioridad": "importante" if abs(movimiento["variacion_pct"]) >= 25 else "opcional",
+                "titulo": f"La demanda en {movimiento['categoria']} {direccion} {abs(movimiento['variacion_pct'])}%",
+                "descripcion": f"Comparado con tu último relevamiento — {'puede ser buen momento para stockear más' if movimiento['subio'] else 'vale la pena revisar si conviene ajustar precio o diversificar'}.",
+                "link": "/tendencias", "link_texto": "Ver Tendencias"
+            })
+    except Exception as e:
+        print(f"[Logros] ⚠️ Error detectando movimiento de categoría: {e}")
+
+    try:
         impacto = promociones_mod.obtener_impacto_promociones(cursor)
         promos_sin_efecto = [i for i in impacto if i["activo"] and i["variacion_pct"] is not None and i["variacion_pct"] < 5]
         if promos_sin_efecto:
@@ -183,7 +197,7 @@ def generar_mensaje_coach(misiones):
 
 
 def obtener_logros(cursor, cuenta_id, headers=None):
-    misiones = _detectar_misiones_base(cursor)
+    misiones = _detectar_misiones_base(cursor, cuenta_id)
 
     if headers:
         try:

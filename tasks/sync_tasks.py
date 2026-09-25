@@ -21,6 +21,8 @@ import db
 import sincronizador
 import espia_competencia
 import motor_combos
+import tendencias as tendencias_mod
+from auth import token_manager
 
 
 def _obtener_cuentas_activas():
@@ -72,6 +74,27 @@ def tarea_relevar_competencia():
                     print(f"[Celery Beat] 🔍 Cuenta {cuenta_id}: {relevados} competidor(es) relevado(s).")
         except Exception as e:
             print(f"[Celery Beat] ❌ Error relevando competencia de la cuenta {cuenta_id}: {e}")
+
+
+@celery.task(name="tasks.sync_tasks.tarea_relevar_tendencias")
+def tarea_relevar_tendencias():
+    """Snapshot diario de las tendencias seguidas (categorías/términos) — corre cada 24 horas."""
+    for cuenta_id, usuario_id in _obtener_cuentas_activas():
+        try:
+            access_token = token_manager.asegurar_token_valido(cuenta_id)
+        except token_manager.CuentaDesconectada:
+            continue
+        except Exception as e:
+            print(f"[Celery Beat] ⚠️ No se pudo refrescar el token de la cuenta {cuenta_id} para tendencias: {e}")
+            continue
+        try:
+            with db.conexion_usuario(usuario_id) as conexion:
+                cursor = conexion.cursor()
+                relevados = tendencias_mod.relevar_snapshots_tendencias(access_token, cursor, cuenta_id)
+                if relevados:
+                    print(f"[Celery Beat] 📊 Cuenta {cuenta_id}: {relevados} snapshot(s) de tendencias tomados.")
+        except Exception as e:
+            print(f"[Celery Beat] ❌ Error relevando tendencias de la cuenta {cuenta_id}: {e}")
 
 
 @celery.task(name="tasks.sync_tasks.tarea_analizar_combos")
