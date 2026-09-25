@@ -28,6 +28,17 @@ import re
 import psycopg
 import config
 
+# La consola de Windows arranca en cp1252 por default, que no puede
+# imprimir los emojis (✅ ⏳ etc.) que usa este script — mismo fix que
+# ya tiene app.py, necesario acá también porque este script corre
+# suelto, no dentro del proceso de Flask.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
 MIGRATIONS_DIR = os.path.join(os.path.dirname(__file__), "migrations")
 
 CREATE_MIGRATIONS_TABLE = """

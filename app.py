@@ -174,7 +174,7 @@ def landing():
     g.cuenta_id = session["cuenta_id"]
 
     import db
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT onboarding_completo FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila_onb = cursor.fetchone()
@@ -186,14 +186,14 @@ def landing():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT sincronizacion_inicial_completa FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
         fila_sync = cursor.fetchone()
     if fila_sync and not fila_sync[0]:
         return render_template("sincronizando.html")
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT pantalla_preferida FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila_pref = cursor.fetchone()
@@ -202,7 +202,7 @@ def landing():
     if fila_pref and fila_pref[0] == "metricas":
         return redirect(url_for("metricas_vista"))
 
-    productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id)
+    productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id, g.cuenta_id)
     return render_template("index.html", productos=productos, stats=stats, active_nav="stock")
 
 
@@ -217,7 +217,7 @@ def exportar_planilla_stock():
     import csv
     from io import BytesIO, StringIO
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT p.id_meli, p.titulo, COALESCE(v.talle, 'Único') AS talle, v.color, p.precio, p.estado,
@@ -274,7 +274,7 @@ def actualizar_precios_masivo():
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     actualizados, fallidos = 0, 0
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT id_meli, precio FROM productos_padre WHERE estado = 'active'")
         productos = cursor.fetchall()
@@ -443,7 +443,7 @@ def cambiar_cuenta(cuenta_id):
 @app.route("/api/hoy")
 @login_requerido
 def api_hoy():
-    return jsonify(dashboard_mod.obtener_ventas_hoy(g.usuario_id))
+    return jsonify(dashboard_mod.obtener_ventas_hoy(g.usuario_id, g.cuenta_id))
 
 
 @app.route("/api/ticker")
@@ -455,14 +455,14 @@ def api_ticker():
 @app.route("/api/quiebre_stock")
 @login_requerido
 def api_quiebre_stock():
-    return jsonify(dashboard_mod.obtener_quiebre_stock(g.usuario_id))
+    return jsonify(dashboard_mod.obtener_quiebre_stock(g.usuario_id, g.cuenta_id))
 
 
 @app.route("/api/resumen_diario")
 @login_requerido
 def api_resumen_diario():
     try:
-        return jsonify(dashboard_mod.obtener_resumen_diario(g.usuario_id))
+        return jsonify(dashboard_mod.obtener_resumen_diario(g.usuario_id, g.cuenta_id))
     except Exception as e:
         print(f"[Dashboard] ⚠️ Error en resumen diario: {e}")
         return jsonify(None)
@@ -477,7 +477,7 @@ def api_metricas_heatmap_horario():
     try:
         dias_str = request.args.get("dias", "90")
         dias = min(max(int(dias_str), 7), 365)
-        with db.conexion_usuario(g.usuario_id) as conn:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conn:
             cur = conn.cursor()
             cur.execute("""
                 SELECT
@@ -513,7 +513,7 @@ def api_correlacion_precio_ventas():
     try:
         dias_str = request.args.get("dias", "90")
         dias = min(max(int(dias_str), 7), 365)
-        with db.conexion_usuario(g.usuario_id) as conn:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conn:
             cur = conn.cursor()
             cur.execute("""
                 SELECT
@@ -540,7 +540,7 @@ def api_correlacion_precio_ventas():
 @login_requerido
 def api_dashboard_tendencia_ventas():
     try:
-        return jsonify(dashboard_mod.obtener_tendencia_ventas(g.usuario_id))
+        return jsonify(dashboard_mod.obtener_tendencia_ventas(g.usuario_id, g.cuenta_id))
     except Exception as e:
         print(f"[Dashboard] ⚠️ Error en tendencia de ventas: {e}")
         return jsonify({"serie": [], "total_formateado": "0,00", "promedio_diario_formateado": "0,00"})
@@ -551,7 +551,7 @@ def api_dashboard_tendencia_ventas():
 def api_dashboard_tendencia_ventas_png():
     """Descarga del gráfico de tendencia como imagen — botón de exportar del widget."""
     import graficos_export
-    datos = dashboard_mod.obtener_tendencia_ventas(g.usuario_id)
+    datos = dashboard_mod.obtener_tendencia_ventas(g.usuario_id, g.cuenta_id)
     serie = [{"etiqueta": p["fecha"], "valor": p["facturado"]} for p in datos["serie"]]
     buffer = graficos_export.generar_barras_png(
         serie, titulo=f"Tendencia de Ventas — últimos {len(serie)} días",
@@ -563,13 +563,13 @@ def api_dashboard_tendencia_ventas_png():
 @app.route("/api/dashboard/reclamos_resumen")
 @login_requerido
 def api_dashboard_reclamos_resumen():
-    return jsonify(dashboard_mod.obtener_reclamos_resumen(g.usuario_id))
+    return jsonify(dashboard_mod.obtener_reclamos_resumen(g.usuario_id, g.cuenta_id))
 
 
 @app.route("/api/dashboard/costos_resumen")
 @login_requerido
 def api_dashboard_costos_resumen():
-    return jsonify(dashboard_mod.obtener_costos_resumen(g.usuario_id))
+    return jsonify(dashboard_mod.obtener_costos_resumen(g.usuario_id, g.cuenta_id))
 
 
 @app.route("/api/dashboard/logro_top")
@@ -582,7 +582,7 @@ def api_dashboard_logro_top():
         headers = {"Authorization": f"Bearer {access_token}"}
     except token_manager.CuentaDesconectada:
         pass
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         resultado = logros_mod.obtener_logros(cursor, g.cuenta_id, headers)
     if resultado["misiones"]:
@@ -659,7 +659,7 @@ def api_dashboard_ganancia_dia_vs_promedio():
 def api_dashboard_top_productos():
     from datetime import date, timedelta
     desde = (date.today() - timedelta(days=30)).isoformat()
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT
@@ -688,7 +688,7 @@ def api_dashboard_top_productos():
 @app.route("/api/dashboard/ultimas_ventas")
 @login_requerido
 def api_dashboard_ultimas_ventas():
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT
@@ -721,7 +721,7 @@ def dashboard_personalizable():
     mono = monotributo.evaluar_categoria(g.usuario_id, g.cuenta_id)
     ventas_por_provincia = None
     try:
-        ventas_por_provincia = dashboard_mod.obtener_ventas_por_provincia(g.usuario_id)
+        ventas_por_provincia = dashboard_mod.obtener_ventas_por_provincia(g.usuario_id, g.cuenta_id)
     except Exception as e:
         print(f"[Dashboard] ⚠️ Error calculando ventas por provincia: {e}")
     return render_template(
@@ -749,7 +749,7 @@ def metricas_vista():
     # falla — mismo criterio que ya se usa con Ads más arriba.
     punto_equilibrio = None
     try:
-        _, stats_gastos, _ = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta)
+        _, stats_gastos, _ = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta, g.cuenta_id)
         costos_fijos = stats_gastos["fijos_raw"]
         facturado_raw = datos["resumen"]["raw"]["facturado"]
         margen_contribucion_pct = (datos["resumen"]["raw"]["ganancia_neta"] / facturado_raw) if facturado_raw > 0 else 0
@@ -794,7 +794,7 @@ def metricas_vista():
     # Clientes: retención y forma de pago del período (C1-C4).
     analitica_clientes = None
     try:
-        analitica_clientes = metricas_mod.obtener_analitica_clientes(g.usuario_id, fecha_desde, fecha_hasta)
+        analitica_clientes = metricas_mod.obtener_analitica_clientes(g.usuario_id, fecha_desde, fecha_hasta, g.cuenta_id)
     except Exception as e:
         print(f"[Métricas] ⚠️ Error calculando analítica de clientes: {e}")
 
@@ -868,7 +868,7 @@ def promociones_vista():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
         fila = cursor.fetchone()
@@ -877,7 +877,7 @@ def promociones_vista():
     campanias = promociones_mod.obtener_promociones_usuario(access_token, seller_id) if seller_id else []
     campanias_activas = [c for c in campanias if c.get("status") in ("started", "active")]
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT id_meli, titulo, precio, precio_original FROM productos_padre
@@ -921,7 +921,7 @@ def crear_descuento():
 
     ok, detalle = promociones_mod.crear_descuento_individual(access_token, id_meli, deal_price, fecha_desde, fecha_hasta)
     if ok:
-        with db.conexion_usuario(g.usuario_id) as conexion:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
             cursor.execute("SELECT titulo, precio FROM productos_padre WHERE id_meli = %s", (id_meli,))
             fila_producto = cursor.fetchone()
@@ -940,7 +940,7 @@ def eliminar_descuento(id_meli):
         return redirect(url_for("reconectar"))
 
     promociones_mod.eliminar_promocion_item(access_token, id_meli, "PRICE_DISCOUNT")
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         promociones_mod.cerrar_promocion_activa(cursor, id_meli)
     return redirect("/promociones")
@@ -955,7 +955,7 @@ def tendencias_vista():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         category_id, categoria_nombre = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
 
@@ -1045,7 +1045,7 @@ def api_tendencias_seguir():
     etiqueta = (datos.get("etiqueta") or valor).strip()
     if tipo not in ("termino", "categoria") or not valor:
         return jsonify({"ok": False, "detalle": "Datos inválidos."}), 400
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         seguimiento_id = tendencias_mod.agregar_seguimiento(cursor, g.cuenta_id, tipo, valor, etiqueta)
     return jsonify({"ok": True, "id": seguimiento_id})
@@ -1054,7 +1054,7 @@ def api_tendencias_seguir():
 @app.route("/api/tendencias/dejar_de_seguir/<int:seguimiento_id>", methods=["POST"])
 @login_requerido
 def api_tendencias_dejar_de_seguir(seguimiento_id):
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         eliminado = tendencias_mod.eliminar_seguimiento(cursor, g.cuenta_id, seguimiento_id)
     return jsonify({"ok": eliminado})
@@ -1095,7 +1095,7 @@ def logros_vista():
     except token_manager.CuentaDesconectada:
         pass
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         resultado = logros_mod.obtener_logros(cursor, g.cuenta_id, headers)
 
@@ -1121,7 +1121,7 @@ def embudo_conversion_vista():
         return redirect(url_for("reconectar"))
     headers = {"Authorization": f"Bearer {access_token}"}
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         embudo = embudo_mod.calcular_embudo_conversion(headers, g.cuenta_id, cursor)
         zombies = embudo_mod.detectar_publicaciones_zombie(headers, g.cuenta_id, cursor)
@@ -1138,7 +1138,7 @@ def reputacion_vista():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
         fila = cursor.fetchone()
@@ -1153,7 +1153,7 @@ def reputacion_vista():
 @login_requerido
 def competencia_vista():
     import db
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         rivales = espia_competencia.obtener_panorama_competencia(cursor, g.cuenta_id)
     return render_template("competencia.html", rivales=rivales, active_nav="competencia")
@@ -1166,7 +1166,7 @@ def competencia_agregar():
     id_meli_rival = request.form.get("id_meli_rival", "").strip()
     alias = request.form.get("alias", "").strip()
     if id_meli_rival:
-        with db.conexion_usuario(g.usuario_id) as conexion:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
             espia_competencia.agregar_competidor(cursor, g.cuenta_id, id_meli_rival, alias)
     return redirect("/competencia")
@@ -1176,7 +1176,7 @@ def competencia_agregar():
 @login_requerido
 def competencia_eliminar(id_meli_rival):
     import db
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         espia_competencia.eliminar_competidor(cursor, g.cuenta_id, id_meli_rival)
     return redirect("/competencia")
@@ -1233,7 +1233,7 @@ def sincronizar_manual():
 @login_requerido
 def api_curva_talles():
     import db
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         resultado = analisis_stock.evaluar_curva_talles(cursor)
     return jsonify(resultado)
@@ -1252,7 +1252,7 @@ def api_buscar():
     q = (request.args.get("q") or "").strip()
     if len(q) < 2:
         return jsonify([])
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT id_meli, titulo FROM productos_padre
@@ -1273,7 +1273,7 @@ def api_oportunidades_seo():
     except token_manager.CuentaDesconectada:
         return jsonify([])
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         category_id, _ = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
         lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id)
@@ -1328,7 +1328,7 @@ def api_onboarding_checklist():
 @app.route("/api/estado_sincronizacion")
 @login_requerido
 def api_estado_sincronizacion():
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT sincronizacion_inicial_completa FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
         fila = cursor.fetchone()
@@ -1356,7 +1356,7 @@ def timeline_publicacion_vista(id_meli):
     except token_manager.CuentaDesconectada:
         access_token = None
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT titulo, thumbnail FROM productos_padre WHERE id_meli = %s", (id_meli,))
         fila = cursor.fetchone()
@@ -1375,7 +1375,7 @@ def timeline_publicacion_vista(id_meli):
 def exportar_publicacion_red(id_meli):
     import os
     import db
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT titulo, precio, thumbnail FROM productos_padre WHERE id_meli = %s", (id_meli,))
         fila = cursor.fetchone()
@@ -1462,7 +1462,7 @@ def api_chat_ia():
     datos = request.get_json(silent=True) or {}
     pregunta = datos.get("pregunta") or ""
     try:
-        respuesta = chat_ia.responder_pregunta(g.usuario_id, pregunta)
+        respuesta = chat_ia.responder_pregunta(g.usuario_id, pregunta, g.cuenta_id)
     except Exception as e:
         print(f"[ChatIA] ⚠️ Error respondiendo: {e}")
         respuesta = "Tuve un problema respondiendo eso — probá de nuevo en un rato."
@@ -1533,7 +1533,7 @@ def facturacion_vista():
 
         if fecha_desde_periodo and fecha_hasta_periodo:
             import db
-            with db.conexion_usuario(g.usuario_id) as conexion:
+            with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
                 cursor = conexion.cursor()
                 cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (fecha_desde_periodo, fecha_hasta_periodo))
                 facturado_bruto = float(cursor.fetchone()[0] or 0.0)
@@ -1582,7 +1582,7 @@ def facturacion_vista():
 @login_requerido
 def historial_precios_vista():
     import db
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cambios = historial_precios_mod.obtener_historial_con_impacto(cursor)
     return render_template("historial_precios.html", cambios=cambios, active_nav="historial_precios")
@@ -1593,7 +1593,7 @@ def historial_precios_vista():
 def costos_vista():
     fecha_hasta = request.args.get("fecha_hasta") or datetime.now().strftime("%Y-%m-%d")
     fecha_desde = request.args.get("fecha_desde") or datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    gastos, stats, productos = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta)
+    gastos, stats, productos = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta, g.cuenta_id)
     return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, active_nav="costos")
 
 
@@ -1644,7 +1644,7 @@ def agregar_gasto():
     monto = float(request.form.get("monto", 0.0))
     fecha = request.form.get("fecha") or datetime.now().strftime("%Y-%m-%d")
     if concepto and monto > 0:
-        with db.conexion_usuario(g.usuario_id) as conexion:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
             cursor.execute("INSERT INTO gastos_operativos (cuenta_id, concepto, categoria, monto, fecha) VALUES (%s, %s, %s, %s, %s)", (g.cuenta_id, concepto, categoria, monto, fecha))
     return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}")
@@ -1655,7 +1655,7 @@ def agregar_gasto():
 def guardar_costo_producto(id_meli):
     import db
     nuevo_costo = float(request.form.get("precio_costo", 0.0))
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("UPDATE productos_padre SET precio_costo = %s WHERE id_meli = %s", (nuevo_costo, id_meli))
     return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}")
@@ -1670,7 +1670,7 @@ def guardar_costos_masivo():
     if not costos_dict:
         return jsonify({"ok": False, "error": "Nada para guardar"}), 400
     actualizados = 0
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         for id_meli, nuevo_costo in costos_dict.items():
             try:
@@ -1685,7 +1685,7 @@ def guardar_costos_masivo():
 @login_requerido
 def eliminar_gasto(id_gasto):
     import db
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("DELETE FROM gastos_operativos WHERE id = %s", (id_gasto,))
     return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}")
@@ -1705,7 +1705,7 @@ def despacho_vista():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
         fila = cursor.fetchone()
@@ -1759,7 +1759,7 @@ def despacho_etiquetas_pdf():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
         fila = cursor.fetchone()
@@ -1772,7 +1772,7 @@ def despacho_etiquetas_pdf():
             hora_corte = hora_real
     offset_horas = 24 - hora_corte
 
-    shipment_ids = despacho_mod.obtener_shipment_ids_del_dia(g.usuario_id, fecha, offset_horas)
+    shipment_ids = despacho_mod.obtener_shipment_ids_del_dia(g.usuario_id, fecha, offset_horas, g.cuenta_id)
     if not shipment_ids:
         return "No hay etiquetas para descargar en esta fecha.", 404
 
@@ -1801,7 +1801,7 @@ def api_calculadora_categorias():
         return jsonify({"error": "Cuenta desconectada"}), 401
     import db
     headers = {"Authorization": f"Bearer {access_token}"}
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         categorias = calculadora_costos.obtener_categorias_del_catalogo(headers, cursor)
     return jsonify(categorias)
@@ -1932,7 +1932,7 @@ def api_simular_costo():
 @app.route("/stock_masivo")
 @login_requerido
 def stock_masivo_vista():
-    modelos = stock_masivo_mod.obtener_modelos_agrupados(g.usuario_id)
+    modelos = stock_masivo_mod.obtener_modelos_agrupados(g.usuario_id, g.cuenta_id)
     return render_template("stock_masivo.html", modelos=modelos, active_nav="stock_masivo")
 
 
@@ -1968,7 +1968,7 @@ def actualizar_stock_multiple():
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     actualizados, saltados, fallidos = 0, 0, 0
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
 
         # Un solo roundtrip para las variantes de TODOS los id_meli del
@@ -2043,7 +2043,7 @@ def despacho_marcar():
     id_meli = data.get("id_meli")
     id_variante = data.get("id_variante")
     nuevo_estado = bool(data.get("despachado"))
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
             "UPDATE ventas SET despachado = %s WHERE id_orden = %s AND id_meli = %s AND id_variante = %s",
@@ -2062,7 +2062,7 @@ def api_alertas_pendientes():
     """
     import db
     try:
-        with db.conexion_usuario(g.usuario_id) as conexion:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             from psycopg.rows import dict_row
             cursor = conexion.cursor(row_factory=dict_row)
             cursor.execute(
@@ -2100,7 +2100,7 @@ def api_alerta_marcar_leida(id_alerta):
     import db
     from datetime import datetime, timezone
     try:
-        with db.conexion_usuario(g.usuario_id) as conexion:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
             cursor.execute(
                 "UPDATE alertas_usuario SET leida = true, leida_en = %s WHERE id = %s AND usuario_id = %s",
@@ -2130,7 +2130,7 @@ def reporte_fiscal_vista():
     # Ofrece los últimos 3 años como opciones
     anios_disponibles = [anio_actual, anio_actual - 1, anio_actual - 2]
 
-    meses = rf.calcular_reporte_anual(g.usuario_id, anio_seleccionado)
+    meses = rf.calcular_reporte_anual(g.usuario_id, anio_seleccionado, g.cuenta_id)
     from utils import formatear_moneda
     totales = {
         "facturacion": sum(m["facturacion"] for m in meses),
@@ -2166,7 +2166,7 @@ def reporte_fiscal_vista():
 def reporte_fiscal_exportar():
     import reporte_fiscal as rf
     anio = int(request.args.get("anio", datetime.now().year))
-    meses = rf.calcular_reporte_anual(g.usuario_id, anio)
+    meses = rf.calcular_reporte_anual(g.usuario_id, anio, g.cuenta_id)
     buf = rf.generar_excel_fiscal(meses, anio)
     return send_file(
         buf,
@@ -2187,7 +2187,7 @@ def api_drawer_info(id_meli):
     except token_manager.CuentaDesconectada:
         access_token = None
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
             "SELECT titulo, precio, estado, precio_costo FROM productos_padre WHERE id_meli = %s",
@@ -2245,7 +2245,7 @@ def api_drawer_guardar(id_meli):
     if estado not in ("active", "paused", "closed"):
         return jsonify({"ok": False, "detalle": "Estado no válido"}), 400
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
             "UPDATE productos_padre SET titulo = %s, precio = %s, estado = %s, precio_costo = %s WHERE id_meli = %s",
@@ -2342,7 +2342,7 @@ def api_drawer_resenas(id_meli):
 @login_requerido
 def api_drawer_preguntas(id_meli):
     import db
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
             """SELECT question_id, texto_pregunta, estado, respuesta_sugerida, creado_en
@@ -2386,7 +2386,7 @@ def api_drawer_responder_pregunta():
     except Exception as e:
         return jsonify({"ok": False, "detalle": str(e)})
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
             "UPDATE preguntas_pendientes SET estado = 'respondida', respuesta_sugerida = %s WHERE question_id = %s",
@@ -2426,7 +2426,7 @@ def api_drawer_salud(id_meli):
     import db
     from datetime import datetime, timedelta
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
 
         cursor.execute(
@@ -2512,7 +2512,7 @@ def preguntas_vista():
 @login_requerido
 def api_preguntas_lista():
     estado = request.args.get("estado", "pendiente")
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         sql = """
             SELECT p.id, p.question_id, p.item_id, p.texto_pregunta,
@@ -2565,7 +2565,7 @@ def api_preguntas_responder():
         return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
     except Exception as e:
         return jsonify({"ok": False, "detalle": str(e)})
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
             "UPDATE preguntas_pendientes SET estado = 'respondida', respuesta_sugerida = %s WHERE question_id = %s AND cuenta_id = %s",
@@ -2581,7 +2581,7 @@ def api_preguntas_ignorar():
     ids = data.get("question_ids", [])
     if not ids:
         return jsonify({"ok": False, "detalle": "Sin preguntas"}), 400
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
             "UPDATE preguntas_pendientes SET estado = 'ignorada' WHERE question_id = ANY(%s::text[]) AND cuenta_id = %s",
@@ -2628,7 +2628,7 @@ def referral_redirect(code):
 @app.route("/referidos")
 @login_requerido
 def referidos_vista():
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT referral_code FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila = cursor.fetchone()
@@ -2764,7 +2764,7 @@ def planes_vista():
 @app.route("/suscripcion")
 @login_requerido
 def suscripcion_vista():
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
             "SELECT plan, trial_termina_en, mp_suscripcion_id, suscripcion_activada_en, email FROM usuarios WHERE id = %s",
@@ -2805,7 +2805,7 @@ def suscripcion_iniciar():
     if plan not in ("base", "elite"):
         return jsonify({"ok": False, "detalle": "Plan inválido."}), 400
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT email FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila = cursor.fetchone()
@@ -2819,7 +2819,7 @@ def suscripcion_iniciar():
         return jsonify({"ok": False, "detalle": "Error conectando con Mercado Pago. Intentá de nuevo."}), 502
 
     # Guardamos el preapproval_id antes de redirigir para poder actualizar el estado en el retorno
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
             "UPDATE usuarios SET mp_suscripcion_id = %s WHERE id = %s",
@@ -2839,7 +2839,7 @@ def suscripcion_retorno():
     if not config.MP_ACCESS_TOKEN:
         return redirect(url_for("suscripcion_vista"))
 
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT mp_suscripcion_id FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila = cursor.fetchone()
@@ -2854,7 +2854,7 @@ def suscripcion_retorno():
         ext_ref = info.get("external_reference", "")
         plan_str = ext_ref.split("|")[0] if "|" in ext_ref else ""
         if status == "authorized" and plan_str in ("base", "elite"):
-            with db.conexion_usuario(g.usuario_id) as conexion:
+            with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
                 cursor = conexion.cursor()
                 cursor.execute(
                     "UPDATE usuarios SET plan = %s, suscripcion_activada_en = now() WHERE id = %s",
@@ -2869,7 +2869,7 @@ def suscripcion_retorno():
 @login_requerido
 def suscripcion_cancelar():
     """Cancela la suscripción activa en MP y actualiza el plan."""
-    with db.conexion_usuario(g.usuario_id) as conexion:
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT mp_suscripcion_id, plan FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila = cursor.fetchone()
@@ -2883,7 +2883,7 @@ def suscripcion_cancelar():
 
     ok = pagos.cancelar_suscripcion(mp_id)
     if ok:
-        with db.conexion_usuario(g.usuario_id) as conexion:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
             cursor.execute(
                 "UPDATE usuarios SET plan = 'cancelado' WHERE id = %s",

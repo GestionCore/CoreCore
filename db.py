@@ -63,12 +63,25 @@ def _cerrar_pools_al_salir():
         _pool_admin.close()
 
 
-def obtener_conexion_usuario(usuario_id):
+def obtener_conexion_usuario(usuario_id, cuenta_id=None):
     """
     Conexión para atender un pedido de un usuario autenticado — deja
     seteada la variable de sesión que las políticas de RLS usan para
     filtrar. Acordate de devolverla con `liberar_conexion` cuando termines
     (o usar el context manager `conexion_usuario` de más abajo).
+
+    `cuenta_id` es opcional — es la defensa en profundidad para el
+    aislamiento entre las VARIAS cuentas de un mismo usuario (plan
+    Elite): además de `app.usuario_actual` (que ya filtra por dueño),
+    setea `app.cuenta_actual`, que las políticas RLS de las tablas
+    "hijas" (ventas, productos_padre, etc. — no `cuentas_meli`) usan
+    para restringir también a la cuenta activa en sesión, no
+    "cualquier cuenta de este usuario". Si no se pasa, queda en '' y
+    las políticas no agregan esa restricción — o sea, mismo
+    comportamiento que antes de este cambio (no rompe ningún call site
+    que todavía no la pase). SIEMPRE se setea explícitamente (a '' si
+    hace falta) para no arrastrar un valor viejo de una conexión
+    reciclada del pool.
     """
     conexion = _obtener_pool().getconn()
     cursor = conexion.cursor()
@@ -87,6 +100,7 @@ def obtener_conexion_usuario(usuario_id):
     # valor viejo pegado si la misma conexión física se reutiliza
     # después para otro usuario.
     cursor.execute("SELECT set_config('app.usuario_actual', %s, true)", (str(usuario_id),))
+    cursor.execute("SELECT set_config('app.cuenta_actual', %s, true)", (str(cuenta_id) if cuenta_id is not None else "",))
     cursor.close()
     return conexion
 
@@ -109,13 +123,19 @@ class conexion_usuario:
     Context manager: with conexion_usuario(usuario_id) as conn: ...
     Se encarga de pedir la conexión, dejarla lista para RLS, y devolverla
     al pool al salir — así ninguna ruta se olvida de liberarla.
+
+    `cuenta_id` es opcional (ver `obtener_conexion_usuario`) — pasalo
+    siempre que lo tengas a mano (típicamente `g.cuenta_id` en una
+    ruta de Flask) para que RLS también aísle entre las cuentas del
+    mismo usuario, no solo entre usuarios distintos.
     """
-    def __init__(self, usuario_id):
+    def __init__(self, usuario_id, cuenta_id=None):
         self.usuario_id = usuario_id
+        self.cuenta_id = cuenta_id
         self.conexion = None
 
     def __enter__(self):
-        self.conexion = obtener_conexion_usuario(self.usuario_id)
+        self.conexion = obtener_conexion_usuario(self.usuario_id, self.cuenta_id)
         return self.conexion
 
     def __exit__(self, exc_type, exc_val, exc_tb):

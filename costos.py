@@ -21,11 +21,11 @@ def _dias_de_solapamiento(fecha_inicio_gasto, fecha_fin_gasto, fecha_desde_perio
     return max((fin - inicio).days + 1, 0)
 
 
-def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta):
+def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
     fecha_desde_dt = datetime.strptime(fecha_desde, "%Y-%m-%d").date()
     fecha_hasta_dt = datetime.strptime(fecha_hasta, "%Y-%m-%d").date()
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
 
         cursor.execute("""

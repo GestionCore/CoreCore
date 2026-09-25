@@ -28,14 +28,14 @@ Reglas:
 MAX_LARGO_PREGUNTA = 500
 
 
-def _armar_contexto(usuario_id):
+def _armar_contexto(usuario_id, cuenta_id=None):
     hoy = datetime.now()
     desde_30d = (hoy - timedelta(days=30)).strftime("%Y-%m-%d")
     hoy_str = hoy.strftime("%Y-%m-%d")
 
-    ventas_hoy = dashboard.obtener_ventas_hoy(usuario_id)
+    ventas_hoy = dashboard.obtener_ventas_hoy(usuario_id, cuenta_id)
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT COALESCE(SUM(precio_venta*cantidad),0), COALESCE(SUM(cargo_venta),0),
@@ -70,7 +70,7 @@ def _armar_contexto(usuario_id):
     }
 
 
-def responder_pregunta(usuario_id, pregunta):
+def responder_pregunta(usuario_id, pregunta, cuenta_id=None):
     pregunta = (pregunta or "").strip()
     if not pregunta:
         return "Escribí una pregunta primero."
@@ -78,7 +78,7 @@ def responder_pregunta(usuario_id, pregunta):
         return "Esa pregunta es demasiado larga — probá con algo más corto y directo."
 
     try:
-        contexto = _armar_contexto(usuario_id)
+        contexto = _armar_contexto(usuario_id, cuenta_id)
     except Exception as e:
         print(f"[ChatIA] ⚠️ Error armando el contexto: {e}")
         return "No pude leer los datos del negocio ahora mismo — probá de nuevo en un rato."

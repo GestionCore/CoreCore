@@ -88,7 +88,7 @@ def confirmar_y_guardar(usuario_id, cuenta_id, propuesta):
     except (ValueError, TypeError):
         return False, "Monto o fecha con formato inválido."
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             INSERT INTO gastos_operativos (cuenta_id, concepto, categoria, monto, fecha, recurrente, fecha_fin)

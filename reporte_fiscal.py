@@ -41,12 +41,12 @@ _NOMBRES_MES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
                 "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
 
 
-def calcular_reporte_anual(usuario_id, anio: int):
+def calcular_reporte_anual(usuario_id, anio: int, cuenta_id=None):
     meses = calcular_meses(anio)
     desde_anio = date(anio, 1, 1)
     hasta_anio = date(anio, 12, 31)
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
 
         # Costos de fabricación por producto

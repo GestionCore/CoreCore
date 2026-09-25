@@ -1,0 +1,225 @@
+-- Defensa en profundidad para el aislamiento ENTRE LAS CUENTAS de un
+-- mismo usuario (plan Elite, 2+ cuentas MeLi conectadas).
+--
+-- Hasta ahora, las políticas RLS de las tablas "hijas" (todo lo que
+-- cuelga de una cuenta_id) solo filtraban por app.usuario_actual —
+-- es decir, por CUALQUIER cuenta del usuario logueado, no por la
+-- cuenta activa elegida en sesión (g.cuenta_id). Con un usuario de
+-- una sola cuenta esto era invisible. La gran mayoría de las
+-- consultas de solo-lectura del proyecto (dashboard, catálogo,
+-- costos, chat IA, métricas de clientes, reporte fiscal, etc.) no
+-- agregan un WHERE cuenta_id = %s explícito porque el diseño
+-- buscado es "RLS ya lo resuelve" — así que apenas un usuario Elite
+-- tenga 2+ cuentas conectadas, iba a ver datos MEZCLADOS de todas
+-- sus cuentas en vez de solo la que eligió.
+--
+-- Esta limitación ya estaba documentada como conocida en
+-- auth/registro.py (comentario en obtener_cuentas_de_usuario) desde
+-- antes de que existiera ninguna pantalla que la disparara — quedó
+-- sin aplicar a propósito hasta poder probarla a fondo. Verificado
+-- en Supabase real antes de esta migración: 0 usuarios con 2+
+-- cuentas conectadas hoy, así que no hay ningún dato en producción
+-- que esta migración pueda "romper" de golpe.
+--
+-- Cómo funciona: db.py ahora también setea app.cuenta_actual (''
+-- si no se pasa cuenta_id explícito). Cada política agrega un OR
+-- que la deja pasar si esa variable está vacía/sin setear (mismo
+-- comportamiento que antes, para cualquier call site que todavía
+-- no pase cuenta_id) o si coincide con la cuenta_id de la fila. El
+-- chequeo original (cuenta_id IN ... usuario_actual) se mantiene
+-- intacto como capa de afuera — esto solo agrega una restricción
+-- ADICIONAL, nunca la reemplaza.
+--
+-- cuentas_meli y meli_tokens NO se tocan: cuentas_meli necesita
+-- mostrar TODAS las cuentas del usuario (para el selector de
+-- cuenta), y meli_tokens ya bloquea todo acceso normal a propósito.
+
+ALTER POLICY ventas_por_cuenta_propia ON ventas
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY productos_padre_por_cuenta_propia ON productos_padre
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY productos_variantes_por_cuenta_propia ON productos_variantes
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY incidencias_posventa_por_cuenta_propia ON incidencias_posventa
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY gastos_operativos_por_cuenta_propia ON gastos_operativos
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY historial_precios_por_cuenta_propia ON historial_precios
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY historial_promociones_por_cuenta_propia ON historial_promociones
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY proveedores_por_cuenta_propia ON proveedores
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY competidores_seguimiento_por_cuenta_propia ON competidores_seguimiento
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY competidores_historial_por_cuenta_propia ON competidores_historial
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY tendencias_historial_por_cuenta_propia ON tendencias_historial
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY combos_sugeridos_por_cuenta_propia ON combos_sugeridos
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY logros_historial_por_cuenta_propia ON logros_historial
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY alertas_curva_talles_por_cuenta_propia ON alertas_curva_talles
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY alertas_quiebre_stock_por_cuenta_propia ON alertas_quiebre_stock
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY preguntas_pendientes_por_cuenta_propia ON preguntas_pendientes
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY comandos_pendientes_por_cuenta_propia ON comandos_pendientes
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY conversacion_whatsapp_por_cuenta_propia ON conversacion_whatsapp_historial
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY configuracion_cuenta_por_cuenta_propia ON configuracion_cuenta
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );

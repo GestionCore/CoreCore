@@ -34,7 +34,7 @@ def obtener_evolucion_mensual(usuario_id, cuenta_id, access_token, meses=6):
         cursor_mes = (cursor_mes - timedelta(days=1)).replace(day=1)
     inicios_mes.reverse()  # del más viejo al más nuevo
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT to_char(date_trunc('month', v.fecha_venta), 'YYYY-MM') AS mes,
@@ -88,7 +88,7 @@ def obtener_evolucion_mensual(usuario_id, cuenta_id, access_token, meses=6):
     return serie
 
 
-def obtener_analitica_clientes(usuario_id, fecha_desde, fecha_hasta):
+def obtener_analitica_clientes(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
     """
     Retención y forma de pago, a nivel de ORDEN (no de fila de venta —
     una orden con 3 ítems son 3 filas en `ventas` pero 1 sola compra).
@@ -96,7 +96,7 @@ def obtener_analitica_clientes(usuario_id, fecha_desde, fecha_hasta):
     histórico de vida del cliente — más simple y consistente con el
     resto de Ganancia Real, que también es por período.
     """
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT id_orden, comprador_nickname, MAX(cuotas) AS cuotas
@@ -204,7 +204,7 @@ def _obtener_comparacion_periodo_anterior(cursor, fecha_desde, fecha_hasta):
 
 
 def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fecha_hasta):
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         comparacion_anterior = _obtener_comparacion_periodo_anterior(cursor, fecha_desde, fecha_hasta)
 

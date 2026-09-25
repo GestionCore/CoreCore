@@ -72,7 +72,7 @@ def evaluar_categoria(usuario_id, cuenta_id):
     hace_3_meses = (hoy - timedelta(days=90)).strftime("%Y-%m-%d")
     hace_6_meses = (hoy - timedelta(days=180)).strftime("%Y-%m-%d")
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (hace_12_meses, hoy_str))
         facturacion_12m = float(cursor.fetchone()[0] or 0.0)

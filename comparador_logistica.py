@@ -5,7 +5,7 @@ from utils import formatear_moneda
 
 
 def calcular_comparacion(usuario_id, cuenta_id, access_token, fecha_desde, fecha_hasta):
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT v.id_meli, v.cantidad, v.precio_venta, v.cargo_venta, v.costo_envio,

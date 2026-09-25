@@ -21,11 +21,11 @@ def _detalle_venta(titulo):
     return f"{modelo} (Talle {talle})"
 
 
-def obtener_ventas_hoy(usuario_id):
+def obtener_ventas_hoy(usuario_id, cuenta_id=None):
     arg_now = datetime.now(timezone.utc) - timedelta(hours=3)
     hoy_local = arg_now.strftime("%Y-%m-%d")
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT titulo, id_variante, cantidad, precio_venta, hora_venta, id_orden, id_meli
@@ -54,7 +54,7 @@ def obtener_ventas_hoy(usuario_id):
     }
 
 
-def obtener_ventas_por_provincia(usuario_id, dias=30):
+def obtener_ventas_por_provincia(usuario_id, cuenta_id=None, dias=30):
     """
     Ranking de provincias por facturación (F1). `provincia` sale del
     envío de MeLi — ventas manuales o ventas ya sincronizadas antes de
@@ -62,7 +62,7 @@ def obtener_ventas_por_provincia(usuario_id, dias=30):
     (NULL), no se cuentan como "Sin dato" para no inflar ninguna barra.
     """
     desde = (datetime.now(timezone.utc) - timedelta(days=dias)).strftime("%Y-%m-%d")
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT provincia, COUNT(DISTINCT id_orden) AS ventas, COALESCE(SUM(precio_venta * cantidad), 0) AS facturado
@@ -95,7 +95,7 @@ def obtener_ticker(usuario_id, cuenta_id=None):
     hoy = arg_now.strftime("%Y-%m-%d")
     manana = (arg_now + timedelta(days=1)).strftime("%Y-%m-%d")
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0), COUNT(DISTINCT id_orden) FROM ventas WHERE fecha_venta = %s", (hoy,))
         fact_hoy, ord_hoy = cursor.fetchone()
@@ -137,7 +137,7 @@ def obtener_ticker(usuario_id, cuenta_id=None):
     }
 
 
-def obtener_tendencia_ventas(usuario_id, dias=14):
+def obtener_tendencia_ventas(usuario_id, cuenta_id=None, dias=14):
     """
     Facturación por día de los últimos N días — para el gráfico de
     tendencia del Dashboard. Pedido explícito del usuario ("quiero
@@ -149,7 +149,7 @@ def obtener_tendencia_ventas(usuario_id, dias=14):
     hoy_local = (datetime.now(timezone.utc) - timedelta(hours=3)).date()
     desde = hoy_local - timedelta(days=dias - 1)
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT fecha_venta, COALESCE(SUM(precio_venta * cantidad), 0)
@@ -170,20 +170,20 @@ def obtener_tendencia_ventas(usuario_id, dias=14):
     }
 
 
-def obtener_quiebre_stock(usuario_id):
-    with db.conexion_usuario(usuario_id) as conexion:
+def obtener_quiebre_stock(usuario_id, cuenta_id=None):
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         return analisis_stock.obtener_variantes_en_riesgo(cursor)
 
 
-def obtener_resumen_diario(usuario_id):
-    with db.conexion_usuario(usuario_id) as conexion:
+def obtener_resumen_diario(usuario_id, cuenta_id=None):
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         return resumen_semanal.obtener_datos_resumen_diario(cursor)
 
 
-def obtener_reclamos_resumen(usuario_id):
-    with db.conexion_usuario(usuario_id) as conexion:
+def obtener_reclamos_resumen(usuario_id, cuenta_id=None):
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa
@@ -193,8 +193,8 @@ def obtener_reclamos_resumen(usuario_id):
     return {"cantidad": cantidad, "monto_formateado": formatear_moneda(monto)}
 
 
-def obtener_costos_resumen(usuario_id):
-    with db.conexion_usuario(usuario_id) as conexion:
+def obtener_costos_resumen(usuario_id, cuenta_id=None):
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT titulo, precio, precio_costo, recibis_estimado FROM productos_padre

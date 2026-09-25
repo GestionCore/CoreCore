@@ -22,7 +22,7 @@ def calcular_datos_publicidad(usuario_id, cuenta_id, access_token, fecha_desde, 
     roas_general = round(ventas_atribuidas_total / costo_total, 2) if costo_total > 0 else None
     acos_general = round((costo_total / ventas_atribuidas_total) * 100, 1) if ventas_atribuidas_total > 0 else None
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT

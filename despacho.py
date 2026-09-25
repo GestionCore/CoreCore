@@ -14,7 +14,7 @@ from utils import limpiar_titulo_modelo
 
 
 def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_horas):
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT v.id_orden, v.id_meli, v.id_variante, v.titulo, v.cantidad, v.despachado,
@@ -96,7 +96,7 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
     return paquetes, total, listos, len(shipment_ids_del_dia)
 
 
-def obtener_shipment_ids_del_dia(usuario_id, fecha, offset_horas):
+def obtener_shipment_ids_del_dia(usuario_id, fecha, offset_horas, cuenta_id=None):
     """
     Versión liviana de obtener_paquetes_del_dia, para cuando lo único
     que hace falta son los shipment_id del día (descargar etiquetas) —
@@ -105,7 +105,7 @@ def obtener_shipment_ids_del_dia(usuario_id, fecha, offset_horas):
     Mismo filtro WHERE que la otra, para que sea el mismo conjunto de
     envíos en las dos pantallas.
     """
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT DISTINCT v.shipment_id

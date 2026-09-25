@@ -7,8 +7,8 @@ ORDEN_LETRAS = {"S": 1, "M": 2, "L": 3, "XL": 4, "XXL": 5, "XXXL": 6}
 ORDEN_ESTADO = {"active": 0, "paused": 1, "closed": 2}
 
 
-def obtener_modelos_agrupados(usuario_id):
-    with db.conexion_usuario(usuario_id) as conexion:
+def obtener_modelos_agrupados(usuario_id, cuenta_id=None):
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT p.id_meli, p.titulo, p.estado, p.thumbnail,

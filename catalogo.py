@@ -15,8 +15,8 @@ import db
 from utils import formatear_moneda, limpiar_titulo_modelo
 
 
-def obtener_productos_y_estadisticas(usuario_id):
-    with db.conexion_usuario(usuario_id) as conexion:
+def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         # Cursor por default (tuplas por posición) a propósito acá — todo
         # este archivo desempaqueta filas por posición, no por nombre de
         # columna, así que no hace falta (ni conviene) un row_factory de
