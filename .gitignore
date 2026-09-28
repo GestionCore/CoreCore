@@ -11,3 +11,10 @@ __pycache__/
 celerybeat-schedule
 celerybeat-schedule-shm
 celerybeat-schedule-wal
+
+# Skills de Claude Code instalados localmente — tooling personal del
+# entorno de desarrollo, no código del proyecto (cada máquina/entorno
+# los instala aparte si los quiere).
+.agents/
+.claude/skills/
+skills-lock.json
