@@ -1341,6 +1341,23 @@ function inicializarProtectorInactividad() {
     reiniciarTimerInactividad();
 }
 
+// ---------- Paneles colapsables: accesibles por teclado ----------
+// Los .panel-colapsable son <div onclick> (no <button>, porque contienen
+// contenido rico y una zona interna que no debe togglear el panel) —
+// sin esto, un usuario de teclado no podía abrirlos ni enterarse de que
+// son interactivos. Un solo listener delegado cubre los 6 que hay en el
+// proyecto (dashboard, index, métricas) en vez de repetir la lógica.
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.panel-colapsable[role="button"]')) {
+        e.preventDefault();
+        e.target.click();
+    }
+});
+document.addEventListener('click', (e) => {
+    const panel = e.target.closest('.panel-colapsable[role="button"]');
+    if (panel) panel.setAttribute('aria-expanded', panel.classList.contains('abierto'));
+});
+
 // ---------- Arranque global ----------
 document.addEventListener('DOMContentLoaded', () => {
     _inicializarIconoTema();

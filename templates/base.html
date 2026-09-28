@@ -84,8 +84,8 @@
         <span class="ticker-pill" id="ticker-incidencias-pill" style="display:none;"><span class="ticker-dot" style="background:var(--danger); box-shadow:0 0 6px var(--danger);"></span><span id="ticker-incidencias-texto">0 incidencias</span></span>
         <span class="ticker-pill" id="ticker-salud-pill" onmouseenter="mostrarTooltipSalud(this)" onmouseleave="ocultarTooltipTicker()"><span class="orbe-salud" id="ticker-salud-dot"></span><span id="ticker-salud-texto">Salud: ...</span></span>
         <span class="ticker-pill" id="ticker-racha-pill" style="display:none;" title="Días seguidos usando CoreLux"><svg class="icon" style="width:13px;height:13px;color:var(--accent-brand);"><use href="#icon-flame"/></svg><span id="ticker-racha-texto"></span></span>
-        <button class="ticker-pill ticker-btn" onclick="alternarModoPrivacidad()" title="Modo privacidad"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-eye"/></svg></button>
-        <button class="ticker-pill ticker-btn" onclick="alternarTema()" title="Cambiar tema claro/oscuro" id="btn-tema"><svg class="icon" style="width:14px;height:14px;" id="icono-tema"><use id="icono-tema-use" href="#icon-moon"/></svg></button>
+        <button class="ticker-pill ticker-btn" onclick="alternarModoPrivacidad()" title="Modo privacidad" aria-label="Modo privacidad"><svg class="icon" style="width:14px;height:14px;" aria-hidden="true"><use href="#icon-eye"/></svg></button>
+        <button class="ticker-pill ticker-btn" onclick="alternarTema()" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro" id="btn-tema"><svg class="icon" style="width:14px;height:14px;" id="icono-tema" aria-hidden="true"><use id="icono-tema-use" href="#icon-moon"/></svg></button>
     </div>
     <div class="topnav-inner">
         <div class="topnav-zona-izq">
@@ -184,14 +184,14 @@
 
 <div class="command-overlay" id="command-overlay" onclick="if(event.target===this) cerrarComando()">
     <div class="command-modal">
-        <input type="text" id="command-input" class="command-input" placeholder="Buscar publicación, ir a una sección..." autocomplete="off">
+        <input type="text" id="command-input" class="command-input" placeholder="Buscar publicación, ir a una sección..." aria-label="Buscar publicación o ir a una sección" autocomplete="off">
         <div class="command-results" id="command-results"></div>
         <div class="command-footer"><span><kbd>Enter</kbd>ir</span><span><kbd>Esc</kbd>cerrar</span></div>
     </div>
 </div>
 
 <div id="hud-fijo" class="hud-fijo">
-    <button type="button" class="hud-toggle" onclick="alternarHud()" title="Mostrar/ocultar resumen rápido"><svg class="icon" style="width:15px;height:15px;"><use href="#icon-map-pin"/></svg></button>
+    <button type="button" class="hud-toggle" onclick="alternarHud()" title="Mostrar/ocultar resumen rápido" aria-label="Mostrar/ocultar resumen rápido"><svg class="icon" style="width:15px;height:15px;" aria-hidden="true"><use href="#icon-map-pin"/></svg></button>
     <div class="hud-contenido" id="hud-contenido" style="display:none;">
         <div class="hud-fila"><span class="hud-label">Facturado hoy</span><span class="hud-valor" id="hud-facturado">—</span></div>
         <div class="hud-fila"><span class="hud-label">Reclamos abiertos</span><span class="hud-valor" id="hud-reclamos">—</span></div>
@@ -201,7 +201,7 @@
 
 <div class="drawer-overlay" id="drawer-overlay" onclick="if(event.target===this) cerrarDrawer()">
     <div class="drawer-panel">
-        <div class="drawer-header"><div id="drawer-titulo-header">Cargando...</div><button type="button" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;" onclick="cerrarDrawer()" title="Cerrar"><svg class="icon" style="width:16px;height:16px;"><use href="#icon-x"/></svg></button></div>
+        <div class="drawer-header"><div id="drawer-titulo-header">Cargando...</div><button type="button" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;" onclick="cerrarDrawer()" title="Cerrar" aria-label="Cerrar"><svg class="icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#icon-x"/></svg></button></div>
         <div class="drawer-tabs">
             <button class="drawer-tab active" data-tab="info" onclick="cambiarTabDrawer('info')">Info & Precio</button>
             <button class="drawer-tab" data-tab="ficha" onclick="cambiarTabDrawer('ficha')">Ficha Técnica</button>
@@ -228,12 +228,12 @@
     </div>
 </div>
 
-<button class="chat-fab" onclick="toggleChat()" title="Consultar con Asistente IA"><svg class="icon" style="width:22px;height:22px;"><use href="#icon-chat"/></svg></button>
+<button class="chat-fab" onclick="toggleChat()" title="Consultar con Asistente IA" aria-label="Consultar con Asistente IA"><svg class="icon" style="width:22px;height:22px;" aria-hidden="true"><use href="#icon-chat"/></svg></button>
 <div class="chat-window" id="chat-window">
-    <div class="chat-header"><span>Asistente de Operaciones</span><span style="cursor:pointer;" onclick="toggleChat()"><svg class="icon" style="width:15px;height:15px;"><use href="#icon-x"/></svg></span></div>
+    <div class="chat-header"><span>Asistente de Operaciones</span><button type="button" style="background:none;border:none;cursor:pointer;color:inherit;padding:2px;display:inline-flex;" onclick="toggleChat()" title="Cerrar" aria-label="Cerrar chat"><svg class="icon" style="width:15px;height:15px;" aria-hidden="true"><use href="#icon-x"/></svg></button></div>
     <div class="chat-body" id="chat-body"><div class="chat-msg-bot">¡Hola! Estoy conectado a tu base de datos de Mercado Libre. Preguntame sobre ventas de hoy, rentabilidad, talles o inventario.</div></div>
     <div class="chat-footer">
-        <input type="text" id="chat-input" placeholder="Escribí tu consulta..." onkeydown="if(event.key==='Enter') enviarMensajeIA()">
+        <input type="text" id="chat-input" placeholder="Escribí tu consulta..." aria-label="Escribí tu consulta para el asistente" onkeydown="if(event.key==='Enter') enviarMensajeIA()">
         <button class="btn btn-primary" onclick="enviarMensajeIA()">Enviar</button>
     </div>
 </div>
@@ -283,8 +283,8 @@
     <div class="menu-lateral-panel" id="menu-lateral-panel">
         <div class="menu-lateral-header">
             <span class="menu-lateral-titulo">Menú</span>
-            <button type="button" class="menu-lateral-cerrar" onclick="cerrarMenuLateral()" title="Cerrar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <button type="button" class="menu-lateral-cerrar" onclick="cerrarMenuLateral()" title="Cerrar" aria-label="Cerrar menú">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
 

@@ -32,7 +32,7 @@
 </div>
 
 <!-- ── Resultado de los últimos 14 días: FACTURADO − COSTOS = MARGEN ─────── -->
-<div class="panel panel-colapsable" id="panel-pl-14d" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
+<div class="panel panel-colapsable" id="panel-pl-14d" role="button" tabindex="0" aria-expanded="false" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
     <div class="panel-title">
         <span>Resultado de los últimos 14 días</span>
         <span class="chevron-colapsable">▾</span>
@@ -92,7 +92,7 @@
     <div class="flex-gap" id="checks-widgets-dashboard" style="flex-wrap:wrap;"></div>
 </div>
 
-<div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
+<div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" role="button" tabindex="0" aria-expanded="true" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
     <div class="panel-title">
         <span>Completá tu perfil <span class="text-muted" id="checklist-contador" style="font-size:0.8em; font-weight:400;"></span></span>
         <span class="chevron-colapsable">▾</span>
@@ -127,7 +127,7 @@
 {% endif %}
 
 {% if mono %}
-<div class="panel panel-colapsable {% if mono.alertas %}abierto{% endif %}" id="panel-monotributo" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
+<div class="panel panel-colapsable {% if mono.alertas %}abierto{% endif %}" id="panel-monotributo" role="button" tabindex="0" aria-expanded="{{ 'true' if mono.alertas else 'false' }}" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
     <div class="panel-title">
         <span>
             <svg class="icon" style="width:16px;height:16px;margin-right:6px;vertical-align:middle;color:var(--accent-gold);"><use href="#icon-file-text"/></svg>

@@ -252,7 +252,7 @@
 {% endif %}
 
 {% if evolucion_mensual %}
-<div class="panel panel-colapsable" id="panel-evolucion-mensual" onclick="if(event.target.closest('.contenido-colapsable')) return; _abrirPanelConGrafico(this, _iniciarChartEvolucionMensual);">
+<div class="panel panel-colapsable" id="panel-evolucion-mensual" role="button" tabindex="0" aria-expanded="false" onclick="if(event.target.closest('.contenido-colapsable')) return; _abrirPanelConGrafico(this, _iniciarChartEvolucionMensual);">
     <div class="panel-title">
         <span>Evolución Mensual — Costos vs. Resultado Neto</span>
         <span class="chevron-colapsable">▾</span>
@@ -303,7 +303,7 @@
 </div>
 
 {% if pareto_ganancia %}
-<div class="panel panel-colapsable" id="panel-pareto-ganancia" onclick="if(event.target.closest('.contenido-colapsable')) return; _abrirPanelConGrafico(this, _iniciarChartPareto);">
+<div class="panel panel-colapsable" id="panel-pareto-ganancia" role="button" tabindex="0" aria-expanded="false" onclick="if(event.target.closest('.contenido-colapsable')) return; _abrirPanelConGrafico(this, _iniciarChartPareto);">
     <div class="panel-title">
         <span>Concentración de la Ganancia</span>
         <span class="chevron-colapsable">▾</span>

@@ -47,7 +47,7 @@
     </div>
 </div>
 
-<div class="panel panel-colapsable" id="panel-riesgo-stock" style="display:none;" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
+<div class="panel panel-colapsable" id="panel-riesgo-stock" style="display:none;" role="button" tabindex="0" aria-expanded="false" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
     <div class="panel-title">
         <span><svg class="icon"><use href="#icon-alert"/></svg>Alerta de Agotamiento Próximo (<span id="contador-riesgo-stock">0</span>)</span>
         <span class="chevron-colapsable">▾</span>
