@@ -15,7 +15,7 @@ GRUPOS_NAV = {
     "catalogo": {
         "label": "Catálogo",
         "paginas": [
-            {"nav_key": "stock", "label": "Stock", "href": "/", "endpoint": "landing"},
+            {"nav_key": "stock", "label": "Stock", "href": "/stock", "endpoint": "stock_vista"},
             {"nav_key": "stock_masivo", "label": "Stock Masivo", "href": "/stock_masivo", "endpoint": "stock_masivo_vista"},
             {"nav_key": "despacho", "label": "Despacho", "href": "/despacho", "endpoint": "despacho_vista"},
             {"nav_key": "preguntas", "label": "Preguntas", "href": "/preguntas", "endpoint": "preguntas_vista"},

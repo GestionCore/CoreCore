@@ -56,6 +56,7 @@
                 Talle {{ p.talle }} · {{ p.cantidad }} u.
                 {% if p.comprador_nombre %} · {{ p.comprador_nombre }}{% endif %}
                 {% if p.comprador_nickname %} · <span title="Usuario de MeLi">@{{ p.comprador_nickname }}</span>{% endif %}
+                · <span class="badge {% if p.tipo_envio == 'Flex' %}badge-info{% else %}badge-neutral{% endif %}" style="font-size:0.85em;">{{ p.tipo_envio }}</span>
                 {% if p.etiqueta_impresa and not p.despachado %} · <span class="badge badge-warning" style="font-size:0.85em;" title="La etiqueta ya se imprimió en MeLi">Etiqueta ya impresa</span>{% endif %}
             </div>
         </div>

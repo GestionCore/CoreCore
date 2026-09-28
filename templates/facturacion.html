@@ -10,9 +10,10 @@
 
 <div class="panel">
     <div class="panel-title">Elegir período</div>
+    {% if periodos %}
     <form action="/facturacion" method="GET" class="filter-row">
         <div class="field-group" style="min-width:220px;">
-            <label class="field-label">Período</label>
+            <label class="field-label">Período de facturación de MeLi</label>
             <select name="key" onchange="this.form.submit()">
                 {% for p in periodos %}
                 <option value="{{ p.key }}" {% if p.key == key_seleccionada %}selected{% endif %}>{{ p.date_from }} a {{ p.date_to }}{% if p.en_curso %} (en curso){% endif %}</option>
@@ -20,6 +21,9 @@
             </select>
         </div>
     </form>
+    {% else %}
+    <div class="alert-empty">No pudimos traer tus períodos de facturación de Mercado Libre en este momento. Probá recargar en un rato.</div>
+    {% endif %}
 </div>
 
 <div class="panel" style="text-align:center; padding:32px 26px;">

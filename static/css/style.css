@@ -440,10 +440,15 @@ select option { background: #14162a; color: var(--text-primary); }
 }
 .alert-empty::before {
     border: 2px solid var(--accent-primary-dim);
-    animation: radarGiro 3s linear infinite;
+    /* 2 vueltas y para — un giro infinito acá se lee como "sigue
+       cargando" para siempre, aunque el estado ya esté resuelto
+       (confirmado vacío, no pendiente de traer datos). */
+    animation: radarGiro 3s linear 2;
+    animation-fill-mode: forwards;
 }
 .alert-empty::after {
-    box-shadow: 0 0 0 0 var(--accent-primary-glow); animation: radarPulso 2.4s ease-out infinite;
+    box-shadow: 0 0 0 0 var(--accent-primary-glow); animation: radarPulso 2.4s ease-out 2;
+    animation-fill-mode: forwards;
 }
 @keyframes radarGiro {
     0% { border-top-color: var(--accent-cyan); transform: rotate(0deg); }

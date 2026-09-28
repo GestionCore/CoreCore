@@ -901,7 +901,8 @@ async function marcarCurvaRota() {
 // con el mouse. También suma comandos de ACCIÓN (no solo ir-a-una-página):
 // esos llevan `accion` (nombre de función global) en vez de `url`.
 const ATAJOS_COMANDO = [
-    { alias: ['stk', 'stock', 'inicio', 'home'], texto: 'Ir a Stock', url: '/' },
+    { alias: ['stk', 'stock'], texto: 'Ir a Stock', url: '/stock' },
+    { alias: ['inicio', 'home'], texto: 'Ir a Inicio', url: '/' },
     { alias: ['masivo', 'stockm'], texto: 'Ir a Stock Masivo', url: '/stock_masivo' },
     { alias: ['desp', 'despacho'], texto: 'Ir a Despacho', url: '/despacho' },
     { alias: ['dash', 'dashboard', 'resumen'], texto: 'Ir a Dashboard', url: '/dashboard' },

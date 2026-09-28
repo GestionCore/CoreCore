@@ -142,7 +142,17 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
                 id_reclamo = str(id_reclamo)
                 status = c.get("status")
                 stage = c.get("stage")
-                razon = _traducir_motivo(c.get("reason_id") or (c.get("resolution", {}) or {}).get("reason"))
+                reason_id_crudo = c.get("reason_id") or (c.get("resolution", {}) or {}).get("reason")
+                razon = _traducir_motivo(reason_id_crudo)
+                if reason_id_crudo and reason_id_crudo not in _MOTIVOS_ES:
+                    # El mapeo de motivos (_MOTIVOS_ES) se armó sin poder
+                    # probarlo contra reclamos reales — si esto aparece en
+                    # producción, es la señal de que MeLi está devolviendo
+                    # un reason_id que no contemplamos todavía. Logueamos
+                    # el crudo para poder agregarlo al diccionario con el
+                    # texto real, en vez de mostrar la traducción genérica
+                    # (Title Case del código) sin verificar que sea correcta.
+                    print(f"[DevolucionesSync] ⚠️ reason_id sin mapear en reclamo {id_reclamo}: '{reason_id_crudo}' (type={c.get('type')}, stage={stage}) — revisar y sumar a _MOTIVOS_ES")
 
                 cursor.execute("""
                     INSERT INTO incidencias_posventa (cuenta_id, id_reclamo, id_orden, tipo, motivo, estado, monto_retenido, fecha)

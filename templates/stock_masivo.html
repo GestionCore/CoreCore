@@ -4,10 +4,15 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Gestión de Stock Masiva</h1>
-        <div class="page-subtitle">Editá el depósito de varias publicaciones a la vez, agrupadas por modelo</div>
+        <div class="page-subtitle">
+            {% if modelos %}Editá el depósito de {{ modelos|length }} modelo{% if modelos|length != 1 %}s{% endif %} a la vez{% else %}Editá el depósito de varias publicaciones a la vez, agrupadas por modelo{% endif %}
+        </div>
     </div>
 </div>
 
+{% if not modelos %}
+<div class="panel"><div class="alert-empty">Todavía no hay publicaciones sincronizadas para mostrar acá. Probá "Sincronizar Todo" en la barra de arriba.</div></div>
+{% else %}
 <div class="panel">
     <div class="field-group">
         <label class="field-label">Buscar (modelo, color o talle — ej: "celeste l")</label>
@@ -20,7 +25,7 @@
     <div id="acordeon-modelos">
         <div id="acordeon-sin-resultados" class="alert-empty" style="display:none;">No encontramos ningún modelo con ese talle o color.</div>
         {% for m in modelos %}
-        <div class="panel acordeon-item" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}">
+        <div class="panel acordeon-item abierto" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}">
             <div class="acordeon-header" onclick="toggleAcordeon(this)">
                 <div class="row-flex">
                     {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="">{% endif %}
@@ -31,7 +36,7 @@
                 </div>
                 <span class="acordeon-chevron">▾</span>
             </div>
-            <div class="acordeon-body" style="display:none;">
+            <div class="acordeon-body" style="display:block;">
                 <table class="data-table">
                     <thead><tr><th>Talle</th><th>Estado</th><th class="num">Depósito</th><th class="num">FULL</th></tr></thead>
                     <tbody>
@@ -59,6 +64,7 @@
     </div>
     <button type="submit" class="btn btn-primary">Aplicar cambios a Mercado Libre</button>
 </form>
+{% endif %}
 
 <script>
     function toggleAcordeon(header) {

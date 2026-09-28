@@ -211,6 +211,26 @@ def landing():
     return render_template("index.html", productos=productos, stats=stats, active_nav="stock")
 
 
+@app.route("/stock")
+@login_requerido
+def stock_vista():
+    """
+    Página fija de Stock — separada de "/" a propósito. "/" ("landing")
+    hace un redirect "inteligente" según `pantalla_preferida` (puede
+    mandar a Dashboard o a Métricas en vez de mostrar Stock), así que el
+    link "Stock" del nav no puede apuntar ahí: si el usuario eligió
+    Dashboard como pantalla preferida en el onboarding, cada click en
+    "Stock" terminaba devolviéndolo al Dashboard en vez de mostrar el
+    catálogo. Esta ruta siempre muestra Stock, sin importar la preferencia.
+    """
+    try:
+        token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return redirect(url_for("reconectar"))
+    productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id, g.cuenta_id)
+    return render_template("index.html", productos=productos, stats=stats, active_nav="stock")
+
+
 @app.route("/exportar_planilla_stock")
 @login_requerido
 def exportar_planilla_stock():
@@ -1800,7 +1820,12 @@ def despacho_vista():
         flex_habilitado = logistica.tiene_flex_habilitado(access_token, "MLA", seller_id)
 
     offset_horas = 24 - hora_corte
-    paquetes, total, listos, cantidad_shipments = despacho_mod.obtener_paquetes_del_dia(g.usuario_id, g.cuenta_id, access_token, fecha, offset_horas)
+    paquetes, total, listos, cantidad_shipments, tiene_flex = despacho_mod.obtener_paquetes_del_dia(g.usuario_id, g.cuenta_id, access_token, fecha, offset_horas)
+    # El chequeo de la API de "¿tenés Flex?" puede fallar por un hipo
+    # transitorio y quedar cacheado horas (ver logistica.py) — si hoy
+    # mismo hay al menos un envío real de Flex en la lista, eso pesa más
+    # que la respuesta de esa API: es evidencia directa de que sí lo tiene.
+    flex_habilitado = flex_habilitado or tiene_flex
 
     return render_template(
         "despacho.html", paquetes=paquetes, fecha=fecha, total=total, listos=listos,

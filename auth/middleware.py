@@ -36,35 +36,44 @@ def login_requerido(vista):
         g.usuario_id = usuario_id
         g.cuenta_id = cuenta_id
 
-        if request.endpoint not in _PERMITIDAS_DURANTE_ONBOARDING:
-            with db.conexion_usuario(usuario_id) as conexion:
-                cursor = conexion.cursor()
-                cursor.execute("SELECT onboarding_completo FROM usuarios WHERE id = %s", (usuario_id,))
-                fila_onb = cursor.fetchone()
-            if fila_onb and not fila_onb[0]:
-                return redirect(url_for("onboarding_vista"))
+        necesita_onboarding = request.endpoint not in _PERMITIDAS_DURANTE_ONBOARDING
+        necesita_sync = request.endpoint not in _PERMITIDAS_DURANTE_SINCRONIZACION
+        necesita_plan = request.endpoint not in _PERMITIDAS_SIN_SUSCRIPCION
 
-        if request.endpoint not in _PERMITIDAS_DURANTE_SINCRONIZACION:
-            with db.conexion_usuario(usuario_id) as conexion:
+        # Los 3 chequeos de arriba antes abrían su propia conexión y hacían
+        # su propio viaje de ida y vuelta a Postgres, en serie — 3 round
+        # trips (contra el pooler de SESIÓN de Supabase, más lento que uno
+        # de transacción) en CADA carga de página, antes de que la ruta
+        # ni siquiera arrancara a traer sus propios datos. Para la mayoría
+        # de las páginas (todos los 3 chequeos aplican) se combinan acá en
+        # una sola consulta/conexión — mismos datos, mismo criterio de
+        # redirect, un solo viaje en vez de tres.
+        if necesita_onboarding or necesita_sync or necesita_plan:
+            with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
                 cursor = conexion.cursor()
-                cursor.execute("SELECT sincronizacion_inicial_completa FROM cuentas_meli WHERE id = %s", (cuenta_id,))
+                cursor.execute("""
+                    SELECT u.onboarding_completo, u.plan, u.trial_termina_en, cm.sincronizacion_inicial_completa
+                    FROM usuarios u
+                    LEFT JOIN cuentas_meli cm ON cm.id = %s
+                    WHERE u.id = %s
+                """, (cuenta_id, usuario_id))
                 fila = cursor.fetchone()
-            if fila and not fila[0]:
-                return render_template("sincronizando.html")
 
-        # Verificar suscripción activa — trial vencido o plan cancelado → pantalla de planes
-        if request.endpoint not in _PERMITIDAS_SIN_SUSCRIPCION:
-            with db.conexion_usuario(usuario_id) as conexion:
-                cursor = conexion.cursor()
-                cursor.execute("SELECT plan, trial_termina_en FROM usuarios WHERE id = %s", (usuario_id,))
-                fila_plan = cursor.fetchone()
-            if fila_plan:
-                plan_actual, trial_termina_en = fila_plan
-                if plan_actual == "cancelado":
-                    return redirect(url_for("planes_vista"))
-                if plan_actual == "trial" and trial_termina_en:
-                    if datetime.now(timezone.utc) > trial_termina_en:
+            if fila:
+                onboarding_completo, plan_actual, trial_termina_en, sync_completa = fila
+
+                if necesita_onboarding and not onboarding_completo:
+                    return redirect(url_for("onboarding_vista"))
+
+                if necesita_sync and sync_completa is not None and not sync_completa:
+                    return render_template("sincronizando.html")
+
+                if necesita_plan:
+                    if plan_actual == "cancelado":
                         return redirect(url_for("planes_vista"))
+                    if plan_actual == "trial" and trial_termina_en:
+                        if datetime.now(timezone.utc) > trial_termina_en:
+                            return redirect(url_for("planes_vista"))
 
         # Racha de días activo: un flag de sesión evita pegarle a la base
         # en cada request — solo se actualiza la primera vez que se entra
