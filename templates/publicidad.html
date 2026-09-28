@@ -27,7 +27,7 @@
 
 <div class="panel" style="text-align:center; padding:34px 26px;">
     <div class="stat-chip-label" style="margin-bottom:6px;">Retorno de la Publicidad (ROAS)</div>
-    <div class="hero-number">{{ roas_general if roas_general is not none else '—' }}{% if roas_general %}x{% endif %}</div>
+    <div class="hero-number {% if te_deja_ganancia is not none %}{{ 'acento-success' if te_deja_ganancia else 'acento-danger' }}{% endif %}">{{ roas_general if roas_general is not none else '—' }}{% if roas_general %}x{% endif %}</div>
     <div class="text-muted" style="font-size:0.85em; margin-top:6px;">
         {% if roas_general is not none %}
         Por cada $1 en pauta, volvieron ${{ roas_general }} en ventas atribuidas — invertiste ${{ costo_total_formateado }} y generó ${{ ventas_atribuidas_formateado }}.

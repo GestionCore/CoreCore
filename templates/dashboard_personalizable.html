@@ -413,7 +413,11 @@
             grid.appendChild(w);
             fetch('/api/dashboard/costos_resumen').then(r => r.json()).then(d => {
                 if (d.margen_promedio === null) { w.innerHTML = '<div class="text-muted">Sin datos de costo cargados todavía.</div>'; return; }
-                w.innerHTML = `<div class="stat-chip-label">Margen Promedio del Catálogo</div><div class="hero-number" style="font-size:1.9em;">${d.margen_promedio}%</div>
+                // Mismos umbrales que la tabla de márgenes de Ganancia Real
+                // (≥15% ok, 0-15% al límite, <0% pierde) — para que el mismo
+                // número signifique lo mismo en toda la app.
+                const acentoMargen = d.margen_promedio >= 15 ? 'acento-success' : (d.margen_promedio >= 0 ? 'acento-warning' : 'acento-danger');
+                w.innerHTML = `<div class="stat-chip-label">Margen Promedio del Catálogo</div><div class="hero-number ${acentoMargen}" style="font-size:1.9em;">${d.margen_promedio}%</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">Más ajustado: ${d.peor.titulo.slice(0,30)}... (${d.peor.margen_pct}%)</div>`;
             });
         }
@@ -422,7 +426,7 @@
             const w = crearTarjetaWidget('stock_riesgo', '/');
             grid.appendChild(w);
             fetch('/api/quiebre_stock').then(r => r.json()).then(d => {
-                w.innerHTML = `<div class="stat-chip-label">Talles en Riesgo de Quiebre</div><div class="hero-number" style="font-size:1.9em;">${d.length}</div>
+                w.innerHTML = `<div class="stat-chip-label">Talles en Riesgo de Quiebre</div><div class="hero-number ${d.length > 0 ? 'acento-warning' : 'acento-success'}" style="font-size:1.9em;">${d.length}</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.length > 0 ? 'Revisar antes de perder ventas' : 'Todo en orden'}</div>`;
             });
         }

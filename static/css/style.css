@@ -177,15 +177,25 @@ a { color: inherit; text-decoration: none; }
 .icon { width: 18px; height: 18px; flex-shrink: 0; }
 .stat-chip-icon { width: 22px; height: 22px; color: var(--accent-gold); margin-bottom: 10px; opacity: 0.9; }
 
-/* Cada variante de acento ahora tiñe de verdad su ícono, borde y sombra al
-   pasar el mouse — antes todas las tarjetas salían con el ícono dorado
-   sin importar la clase que tuvieran. */
-.stat-chip.accent-gold .stat-chip-icon { color: var(--accent-gold); }
-.stat-chip.accent-denim .stat-chip-icon, .stat-chip.accent-primary .stat-chip-icon { color: var(--accent-primary); }
-.stat-chip.accent-success .stat-chip-icon { color: var(--success); }
-.stat-chip.accent-danger .stat-chip-icon { color: var(--danger); }
+/* Cada variante de acento tiñe su ícono, borde, sombra Y el número en sí
+   — antes (bug real, no solo estético) solo el ícono chiquito de arriba
+   se coloreaba; el .stat-chip-value, que es el dato que el ojo realmente
+   busca primero, quedaba SIEMPRE en el mismo blanco neutro sin importar
+   si la tarjeta era accent-success, accent-danger, etc. Resultado: casi
+   dos tercios de los stat-chips de la app (62 de 94) ya tenían la
+   intención de color puesta en el HTML y nunca llegaba a mostrarse —
+   toda la app se leía "de un solo color" aunque el dato de que algo es
+   bueno/malo/neutro ya estaba ahí, solo no se veía. */
+.stat-chip.accent-gold .stat-chip-icon, .stat-chip.accent-gold .stat-chip-value { color: var(--accent-gold); }
+.stat-chip.accent-denim .stat-chip-icon, .stat-chip.accent-primary .stat-chip-icon,
+.stat-chip.accent-denim .stat-chip-value, .stat-chip.accent-primary .stat-chip-value { color: var(--accent-primary); }
+.stat-chip.accent-success .stat-chip-icon, .stat-chip.accent-success .stat-chip-value { color: var(--success); }
+.stat-chip.accent-danger .stat-chip-icon, .stat-chip.accent-danger .stat-chip-value { color: var(--danger); }
 .stat-chip.accent-warning .stat-chip-icon, .stat-chip.accent-warning .stat-chip-value { color: var(--semantic-warning); }
 .stat-chip.accent-warning { border-color: rgba(232, 130, 46, 0.3); }
+/* Las tarjetas SIN variante de acento (conteos neutros, "total histórico",
+   etc.) siguen con .stat-chip-value en blanco por default — a propósito:
+   no todo dato necesita un color, solo el que sí importa resaltar. */
 .stat-chip.accent-gold:hover { border-color: rgba(251, 191, 36, 0.4); box-shadow: var(--shadow-glow-gold); }
 .stat-chip.accent-denim:hover, .stat-chip.accent-primary:hover { border-color: rgba(176, 107, 255, 0.4); box-shadow: var(--shadow-glow-primary); }
 .stat-chip.accent-warning:hover { border-color: rgba(232, 130, 46, 0.5); box-shadow: 0 0 32px -4px rgba(232, 130, 46, 0.35); }
