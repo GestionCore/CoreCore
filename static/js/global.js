@@ -571,7 +571,7 @@ async function enviarMensajeCostosChat(evento) {
             _agregarBurbujaCostosChat(texto, false);
             _costosChatHistorial.push({ role: 'assistant', content: JSON.stringify(data) });
         } else if (data.accion === 'confirmar') {
-            _mostrarPropuestaCostosChat(data);
+            _mostrarPropuestaCostosChat(data.gastos || []);
         }
     } catch (e) {
         _agregarBurbujaCostosChat('No pude conectar — intentá de nuevo en un momento.', false);
@@ -582,16 +582,20 @@ async function enviarMensajeCostosChat(evento) {
     return false;
 }
 
-function _mostrarPropuestaCostosChat(propuesta) {
+function _mostrarPropuestaCostosChat(gastos) {
     const cont = document.getElementById('costos-chat-propuesta');
-    const tipoTexto = propuesta.recurrente ? `Recurrente desde ${propuesta.fecha_desde}` : `Único, el ${propuesta.fecha_desde}`;
+    const filas = gastos.map(propuesta => {
+        const tipoTexto = propuesta.recurrente ? `Recurrente desde ${propuesta.fecha_desde}` : `Único, el ${propuesta.fecha_desde}`;
+        return `<div style="font-size:0.9em; line-height:1.7; color:var(--text-secondary); padding:6px 0; border-top:1px solid var(--glass-border);">
+            <strong style="color:var(--text-primary);">${propuesta.concepto}</strong> — $${Number(propuesta.monto).toLocaleString('es-AR')}
+            — ${propuesta.categoria === 'fijo' ? 'Fijo' : 'Variable'} — ${tipoTexto}
+        </div>`;
+    }).join('');
+    const titulo = gastos.length > 1 ? `Voy a cargar estos ${gastos.length} gastos:` : 'Voy a cargar:';
     cont.innerHTML = `
         <div class="panel" style="border-color:var(--accent-primary); margin:0 0 14px;">
-            <div style="font-weight:600; margin-bottom:8px;">Voy a cargar:</div>
-            <div style="font-size:0.9em; line-height:1.7; color:var(--text-secondary);">
-                <strong style="color:var(--text-primary);">${propuesta.concepto}</strong> — $${Number(propuesta.monto).toLocaleString('es-AR')}
-                — ${propuesta.categoria === 'fijo' ? 'Fijo' : 'Variable'} — ${tipoTexto}
-            </div>
+            <div style="font-weight:600; margin-bottom:4px;">${titulo}</div>
+            ${filas}
             <div style="display:flex; gap:10px; margin-top:14px;">
                 <button type="button" class="btn btn-denim" onclick="confirmarPropuestaCostosChat()">Confirmar</button>
                 <button type="button" class="btn btn-secondary" onclick="corregirPropuestaCostosChat()">Corregir</button>
@@ -599,16 +603,16 @@ function _mostrarPropuestaCostosChat(propuesta) {
         </div>
     `;
     cont.style.display = 'block';
-    cont.dataset.propuesta = JSON.stringify(propuesta);
+    cont.dataset.propuesta = JSON.stringify(gastos);
 }
 
 async function confirmarPropuestaCostosChat() {
     const cont = document.getElementById('costos-chat-propuesta');
-    const propuesta = JSON.parse(cont.dataset.propuesta);
+    const propuestas = JSON.parse(cont.dataset.propuesta);
     try {
         const resp = await fetch('/api/costos_chat/confirmar', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ propuesta })
+            body: JSON.stringify({ propuestas })
         });
         const data = await resp.json();
         if (data.ok) {
@@ -839,16 +843,26 @@ function _posicionarTooltipTicker(el, ancla) {
 function mostrarTooltipSalud(ancla) {
     const data = window._ultimoTickerData;
     const el = _crearTooltipTicker();
-    if (!data || data.salud_score === undefined) { el.innerHTML = 'Cargando...'; }
-    else {
+    if (!data || data.salud_score === undefined) {
+        el.innerHTML = '<div class="tooltip-ticker-cuerpo">Cargando...</div>';
+        el.style.removeProperty('--tooltip-acento');
+    } else {
         const detalle = data.salud_detalle || [];
+        const estilo = getComputedStyle(document.documentElement);
+        const color = data.salud_score >= 80 ? estilo.getPropertyValue('--success').trim()
+            : data.salud_score >= 65 ? estilo.getPropertyValue('--semantic-warning').trim()
+            : estilo.getPropertyValue('--danger').trim();
+        el.style.setProperty('--tooltip-acento', color);
         el.innerHTML = `
-            <div class="tooltip-ticker-titulo">Score de salud: ${data.salud_score}/100 (${data.salud_etiqueta})</div>
-            ${detalle.length ? `
-                <div class="tooltip-ticker-sub">En qué se basó:</div>
-                <ul class="tooltip-ticker-lista">${detalle.map(d => `<li>${d}</li>`).join('')}</ul>
-                <div class="tooltip-ticker-sub">Resolviendo estos puntos, el score sube solo.</div>
-            ` : `<div class="tooltip-ticker-sub">Sin descuentos activos — todo en orden.</div>`}
+            <div class="tooltip-ticker-acento"></div>
+            <div class="tooltip-ticker-cuerpo">
+                <div class="tooltip-ticker-titulo">Score de salud: ${data.salud_score}/100 (${data.salud_etiqueta})</div>
+                ${detalle.length ? `
+                    <div class="tooltip-ticker-sub">En qué se basó:</div>
+                    <ul class="tooltip-ticker-lista">${detalle.map(d => `<li>${d}</li>`).join('')}</ul>
+                    <div class="tooltip-ticker-sub">Resolviendo estos puntos, el score sube solo.</div>
+                ` : `<div class="tooltip-ticker-sub">Sin descuentos activos — todo en orden.</div>`}
+            </div>
         `;
     }
     _posicionarTooltipTicker(el, ancla);
@@ -858,16 +872,19 @@ function mostrarTooltipSalud(ancla) {
 function mostrarTooltipVentas(ancla) {
     const data = window._ultimoTickerData;
     const el = _crearTooltipTicker();
-    if (!data) { el.innerHTML = 'Cargando...'; }
+    el.style.removeProperty('--tooltip-acento');
+    if (!data) { el.innerHTML = '<div class="tooltip-ticker-cuerpo">Cargando...</div>'; }
     else {
         const lista = data.ventas_hoy_detalle || [];
         el.innerHTML = `
-            <div class="tooltip-ticker-titulo">Ventas de hoy — $${data.facturado_hoy}</div>
-            ${lista.length ? `
-                <ul class="tooltip-ticker-lista">
-                    ${lista.map(v => `<li>${v.hora} — ${v.cantidad}× ${v.titulo.slice(0, 38)}${v.titulo.length > 38 ? '…' : ''} <strong>$${v.precio_formateado}</strong></li>`).join('')}
-                </ul>
-            ` : `<div class="tooltip-ticker-sub">Todavía no hay ventas registradas hoy.</div>`}
+            <div class="tooltip-ticker-cuerpo">
+                <div class="tooltip-ticker-titulo">Ventas de hoy — $${data.facturado_hoy}</div>
+                ${lista.length ? `
+                    <ul class="tooltip-ticker-lista">
+                        ${lista.map(v => `<li>${v.hora} — ${v.cantidad}× ${v.titulo.slice(0, 38)}${v.titulo.length > 38 ? '…' : ''} <strong>$${v.precio_formateado}</strong></li>`).join('')}
+                    </ul>
+                ` : `<div class="tooltip-ticker-sub">Todavía no hay ventas registradas hoy.</div>`}
+            </div>
         `;
     }
     _posicionarTooltipTicker(el, ancla);
@@ -1379,6 +1396,11 @@ document.addEventListener('DOMContentLoaded', () => {
     envolverIdsCopiables(document.body);
     inicializarComando();
     actualizarTicker();
+    // El HUD fijo solo pedía sus datos AL ABRIRSE — quedaba en "—" 5-6
+    // segundos justo cuando el usuario ya quería verlo. Se precarga acá,
+    // en segundo plano, apenas entra a cualquier pantalla, para que al
+    // hacer click el panel ya tenga los números listos.
+    cargarHud();
     revisarMensajeEnURL();
     marcarCurvaRota();
     cargarOportunidadesSeo();

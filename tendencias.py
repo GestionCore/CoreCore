@@ -33,6 +33,12 @@ _categoria_cache = {}
 
 
 def limpiar_titulo_modelo_local(titulo):
+    # productos_padre.titulo es nullable (puede quedar NULL si una
+    # sincronización se interrumpió a mitad de camino) — sin este guard,
+    # cualquier función de acá abajo que reciba un producto con título
+    # vacío tira un TypeError no capturado y tumba toda /tendencias.
+    if not titulo:
+        return ""
     t = re.sub(r'\b(talle|size)\s*[:#]?\s*(xxxl|xxl|xl|l|m|s|\d+)\b', '', titulo, flags=re.IGNORECASE)
     t = re.sub(r'\b(xxxl|xxl|xl|l|m|s)\b', '', t, flags=re.IGNORECASE)
     t = re.sub(r'\s+\d+\s*$', '', t)
@@ -243,16 +249,27 @@ def estimar_margen_categoria(access_token, category_id, precio_referencia, costo
     return resultado
 
 
+_cache_categorias_raiz = {}
+TTL_CATEGORIAS_RAIZ_SEGUNDOS = 24 * 3600  # las ~30 categorías raíz de MeLi casi no cambian
+
+
 def obtener_categorias_raiz(site_id="MLA"):
     """Categorías de primer nivel de MeLi — punto de partida para navegar ramas de cualquier rubro, no solo el propio."""
+    import time
+    ahora = time.time()
+    cacheado = _cache_categorias_raiz.get(site_id)
+    if cacheado and (ahora - cacheado["timestamp"]) < TTL_CATEGORIAS_RAIZ_SEGUNDOS:
+        return cacheado["data"]
     try:
         resp = meli_http.get(f"https://api.mercadolibre.com/sites/{site_id}/categories", timeout=8)
         if resp.status_code != 200:
-            return []
-        return [{"id": c["id"], "nombre": c["name"]} for c in resp.json()]
+            return cacheado["data"] if cacheado else []
+        resultado = [{"id": c["id"], "nombre": c["name"]} for c in resp.json()]
+        _cache_categorias_raiz[site_id] = {"data": resultado, "timestamp": ahora}
+        return resultado
     except Exception as e:
         print(f"[Tendencias] ⚠️ Error trayendo categorías raíz: {e}")
-        return []
+        return cacheado["data"] if cacheado else []
 
 
 def obtener_rama_categoria(category_id):
@@ -510,7 +527,7 @@ def cruzar_tendencias_con_catalogo(tendencias_relevantes, cursor):
     activos = cursor.fetchall()
     if not activos:
         return []
-    titulos_concatenados = " ".join(t.lower() for _, t in activos)
+    titulos_concatenados = " ".join(t.lower() for _, t in activos if t)
     oportunidades = []
     for t in tendencias_relevantes:
         termino = t.get("keyword", "").strip()
@@ -582,6 +599,8 @@ def calcular_seo_scores_catalogo(cursor, tendencias_relevantes):
     resultados = []
     vistos = set()
     for id_meli, titulo in cursor.fetchall():
+        if not titulo:
+            continue
         clave_modelo = limpiar_titulo_modelo_local(titulo)
         if clave_modelo in vistos:
             continue

@@ -125,32 +125,21 @@
 <div class="panel">
     <div class="panel-title">Campañas de Mercado Libre ({{ campanias|length }})</div>
     <table class="data-table only-desktop">
-        <thead><tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Vigencia</th><th>Cofinanciamiento</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Vigencia</th>{% if hay_cofinanciamiento %}<th>Cofinanciamiento</th>{% endif %}</tr></thead>
         <tbody>
             {% for c in campanias %}
             <tr>
-                <td style="font-family: var(--font-ui);">{{ c.name or c.id }}</td>
-                <td>
-                    <span class="badge badge-neutral">
-                        {% if c.type == 'MARKETPLACE_CAMPAIGN' %}Cofinanciada
-                        {% elif c.type == 'DEAL' %}Tradicional
-                        {% elif c.type == 'PRICE_MATCHING' %}Precios competitivos
-                        {% elif c.type == 'SMART' %}Cofinanciada automática
-                        {% elif c.type == 'LIGHTNING' %}Oferta relámpago
-                        {% else %}{{ c.type }}{% endif %}
-                    </span>
-                </td>
-                <td>{{ c.status }}</td>
-                <td class="text-muted">{{ c.start_date }} — {{ c.finish_date }}</td>
-                <td class="num">
-                    {% if c.benefits and c.benefits.meli_percent is defined %}
-                        MeLi {{ c.benefits.meli_percent }}% / Vos {{ c.benefits.seller_percent }}%
-                    {% else %}—{% endif %}
-                </td>
+                <td style="font-family: var(--font-ui);">{{ c.nombre }}</td>
+                <td><span class="badge badge-neutral">{{ c.tipo_texto }}</span></td>
+                <td><span class="badge {{ c.estado_clase }}">{{ c.estado_texto }}</span></td>
+                <td class="text-muted">{% if c.vigencia_desde %}{{ c.vigencia_desde }} — {{ c.vigencia_hasta or 'sin fecha de cierre' }}{% else %}—{% endif %}</td>
+                {% if hay_cofinanciamiento %}
+                <td class="num">{% if c.meli_percent is not none %}MeLi {{ c.meli_percent }}% / Vos {{ c.seller_percent }}%{% else %}—{% endif %}</td>
+                {% endif %}
             </tr>
             {% endfor %}
             {% if not campanias %}
-            <tr><td colspan="5" class="alert-empty">No hay campañas activas o invitaciones pendientes ahora mismo.</td></tr>
+            <tr><td colspan="{{ 5 if hay_cofinanciamiento else 4 }}" class="alert-empty">No hay campañas activas o invitaciones pendientes ahora mismo.</td></tr>
             {% endif %}
         </tbody>
     </table>

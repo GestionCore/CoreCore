@@ -108,6 +108,45 @@
                 </div>
             </div>
             {% endif %}
+            <nav class="topnav-links">
+                <a href="/dashboard" class="topnav-link {% if active_nav == 'dashboard' %}active{% endif %}" style="text-decoration:none;" id="tour-nav-dashboard"><svg class="icon"><use href="#icon-home"/></svg>Dashboard</a>
+                <div class="nav-dropdown {% if active_nav in ['stock','stock_masivo','despacho','preguntas'] %}active{% endif %}" id="tour-nav-catalogo">
+                    <button class="topnav-link nav-dropdown-toggle" type="button"><svg class="icon"><use href="#icon-grid"/></svg>Catálogo <span class="nav-chevron">▾</span></button>
+                    <div class="nav-dropdown-menu">
+                        <a href="/stock" class="nav-dropdown-item {% if active_nav == 'stock' %}active{% endif %}">Stock{% if session.get('mas_usado', {}).get('catalogo') == 'stock' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/stock_masivo" class="nav-dropdown-item {% if active_nav == 'stock_masivo' %}active{% endif %}">Stock Masivo{% if session.get('mas_usado', {}).get('catalogo') == 'stock_masivo' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/despacho" class="nav-dropdown-item {% if active_nav == 'despacho' %}active{% endif %}">Despacho{% if session.get('mas_usado', {}).get('catalogo') == 'despacho' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/preguntas" class="nav-dropdown-item {% if active_nav == 'preguntas' %}active{% endif %}"><svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-chat"/></svg>Preguntas{% if session.get('mas_usado', {}).get('catalogo') == 'preguntas' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown {% if active_nav in ['metricas','facturacion','costos','comparador_logistica','historial_precios','monotributo','ventas_manuales','calculadora','reporte_fiscal'] %}active{% endif %}" id="tour-nav-finanzas">
+                    <button class="topnav-link nav-dropdown-toggle" type="button"><svg class="icon"><use href="#icon-chart"/></svg>Finanzas <span class="nav-chevron">▾</span></button>
+                    <div class="nav-dropdown-menu">
+                        <a href="/metricas" class="nav-dropdown-item {% if active_nav == 'metricas' %}active{% endif %}">Ganancia Real{% if session.get('mas_usado', {}).get('finanzas') == 'metricas' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/facturacion" class="nav-dropdown-item {% if active_nav == 'facturacion' %}active{% endif %}">Facturación{% if session.get('mas_usado', {}).get('finanzas') == 'facturacion' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/costos" class="nav-dropdown-item {% if active_nav == 'costos' %}active{% endif %}">Costos{% if session.get('mas_usado', {}).get('finanzas') == 'costos' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/ventas_manuales" class="nav-dropdown-item {% if active_nav == 'ventas_manuales' %}active{% endif %}">Ventas fuera de MeLi{% if session.get('mas_usado', {}).get('finanzas') == 'ventas_manuales' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/historial_precios" class="nav-dropdown-item {% if active_nav == 'historial_precios' %}active{% endif %}">Historial de Precios{% if session.get('mas_usado', {}).get('finanzas') == 'historial_precios' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/calculadora" class="nav-dropdown-item {% if active_nav == 'calculadora' %}active{% endif %}"><svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-calculator"/></svg>Calculadora MeLi{% if session.get('mas_usado', {}).get('finanzas') == 'calculadora' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/reporte_fiscal" class="nav-dropdown-item {% if active_nav == 'reporte_fiscal' %}active{% endif %}"><svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-file-text"/></svg>Reporte Fiscal{% if session.get('mas_usado', {}).get('finanzas') == 'reporte_fiscal' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                    </div>
+                </div>
+                <div class="nav-dropdown {% if active_nav in ['promociones','tendencias','competencia','embudo_conversion','reputacion','publicidad','logros'] %}active{% endif %}" id="tour-nav-crecimiento">
+                    <button class="topnav-link nav-dropdown-toggle" type="button"><svg class="icon"><use href="#icon-percent"/></svg>Crecimiento<span id="nav-badge-incidencias" class="nav-badge" style="display:none;"></span> <span class="nav-chevron">▾</span></button>
+                    <div class="nav-dropdown-menu">
+                        <a href="/promociones" class="nav-dropdown-item {% if active_nav == 'promociones' %}active{% endif %}">Promociones{% if session.get('mas_usado', {}).get('crecimiento') == 'promociones' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/tendencias" class="nav-dropdown-item {% if active_nav == 'tendencias' %}active{% endif %}">Tendencias{% if session.get('mas_usado', {}).get('crecimiento') == 'tendencias' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/competencia" class="nav-dropdown-item {% if active_nav == 'competencia' %}active{% endif %}">Espía de Competencia{% if session.get('mas_usado', {}).get('crecimiento') == 'competencia' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/embudo_conversion" class="nav-dropdown-item {% if active_nav == 'embudo_conversion' %}active{% endif %}">Embudo de Conversión{% if session.get('mas_usado', {}).get('crecimiento') == 'embudo_conversion' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/reputacion" class="nav-dropdown-item {% if active_nav == 'reputacion' %}active{% endif %}">Reputación{% if session.get('mas_usado', {}).get('crecimiento') == 'reputacion' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/publicidad" class="nav-dropdown-item {% if active_nav == 'publicidad' %}active{% endif %}">Publicidad{% if session.get('mas_usado', {}).get('crecimiento') == 'publicidad' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
+                        <a href="/logros" class="nav-dropdown-item {% if active_nav == 'logros' %}active{% endif %}">
+                            <svg class="icon" style="width:14px;height:14px;"><use href="#icon-trophy"/></svg> Logros
+                            <span id="nav-badge-logros" class="nav-badge" style="display:none; margin-left:auto;"></span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
         </div>
         <button class="buscador-central" onclick="abrirComando()" type="button" id="tour-buscador">
             <svg class="icon" style="width:15px;height:15px;"><use href="#icon-search"/></svg>
@@ -115,45 +154,6 @@
             <kbd>Ctrl K</kbd>
         </button>
         <div class="topnav-zona-der">
-        <nav class="topnav-links">
-            <a href="/dashboard" class="topnav-link {% if active_nav == 'dashboard' %}active{% endif %}" style="text-decoration:none;" id="tour-nav-dashboard"><svg class="icon"><use href="#icon-home"/></svg>Dashboard</a>
-            <div class="nav-dropdown {% if active_nav in ['stock','stock_masivo','despacho','preguntas'] %}active{% endif %}" id="tour-nav-catalogo">
-                <button class="topnav-link nav-dropdown-toggle" type="button"><svg class="icon"><use href="#icon-grid"/></svg>Catálogo <span class="nav-chevron">▾</span></button>
-                <div class="nav-dropdown-menu">
-                    <a href="/stock" class="nav-dropdown-item {% if active_nav == 'stock' %}active{% endif %}">Stock{% if session.get('mas_usado', {}).get('catalogo') == 'stock' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/stock_masivo" class="nav-dropdown-item {% if active_nav == 'stock_masivo' %}active{% endif %}">Stock Masivo{% if session.get('mas_usado', {}).get('catalogo') == 'stock_masivo' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/despacho" class="nav-dropdown-item {% if active_nav == 'despacho' %}active{% endif %}">Despacho{% if session.get('mas_usado', {}).get('catalogo') == 'despacho' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/preguntas" class="nav-dropdown-item {% if active_nav == 'preguntas' %}active{% endif %}"><svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-chat"/></svg>Preguntas{% if session.get('mas_usado', {}).get('catalogo') == 'preguntas' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                </div>
-            </div>
-            <div class="nav-dropdown {% if active_nav in ['metricas','facturacion','costos','comparador_logistica','historial_precios','monotributo','ventas_manuales','calculadora','reporte_fiscal'] %}active{% endif %}" id="tour-nav-finanzas">
-                <button class="topnav-link nav-dropdown-toggle" type="button"><svg class="icon"><use href="#icon-chart"/></svg>Finanzas <span class="nav-chevron">▾</span></button>
-                <div class="nav-dropdown-menu">
-                    <a href="/metricas" class="nav-dropdown-item {% if active_nav == 'metricas' %}active{% endif %}">Ganancia Real{% if session.get('mas_usado', {}).get('finanzas') == 'metricas' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/facturacion" class="nav-dropdown-item {% if active_nav == 'facturacion' %}active{% endif %}">Facturación{% if session.get('mas_usado', {}).get('finanzas') == 'facturacion' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/costos" class="nav-dropdown-item {% if active_nav == 'costos' %}active{% endif %}">Costos{% if session.get('mas_usado', {}).get('finanzas') == 'costos' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/ventas_manuales" class="nav-dropdown-item {% if active_nav == 'ventas_manuales' %}active{% endif %}">Ventas fuera de MeLi{% if session.get('mas_usado', {}).get('finanzas') == 'ventas_manuales' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/historial_precios" class="nav-dropdown-item {% if active_nav == 'historial_precios' %}active{% endif %}">Historial de Precios{% if session.get('mas_usado', {}).get('finanzas') == 'historial_precios' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/calculadora" class="nav-dropdown-item {% if active_nav == 'calculadora' %}active{% endif %}"><svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-calculator"/></svg>Calculadora MeLi{% if session.get('mas_usado', {}).get('finanzas') == 'calculadora' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/reporte_fiscal" class="nav-dropdown-item {% if active_nav == 'reporte_fiscal' %}active{% endif %}"><svg class="icon" style="width:13px;height:13px;margin-right:4px;vertical-align:middle;"><use href="#icon-file-text"/></svg>Reporte Fiscal{% if session.get('mas_usado', {}).get('finanzas') == 'reporte_fiscal' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                </div>
-            </div>
-            <div class="nav-dropdown {% if active_nav in ['promociones','tendencias','competencia','embudo_conversion','reputacion','publicidad','logros'] %}active{% endif %}" id="tour-nav-crecimiento">
-                <button class="topnav-link nav-dropdown-toggle" type="button"><svg class="icon"><use href="#icon-percent"/></svg>Crecimiento<span id="nav-badge-incidencias" class="nav-badge" style="display:none;"></span> <span class="nav-chevron">▾</span></button>
-                <div class="nav-dropdown-menu">
-                    <a href="/promociones" class="nav-dropdown-item {% if active_nav == 'promociones' %}active{% endif %}">Promociones{% if session.get('mas_usado', {}).get('crecimiento') == 'promociones' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/tendencias" class="nav-dropdown-item {% if active_nav == 'tendencias' %}active{% endif %}">Tendencias{% if session.get('mas_usado', {}).get('crecimiento') == 'tendencias' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/competencia" class="nav-dropdown-item {% if active_nav == 'competencia' %}active{% endif %}">Espía de Competencia{% if session.get('mas_usado', {}).get('crecimiento') == 'competencia' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/embudo_conversion" class="nav-dropdown-item {% if active_nav == 'embudo_conversion' %}active{% endif %}">Embudo de Conversión{% if session.get('mas_usado', {}).get('crecimiento') == 'embudo_conversion' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/reputacion" class="nav-dropdown-item {% if active_nav == 'reputacion' %}active{% endif %}">Reputación{% if session.get('mas_usado', {}).get('crecimiento') == 'reputacion' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/publicidad" class="nav-dropdown-item {% if active_nav == 'publicidad' %}active{% endif %}">Publicidad{% if session.get('mas_usado', {}).get('crecimiento') == 'publicidad' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</a>
-                    <a href="/logros" class="nav-dropdown-item {% if active_nav == 'logros' %}active{% endif %}">
-                        <svg class="icon" style="width:14px;height:14px;"><use href="#icon-trophy"/></svg> Logros
-                        <span id="nav-badge-logros" class="nav-badge" style="display:none; margin-left:auto;"></span>
-                    </a>
-                </div>
-            </div>
-        </nav>
         <!-- Botón menú lateral -->
         <button type="button" class="btn-menu-lateral" onclick="abrirMenuLateral()" title="Menú" aria-label="Abrir menú lateral">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>

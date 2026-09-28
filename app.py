@@ -978,6 +978,8 @@ def promociones_vista():
 
     campanias = promociones_mod.obtener_promociones_usuario(access_token, seller_id) if seller_id else []
     campanias_activas = [c for c in campanias if c.get("status") in ("started", "active")]
+    campanias_vista = promociones_mod.formatear_campanias_para_vista(campanias_activas)
+    hay_cofinanciamiento = any(c["meli_percent"] is not None for c in campanias_vista)
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -1000,7 +1002,7 @@ def promociones_vista():
         promociones_por_vencer = promociones_mod.obtener_promociones_por_vencer(cursor)
 
     return render_template(
-        "promociones.html", campanias=campanias_activas, con_descuento=con_descuento,
+        "promociones.html", campanias=campanias_vista, hay_cofinanciamiento=hay_cofinanciamiento, con_descuento=con_descuento,
         catalogo=catalogo_promo, ofertas_relampago=[], combos_sugeridos=combos_sugeridos,
         impacto_promociones=impacto_promociones, sugerencias_promocion=sugerencias_promocion,
         promociones_por_vencer=promociones_por_vencer, active_nav="promociones"
@@ -1057,36 +1059,45 @@ def tendencias_vista():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        category_id, categoria_nombre = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            category_id, categoria_nombre = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
 
-        lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id)
-        relevantes = [t for t in lista if t.get("relevante")]
-        resto = [] if category_id else [t for t in lista if not t.get("relevante")]
+            lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id)
+            relevantes = [t for t in lista if t.get("relevante")]
+            resto = [] if category_id else [t for t in lista if not t.get("relevante")]
 
-        oportunidades = tendencias_mod.cruzar_tendencias_con_catalogo(relevantes, cursor)
-        terminos_oportunidad = {o["termino"]: o for o in oportunidades}
+            oportunidades = tendencias_mod.cruzar_tendencias_con_catalogo(relevantes, cursor)
+            terminos_oportunidad = {o["termino"]: o for o in oportunidades}
 
-        canibalismo = tendencias_mod.detectar_canibalismo(cursor)
+            canibalismo = tendencias_mod.detectar_canibalismo(cursor)
 
-        keywords_de_hoy = [t.get("keyword") for t in lista if t.get("keyword")]
-        emergentes = tendencias_mod.registrar_y_detectar_emergentes(cursor, g.cuenta_id, keywords_de_hoy)
+            keywords_de_hoy = [t.get("keyword") for t in lista if t.get("keyword")]
+            emergentes = tendencias_mod.registrar_y_detectar_emergentes(cursor, g.cuenta_id, keywords_de_hoy)
 
-        seo_scores = tendencias_mod.calcular_seo_scores_catalogo(cursor, relevantes)
-        coincide_con_competencia = tendencias_mod.cruzar_tendencias_con_competencia(relevantes, cursor)
-        calendario_estacional = tendencias_mod.obtener_calendario_estacional()
+            seo_scores = tendencias_mod.calcular_seo_scores_catalogo(cursor, relevantes)
+            coincide_con_competencia = tendencias_mod.cruzar_tendencias_con_competencia(relevantes, cursor)
+            calendario_estacional = tendencias_mod.obtener_calendario_estacional()
 
-        # Aseguramos que la categoría principal quede en seguimiento
-        # automático — así el resumen de arriba y la alerta de Logros
-        # tienen algo para comparar apenas empiecen a acumularse
-        # snapshots (el primer día no hay historial todavía, es honesto).
-        tendencias_mod.asegurar_seguimiento_categoria_principal(cursor, g.cuenta_id, category_id, categoria_nombre)
-        seguimientos = tendencias_mod.listar_seguimientos_con_historial(cursor, g.cuenta_id)
+            # Aseguramos que la categoría principal quede en seguimiento
+            # automático — así el resumen de arriba y la alerta de Logros
+            # tienen algo para comparar apenas empiecen a acumularse
+            # snapshots (el primer día no hay historial todavía, es honesto).
+            tendencias_mod.asegurar_seguimiento_categoria_principal(cursor, g.cuenta_id, category_id, categoria_nombre)
+            seguimientos = tendencias_mod.listar_seguimientos_con_historial(cursor, g.cuenta_id)
 
-        analisis_categoria_principal = None
-        if category_id:
-            analisis_categoria_principal = tendencias_mod.explorar_demanda(access_token, category_id=category_id)
+            analisis_categoria_principal = None
+            if category_id:
+                analisis_categoria_principal = tendencias_mod.explorar_demanda(access_token, category_id=category_id)
+    except Exception as e:
+        # Esta ruta encadena ~10 pasos (categoría, tendencias de MeLi,
+        # cruces con catálogo/competencia, seguimiento histórico) — con
+        # todo eso sin red de contención, cualquier tropiezo puntual (un
+        # dato inesperado, un hipo de la API de MeLi) tumbaba la página
+        # entera con un 500 crudo. Mejor avisar y dejar reintentar.
+        print(f"[Tendencias] ❌ Error armando la página: {e}")
+        return "No pudimos armar la página de Tendencias ahora mismo. Probá recargar en un rato — si sigue pasando, avisanos.", 502
 
     for t in relevantes:
         opo = terminos_oportunidad.get(t.get("keyword"))
@@ -1546,10 +1557,10 @@ def api_costos_chat():
 @login_requerido
 def api_costos_chat_confirmar():
     datos = request.get_json(silent=True) or {}
-    propuesta = datos.get("propuesta")
-    if not propuesta:
+    propuestas = datos.get("propuestas")
+    if not propuestas:
         return jsonify({"ok": False, "error": "Falta la propuesta."}), 400
-    ok, mensaje = costos_chat.confirmar_y_guardar(g.usuario_id, g.cuenta_id, propuesta)
+    ok, mensaje = costos_chat.confirmar_y_guardar(g.usuario_id, g.cuenta_id, propuestas)
     return jsonify({"ok": ok, "error": None if ok else mensaje})
 
 
@@ -1956,6 +1967,20 @@ def api_calculadora_buscar_categoria():
                         for v in (f.get("values") or [])[:8]:
                             if v.get("id"):
                                 resultados.append({"id": v["id"], "nombre": v.get("name", v["id"])})
+        if not resultados:
+            # Último fallback, sin depender de ningún endpoint "inteligente"
+            # de MeLi (domain_discovery/search predictor pueden no devolver
+            # nada para un término genérico de una sola palabra, tipo
+            # "ropa" — no son buscadores de categorías, son predictores de
+            # categoría a partir de un título de publicación completo):
+            # match por texto contra las ~30 categorías raíz de MeLi, que
+            # cubre exactamente ese caso ("ropa" → "Ropa y Accesorios").
+            q_lower = q.lower()
+            palabras_q = set(q_lower.split())
+            for c in tendencias_mod.obtener_categorias_raiz():
+                nombre_lower = c["nombre"].lower()
+                if q_lower in nombre_lower or palabras_q & set(nombre_lower.split()):
+                    resultados.append({"id": c["id"], "nombre": c["nombre"]})
         return jsonify(resultados[:10])
     except Exception as e:
         print(f"[Calculadora] Error buscando categoría: {e}")

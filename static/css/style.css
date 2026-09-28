@@ -216,9 +216,15 @@ a { color: inherit; text-decoration: none; }
 .topnav { background: rgba(9, 10, 15, 0.8); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; z-index: 50; }
 /* Grid de 3 columnas (1fr / auto / 1fr) en vez de flex: con flex, el
    buscador quedaba pegado al logo porque solo la zona derecha tenía
-   flex-grow — con grid, la columna 1fr (logo) absorbe todo el espacio
-   libre y empuja buscador + nav a la derecha como un bloque parejo, y
-   el buscador queda centrado respecto de ESE bloque (no del logo).
+   flex-grow. El buscador (columna del medio, auto) queda centrado
+   respecto del ancho real disponible cuando las dos columnas 1fr pesan
+   parecido — por eso el nav (Dashboard/Catálogo/Finanzas/Crecimiento)
+   vive en la zona IZQUIERDA junto al logo, y la derecha solo tiene el
+   botón de menú y "Sincronizar Todo": con el nav entero apretujado del
+   lado derecho (como estaba antes) esa columna pesaba mucho más que la
+   del logo solo, y el buscador terminaba centrado respecto de ESE
+   bloque desbalanceado, no del header completo — se leía pegado a la
+   izquierda y amontonado contra el nav.
    Importante: a diferencia de position:absolute, un grid nunca hace que
    las columnas se superpongan aunque el contenido no entre — reserva su
    propio lugar. Y sin overflow-x/y en este contenedor: el desplegable
@@ -243,6 +249,19 @@ a { color: inherit; text-decoration: none; }
 .buscador-central:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(176,107,255,0.2); }
 .buscador-central kbd { margin-left: auto; background: rgba(255,255,255,0.08); border-radius: 4px; padding: 2px 6px; font-family: var(--font-data); font-size: 0.85em; }
 @media (max-width: 900px) { .buscador-central span { display: none; } .buscador-central { min-width: auto; } }
+/* Entre ~900 y ~1300px el ancho mínimo combinado de logo + buscador +
+   4 links de nav + botón de sync no entraba en una sola fila — sin
+   wrap ni breakpoint intermedio, terminaba todo amontonado/superpuesto
+   contra el buscador. Achicamos el nav (sin sacar texto, solo el ícono
+   y el padding) para liberar el espacio que el buscador necesita para
+   quedar centrado de verdad. */
+@media (max-width: 1300px) {
+    .buscador-central { min-width: 170px; }
+    .topnav-link { padding: 8px 7px; font-size: 0.82em; }
+    .topnav-link .icon { display: none; }
+    .topnav-zona-izq { gap: 12px; }
+    .topnav-zona-der { gap: 4px; }
+}
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1em; }
 .brand-mark { width: 14px; height: 14px; background: linear-gradient(135deg, var(--accent-brand), var(--accent-brand-dim)); border-radius: 5px; box-shadow: 0 0 10px var(--accent-brand-glow); }
 .topnav-links { display: flex; gap: 2px; flex-wrap: nowrap; }
@@ -891,18 +910,27 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-p
 
 /* ---------- Tooltips ricos de la barra superior ---------- */
 .tooltip-ticker {
-    position: fixed; z-index: 500; max-width: 320px; padding: 14px 16px;
-    background: var(--glass-bg-alt); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    position: fixed; z-index: 500; max-width: 320px; padding: 0;
+    /* Capa sólida (--bg-surface) DEBAJO de la capa glass translúcida —
+       si el navegador no rinde bien el backdrop-filter (o el contenido
+       de atrás es claro), el panel no se queda "lavado"/sin contraste;
+       siempre tiene una base opaca propia. */
+    background: linear-gradient(var(--glass-bg-alt), var(--glass-bg-alt)) padding-box, var(--bg-surface);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     border: 1px solid var(--glass-border); border-radius: var(--radius-md);
     box-shadow: var(--shadow-elevated), 0 0 26px -6px var(--accent-primary-glow);
     opacity: 0; transform: translateY(-6px); pointer-events: none;
     transition: opacity 0.15s, transform 0.15s; font-size: 0.82em;
+    overflow: hidden;
 }
 .tooltip-ticker.visible { opacity: 1; transform: translateY(0); }
+.tooltip-ticker-acento { height: 4px; width: 100%; background: var(--tooltip-acento, var(--accent-primary)); }
+.tooltip-ticker-cuerpo { padding: 14px 16px; }
 .tooltip-ticker-titulo { font-weight: 700; font-family: var(--font-display); font-size: 1.05em; margin-bottom: 8px; color: var(--text-primary); }
 .tooltip-ticker-sub { color: var(--text-secondary); margin-top: 8px; font-size: 0.92em; }
 .tooltip-ticker-lista { list-style: none; margin: 0; padding: 0; }
-.tooltip-ticker-lista li { padding: 4px 0; border-bottom: 1px solid var(--border-soft); color: var(--text-secondary); }
+.tooltip-ticker-lista li { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border-soft); color: var(--text-secondary); }
+.tooltip-ticker-lista li::before { content: '•'; color: var(--tooltip-acento, var(--accent-primary)); font-weight: 700; flex-shrink: 0; }
 .tooltip-ticker-lista li:last-child { border-bottom: none; }
 
 /* ---------- Scrollbar personalizada ---------- */

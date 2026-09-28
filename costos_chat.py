@@ -17,13 +17,19 @@ PROMPT_SISTEMA = """Sos un asistente que ayuda a cargar gastos operativos de un 
 
 Hoy es {fecha_hoy}.
 
+El usuario puede describir UNO o VARIOS gastos en el mismo mensaje (ej:
+"gasté 70000 en bolsas el lunes y pagué 30000 a un ayudante el martes" son
+DOS gastos distintos) — extraé todos los que aparezcan, no le pidas que
+los mande de a uno.
+
 Por cada mensaje del usuario, respondé ÚNICAMENTE con un objeto JSON (nada de texto antes o después, ni bloques de código), con una de estas dos formas:
 
-1) Si falta información para cargar el gasto (sobre todo si no dijo desde cuándo aplica, o si el monto es ambiguo):
-{{"accion": "preguntar", "pregunta": "una sola pregunta corta y concreta"}}
+1) Si falta información para cargar alguno de los gastos descriptos (sobre todo si no dijo desde cuándo aplica, o si el monto es ambiguo) — preguntá por TODOS los datos que falten en un solo mensaje, no de a uno:
+{{"accion": "preguntar", "pregunta": "una sola pregunta corta y concreta, cubriendo todo lo que falte"}}
 
-2) Si ya tenés todo lo necesario:
-{{"accion": "confirmar", "concepto": "texto corto describiendo el gasto", "monto": 150000.0, "categoria": "fijo" o "variable", "recurrente": true o false, "fecha_desde": "YYYY-MM-DD", "fecha_fin": null o "YYYY-MM-DD"}}
+2) Si ya tenés todo lo necesario para uno o más gastos:
+{{"accion": "confirmar", "gastos": [{{"concepto": "texto corto describiendo el gasto", "monto": 150000.0, "categoria": "fijo" o "variable", "recurrente": true o false, "fecha_desde": "YYYY-MM-DD", "fecha_fin": null o "YYYY-MM-DD"}}]}}
+("gastos" es SIEMPRE una lista, aunque el usuario haya descripto un solo gasto — en ese caso la lista tiene un solo elemento.)
 
 Reglas:
 - "recurrente": true cuando el usuario describe algo que se repite todos los meses (alquiler, sueldo, un abono) — en ese caso "monto" es el importe MENSUAL.
@@ -57,7 +63,12 @@ def procesar_mensaje(historial_mensajes):
     cada vez que se confirma o se cierra el chat).
     """
     prompt = PROMPT_SISTEMA.format(fecha_hoy=datetime.now().strftime("%Y-%m-%d"))
-    ok, respuesta = ia_asistente.preguntar_ia_conversacion(prompt, historial_mensajes, max_tokens=400, temperatura=0.2)
+    # max_tokens más alto que el de un solo gasto (era 400) — un mensaje
+    # con 2-3 gastos en una sola confirmación necesita más lugar para la
+    # lista completa; con el límite viejo, pedir varios de una vez cortaba
+    # la respuesta a mitad de camino y volvía vacía ("La IA respondió sin
+    # texto de contenido"), justo el caso que esto tiene que soportar.
+    ok, respuesta = ia_asistente.preguntar_ia_conversacion(prompt, historial_mensajes, max_tokens=900, temperatura=0.2)
 
     if not ok:
         return {"accion": "error", "mensaje": f"No pude conectar con la IA ({respuesta}). Podés cargar el gasto a mano en el formulario de abajo."}
@@ -67,32 +78,56 @@ def procesar_mensaje(historial_mensajes):
         return {"accion": "preguntar", "pregunta": "No terminé de entender eso — ¿me lo describís de otra forma? Por ejemplo: \"el alquiler sale 150 mil por mes desde julio\"."}
 
     if parseado["accion"] == "confirmar":
-        faltantes = [campo for campo in ("concepto", "monto", "categoria", "recurrente", "fecha_desde") if campo not in parseado or parseado[campo] is None]
-        if faltantes:
-            return {"accion": "preguntar", "pregunta": "Me falta un dato más — ¿me confirmás el monto y desde cuándo aplica?"}
+        gastos = parseado.get("gastos")
+        # Compatibilidad hacia atrás: si el modelo todavía devuelve el
+        # gasto suelto en los campos de nivel superior (formato viejo,
+        # de un solo ítem) en vez de la lista "gastos", lo envolvemos.
+        if not gastos and all(c in parseado for c in ("concepto", "monto", "categoria", "recurrente", "fecha_desde")):
+            gastos = [parseado]
+        if not gastos or not isinstance(gastos, list):
+            return {"accion": "preguntar", "pregunta": "Me falta un dato más — ¿me confirmás el monto y desde cuándo aplica cada gasto?"}
+
+        campos_requeridos = ("concepto", "monto", "categoria", "recurrente", "fecha_desde")
+        for g in gastos:
+            if not isinstance(g, dict) or any(c not in g or g[c] is None for c in campos_requeridos):
+                return {"accion": "preguntar", "pregunta": "Me falta un dato más — ¿me confirmás el monto y desde cuándo aplica cada gasto?"}
+        return {"accion": "confirmar", "gastos": gastos}
 
     return parseado
 
 
-def confirmar_y_guardar(usuario_id, cuenta_id, propuesta):
-    campos_requeridos = ("concepto", "monto", "categoria", "recurrente", "fecha_desde")
-    if any(c not in propuesta for c in campos_requeridos):
+def confirmar_y_guardar(usuario_id, cuenta_id, propuestas):
+    """
+    `propuestas` es SIEMPRE una lista (uno o más gastos confirmados juntos
+    desde el mismo mensaje). Se valida cada uno ANTES de escribir nada —
+    si uno solo viene mal formado, no se guarda ninguno, para no dejar el
+    listado de gastos a medio cargar sin que el usuario lo pueda ver venir.
+    """
+    if not isinstance(propuestas, list) or not propuestas:
         return False, "Faltan datos en la propuesta."
-    if propuesta["categoria"] not in ("fijo", "variable"):
-        return False, "Categoría inválida."
-    try:
-        monto = float(propuesta["monto"])
-        datetime.strptime(propuesta["fecha_desde"], "%Y-%m-%d")
-        if propuesta.get("fecha_fin"):
-            datetime.strptime(propuesta["fecha_fin"], "%Y-%m-%d")
-    except (ValueError, TypeError):
-        return False, "Monto o fecha con formato inválido."
+
+    campos_requeridos = ("concepto", "monto", "categoria", "recurrente", "fecha_desde")
+    filas = []
+    for propuesta in propuestas:
+        if not isinstance(propuesta, dict) or any(c not in propuesta for c in campos_requeridos):
+            return False, "Faltan datos en la propuesta."
+        if propuesta["categoria"] not in ("fijo", "variable"):
+            return False, "Categoría inválida."
+        try:
+            monto = float(propuesta["monto"])
+            datetime.strptime(propuesta["fecha_desde"], "%Y-%m-%d")
+            if propuesta.get("fecha_fin"):
+                datetime.strptime(propuesta["fecha_fin"], "%Y-%m-%d")
+        except (ValueError, TypeError):
+            return False, "Monto o fecha con formato inválido."
+        filas.append((cuenta_id, propuesta["concepto"], propuesta["categoria"], monto,
+                       propuesta["fecha_desde"], bool(propuesta["recurrente"]), propuesta.get("fecha_fin")))
 
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("""
-            INSERT INTO gastos_operativos (cuenta_id, concepto, categoria, monto, fecha, recurrente, fecha_fin)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (cuenta_id, propuesta["concepto"], propuesta["categoria"], monto,
-              propuesta["fecha_desde"], bool(propuesta["recurrente"]), propuesta.get("fecha_fin")))
+        for fila in filas:
+            cursor.execute("""
+                INSERT INTO gastos_operativos (cuenta_id, concepto, categoria, monto, fecha, recurrente, fecha_fin)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, fila)
     return True, "ok"
