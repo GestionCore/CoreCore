@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agregar otra cuenta · CoreLux</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_v('css/style.css') }}">
+    <style>
+        html, body { height: 100%; margin: 0; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-ui); }
+        body { display: flex; align-items: center; justify-content: center; }
+        .estado-wrap { max-width: 480px; width: 100%; margin: 24px; }
+        .estado-card {
+            padding: 40px 38px 34px; border-radius: var(--radius-lg, var(--radius-md));
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            box-shadow: var(--shadow-elevated); text-align: left;
+            animation: fadeInUp 0.35s cubic-bezier(0.16,1,0.3,1);
+        }
+        .estado-icono {
+            width: 52px; height: 52px; margin: 0 auto 20px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--semantic-info-bg); color: var(--semantic-info);
+        }
+        .estado-titulo { font-family: var(--font-display); font-size: 1.3em; font-weight: 700; margin-bottom: 12px; text-align: center; }
+        .estado-subtitulo { color: var(--text-secondary); font-size: 0.9em; line-height: 1.65; margin-bottom: 24px; }
+        .coa-pasos { list-style: none; margin: 0 0 26px; padding: 0; counter-reset: paso; }
+        .coa-pasos li {
+            display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); font-size: 0.88em; color: var(--text-secondary);
+        }
+        .coa-pasos li:last-child { border-bottom: none; }
+        .coa-pasos li::before {
+            counter-increment: paso; content: counter(paso);
+            flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+            background: var(--glass-bg-alt); border: 1px solid var(--glass-border); color: var(--text-primary);
+            display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;
+        }
+        .coa-pasos li strong { color: var(--text-primary); }
+        .coa-acciones { display: flex; flex-direction: column; gap: 10px; }
+        .coa-link-box {
+            display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.04);
+            border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: 4px 4px 4px 12px; margin-bottom: 14px;
+        }
+        .coa-link-box input {
+            flex: 1; background: none; border: none; color: var(--text-secondary); font-family: var(--font-data);
+            font-size: 0.78em; padding: 8px 0; min-width: 0;
+        }
+        .coa-link-box input:focus { outline: none; }
+    </style>
+</head>
+<body>
+<div class="estado-wrap">
+    <div class="estado-card">
+        <div class="estado-icono">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.6" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <div class="estado-titulo">Antes de continuar</div>
+        <div class="estado-subtitulo">
+            Si tu navegador ya tiene una sesión abierta en Mercado Libre, su propio login va a autorizar de nuevo esa MISMA cuenta — Mercado Libre no ofrece elegir otra ahí. Esto no depende de CoreLux, es así en cualquier sitio que use el login de MeLi.
+        </div>
+        <ul class="coa-pasos">
+            <li><span>Copiá el link de abajo.</span></li>
+            <li><span>Abrilo en una <strong>ventana privada</strong> (<span style="font-family:var(--font-data);">Ctrl+Shift+N</span> en Chrome/Edge, <span style="font-family:var(--font-data);">Cmd+Shift+N</span> en Mac, <span style="font-family:var(--font-data);">Ctrl+Shift+P</span> en Firefox) — o en el navegador de otro dispositivo donde ya estés logueado con la otra cuenta.</span></li>
+            <li><span>Iniciá sesión ahí con la cuenta de Mercado Libre que querés sumar. CoreLux la va a conectar a tu mismo usuario apenas confirmes.</span></li>
+        </ul>
+        <div class="coa-link-box">
+            <input type="text" readonly value="{{ url_autorizacion }}" id="coa-link" onclick="this.select()">
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em; flex-shrink:0;" onclick="coaCopiarLink()" id="coa-btn-copiar">Copiar</button>
+        </div>
+        <div class="coa-acciones">
+            <a href="{{ url_autorizacion }}" class="btn btn-denim btn-block">Continuar acá mismo (si ya cerraste sesión de MeLi)</a>
+            <a href="{{ url_for('landing') }}" class="btn btn-secondary btn-block">Cancelar</a>
+        </div>
+    </div>
+</div>
+<script>
+function coaCopiarLink() {
+    const input = document.getElementById('coa-link');
+    const boton = document.getElementById('coa-btn-copiar');
+    navigator.clipboard.writeText(input.value).then(() => {
+        boton.textContent = '¡Copiado!';
+        setTimeout(() => { boton.textContent = 'Copiar'; }, 1800);
+    }).catch(() => {
+        input.select();
+        document.execCommand('copy');
+    });
+}
+</script>
+</body>
+</html>

@@ -354,19 +354,35 @@ def conectar_otra_cuenta():
     Solo plan Elite: el límite "Base = 1 cuenta" no tenía enforcement
     real en el backend antes de esto — lo agregamos acá mismo, en el
     único punto de entrada que puede sumar una cuenta.
+
+    El link de autorización que se muestra abajo funciona en CUALQUIER
+    navegador/ventana/dispositivo, no solo en este — ver la nota larga
+    en migrations/0013 sobre por qué hacía falta sacar esto de la cookie
+    de sesión. Mercado Libre no te deja elegir cuenta en su propio login
+    si ya hay una sesión de MeLi activa en el navegador; por eso se
+    ofrece copiar el link para abrirlo en otro lado en vez de mandar
+    directo.
     """
-    from urllib.parse import urlencode
     with db.conexion_usuario(g.usuario_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT plan FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila = cursor.fetchone()
     if not fila or fila[0] != "elite":
+        from urllib.parse import urlencode
         return redirect(f"/planes?{urlencode({'msg': 'Conectar más de una cuenta es una función del Plan Elite.', 'tipo': 'info'})}")
 
     state = oauth_meli.generar_state()
     session["oauth_state"] = state
     session["vinculando_cuenta_extra"] = True
-    return redirect(oauth_meli.construir_url_autorizacion(state))
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        # Purga oportunista de intentos viejos abandonados (>15 min) —
+        # no hace falta un cron aparte para una tabla tan chica.
+        cursor.execute("DELETE FROM oauth_vinculaciones_pendientes WHERE creado_en < now() - interval '15 minutes'")
+        cursor.execute("INSERT INTO oauth_vinculaciones_pendientes (state, usuario_id) VALUES (%s, %s)", (state, g.usuario_id))
+
+    url_autorizacion = oauth_meli.construir_url_autorizacion(state)
+    return render_template("conectar_otra_cuenta.html", url_autorizacion=url_autorizacion)
 
 
 MOTIVO_USUARIO_CANCELO = "usuario_cancelo"
@@ -396,7 +412,29 @@ def callback():
     if not code:
         app.logger.warning("Callback OAuth: no llegó 'code' en la URL de vuelta.")
         return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
-    if not state_esperado or state_recibido != state_esperado:
+
+    # El state puede validarse de DOS formas: contra la cookie de sesión
+    # de ESTE navegador (login normal, o "agregar cuenta" completado en
+    # el mismo navegador) — o contra una vinculación pendiente guardada
+    # en la base por /conectar_otra_cuenta, que es justamente lo que
+    # permite completar el login de MeLi en OTRO navegador/ventana/
+    # dispositivo sin cookie de sesión de CoreLux (ver migrations/0013).
+    # El propio state (aleatorio, de un solo uso) es la prueba en ambos
+    # casos — no se necesita la cookie si el state matchea esa tabla.
+    usuario_id_vinculacion_pendiente = None
+    if state_recibido and state_recibido != state_esperado:
+        with db.conexion_admin() as conexion:
+            cursor = conexion.cursor()
+            cursor.execute(
+                "DELETE FROM oauth_vinculaciones_pendientes WHERE state = %s AND creado_en > now() - interval '15 minutes' RETURNING usuario_id",
+                (state_recibido,)
+            )
+            fila = cursor.fetchone()
+        if fila:
+            usuario_id_vinculacion_pendiente = fila[0]
+
+    state_valido = (state_esperado and state_recibido == state_esperado) or usuario_id_vinculacion_pendiente is not None
+    if not state_valido:
         app.logger.warning("Callback OAuth: state no coincide (esperado=%s, recibido=%s).", bool(state_esperado), bool(state_recibido))
         return render_template("error_conexion.html", motivo=MOTIVO_INTENTO_VENCIDO)
 
@@ -410,12 +448,19 @@ def callback():
         app.logger.warning("Callback OAuth: falló la consulta de datos del usuario — %s", datos_meli)
         return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
 
-    # Si venimos de "Agregar otra cuenta" (/conectar_otra_cuenta) y todavía
-    # hay una sesión válida, esta autorización se vincula al usuario_id YA
-    # logueado en vez de crear un usuario nuevo — así es como funciona de
-    # verdad el multi-cuenta de Plan Elite.
-    vinculando = session.pop("vinculando_cuenta_extra", False)
-    usuario_id_actual = session.get("usuario_id")
+    # Si venimos de "Agregar otra cuenta" (/conectar_otra_cuenta), esta
+    # autorización se vincula al usuario_id ya logueado en vez de crear
+    # un usuario nuevo — así es como funciona el multi-cuenta de Plan
+    # Elite. El usuario_id sale de la vinculación pendiente en la base
+    # cuando existe (funciona sin importar en qué navegador se completó
+    # el login de MeLi); si no, cae al flag de sesión de siempre (mismo
+    # navegador).
+    if usuario_id_vinculacion_pendiente is not None:
+        vinculando = True
+        usuario_id_actual = usuario_id_vinculacion_pendiente
+    else:
+        vinculando = session.pop("vinculando_cuenta_extra", False)
+        usuario_id_actual = session.get("usuario_id")
 
     if vinculando and usuario_id_actual:
         from urllib.parse import urlencode
