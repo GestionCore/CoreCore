@@ -68,26 +68,34 @@ def _detectar_misiones_base(cursor, cuenta_id):
         print(f"[Logros] ⚠️ Error detectando curva rota: {e}")
         _rollback_seguro(cursor)
 
-    cursor.execute("SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND tipo != 'cancelacion'")
-    cant_reclamos, monto_retenido = cursor.fetchone()
-    if cant_reclamos > 0:
-        monto_retenido_fmt = f"{float(monto_retenido):,.0f}".replace(",", ".")
-        misiones.append({
-            "id": "reclamos_abiertos", "categoria": "reclamos", "icono": "⚠️", "prioridad": "urgente" if cant_reclamos >= 3 else "importante",
-            "titulo": f"{cant_reclamos} reclamo(s)/devolución(es) sin resolver",
-            "descripcion": f"Hay ${monto_retenido_fmt} retenidos esperando resolución — cada día que pasa sin responder puede sumar a tu reputación negativa.",
-            "link": "/metricas", "link_texto": "Ver reclamos"
-        })
+    try:
+        cursor.execute("SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND tipo != 'cancelacion'")
+        cant_reclamos, monto_retenido = cursor.fetchone()
+        if cant_reclamos > 0:
+            monto_retenido_fmt = f"{float(monto_retenido):,.0f}".replace(",", ".")
+            misiones.append({
+                "id": "reclamos_abiertos", "categoria": "reclamos", "icono": "⚠️", "prioridad": "urgente" if cant_reclamos >= 3 else "importante",
+                "titulo": f"{cant_reclamos} reclamo(s)/devolución(es) sin resolver",
+                "descripcion": f"Hay ${monto_retenido_fmt} retenidos esperando resolución — cada día que pasa sin responder puede sumar a tu reputación negativa.",
+                "link": "/metricas", "link_texto": "Ver reclamos"
+            })
+    except Exception as e:
+        print(f"[Logros] ⚠️ Error detectando reclamos abiertos: {e}")
+        _rollback_seguro(cursor)
 
-    cursor.execute("SELECT COUNT(*) FROM preguntas_pendientes WHERE estado = 'pendiente' AND creado_en < (now() - interval '1 day')")
-    preguntas_viejas = cursor.fetchone()[0] or 0
-    if preguntas_viejas > 0:
-        misiones.append({
-            "id": "preguntas_viejas", "categoria": "atencion", "icono": "❓", "prioridad": "importante",
-            "titulo": f"{preguntas_viejas} pregunta(s) sin responder hace más de 24hs",
-            "descripcion": "Una pregunta sin responder es una venta que se enfría.",
-            "link": None, "link_texto": None
-        })
+    try:
+        cursor.execute("SELECT COUNT(*) FROM preguntas_pendientes WHERE estado = 'pendiente' AND creado_en < (now() - interval '1 day')")
+        preguntas_viejas = cursor.fetchone()[0] or 0
+        if preguntas_viejas > 0:
+            misiones.append({
+                "id": "preguntas_viejas", "categoria": "atencion", "icono": "❓", "prioridad": "importante",
+                "titulo": f"{preguntas_viejas} pregunta(s) sin responder hace más de 24hs",
+                "descripcion": "Una pregunta sin responder es una venta que se enfría.",
+                "link": None, "link_texto": None
+            })
+    except Exception as e:
+        print(f"[Logros] ⚠️ Error detectando preguntas viejas: {e}")
+        _rollback_seguro(cursor)
 
     try:
         canibalismo = tendencias_mod.detectar_canibalismo(cursor)

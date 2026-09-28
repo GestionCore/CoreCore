@@ -1208,9 +1208,13 @@ def logros_vista():
     except token_manager.CuentaDesconectada:
         pass
 
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        resultado = logros_mod.obtener_logros(cursor, g.cuenta_id, headers)
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            resultado = logros_mod.obtener_logros(cursor, g.cuenta_id, headers)
+    except Exception as e:
+        print(f"[Logros] ❌ Error armando la página: {e}")
+        return "No pudimos armar la página de Logros ahora mismo. Probá recargar en un rato — si sigue pasando, avisanos.", 502
 
     conteo_por_prioridad = {"urgente": 0, "importante": 0, "opcional": 0}
     for m in resultado["misiones"]:
@@ -1259,7 +1263,24 @@ def reputacion_vista():
         return "No se encontró tu cuenta.", 401
 
     datos = reputacion_mod.obtener_reputacion(access_token, fila[0])
-    return render_template("reputacion.html", rep=datos, active_nav="reputacion")
+
+    # MeLi solo expone un número agregado de "canceladas" en su reputación
+    # oficial (agrupa cancelaciones, devoluciones y ventas no completadas
+    # en un solo bucket — no lo separan ni en su propia API). Acá SÍ
+    # tenemos el desglose real, porque incidencias_posventa lo trackea
+    # por tipo desde que arrancamos a sincronizarlo (devoluciones_sync.py)
+    # — se muestra como un panel aparte, no mezclado con el número
+    # oficial de MeLi, porque cubren ventanas de tiempo distintas.
+    incidencias_por_tipo = {"devoluciones": 0, "reclamos": 0, "cancelaciones": 0}
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT tipo, COUNT(*) FROM incidencias_posventa GROUP BY tipo")
+        conteo_tipo = dict(cursor.fetchall())
+    incidencias_por_tipo["devoluciones"] = conteo_tipo.get("return", 0)
+    incidencias_por_tipo["reclamos"] = conteo_tipo.get("claim", 0)
+    incidencias_por_tipo["cancelaciones"] = conteo_tipo.get("cancelacion", 0)
+
+    return render_template("reputacion.html", rep=datos, incidencias_por_tipo=incidencias_por_tipo, active_nav="reputacion")
 
 
 @app.route("/competencia")

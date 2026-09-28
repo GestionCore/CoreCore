@@ -40,9 +40,10 @@
             <tbody>
                 <tr><td>Total histórico</td><td class="num">{{ rep.total_transacciones }}</td></tr>
                 <tr><td>Completadas</td><td class="num text-success">{{ rep.completadas }}</td></tr>
-                <tr><td>Canceladas</td><td class="num text-danger">{{ rep.canceladas }}</td></tr>
+                <tr><td>Canceladas / devueltas <span class="text-muted" style="font-size:0.85em;">(número oficial de MeLi)</span></td><td class="num text-danger">{{ rep.canceladas }}</td></tr>
             </tbody>
         </table>
+        <div class="text-muted" style="font-size:0.78em; margin-top:8px;">MeLi agrupa cancelaciones, devoluciones y ventas no completadas en este único número — no las separa ni en su propia API. Abajo tenés el desglose real de lo que CoreLux registró.</div>
     </div>
 
     <div class="panel" style="flex:1; min-width:280px;">
@@ -57,6 +58,20 @@
         </table>
     </div>
 </div>
+
+{% if incidencias_por_tipo.devoluciones or incidencias_por_tipo.reclamos or incidencias_por_tipo.cancelaciones %}
+<div class="panel">
+    <div class="panel-title">Desglose real: devoluciones, reclamos y cancelaciones</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        A diferencia del número agrupado de MeLi de arriba, esto sí distingue cada tipo — con lo que CoreLux sincronizó desde tu cuenta.
+    </div>
+    <div class="stat-strip">
+        <div class="stat-chip accent-primary"><div class="stat-chip-label">Devoluciones</div><div class="stat-chip-value">{{ incidencias_por_tipo.devoluciones }}</div></div>
+        <div class="stat-chip accent-warning"><div class="stat-chip-label">Reclamos</div><div class="stat-chip-value">{{ incidencias_por_tipo.reclamos }}</div></div>
+        <div class="stat-chip accent-danger"><div class="stat-chip-label">Cancelaciones</div><div class="stat-chip-value">{{ incidencias_por_tipo.cancelaciones }}</div></div>
+    </div>
+</div>
+{% endif %}
 
 {% if rep.reclamos.tasa is not none or rep.demora_en_despacho.tasa is not none or rep.cancelaciones_metrica.tasa is not none %}
 <div class="panel">
@@ -103,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         new Chart(ctxTrans, {
             type: 'doughnut',
             data: {
-                labels: ['Completadas', 'Canceladas', 'En curso / otro'],
+                labels: ['Completadas', 'Canceladas / devueltas', 'En curso / otro'],
                 datasets: [{ data: [completadas, canceladas, enCurso], backgroundColor: [cSuccess, cDanger, cTextoSec], borderWidth: 0 }]
             },
             options: opcionesComunes
