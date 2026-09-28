@@ -1,0 +1,37 @@
+# Configuración de Fly.io para CoreLux.
+#
+# IMPORTANTE — cambiá "app" acá abajo por el nombre real que le pongas a
+# tu app cuando corras `fly apps create` (tiene que ser único en todo
+# Fly.io, así que "corelux" puede estar tomado).
+app = "corelux"
+primary_region = "gru"  # São Paulo — misma región que el proyecto de Supabase
+
+[build]
+
+[env]
+PORT = "8080"
+FLASK_DEBUG = "false"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  # CRÍTICO para CoreLux: min_machines_running = 1 (no 0) — el
+  # sincronizador automático (APScheduler, corre cada 4 minutos) vive
+  # DENTRO del mismo proceso de Flask. Si Fly apagara la máquina por
+  # falta de tráfico (el comportamiento por default en su plan gratis),
+  # el sync en background se apagaría con ella — las cuentas dejarían
+  # de sincronizarse en silencio hasta el próximo pedido HTTP.
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/planes"  # ruta pública, sin login — sirve de healthcheck real
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
