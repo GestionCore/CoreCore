@@ -662,6 +662,19 @@ function parsearValorMoneda(texto) {
 function formatearNumeroAR(valor, conDecimales) {
     return valor.toLocaleString('es-AR', conDecimales ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 });
 }
+// Cuenta ascendente genérica para un número que llega por fetch (no estaba
+// en el HTML al cargar la página, así que animarContadoresEnPagina() no lo
+// puede tomar solo) — from 0 hasta valorFinal, formateado con `formatearFn`.
+function animarNumeroHasta(el, valorFinal, formatearFn, duracionMs = 650) {
+    const t0 = performance.now();
+    function frame(t) {
+        const progreso = Math.min((t - t0) / duracionMs, 1);
+        const facilitado = 1 - Math.pow(1 - progreso, 3);
+        el.textContent = formatearFn(valorFinal * facilitado);
+        if (progreso < 1) requestAnimationFrame(frame); else el.textContent = formatearFn(valorFinal);
+    }
+    requestAnimationFrame(frame);
+}
 function animarContadoresEnPagina() {
     document.querySelectorAll('.stat-chip-value, .hero-number').forEach(el => {
         if (el.children.length > 0) return; // tiene contenido anidado (ej: variación al lado) — no lo tocamos
@@ -1254,7 +1267,7 @@ async function cargarTabSalud(idMeli) {
         const color = d.porcentaje >= 70 ? 'var(--success)' : (d.porcentaje >= 40 ? 'var(--warning)' : 'var(--danger)');
         const recs = d.recomendaciones.map(r => `<li style="margin-bottom:6px;">${r}</li>`).join('');
         cont.innerHTML = `
-            <div class="page-subtitle" style="margin-bottom:14px;">Puntaje propio calculado localmente — no es el score interno oficial de MeLi.</div>
+            <div class="page-subtitle" style="margin-bottom:14px;">Puntaje estimado por CoreLux, no el oficial de MeLi.</div>
             <div style="height:14px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; margin-bottom:16px;"><div style="height:100%; width:${d.porcentaje}%; background:${color};"></div></div>
             <div class="stat-chip-value" style="margin-bottom:16px;">${d.porcentaje}%</div>
             ${recs ? `<ul style="padding-left:18px;">${recs}</ul>` : '<div class="text-success">¡Sin recomendaciones pendientes!</div>'}

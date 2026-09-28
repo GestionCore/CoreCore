@@ -7,95 +7,92 @@
   <p class="page-subtitle">Invitá a otros vendedores de Mercado Libre y hacé crecer la comunidad.</p>
 </div>
 
-<div class="dashboard-grid" style="grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px;">
-  <div class="card">
-    <div class="card-header"><span class="card-title">Tu link de invitación</span></div>
-    <div class="card-body">
-      {% if referral_link %}
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <input id="referral-input" type="text" class="form-control" value="{{ referral_link }}" readonly
-               style="flex:1;min-width:200px;font-size:13px;font-family:monospace;">
-        <button class="btn btn-primary btn-sm" onclick="copiarLink()" id="btn-copiar">
-          <svg class="icon" style="width:14px;height:14px;margin-right:4px;vertical-align:middle;"><use href="#icon-copy"/></svg>Copiar
-        </button>
-      </div>
-      <p style="margin-top:10px;font-size:12px;color:var(--text-muted);">
-        Código: <strong style="font-family:monospace;letter-spacing:1px;">{{ referral_code }}</strong>
-      </p>
-      {% else %}
-      <p style="color:var(--text-muted);font-size:13px;">No se pudo generar tu link. Contactá a soporte.</p>
-      {% endif %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+  <div class="panel">
+    <div class="panel-title">Tu link de invitación</div>
+    {% if referral_link %}
+    <div class="row-flex" style="flex-wrap:wrap;">
+      <input id="referral-input" type="text" value="{{ referral_link }}" readonly
+             style="flex:1;min-width:200px;font-size:0.85em;">
+      <button class="btn btn-primary" onclick="copiarLink()" id="btn-copiar">
+        <svg class="icon" style="width:14px;height:14px;"><use href="#icon-copy"/></svg>Copiar
+      </button>
     </div>
+    <p class="text-muted" style="margin-top:10px;font-size:0.78em;">
+      Código: <strong style="font-family:var(--font-data);letter-spacing:1px;color:var(--text-primary);">{{ referral_code }}</strong>
+    </p>
+    {% else %}
+    <p class="text-muted" style="font-size:0.85em;">No se pudo generar tu link. Contactá a soporte.</p>
+    {% endif %}
   </div>
 
-  <div class="card">
-    <div class="card-header"><span class="card-title">Resumen</span></div>
-    <div class="card-body">
-      <div style="display:flex;gap:32px;">
-        <div style="text-align:center;">
-          <div style="font-size:32px;font-weight:700;color:var(--accent);">{{ referidos|length }}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Invitados</div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:32px;font-weight:700;color:var(--success);">{{ referidos|selectattr('convertido_en')|list|length }}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Registrados</div>
-        </div>
+  <div class="panel">
+    <div class="panel-title">Resumen</div>
+    <div class="stat-strip" style="margin-bottom:0;">
+      <div class="stat-chip accent-primary">
+        <div class="stat-chip-label">Invitados</div>
+        <div class="stat-chip-value">{{ referidos|length }}</div>
+      </div>
+      <div class="stat-chip accent-success">
+        <div class="stat-chip-label">Registrados</div>
+        <div class="stat-chip-value">{{ referidos|selectattr('convertido_en')|list|length }}</div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-header"><span class="card-title">Historial de referidos</span></div>
-  <div class="card-body" style="padding:0;">
-    {% if referidos %}
-    <table class="tabla-datos" style="width:100%;">
-      <thead>
-        <tr>
-          <th>Email</th>
-          <th>Fecha de invitación</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in referidos %}
-        <tr>
-          <td style="font-family:monospace;font-size:13px;">{{ r.email or "—" }}</td>
-          <td style="font-size:13px;color:var(--text-muted);">
-            {{ r.creado_en.strftime('%d/%m/%Y') if r.creado_en else "—" }}
-          </td>
-          <td>
-            {% if r.convertido_en %}
-              <span class="badge badge-success">Registrado</span>
-            {% else %}
-              <span class="badge badge-neutral">Pendiente</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div style="text-align:center;padding:48px 24px;color:var(--text-muted);">
-      <svg class="icon" style="width:40px;height:40px;margin-bottom:12px;opacity:.4;"><use href="#icon-users"/></svg>
-      <p style="margin:0;font-size:14px;">Todavía no invitaste a nadie.</p>
-      <p style="margin:8px 0 0;font-size:12px;">Compartí tu link y empezá a construir tu red.</p>
-    </div>
-    {% endif %}
+<div class="panel">
+  <div class="panel-title">Historial de referidos</div>
+  {% if referidos %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Fecha de invitación</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in referidos %}
+      <tr>
+        <td style="font-family:var(--font-data);font-size:0.9em;">{{ r.email or "—" }}</td>
+        <td class="text-muted" style="font-size:0.9em;">
+          {{ r.creado_en.strftime('%d/%m/%Y') if r.creado_en else "—" }}
+        </td>
+        <td>
+          {% if r.convertido_en %}
+            <span class="badge badge-success">Registrado</span>
+          {% else %}
+            <span class="badge badge-neutral">Pendiente</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="alert-empty" style="padding-top:10px;">
+    <svg class="icon" style="width:40px;height:40px;margin-bottom:12px;opacity:.4;"><use href="#icon-users"/></svg>
+    <p style="margin:0;font-size:0.95em;">Todavía no invitaste a nadie.</p>
+    <p style="margin:8px 0 0;font-size:0.85em;">Compartí tu link y empezá a construir tu red.</p>
   </div>
+  {% endif %}
 </div>
 
 <script>
 function copiarLink() {
   var input = document.getElementById('referral-input');
   var btn = document.getElementById('btn-copiar');
+  var iconoOriginal = btn.innerHTML;
+  function marcarCopiado() {
+    btn.innerHTML = '<svg class="icon" style="width:14px;height:14px;"><use href="#icon-check"/></svg>Copiado';
+    setTimeout(function() { btn.innerHTML = iconoOriginal; }, 2000);
+  }
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(input.value).then(function() {
-      btn.textContent = '✓ Copiado';
-      setTimeout(function() { btn.innerHTML = '<svg class="icon" style="width:14px;height:14px;margin-right:4px;vertical-align:middle;"><use href="#icon-copy"/></svg>Copiar'; }, 2000);
-    }).catch(function() { seleccionarFallback(input); });
+    navigator.clipboard.writeText(input.value).then(marcarCopiado).catch(function() { seleccionarFallback(input); marcarCopiado(); });
   } else {
     seleccionarFallback(input);
+    marcarCopiado();
   }
 }
 function seleccionarFallback(input) {

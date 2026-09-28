@@ -99,29 +99,30 @@
   padding: 2.5rem 1rem 1.5rem;
 }
 .planes-titulo {
+  font-family: var(--font-display);
   font-size: 2rem;
   font-weight: 700;
-  color: var(--color-accent);
+  color: var(--text-primary);
   margin: 0 0 0.5rem;
 }
 .planes-subtitulo {
-  color: var(--color-text-muted, #aaa);
+  color: var(--text-secondary);
   margin: 0 0 1rem;
 }
 .planes-trial-banner {
   display: inline-block;
-  background: rgba(0,230,185,0.12);
-  border: 1px solid var(--color-accent);
-  border-radius: 8px;
+  background: var(--success-bg);
+  border: 1px solid var(--success);
+  border-radius: var(--radius-sm);
   padding: 0.5rem 1.2rem;
-  color: var(--color-accent);
+  color: var(--success);
   font-size: 0.95rem;
   margin-top: 0.5rem;
 }
 .planes-trial-vencido {
-  background: rgba(255,60,60,0.12);
-  border-color: #ff3c3c;
-  color: #ff3c3c;
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
 }
 .planes-grid {
   display: flex;
@@ -133,45 +134,56 @@
   margin: 0 auto;
 }
 .plan-card {
-  background: var(--color-surface, #111);
-  border: 1px solid var(--color-border, #2a2a2a);
-  border-radius: 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-radius: var(--radius-md);
   padding: 1.8rem;
   flex: 1 1 320px;
   max-width: 380px;
   position: relative;
-  transition: border-color 0.2s;
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+  animation: fadeInUp 0.4s cubic-bezier(0.16,1,0.3,1) backwards;
 }
+.plan-card:nth-child(2) { animation-delay: 0.08s; }
 .plan-card:hover {
-  border-color: var(--color-accent);
+  border-color: var(--accent-primary);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-elevated);
 }
 .plan-activo {
-  border-color: var(--color-accent) !important;
-  box-shadow: 0 0 18px rgba(0,230,185,0.15);
+  border-color: var(--accent-primary) !important;
+  box-shadow: var(--shadow-glow-primary);
 }
 .plan-elite {
-  background: linear-gradient(160deg, var(--color-surface, #111) 60%, rgba(0,230,185,0.05));
+  border-color: rgba(255, 217, 61, 0.3);
+  background: linear-gradient(160deg, var(--glass-bg) 60%, rgba(255,217,61,0.05));
 }
+.plan-elite:hover { border-color: var(--accent-gold); box-shadow: var(--shadow-glow-gold); }
+.plan-elite.plan-activo { border-color: var(--accent-gold) !important; box-shadow: var(--shadow-glow-gold); }
 .plan-badge-elite {
   position: absolute;
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--color-accent);
-  color: #000;
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim));
+  color: #14100a;
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   padding: 3px 12px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 2px 12px -2px var(--accent-gold-glow);
 }
 .plan-badge-activo {
   text-align: center;
   margin-top: 1.2rem;
-  color: var(--color-accent);
+  color: var(--accent-primary);
   font-size: 0.9rem;
   font-weight: 600;
 }
+.plan-elite .plan-badge-activo { color: var(--accent-gold); }
 .plan-header {
   margin-bottom: 1.2rem;
 }
@@ -179,7 +191,7 @@
   display: block;
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--color-text, #eee);
+  color: var(--text-primary);
   margin-bottom: 0.4rem;
 }
 .plan-precio {
@@ -188,17 +200,19 @@
   gap: 0.3rem;
 }
 .plan-monto {
+  font-family: var(--font-data);
   font-size: 2rem;
   font-weight: 800;
-  color: var(--color-accent);
+  color: var(--accent-primary);
 }
+.plan-elite .plan-monto { color: var(--accent-gold); }
 .plan-precio-dia {
-  color: var(--color-text-muted, #888);
+  color: var(--text-faint);
   font-size: 0.8rem;
   margin-top: 0.15rem;
 }
 .plan-periodo {
-  color: var(--color-text-muted, #888);
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 .plan-features {
@@ -210,40 +224,43 @@
   gap: 0.55rem;
 }
 .plan-features li {
-  color: var(--color-text, #ddd);
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 .plan-form { margin-top: auto; }
 .btn-plan {
   width: 100%;
   padding: 0.8rem;
-  border-radius: 8px;
-  border: 1.5px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--accent-primary);
   background: transparent;
-  color: var(--color-accent);
+  color: var(--accent-primary);
+  font-family: var(--font-ui);
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 .btn-plan:hover {
-  background: var(--color-accent);
-  color: #000;
+  background: var(--accent-primary);
+  color: #fff;
+  transform: translateY(-1px);
 }
 .btn-plan-elite {
-  background: var(--color-accent);
-  color: #000;
+  border-color: var(--accent-gold);
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim));
+  color: #14100a;
 }
 .btn-plan-elite:hover {
   background: transparent;
-  color: var(--color-accent);
+  color: var(--accent-gold);
 }
 .planes-notas {
   text-align: center;
   max-width: 600px;
   margin: 0 auto 3rem;
   padding: 0 1rem;
-  color: var(--color-text-muted, #888);
+  color: var(--text-faint);
   font-size: 0.85rem;
   line-height: 1.6;
 }
@@ -253,7 +270,7 @@
   margin-bottom: 1.5rem;
 }
 .planes-footer-link a {
-  color: var(--color-accent);
+  color: var(--accent-primary);
   font-size: 0.9rem;
 }
 </style>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Costos · Santi Mens{% endblock %}
+{% block title %}Costos · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -28,7 +28,7 @@
         </div>
         <div class="calc-body">
             <div class="page-subtitle" style="margin-bottom:16px;">
-                Consulta en vivo la API de Mercado Libre — te muestra la ganancia que recibirías con el precio que definas.
+                Calculá al instante cuánto te queda con el precio que quieras probar, con los datos actuales de Mercado Libre.
             </div>
             <div class="field-group" style="margin-bottom:14px;">
                 <label class="field-label">Categoría (de tu propio catálogo)</label>
@@ -116,8 +116,15 @@
 <div class="panel">
     <div class="panel-title">
         <span>Costo de fabricación y rentabilidad por publicación ({{ productos|length }})</span>
-        <button type="button" class="btn btn-denim" id="btn-guardar-costos-masivo" onclick="guardarCostosMasivo()">💾 Guardar todos los cambios</button>
+        <button type="button" class="btn btn-denim" id="btn-guardar-costos-masivo" onclick="guardarCostosMasivo()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-check"/></svg>Guardar todos los cambios</button>
     </div>
+    {% set con_perdida = productos|selectattr('ganancia_negativa')|list %}
+    {% if con_perdida %}
+    <div class="alert alert-danger" style="margin-bottom:18px;">
+        <svg class="icon" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"><use href="#icon-alert"/></svg>
+        {{ con_perdida|length }} de {{ productos|length }} publicaciones están vendiendo por debajo del costo este período.
+    </div>
+    {% endif %}
     <div id="lista-costos-productos">
         {% for p in productos[:5] %}
         <div class="costo-item">
@@ -131,10 +138,10 @@
             </div>
             {% if p.segmentos_pct %}
             <div class="unit-economics-bar">
-                <div class="ue-segmento ue-costo" style="width:{{ p.segmentos_pct.costo }}%;" title="Costo de fabricación: ${{ p.precio_costo_formateado }}"></div>
-                <div class="ue-segmento ue-envio" style="width:{{ p.segmentos_pct.envio }}%;" title="Envío promedio: ${{ p.envio_formateado or '0' }}"></div>
-                <div class="ue-segmento ue-comision" style="width:{{ p.segmentos_pct.comision }}%;" title="Comisión MeLi: ${{ p.comision_formateada }}"></div>
-                <div class="ue-segmento ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}" style="width:{{ p.segmentos_pct.ganancia }}%;" title="Ganancia neta: ${{ p.ganancia_neta_formateada }}"></div>
+                <div class="ue-segmento ue-costo" data-w="{{ p.segmentos_pct.costo }}" style="width:0%;" title="Costo de fabricación: ${{ p.precio_costo_formateado }}"></div>
+                <div class="ue-segmento ue-envio" data-w="{{ p.segmentos_pct.envio }}" style="width:0%;" title="Envío promedio: ${{ p.envio_formateado or '0' }}"></div>
+                <div class="ue-segmento ue-comision" data-w="{{ p.segmentos_pct.comision }}" style="width:0%;" title="Comisión MeLi: ${{ p.comision_formateada }}"></div>
+                <div class="ue-segmento ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}" data-w="{{ p.segmentos_pct.ganancia }}" style="width:0%;" title="Ganancia neta: ${{ p.ganancia_neta_formateada }}"></div>
             </div>
             <div class="unit-economics-leyenda">
                 <span><i class="ue-dot ue-costo"></i>Costo</span>
@@ -148,6 +155,7 @@
             {% endif %}
         </div>
         {% endfor %}
+        {% if not productos %}<div class="alert-empty">Todavía no hay publicaciones sincronizadas para cargarles costo.</div>{% endif %}
     </div>
     {% if productos|length > 5 %}
     <button type="button" class="btn btn-secondary btn-block" id="btn-mostrar-mas-costos" onclick="mostrarMasCostos()">Mostrar {{ productos|length - 5 }} más...</button>
@@ -167,10 +175,10 @@
         </div>
         {% if p.segmentos_pct %}
         <div class="unit-economics-bar">
-            <div class="ue-segmento ue-costo" style="width:{{ p.segmentos_pct.costo }}%;" title="Costo de fabricación: ${{ p.precio_costo_formateado }}"></div>
-            <div class="ue-segmento ue-envio" style="width:{{ p.segmentos_pct.envio }}%;" title="Envío promedio: ${{ p.envio_formateado or '0' }}"></div>
-            <div class="ue-segmento ue-comision" style="width:{{ p.segmentos_pct.comision }}%;" title="Comisión MeLi: ${{ p.comision_formateada }}"></div>
-            <div class="ue-segmento ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}" style="width:{{ p.segmentos_pct.ganancia }}%;" title="Ganancia neta: ${{ p.ganancia_neta_formateada }}"></div>
+            <div class="ue-segmento ue-costo" data-w="{{ p.segmentos_pct.costo }}" style="width:0%;" title="Costo de fabricación: ${{ p.precio_costo_formateado }}"></div>
+            <div class="ue-segmento ue-envio" data-w="{{ p.segmentos_pct.envio }}" style="width:0%;" title="Envío promedio: ${{ p.envio_formateado or '0' }}"></div>
+            <div class="ue-segmento ue-comision" data-w="{{ p.segmentos_pct.comision }}" style="width:0%;" title="Comisión MeLi: ${{ p.comision_formateada }}"></div>
+            <div class="ue-segmento ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}" data-w="{{ p.segmentos_pct.ganancia }}" style="width:0%;" title="Ganancia neta: ${{ p.ganancia_neta_formateada }}"></div>
         </div>
         <div class="unit-economics-leyenda">
             <span><i class="ue-dot ue-costo"></i>Costo</span>
@@ -187,13 +195,23 @@
 </template>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-costos'));
+    function animarBarrasCosto(raiz) {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            raiz.querySelectorAll('.ue-segmento[data-w]').forEach(el => { el.style.width = el.dataset.w + '%'; });
+        }));
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        RangoFechas.inicializar('rango-costos');
+        animarBarrasCosto(document.getElementById('lista-costos-productos'));
+    });
 
     function mostrarMasCostos() {
         const plantilla = document.getElementById('template-costos-ocultos');
         const contenedor = document.getElementById('lista-costos-productos');
-        contenedor.appendChild(plantilla.content.cloneNode(true));
+        const clon = plantilla.content.cloneNode(true);
+        contenedor.appendChild(clon);
         document.getElementById('btn-mostrar-mas-costos').remove();
+        animarBarrasCosto(contenedor);
     }
 
     let categoriasCalculadora = null;
@@ -269,7 +287,7 @@
                 <div class="text-muted" style="font-size:0.78em; margin-top:6px;">Antes de restar el costo de fabricación del producto.</div>
             `;
             cont.innerHTML = filasHtml;
-        } catch (e) { cont.innerHTML = '<span class="text-danger">Error consultando la API.</span>'; }
+        } catch (e) { cont.innerHTML = '<span class="text-danger">No pudimos calcularlo ahora — probá de nuevo en un momento.</span>'; }
     }
 
     async function guardarCostosMasivo() {
@@ -278,9 +296,9 @@
         inputsCosto.forEach(inp => { cambios[inp.dataset.idMeli] = parseFloat(inp.value) || 0; });
 
         const boton = document.getElementById('btn-guardar-costos-masivo');
-        const textoOriginal = boton.textContent;
+        const htmlOriginal = boton.innerHTML;
         boton.disabled = true;
-        boton.textContent = 'Guardando...';
+        boton.innerHTML = '<svg class="icon spin-anim" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg>Guardando...';
 
         try {
             const respCostos = await fetch('/guardar_costos_masivo', {
@@ -289,15 +307,16 @@
             });
             const dataCostos = await respCostos.json();
             if (dataCostos.ok) {
-                mostrarToast(`${dataCostos.actualizados} costo(s) guardados`, 'success');
+                const n = dataCostos.actualizados;
+                mostrarToast(`${n} costo${n === 1 ? '' : 's'} guardado${n === 1 ? '' : 's'}`, 'success');
             } else {
-                mostrarToast('No se pudo guardar — revisá la conexión', 'error');
+                mostrarToast('No se pudo guardar. Probá de nuevo.', 'error');
             }
         } catch (e) {
-            mostrarToast('No se pudo guardar — revisá la conexión', 'error');
+            mostrarToast('No se pudo guardar. Probá de nuevo.', 'error');
         } finally {
             boton.disabled = false;
-            boton.textContent = textoOriginal;
+            boton.innerHTML = htmlOriginal;
         }
     }
 </script>

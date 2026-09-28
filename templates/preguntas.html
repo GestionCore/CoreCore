@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Preguntas · Santi Mens{% endblock %}
+{% block title %}Preguntas · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -38,7 +38,9 @@
             </tr>
         </thead>
         <tbody id="tbody-preguntas">
-            <tr><td colspan="6" class="text-muted" style="text-align:center; padding:32px;">Cargando...</td></tr>
+            <tr><td colspan="6"><div class="skeleton" style="height:16px; width:60%; margin:4px auto;"></div></td></tr>
+            <tr><td colspan="6"><div class="skeleton" style="height:16px; width:45%; margin:4px auto;"></div></td></tr>
+            <tr><td colspan="6"><div class="skeleton" style="height:16px; width:55%; margin:4px auto;"></div></td></tr>
         </tbody>
     </table>
 </div>
@@ -99,7 +101,7 @@ function renderTabla(preguntas) {
         const estadoBadge = {
             'pendiente': '<span class="badge badge-warning">Pendiente</span>',
             'respondida': '<span class="badge badge-success">Respondida</span>',
-            'ignorada': '<span class="badge" style="background:rgba(255,255,255,0.08);color:var(--text-muted);">Ignorada</span>',
+            'ignorada': '<span class="badge" style="background:rgba(255,255,255,0.08);color:var(--text-secondary);">Ignorada</span>',
         }[p.estado] || p.estado;
 
         const chk = _seleccionadas.has(p.question_id) ? 'checked' : '';

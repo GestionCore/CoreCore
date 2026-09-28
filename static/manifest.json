@@ -1,6 +1,6 @@
 {
-  "name": "Santi Mens — CoreLux",
-  "short_name": "Santi Mens",
+  "name": "CoreLux — Gestión para Mercado Libre",
+  "short_name": "CoreLux",
   "description": "Gestión de ventas, stock y rentabilidad para Mercado Libre.",
   "start_url": "/dashboard",
   "display": "standalone",

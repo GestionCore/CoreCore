@@ -65,6 +65,7 @@
 
     --radius-sm: 8px;
     --radius-md: 14px;
+    --radius-lg: 20px;
     --radius-pill: 999px;
     --shadow-card: 0 4px 28px -4px rgba(0, 0, 0, 0.6);
     --shadow-elevated: 0 18px 44px -8px rgba(0, 0, 0, 0.7);
@@ -183,8 +184,11 @@ a { color: inherit; text-decoration: none; }
 .stat-chip.accent-denim .stat-chip-icon, .stat-chip.accent-primary .stat-chip-icon { color: var(--accent-primary); }
 .stat-chip.accent-success .stat-chip-icon { color: var(--success); }
 .stat-chip.accent-danger .stat-chip-icon { color: var(--danger); }
+.stat-chip.accent-warning .stat-chip-icon, .stat-chip.accent-warning .stat-chip-value { color: var(--semantic-warning); }
+.stat-chip.accent-warning { border-color: rgba(232, 130, 46, 0.3); }
 .stat-chip.accent-gold:hover { border-color: rgba(251, 191, 36, 0.4); box-shadow: var(--shadow-glow-gold); }
 .stat-chip.accent-denim:hover, .stat-chip.accent-primary:hover { border-color: rgba(176, 107, 255, 0.4); box-shadow: var(--shadow-glow-primary); }
+.stat-chip.accent-warning:hover { border-color: rgba(232, 130, 46, 0.5); box-shadow: 0 0 32px -4px rgba(232, 130, 46, 0.35); }
 .stat-chip.accent-success:hover { border-color: rgba(34, 211, 165, 0.4); box-shadow: 0 0 32px -4px rgba(34, 211, 165, 0.35); }
 .stat-chip.accent-danger:hover { border-color: rgba(245, 72, 107, 0.4); box-shadow: 0 0 32px -4px rgba(245, 72, 107, 0.35); }
 
@@ -329,6 +333,22 @@ a { color: inherit; text-decoration: none; }
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 0 18px var(--accent-primary-glow));
 }
+.hero-number.acento-danger {
+    background: none; -webkit-text-fill-color: var(--danger); color: var(--danger);
+    filter: drop-shadow(0 0 18px var(--semantic-danger-glow));
+}
+.hero-number.acento-success {
+    background: none; -webkit-text-fill-color: var(--success); color: var(--success);
+    filter: drop-shadow(0 0 18px rgba(41, 230, 176, 0.4));
+}
+.hero-number.acento-warning {
+    background: none; -webkit-text-fill-color: var(--semantic-warning); color: var(--semantic-warning);
+    filter: drop-shadow(0 0 18px var(--semantic-warning-bg));
+}
+/* Para casos con color calculado en JS (score en gradiente rojo→verde,
+   por ejemplo) en vez de un acento fijo — el color final lo pone el
+   caller vía style="color:...", esta clase solo saca el gradiente base. */
+.hero-number.plano { background: none; -webkit-text-fill-color: currentColor; filter: none; }
 .hero-number-label { font-size: 0.32em; font-weight: 600; color: var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); margin-left: 8px; vertical-align: middle; }
 .stat-chip-desc { font-size: 0.78em; color: var(--text-faint); margin-top: 5px; }
 
@@ -529,7 +549,8 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 
 /* ---------- Acordeón de stock masivo ---------- */
 .acordeon-header { display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:4px 0; }
-.acordeon-chevron { color: var(--text-secondary); font-size:1.1em; }
+.acordeon-chevron { color: var(--text-secondary); font-size:1.1em; display:inline-block; transition: transform 0.2s; }
+.acordeon-item.abierto .acordeon-chevron { transform: rotate(180deg); }
 
 /* ---------- Animación de venta nueva en "Hoy en vivo" ---------- */
 @keyframes ventaEntrada { from { opacity:0; transform: translateY(-8px); background: rgba(16,185,129,0.15); } to { opacity:1; transform: translateY(0); background: transparent; } }
@@ -730,7 +751,8 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     border: 2px solid var(--text-faint); display: flex; align-items: center; justify-content: center;
     font-size: 1.2em; color: var(--success); cursor: pointer; transition: all 0.2s;
 }
-.despacho-item.despachado .despacho-check { border-color: var(--success); background: rgba(16,185,129,0.15); }
+.despacho-item.despachado .despacho-check { border-color: var(--success); background: rgba(16,185,129,0.15); animation: despachoCheckPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes despachoCheckPop { 0% { transform: scale(0.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
 /* ---------- Embudo de Conversión ---------- */
 .embudo-fila {
@@ -798,14 +820,14 @@ body.modo-despacho-limpio { padding-top: 20px; }
 }
 .ue-segmento { height: 100%; transition: width 0.4s ease; }
 .ue-costo { background: #55556b; }
-.ue-envio { background: #38bdf8; }
+.ue-envio { background: var(--accent-cyan); }
 .ue-comision { background: var(--danger); }
 .ue-ganancia { background: linear-gradient(90deg, var(--success), #16a37e); }
 .ue-ganancia-negativa { background: var(--danger); }
 .unit-economics-leyenda { display: flex; align-items: center; gap: 16px; font-size: 0.76em; color: var(--text-secondary); flex-wrap: wrap; }
 .ue-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
 .ue-dot.ue-costo { background: #55556b; }
-.ue-dot.ue-envio { background: #38bdf8; }
+.ue-dot.ue-envio { background: var(--accent-cyan); }
 .ue-dot.ue-comision { background: var(--danger); }
 .ue-dot.ue-ganancia { background: var(--success); }
 .ue-dot.ue-ganancia-negativa { background: var(--danger); }

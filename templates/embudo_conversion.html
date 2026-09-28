@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Embudo de Conversión · Santi Mens{% endblock %}
+{% block title %}Embudo de Conversión · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -35,21 +35,21 @@
     <svg viewBox="0 0 600 {{ sh * 3 + gap * 2 + 10 }}" style="width:100%; max-width:600px; display:block; margin:10px auto 0; overflow:visible;" aria-label="Funnel de conversión">
         <!-- Visitas -->
         <polygon points="{{ cx - w1/2 }},0 {{ cx + w1/2 }},0 {{ cx + w2/2 }},{{ sh }} {{ cx - w2/2 }},{{ sh }}"
-            fill="rgba(46,230,255,0.22)" stroke="rgba(46,230,255,0.6)" stroke-width="1.5" stroke-linejoin="round"/>
+            fill="var(--accent-cyan)" fill-opacity="0.22" stroke="var(--accent-cyan)" stroke-opacity="0.6" stroke-width="1.5" stroke-linejoin="round"/>
         <text x="{{ cx }}" y="{{ sh/2 + 6 }}" text-anchor="middle" fill="var(--accent-cyan)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_visitas | int }} visitas</text>
         <!-- Conector + pct -->
         <line x1="{{ cx }}" y1="{{ sh }}" x2="{{ cx }}" y2="{{ y2 }}" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3,3"/>
         <text x="{{ cx }}" y="{{ sh + gap/2 + 4 }}" text-anchor="middle" fill="var(--text-faint)" font-size="10">{{ "%.1f"|format(pct_preg * 100) }}%</text>
         <!-- Preguntas -->
         <polygon points="{{ cx - w2/2 }},{{ y2 }} {{ cx + w2/2 }},{{ y2 }} {{ cx + w3/2 }},{{ y2 + sh }} {{ cx - w3/2 }},{{ y2 + sh }}"
-            fill="rgba(245,166,35,0.2)" stroke="rgba(245,166,35,0.55)" stroke-width="1.5" stroke-linejoin="round"/>
+            fill="var(--accent-brand)" fill-opacity="0.2" stroke="var(--accent-brand)" stroke-opacity="0.55" stroke-width="1.5" stroke-linejoin="round"/>
         <text x="{{ cx }}" y="{{ y2 + sh/2 + 6 }}" text-anchor="middle" fill="var(--accent-brand)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_preguntas | int }} preguntas</text>
         <!-- Conector + pct -->
         <line x1="{{ cx }}" y1="{{ y2 + sh }}" x2="{{ cx }}" y2="{{ y3 }}" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3,3"/>
         <text x="{{ cx }}" y="{{ y2 + sh + gap/2 + 4 }}" text-anchor="middle" fill="var(--text-faint)" font-size="10">{{ "%.1f"|format(pct_vnt * 100) }}%</text>
         <!-- Ventas -->
         <polygon points="{{ cx - w3/2 }},{{ y3 }} {{ cx + w3/2 }},{{ y3 }} {{ cx + w3/2 - 6 }},{{ y3 + sh }} {{ cx - w3/2 + 6 }},{{ y3 + sh }}"
-            fill="rgba(41,230,176,0.22)" stroke="rgba(41,230,176,0.6)" stroke-width="1.5" stroke-linejoin="round"/>
+            fill="var(--success)" fill-opacity="0.22" stroke="var(--success)" stroke-opacity="0.6" stroke-width="1.5" stroke-linejoin="round"/>
         <text x="{{ cx }}" y="{{ y3 + sh/2 + 6 }}" text-anchor="middle" fill="var(--success)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_ventas | int }} ventas</text>
     </svg>
 </div>
@@ -88,15 +88,15 @@
         <div class="embudo-barras">
             <div class="embudo-etapa">
                 <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-eye"/></svg>{{ e.visitas }} visitas</span>
-                <div class="embudo-barra-fondo"><div class="embudo-barra" style="width:{{ '100' if e.visitas > 0 else '0' }}%; background:var(--accent-denim);"></div></div>
+                <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ '100' if e.visitas > 0 else '0' }}" style="width:0%; background:var(--accent-denim);"></div></div>
             </div>
             <div class="embudo-etapa">
                 <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;color:var(--accent-brand);"><use href="#icon-info"/></svg>{{ e.preguntas }} preguntas</span>
-                <div class="embudo-barra-fondo"><div class="embudo-barra" style="width:{{ ((e.preguntas / e.visitas * 100) if e.visitas > 0 else 0)|round(1) }}%; background:var(--accent-gold);"></div></div>
+                <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ ((e.preguntas / e.visitas * 100) if e.visitas > 0 else 0)|round(1) }}" style="width:0%; background:var(--accent-gold);"></div></div>
             </div>
             <div class="embudo-etapa">
                 <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-box"/></svg>{{ e.vendidas }} ventas {% if e.tasa_conversion is not none %}({{ e.tasa_conversion }}%){% endif %}</span>
-                <div class="embudo-barra-fondo"><div class="embudo-barra" style="width:{{ (e.tasa_conversion or 0)|round(1) }}%; background:var(--success);"></div></div>
+                <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ (e.tasa_conversion or 0)|round(1) }}" style="width:0%; background:var(--success);"></div></div>
             </div>
         </div>
     </div>
@@ -108,6 +108,12 @@
 </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            document.querySelectorAll('.embudo-barra[data-w]').forEach(el => { el.style.width = el.dataset.w + '%'; });
+        }));
+    });
+
     let _embudoOrdenAsc = false; // por defecto: mayor a menor
     function ordenarEmbudo(campo, boton) {
         const cont = document.getElementById('embudo-lista');
@@ -136,7 +142,7 @@
 <div class="panel">
     <div class="panel-title"><svg class="icon" style="color:var(--text-faint);"><use href="#icon-alert"/></svg> Publicaciones "Zombie" — cero visitas y cero ventas en 60 días ({{ zombies|length }})</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
-        Están activas pero no aportan nada — compiten por tu atención y tu lugar en el catálogo sin resultado. Tocá una para revisarla en el Drawer.
+        Sin visitas ni ventas en 60 días — ocupan lugar en tu catálogo sin traerte resultados. Vale la pena revisarlas o pausarlas. Tocá una para abrirla en el Drawer.
     </div>
     <div class="flex-gap">
         {% for z in zombies %}

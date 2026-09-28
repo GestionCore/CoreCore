@@ -134,6 +134,11 @@ def _inyectar_nav_grupos():
     return {"nav_grupos": nav_config.GRUPOS_NAV}
 
 
+@app.context_processor
+def _inyectar_anio_actual():
+    return {"anio_actual": datetime.now().year}
+
+
 @app.after_request
 def _trackear_navegacion(response):
     """
@@ -312,29 +317,45 @@ def conectar():
     return redirect(oauth_meli.construir_url_autorizacion(state))
 
 
+MOTIVO_USUARIO_CANCELO = "usuario_cancelo"
+MOTIVO_INTENTO_VENCIDO = "intento_vencido"
+MOTIVO_GENERICO = "generico"
+
+
 @app.route("/callback")
 def callback():
-    """MeLi redirige acá después de que el usuario aprueba (o rechaza) el permiso."""
+    """MeLi redirige acá después de que el usuario aprueba (o rechaza) el permiso.
+
+    El detalle técnico de cada falla (código HTTP, cuerpo de la respuesta,
+    nombres de parámetros OAuth) se loguea server-side para debug, pero
+    nunca se le muestra al usuario — error_conexion.html solo recibe una
+    categoría, y decide ella misma qué mensaje mostrar.
+    """
     error = request.args.get("error")
     if error:
-        return render_template("error_conexion.html", motivo=f"Mercado Libre informó un error: {error}")
+        app.logger.warning("Callback OAuth: MeLi devolvió error=%s", error)
+        return render_template("error_conexion.html", motivo=MOTIVO_USUARIO_CANCELO)
 
     code = request.args.get("code")
     state_recibido = request.args.get("state")
     state_esperado = session.pop("oauth_state", None)
 
     if not code:
-        return render_template("error_conexion.html", motivo="No llegó el código de autorización.")
+        app.logger.warning("Callback OAuth: no llegó 'code' en la URL de vuelta.")
+        return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
     if not state_esperado or state_recibido != state_esperado:
-        return render_template("error_conexion.html", motivo="El parámetro de seguridad (state) no coincide — por las dudas, volvé a intentar conectar.")
+        app.logger.warning("Callback OAuth: state no coincide (esperado=%s, recibido=%s).", bool(state_esperado), bool(state_recibido))
+        return render_template("error_conexion.html", motivo=MOTIVO_INTENTO_VENCIDO)
 
     ok, resultado = oauth_meli.intercambiar_codigo_por_token(code)
     if not ok:
-        return render_template("error_conexion.html", motivo=resultado)
+        app.logger.warning("Callback OAuth: falló el intercambio de código — %s", resultado)
+        return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
 
     ok_datos, datos_meli = oauth_meli.obtener_datos_usuario_meli(resultado["access_token"])
     if not ok_datos:
-        return render_template("error_conexion.html", motivo=datos_meli)
+        app.logger.warning("Callback OAuth: falló la consulta de datos del usuario — %s", datos_meli)
+        return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
 
     usuario_id, cuenta_id, es_nuevo = registro.crear_o_actualizar_login(datos_meli)
 
