@@ -223,3 +223,27 @@ ALTER POLICY configuracion_cuenta_por_cuenta_propia ON configuracion_cuenta
             OR cuenta_id = current_setting('app.cuenta_actual')::bigint
         )
     );
+
+-- Agregadas en la misma migración: tendencias_seguimiento y
+-- tendencias_snapshots (migración 0009) se crearon con la política
+-- vieja porque 0009 se escribió antes de diseñar esta defensa en
+-- profundidad — mismo fix, para no dejarlas afuera.
+ALTER POLICY tendencias_seguimiento_por_cuenta_propia ON tendencias_seguimiento
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
+
+ALTER POLICY tendencias_snapshots_por_cuenta_propia ON tendencias_snapshots
+    USING (
+        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
+        AND (
+            current_setting('app.cuenta_actual', true) IS NULL
+            OR current_setting('app.cuenta_actual', true) = ''
+            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+        )
+    );
