@@ -4,9 +4,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
+# Cualquier proveedor compatible con el formato de Chat Completions de
+# OpenAI sirve acá (DeepSeek, OpenRouter, Groq, etc.) — el código de
+# más abajo no le pregunta nada a un proveedor puntual.
+IA_API_KEY = os.getenv("IA_API_KEY", "")
+IA_BASE_URL = os.getenv("IA_BASE_URL", "https://api.deepseek.com")
+IA_MODEL = os.getenv("IA_MODEL", "deepseek-flash")
 
 
 def preguntar_ia(prompt_sistema, prompt_usuario, max_tokens=500, temperatura=0.4):
@@ -20,14 +23,13 @@ def preguntar_ia_conversacion(prompt_sistema, historial_mensajes, max_tokens=500
     ({"role": "user"|"assistant", "content": "..."}) para que el modelo
     tenga el hilo de la conversación, no solo el último mensaje.
 
-    El modelo gratuito de OpenRouter a veces devuelve una respuesta 200
-    pero sin contenido de texto — es un problema conocido de los modelos
-    "free", no un error de nuestro lado. Reintentamos un par de veces
-    antes de darnos por vencidos, porque casi siempre el reintento sí
-    trae contenido.
+    Algunos modelos devuelven de vez en cuando una respuesta 200 pero
+    sin contenido de texto. Reintentamos un par de veces antes de
+    darnos por vencidos, porque casi siempre el reintento sí trae
+    contenido.
     """
-    if not OPENROUTER_API_KEY:
-        return False, "Falta configurar OPENROUTER_API_KEY en el archivo .env."
+    if not IA_API_KEY:
+        return False, "Falta configurar IA_API_KEY en el archivo .env."
 
     import time
     ultimo_error = "Error desconocido."
@@ -50,13 +52,13 @@ def preguntar_ia_conversacion(prompt_sistema, historial_mensajes, max_tokens=500
 def _intentar_una_vez(prompt_sistema, historial_mensajes, max_tokens, temperatura):
     try:
         resp = requests.post(
-            f"{OPENROUTER_BASE_URL}/chat/completions",
+            f"{IA_BASE_URL}/chat/completions",
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {IA_API_KEY}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": OPENROUTER_MODEL,
+                "model": IA_MODEL,
                 "messages": [{"role": "system", "content": prompt_sistema}] + historial_mensajes,
                 "temperature": temperatura,
                 "max_tokens": max_tokens
@@ -69,7 +71,7 @@ def _intentar_una_vez(prompt_sistema, historial_mensajes, max_tokens, temperatur
                 error_msg = resp.json().get("error", {}).get("message", resp.text)
             except Exception:
                 error_msg = resp.text[:200]
-            print(f"[IA] ⚠️ Error de OpenRouter: {resp.status_code} - {error_msg}")
+            print(f"[IA] ⚠️ Error del proveedor de IA: {resp.status_code} - {error_msg}")
             return False, f"Error comunicando con la IA: {error_msg}"
 
         data = resp.json()
@@ -84,7 +86,7 @@ def _intentar_una_vez(prompt_sistema, historial_mensajes, max_tokens, temperatur
         return False, "La IA no devolvió ninguna opción válida."
 
     except requests.exceptions.Timeout:
-        print("[IA] ❌ Timeout consultando OpenRouter.")
+        print("[IA] ❌ Timeout consultando al proveedor de IA.")
         return False, "Error comunicando con la IA: tiempo de espera agotado (Timeout)."
     except Exception as e:
         print(f"[IA] ❌ Error inesperado: {e}")

@@ -121,7 +121,7 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO app_admin;
 cp .env.example .env
 ```
 
-Completá las dos `DATABASE_URL`, `MELI_CLIENT_ID`/`SECRET`/`REDIRECT_URI`, `FLASK_SECRET_KEY`, `TOKEN_ENCRYPTION_KEY` (comandos para generarlas en el `.env.example`). `OPENROUTER_API_KEY` es opcional — sin ella, Logros funciona igual, solo sin el mensaje "coach".
+Completá las dos `DATABASE_URL`, `MELI_CLIENT_ID`/`SECRET`/`REDIRECT_URI`, `FLASK_SECRET_KEY`, `TOKEN_ENCRYPTION_KEY` (comandos para generarlas en el `.env.example`). `IA_API_KEY` es opcional — sin ella, Logros funciona igual, solo sin el mensaje "coach" (y el Chat IA / Costos por chat avisan que falta configurar la IA en vez de responder).
 
 ### 3. Instalar y correr
 

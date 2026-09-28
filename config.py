@@ -29,10 +29,13 @@ MELI_CLIENT_SECRET = os.getenv("MELI_CLIENT_SECRET", "")
 MELI_REDIRECT_URI = os.getenv("MELI_REDIRECT_URI", "")  # ej: https://tu-subdominio.ngrok-free.app/callback
 MELI_SITE_ID = os.getenv("MELI_SITE_ID", "MLA")
 
-# --- IA (OpenRouter, para el mensaje "coach" de Logros) ---
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
+# --- IA (Chat IA, Costos por chat, mensaje "coach" de Logros) ---
+# Cualquier proveedor compatible con el formato de Chat Completions de
+# OpenAI sirve acá (DeepSeek, OpenRouter, Groq, etc.) — solo cambian
+# estos 3 valores, el código no le pregunta a un proveedor puntual.
+IA_API_KEY = os.getenv("IA_API_KEY", "")
+IA_BASE_URL = os.getenv("IA_BASE_URL", "https://api.deepseek.com")
+IA_MODEL = os.getenv("IA_MODEL", "deepseek-flash")
 
 # --- Infraestructura F0: Redis + Sentry ---
 # Redis: para Celery (cola de tareas + beat scheduler) y Flask-Caching.

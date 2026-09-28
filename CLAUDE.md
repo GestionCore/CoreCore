@@ -154,8 +154,12 @@ scopeado por cuenta_id antes de confiar en él.
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de
   transacción — el puerto importa para que RLS sea confiable),
   `DATABASE_URL_ADMIN`, `MELI_CLIENT_ID/SECRET/REDIRECT_URI`,
-  `FLASK_SECRET_KEY`, `TOKEN_ENCRYPTION_KEY`, `OPENROUTER_API_KEY`
-  (opcional, para el coach de Logros y Costos por chat)
+  `FLASK_SECRET_KEY`, `TOKEN_ENCRYPTION_KEY`, `IA_API_KEY`/`IA_BASE_URL`/`IA_MODEL`
+  (opcional, para el coach de Logros y Costos por chat — cualquier
+  proveedor compatible con Chat Completions de OpenAI sirve; en uso
+  actual: DeepSeek, `https://api.deepseek.com`, `deepseek-flash`.
+  Antes se llamaban `OPENROUTER_*` porque se empezó con OpenRouter,
+  se renombraron 2026-09 al cambiar de proveedor)
 - `FLASK_DEBUG` SIEMPRE en `false` si la app está expuesta por ngrok —
   con debug activo, un error muestra una consola de Python interactiva
   a cualquiera que la vea.
