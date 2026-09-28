@@ -33,6 +33,17 @@
 -- cuentas_meli y meli_tokens NO se tocan: cuentas_meli necesita
 -- mostrar TODAS las cuentas del usuario (para el selector de
 -- cuenta), y meli_tokens ya bloquea todo acceso normal a propósito.
+--
+-- NOTA sobre ownership: esta migración cubre las 19 tablas originales
+-- del esquema base, TODAS owned por el rol "postgres" (se crearon a
+-- mano en el SQL Editor de Supabase) — por eso ALTER POLICY acá
+-- necesita correrse logueado como owner ahí, no por migrate.py (el
+-- rol app_admin no es owner de estas 19, aunque tenga BYPASSRLS).
+-- tendencias_seguimiento y tendencias_snapshots (migración 0009) NO
+-- están en este archivo: esas 2 las creó app_admin al correr 0009 por
+-- migrate.py, así que quedaron owned por app_admin, no por postgres
+-- — se aplicaron aparte, directo por migrate.py/conexion_admin, ya
+-- verificado contra Supabase real (2026-09-27).
 
 ALTER POLICY ventas_por_cuenta_propia ON ventas
     USING (
@@ -224,26 +235,7 @@ ALTER POLICY configuracion_cuenta_por_cuenta_propia ON configuracion_cuenta
         )
     );
 
--- Agregadas en la misma migración: tendencias_seguimiento y
--- tendencias_snapshots (migración 0009) se crearon con la política
--- vieja porque 0009 se escribió antes de diseñar esta defensa en
--- profundidad — mismo fix, para no dejarlas afuera.
-ALTER POLICY tendencias_seguimiento_por_cuenta_propia ON tendencias_seguimiento
-    USING (
-        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
-        AND (
-            current_setting('app.cuenta_actual', true) IS NULL
-            OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
-        )
-    );
+-- tendencias_seguimiento y tendencias_snapshots: ver nota de ownership
+-- más arriba — se aplicaron aparte, no van en este archivo.
 
-ALTER POLICY tendencias_snapshots_por_cuenta_propia ON tendencias_snapshots
-    USING (
-        cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint)
-        AND (
-            current_setting('app.cuenta_actual', true) IS NULL
-            OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
-        )
-    );
+INSERT INTO schema_migrations (version) VALUES ('0010') ON CONFLICT DO NOTHING;
