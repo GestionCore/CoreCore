@@ -44,6 +44,18 @@
 -- migrate.py, así que quedaron owned por app_admin, no por postgres
 -- — se aplicaron aparte, directo por migrate.py/conexion_admin, ya
 -- verificado contra Supabase real (2026-09-27).
+--
+-- BUG real encontrado al probar esto YA APLICADO contra Supabase real
+-- (no en la simulación previa, que no lo reproducía): Postgres NO
+-- garantiza evaluar un OR de izquierda a derecha ni cortar en el
+-- primer TRUE — así que "cuenta_id = current_setting(...)::bigint"
+-- se evaluaba IGUAL aunque cuenta_actual fuera '', y castear '' a
+-- bigint explota con "invalid input syntax for type bigint". Esto
+-- rompía CUALQUIER query que no pasara cuenta_id (la mayoría del
+-- proyecto todavía). Arreglado comparando como texto en los dos lados
+-- (cuenta_id::text = cuenta_actual) en vez de castear el string vacío
+-- a número — un bigint siempre castea a texto sin error, así que ya
+-- no hay ninguna rama que pueda fallar.
 
 ALTER POLICY ventas_por_cuenta_propia ON ventas
     USING (
@@ -51,7 +63,7 @@ ALTER POLICY ventas_por_cuenta_propia ON ventas
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -61,7 +73,7 @@ ALTER POLICY productos_padre_por_cuenta_propia ON productos_padre
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -71,7 +83,7 @@ ALTER POLICY productos_variantes_por_cuenta_propia ON productos_variantes
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -81,7 +93,7 @@ ALTER POLICY incidencias_posventa_por_cuenta_propia ON incidencias_posventa
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -91,7 +103,7 @@ ALTER POLICY gastos_operativos_por_cuenta_propia ON gastos_operativos
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -101,7 +113,7 @@ ALTER POLICY historial_precios_por_cuenta_propia ON historial_precios
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -111,7 +123,7 @@ ALTER POLICY historial_promociones_por_cuenta_propia ON historial_promociones
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -121,7 +133,7 @@ ALTER POLICY proveedores_por_cuenta_propia ON proveedores
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -131,7 +143,7 @@ ALTER POLICY competidores_seguimiento_por_cuenta_propia ON competidores_seguimie
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -141,7 +153,7 @@ ALTER POLICY competidores_historial_por_cuenta_propia ON competidores_historial
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -151,7 +163,7 @@ ALTER POLICY tendencias_historial_por_cuenta_propia ON tendencias_historial
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -161,7 +173,7 @@ ALTER POLICY combos_sugeridos_por_cuenta_propia ON combos_sugeridos
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -171,7 +183,7 @@ ALTER POLICY logros_historial_por_cuenta_propia ON logros_historial
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -181,7 +193,7 @@ ALTER POLICY alertas_curva_talles_por_cuenta_propia ON alertas_curva_talles
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -191,7 +203,7 @@ ALTER POLICY alertas_quiebre_stock_por_cuenta_propia ON alertas_quiebre_stock
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -201,7 +213,7 @@ ALTER POLICY preguntas_pendientes_por_cuenta_propia ON preguntas_pendientes
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -211,7 +223,7 @@ ALTER POLICY comandos_pendientes_por_cuenta_propia ON comandos_pendientes
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -221,7 +233,7 @@ ALTER POLICY conversacion_whatsapp_por_cuenta_propia ON conversacion_whatsapp_hi
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
@@ -231,7 +243,7 @@ ALTER POLICY configuracion_cuenta_por_cuenta_propia ON configuracion_cuenta
         AND (
             current_setting('app.cuenta_actual', true) IS NULL
             OR current_setting('app.cuenta_actual', true) = ''
-            OR cuenta_id = current_setting('app.cuenta_actual')::bigint
+            OR cuenta_id::text = current_setting('app.cuenta_actual', true)
         )
     );
 
