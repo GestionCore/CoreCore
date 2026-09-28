@@ -24,9 +24,24 @@ CREATE TABLE IF NOT EXISTS oauth_vinculaciones_pendientes (
     creado_en       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Sin RLS a propósito, mismo caso que `usuarios`: en el momento en que
--- /callback necesita leer esta tabla puede no haber NINGUNA sesión activa
--- (ventana de incógnito) — no hay app.usuario_actual contra el cual
--- filtrar. La seguridad acá la da el token en sí (aleatorio, de un solo
--- uso, de vida corta), no RLS.
 GRANT SELECT, INSERT, DELETE ON oauth_vinculaciones_pendientes TO app_backend;
+
+-- RLS habilitado CON una política siempre-permisiva, en vez de dejarlo
+-- sin RLS: en el momento en que /callback necesita leer esta tabla puede
+-- no haber NINGUNA sesión activa (ventana de incógnito) — no hay
+-- app.usuario_actual contra el cual filtrar, así que una política que
+-- compare contra eso no sirve acá. La seguridad real la da el state en
+-- sí (aleatorio, de un solo uso, de vida corta de 15 min), no RLS.
+--
+-- Por qué CON política y no simplemente sin RLS (como se hizo primero):
+-- encontramos en producción que Supabase (probablemente su propio
+-- panel/advisor de seguridad, que marca cualquier tabla sin RLS) la
+-- terminó activando solo, sin ninguna política — eso bloquea TODO
+-- acceso de app_backend con "new row violates row-level security
+-- policy", el mismo bug de siempre (ver el comentario del bug #8 en
+-- schema/01_schema_multitenant.sql) pero esta vez activándose después
+-- de crear la tabla, no en la migración. Con una política explícita
+-- que siempre permite, da lo mismo si Supabase prende RLS de nuevo.
+ALTER TABLE oauth_vinculaciones_pendientes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY oauth_vinculaciones_pendientes_acceso_backend ON oauth_vinculaciones_pendientes
+    USING (true) WITH CHECK (true);
