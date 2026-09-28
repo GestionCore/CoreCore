@@ -34,7 +34,15 @@ def _obtener_pool():
     if _pool is None:
         if not config.DATABASE_URL:
             raise RuntimeError("Falta DATABASE_URL en las variables de entorno.")
-        _pool = ConnectionPool(config.DATABASE_URL, min_size=1, max_size=20, open=True)
+        # min_size=1 significa que el pool arranca con UNA sola conexión
+        # física abierta — cualquier request concurrente de más necesita
+        # que psycopg_pool abra una conexión nueva contra Supabase recién
+        # en ese momento (TCP + TLS + auth de Postgres), que pesa mucho
+        # más que reusar una que ya está viva. Con varias cuentas usando
+        # la app en simultáneo (Diego + su familia), eso se siente como
+        # lentitud intermitente al cambiar de página. Subir el mínimo deja
+        # unas cuantas conexiones ya abiertas y listas de entrada.
+        _pool = ConnectionPool(config.DATABASE_URL, min_size=4, max_size=20, open=True)
     return _pool
 
 
@@ -43,7 +51,11 @@ def _obtener_pool_admin():
     if _pool_admin is None:
         if not config.DATABASE_URL_ADMIN:
             raise RuntimeError("Falta DATABASE_URL_ADMIN en las variables de entorno.")
-        _pool_admin = ConnectionPool(config.DATABASE_URL_ADMIN, min_size=1, max_size=10, open=True)
+        # Mismo motivo que en _obtener_pool — token_manager.asegurar_token_valido
+        # pasa por este pool en CASI todas las rutas autenticadas (cualquiera
+        # que llame a la API de MeLi), así que también le conviene arrancar
+        # con más de una conexión ya lista.
+        _pool_admin = ConnectionPool(config.DATABASE_URL_ADMIN, min_size=2, max_size=10, open=True)
     return _pool_admin
 
 

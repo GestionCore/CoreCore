@@ -202,10 +202,14 @@ def landing():
         cursor = conexion.cursor()
         cursor.execute("SELECT pantalla_preferida FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila_pref = cursor.fetchone()
+    # Reenviamos los query params (ej. ?msg=...&tipo=... de un toast) en
+    # este redirect interno — si no, un mensaje armado para "/" se perdía
+    # en el salto automático a la pantalla preferida (dashboard/métricas),
+    # que nunca llegaba a leerlo.
     if fila_pref and fila_pref[0] == "dashboard":
-        return redirect(url_for("dashboard_personalizable"))
+        return redirect(url_for("dashboard_personalizable", **request.args))
     if fila_pref and fila_pref[0] == "metricas":
-        return redirect(url_for("metricas_vista"))
+        return redirect(url_for("metricas_vista", **request.args))
 
     productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id, g.cuenta_id)
     return render_template("index.html", productos=productos, stats=stats, active_nav="stock")
@@ -414,6 +418,7 @@ def callback():
     usuario_id_actual = session.get("usuario_id")
 
     if vinculando and usuario_id_actual:
+        from urllib.parse import urlencode
         cuenta_id, resultado_vinculo = registro.vincular_cuenta_adicional(usuario_id_actual, datos_meli)
         if resultado_vinculo == "ya_de_otro_usuario":
             app.logger.warning("Callback OAuth: intento de vincular meli_user_id=%s, ya pertenece a otro usuario.", datos_meli.get("meli_user_id"))
@@ -426,6 +431,19 @@ def callback():
         # sincronización previa (reconexión), login_requerido la deja pasar
         # directo; si es nueva, va a mostrarle sincronizando.html sola.
         iniciar_sesion(usuario_id_actual, cuenta_id)
+
+        if resultado_vinculo == "reconectada":
+            # El navegador ya tenía una sesión activa en mercadolibre.com
+            # con la MISMA cuenta que ya estaba conectada acá — MeLi no
+            # muestra selector de cuenta si ya hay una sesión, así que el
+            # OAuth "autoriza" la misma de siempre en vez de una distinta.
+            # Antes esto redirigía en silencio al Dashboard sin avisar
+            # nada — se sentía como que el botón no hacía nada. Este
+            # mensaje explica lo que pasó y cómo conectar una cuenta
+            # REALMENTE distinta.
+            msg = "Esa cuenta de Mercado Libre ya estaba conectada a tu usuario — no se agregó ninguna nueva. Para sumar una cuenta distinta, primero cerrá sesión en mercadolibre.com (o usá una ventana privada) y volvé a intentar."
+            return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': 'info'})}")
+
         try:
             from tasks.sync_tasks import sincronizar_todo_task
             sincronizar_todo_task.delay(usuario_id_actual, cuenta_id)
@@ -436,7 +454,8 @@ def callback():
                 args=(usuario_id_actual, cuenta_id),
                 daemon=True,
             ).start()
-        return redirect(url_for("landing"))
+        msg = f"¡Cuenta {datos_meli.get('nickname') or ''} conectada! Ya podés cambiar entre tus cuentas desde el selector del menú.".replace("  ", " ")
+        return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': 'success'})}")
 
     usuario_id, cuenta_id, es_nuevo = registro.crear_o_actualizar_login(datos_meli)
 
