@@ -107,20 +107,44 @@ scopeado por cuenta_id antes de confiar en él.
   PROPIO del usuario, no predicción de demanda de mercado externo (eso
   es un feature más grande, ver más abajo).
 - **Costos por chat** (`costos_chat.py`, `/api/costos_chat`): IA
-  (OpenRouter) convierte una descripción en lenguaje natural en un
-  gasto estructurado, pregunta el período si falta, y SIEMPRE pide
+  convierte una descripción en lenguaje natural en un gasto
+  estructurado, pregunta el período si falta, y SIEMPRE pide
   confirmación explícita antes de guardar — nunca escribe directo.
   `gastos_operativos` ahora soporta `recurrente` + `fecha_fin`, con
   prorrateo por día en `costos.py` cuando el período elegido es más
   corto que un mes.
+- **Multi-cuenta real (Plan Elite)**: `/conectar_otra_cuenta` vincula
+  una segunda cuenta de MeLi al usuario YA logueado (en vez de crear un
+  usuario nuevo, que es lo que hacía `/conectar` siempre) —
+  `registro.vincular_cuenta_adicional()`, gateado a `plan == 'elite'`
+  server-side. El selector del nav (`cuentas_disponibles` /
+  `/cambiar_cuenta`) ya existía en el código pero estaba huérfano —
+  ahora sí tiene un flujo real que lo alimenta. Antes de construir esto
+  se auditó a fondo si el aislamiento entre cuentas de un mismo usuario
+  era seguro (la preocupación real: que todas las pantallas de
+  análisis mostraran datos MEZCLADOS de las 2 cuentas) — se confirmó
+  que las 58 rutas de `app.py` que abren conexión con RLS pasan
+  `g.cuenta_id` siempre, así que la migración 0010 (RLS por cuenta
+  activa) ya protege de verdad, no solo en el papel. El comentario
+  viejo de advertencia en `auth/registro.py` sobre esto estaba
+  desactualizado y se corrigió.
+  ⚠️ Esto se armó por trazado de código contra el patrón ya probado
+  (`crear_o_actualizar_login`), pero NUNCA se corrió contra Supabase
+  real en vivo — el sandbox donde se escribió no tiene salida de red a
+  Postgres (solo HTTPS). Antes de confiar en esto a ciegas con más
+  usuarios, probarlo de punta a punta con una cuenta real.
+- **Cuentas de cortesía**: las 2 cuentas de MeLi de la familia del
+  dueño (sus padres) están en Plan Elite gratis, seteado a mano por
+  `UPDATE usuarios SET plan = 'elite'` — nunca pasaron por Mercado
+  Pago. El día que se implemente cobro real, ASEGURARSE de excluir
+  estos `usuario_id` de cualquier proceso de facturación — no tienen
+  (ni van a tener) una suscripción real de MP detrás.
 
 ## Lo que NO existe todavía (no asumas que sí)
 - Puente de WhatsApp (Baileys) — comentado en `iniciar_corelux.bat`
 - Auditoría automática de devoluciones/cancelaciones más allá de lo
   que ya cubre `ventas_sync.py`
 - Cobro por Mercado Pago
-- UI de selección de cuenta para el plan Elite (la función de backend
-  `obtener_cuentas_de_usuario` existe, la UI no)
 - Rediseño del Dashboard (gráficos, más variedad — hoy son cuadros de
   resumen chicos nomás)
 - La visión de largo plazo (inteligencia competitiva cruzando

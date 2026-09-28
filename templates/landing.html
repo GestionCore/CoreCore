@@ -44,7 +44,7 @@
             display: inline-flex; align-items: center; gap: 7px;
             background: rgba(176,107,255,0.12); border: 1px solid rgba(176,107,255,0.3);
             border-radius: var(--radius-pill); padding: 5px 14px;
-            color: var(--accent-brand); font-size: 0.82em; font-weight: 600;
+            color: var(--accent-primary); font-size: 0.82em; font-weight: 600;
             margin-bottom: 28px; letter-spacing: 0.01em;
         }
         .lp-titulo {
@@ -93,7 +93,7 @@
             background: linear-gradient(135deg, var(--accent-cyan), var(--accent-brand));
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
-        .lp-stat-label { color: var(--text-muted); font-size: 0.82em; margin-top: 2px; }
+        .lp-stat-label { color: var(--text-secondary); font-size: 0.82em; margin-top: 2px; }
 
         /* ── Secciones generales ──────────────────────── */
         .lp-seccion {
@@ -127,7 +127,7 @@
             width: 44px; height: 44px; border-radius: var(--radius-sm);
             background: rgba(176,107,255,0.1); border: 1px solid rgba(176,107,255,0.2);
             display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
-            color: var(--accent-brand);
+            color: var(--accent-primary);
         }
         .lp-feature-icon svg { width: 22px; height: 22px; }
         .lp-feature-titulo { font-weight: 700; font-size: 1em; margin-bottom: 6px; }
@@ -163,7 +163,7 @@
             letter-spacing: -0.03em; margin-bottom: 4px; line-height: 1;
         }
         .lp-plan-moneda { font-size: 0.45em; vertical-align: top; margin-top: 8px; display: inline-block; color: var(--text-secondary); }
-        .lp-plan-periodo { color: var(--text-muted); font-size: 0.82em; margin-bottom: 28px; }
+        .lp-plan-periodo { color: var(--text-secondary); font-size: 0.82em; margin-bottom: 28px; }
         .lp-plan-features { list-style: none; padding: 0; margin: 0 0 28px; text-align: left; display: flex; flex-direction: column; gap: 10px; flex: 1; }
         .lp-plan-features li {
             display: flex; align-items: flex-start; gap: 9px;
@@ -177,7 +177,7 @@
         /* ── CTA final ────────────────────────────────── */
         .lp-cta-final {
             text-align: center; padding: 80px 24px;
-            background: linear-gradient(135deg, rgba(176,107,255,0.06) 0%, rgba(41,230,176,0.04) 100%);
+            background: linear-gradient(135deg, rgba(176,107,255,0.06) 0%, rgba(46,230,255,0.04) 100%);
             border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);
         }
 
@@ -188,7 +188,7 @@
             color: var(--text-faint); font-size: 0.8em;
             border-top: 1px solid var(--glass-border);
         }
-        .lp-footer a { color: var(--text-muted); text-decoration: none; }
+        .lp-footer a { color: var(--text-secondary); text-decoration: none; }
         .lp-footer a:hover { color: var(--text-primary); }
 
         /* ── Cómo funciona (pasos) ─────────────────────── */
@@ -244,6 +244,11 @@
             padding: 0 20px; color: var(--text-secondary); font-size: 0.88em; line-height: 1.6;
         }
         .lp-faq-item.abierto .lp-faq-respuesta { max-height: 320px; padding: 0 20px 20px; }
+
+        /* ── Revelado al hacer scroll ──────────────────── */
+        .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s cubic-bezier(0.16,1,0.3,1), transform 0.6s cubic-bezier(0.16,1,0.3,1); }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+        @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
 
         @media (max-width: 600px) {
             .lp-nav { padding: 12px 16px; }
@@ -309,7 +314,7 @@
             </div>
             <div class="lp-stat">
                 <div class="lp-stat-val">100%</div>
-                <div class="lp-stat-label">datos de tu cuenta real</div>
+                <div class="lp-stat-label">datos en vivo de tu cuenta</div>
             </div>
         </div>
     </div>
@@ -367,7 +372,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21V3z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
                 </div>
                 <div class="lp-feature-titulo">Monotributo sin sorpresas</div>
-                <div class="lp-feature-desc">Comparamos tu facturación real de los últimos 12 meses contra las escalas vigentes de AFIP y te avisamos antes de que te cambien de categoría solos.</div>
+                <div class="lp-feature-desc">Comparamos tu facturación real de los últimos 12 meses contra las escalas vigentes de AFIP y te avisamos antes de que puedas cambiar de categoría, para que no te agarre de sorpresa.</div>
             </div>
             <div class="lp-feature-card">
                 <div class="lp-feature-icon">
@@ -492,22 +497,22 @@
 <section class="lp-seccion" style="max-width:920px;">
     <div class="lp-divider" style="margin-bottom:48px;"></div>
     <h2 class="lp-seccion-titulo">Tus datos, cuidados en serio</h2>
-    <p class="lp-seccion-subtitulo">Manejamos información de facturación real — la seguridad acá no es una frase de marketing.</p>
+    <p class="lp-seccion-subtitulo">Trabajamos con información real de tu facturación, y la cuidamos en serio.</p>
     <div class="lp-seguridad-grid">
         <div class="lp-seguridad-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             <div class="lp-seguridad-titulo">Nunca vemos tu contraseña</div>
-            <div class="lp-seguridad-desc">Te conectás con el login oficial de Mercado Libre (OAuth) — CoreLux nunca recibe ni guarda tu contraseña.</div>
+            <div class="lp-seguridad-desc">Te conectás con el login oficial de Mercado Libre — CoreLux nunca recibe ni guarda tu contraseña.</div>
         </div>
         <div class="lp-seguridad-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             <div class="lp-seguridad-titulo">Credenciales cifradas</div>
-            <div class="lp-seguridad-desc">El acceso a tu cuenta se guarda cifrado en una tabla aparte, bloqueada incluso para el resto de nuestro propio sistema.</div>
+            <div class="lp-seguridad-desc">Guardamos tu acceso cifrado y aislado — ni nuestro propio equipo puede verlo.</div>
         </div>
         <div class="lp-seguridad-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
             <div class="lp-seguridad-titulo">Tus datos son solo tuyos</div>
-            <div class="lp-seguridad-desc">Aislamiento real entre cuentas a nivel de base de datos — no un simple filtro en la pantalla.</div>
+            <div class="lp-seguridad-desc">Ningún otro vendedor que use CoreLux puede verlos, nunca.</div>
         </div>
         <div class="lp-seguridad-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -590,7 +595,7 @@
                 <span>¿Es seguro conectar mi cuenta de Mercado Libre?</span>
                 <span class="lp-faq-chevron">▾</span>
             </button>
-            <div class="lp-faq-respuesta">Sí. Usamos el sistema oficial de autorización de Mercado Libre (OAuth 2.0) — nunca vemos ni pedimos tu contraseña. Podés revocar el acceso vos mismo desde tu cuenta de Mercado Libre en cualquier momento, sin avisarnos.</div>
+            <div class="lp-faq-respuesta">Sí. Usamos el sistema oficial de autorización de Mercado Libre — nunca vemos ni pedimos tu contraseña. Podés revocar el acceso vos mismo desde tu cuenta de Mercado Libre en cualquier momento, sin avisarnos.</div>
         </div>
         <div class="lp-faq-item">
             <button type="button" class="lp-faq-pregunta" aria-expanded="false" onclick="this.parentElement.classList.toggle('abierto'); this.setAttribute('aria-expanded', this.parentElement.classList.contains('abierto'))">
@@ -646,12 +651,39 @@
 
 <!-- FOOTER -->
 <footer class="lp-footer">
-    <div>© 2025 CoreLux. Para vendedores de Mercado Libre Argentina.</div>
+    <div>© {{ anio_actual }} CoreLux. Para vendedores de Mercado Libre Argentina.</div>
     <div style="display:flex; gap:20px;">
         <a href="mailto:soporte@corelux.app">Soporte</a>
     </div>
 </footer>
 
+<script>
+(function () {
+    var contenedores = document.querySelectorAll('.lp-features, .lp-seguridad-grid, .lp-pasos, .lp-pricing, .lp-faq-lista');
+    var elementos = [];
+    contenedores.forEach(function (cont) {
+        Array.from(cont.children).forEach(function (el, i) {
+            el.classList.add('reveal');
+            el.style.transitionDelay = Math.min(i, 5) * 0.07 + 's';
+            elementos.push(el);
+        });
+    });
+    var prefiereMenos = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefiereMenos || !('IntersectionObserver' in window)) {
+        elementos.forEach(function (el) { el.classList.add('visible'); });
+        return;
+    }
+    var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+    elementos.forEach(function (el) { observer.observe(el); });
+})();
+</script>
 <script src="{{ url_for('static', filename='js/particulas.js') }}?v={{ static_v('js/particulas.js') }}" defer></script>
 </body>
 </html>

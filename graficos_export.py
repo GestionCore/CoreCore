@@ -26,7 +26,7 @@ COLOR_TEXTO_SECUNDARIO = (148, 148, 184)  # --text-secondary
 COLOR_MARCA = (245, 166, 35)       # dorado de la marca
 
 
-def generar_barras_png(serie, titulo, subtitulo=None, ancho=1000, alto=420, marca="Santi Mens"):
+def generar_barras_png(serie, titulo, subtitulo=None, ancho=1000, alto=420, marca="CoreLux"):
     """
     serie: [{"etiqueta": "10/09", "valor": 1234.0}, ...]
     Devuelve un BytesIO con el PNG, listo para send_file.

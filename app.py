@@ -134,6 +134,11 @@ def _inyectar_nav_grupos():
     return {"nav_grupos": nav_config.GRUPOS_NAV}
 
 
+@app.context_processor
+def _inyectar_anio_actual():
+    return {"anio_actual": datetime.now().year}
+
+
 @app.after_request
 def _trackear_navegacion(response):
     """
@@ -312,29 +317,106 @@ def conectar():
     return redirect(oauth_meli.construir_url_autorizacion(state))
 
 
+@app.route("/conectar_otra_cuenta")
+@login_requerido
+def conectar_otra_cuenta():
+    """
+    Arranca el mismo flujo de OAuth que /conectar, pero marcado para que
+    /callback sepa que hay que VINCULAR la cuenta de MeLi que autorice al
+    usuario ya logueado (registro.vincular_cuenta_adicional), en vez de
+    tratarlo como un login nuevo — así es como un usuario Elite conecta
+    su segunda (o tercera...) cuenta sin desloguearse.
+
+    Solo plan Elite: el límite "Base = 1 cuenta" no tenía enforcement
+    real en el backend antes de esto — lo agregamos acá mismo, en el
+    único punto de entrada que puede sumar una cuenta.
+    """
+    from urllib.parse import urlencode
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT plan FROM usuarios WHERE id = %s", (g.usuario_id,))
+        fila = cursor.fetchone()
+    if not fila or fila[0] != "elite":
+        return redirect(f"/planes?{urlencode({'msg': 'Conectar más de una cuenta es una función del Plan Elite.', 'tipo': 'info'})}")
+
+    state = oauth_meli.generar_state()
+    session["oauth_state"] = state
+    session["vinculando_cuenta_extra"] = True
+    return redirect(oauth_meli.construir_url_autorizacion(state))
+
+
+MOTIVO_USUARIO_CANCELO = "usuario_cancelo"
+MOTIVO_INTENTO_VENCIDO = "intento_vencido"
+MOTIVO_GENERICO = "generico"
+MOTIVO_CUENTA_YA_VINCULADA = "cuenta_ya_vinculada"
+
+
 @app.route("/callback")
 def callback():
-    """MeLi redirige acá después de que el usuario aprueba (o rechaza) el permiso."""
+    """MeLi redirige acá después de que el usuario aprueba (o rechaza) el permiso.
+
+    El detalle técnico de cada falla (código HTTP, cuerpo de la respuesta,
+    nombres de parámetros OAuth) se loguea server-side para debug, pero
+    nunca se le muestra al usuario — error_conexion.html solo recibe una
+    categoría, y decide ella misma qué mensaje mostrar.
+    """
     error = request.args.get("error")
     if error:
-        return render_template("error_conexion.html", motivo=f"Mercado Libre informó un error: {error}")
+        app.logger.warning("Callback OAuth: MeLi devolvió error=%s", error)
+        return render_template("error_conexion.html", motivo=MOTIVO_USUARIO_CANCELO)
 
     code = request.args.get("code")
     state_recibido = request.args.get("state")
     state_esperado = session.pop("oauth_state", None)
 
     if not code:
-        return render_template("error_conexion.html", motivo="No llegó el código de autorización.")
+        app.logger.warning("Callback OAuth: no llegó 'code' en la URL de vuelta.")
+        return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
     if not state_esperado or state_recibido != state_esperado:
-        return render_template("error_conexion.html", motivo="El parámetro de seguridad (state) no coincide — por las dudas, volvé a intentar conectar.")
+        app.logger.warning("Callback OAuth: state no coincide (esperado=%s, recibido=%s).", bool(state_esperado), bool(state_recibido))
+        return render_template("error_conexion.html", motivo=MOTIVO_INTENTO_VENCIDO)
 
     ok, resultado = oauth_meli.intercambiar_codigo_por_token(code)
     if not ok:
-        return render_template("error_conexion.html", motivo=resultado)
+        app.logger.warning("Callback OAuth: falló el intercambio de código — %s", resultado)
+        return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
 
     ok_datos, datos_meli = oauth_meli.obtener_datos_usuario_meli(resultado["access_token"])
     if not ok_datos:
-        return render_template("error_conexion.html", motivo=datos_meli)
+        app.logger.warning("Callback OAuth: falló la consulta de datos del usuario — %s", datos_meli)
+        return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
+
+    # Si venimos de "Agregar otra cuenta" (/conectar_otra_cuenta) y todavía
+    # hay una sesión válida, esta autorización se vincula al usuario_id YA
+    # logueado en vez de crear un usuario nuevo — así es como funciona de
+    # verdad el multi-cuenta de Plan Elite.
+    vinculando = session.pop("vinculando_cuenta_extra", False)
+    usuario_id_actual = session.get("usuario_id")
+
+    if vinculando and usuario_id_actual:
+        cuenta_id, resultado_vinculo = registro.vincular_cuenta_adicional(usuario_id_actual, datos_meli)
+        if resultado_vinculo == "ya_de_otro_usuario":
+            app.logger.warning("Callback OAuth: intento de vincular meli_user_id=%s, ya pertenece a otro usuario.", datos_meli.get("meli_user_id"))
+            return render_template("error_conexion.html", motivo=MOTIVO_CUENTA_YA_VINCULADA)
+
+        token_manager.guardar_tokens(
+            cuenta_id, resultado["access_token"], resultado["refresh_token"], resultado["expires_in"]
+        )
+        # Activa la cuenta recién vinculada — si ya tenía datos de una
+        # sincronización previa (reconexión), login_requerido la deja pasar
+        # directo; si es nueva, va a mostrarle sincronizando.html sola.
+        iniciar_sesion(usuario_id_actual, cuenta_id)
+        try:
+            from tasks.sync_tasks import sincronizar_todo_task
+            sincronizar_todo_task.delay(usuario_id_actual, cuenta_id)
+        except Exception:
+            import threading
+            threading.Thread(
+                target=sincronizador.sincronizar_todo,
+                args=(usuario_id_actual, cuenta_id),
+                daemon=True,
+            ).start()
+        return redirect(url_for("landing"))
 
     usuario_id, cuenta_id, es_nuevo = registro.crear_o_actualizar_login(datos_meli)
 

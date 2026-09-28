@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Historial de Precios · Santi Mens{% endblock %}
+{% block title %}Historial de Precios · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -11,6 +11,30 @@
 {% if not cambios %}
 <div class="panel"><div class="alert-empty">Todavía no se registró ningún cambio de precio — se empieza a guardar automáticamente a partir de ahora, sea cual sea el modo en que cambies un precio.</div></div>
 {% else %}
+{% set validos = cambios | rejectattr('variacion_pct', 'none') | list %}
+{% set subas = cambios | selectattr('direccion', 'equalto', 'subió') | rejectattr('variacion_pct', 'none') | list %}
+{% set subas_ok = subas | selectattr('variacion_pct', 'ge', 0) | list %}
+{% set variacion_prom = ((validos | map(attribute='variacion_pct') | sum) / validos|length) | round(1) if validos else none %}
+<div class="stat-strip">
+    <div class="stat-chip accent-primary">
+        <div class="stat-chip-label">Cambios registrados</div>
+        <div class="stat-chip-value">{{ cambios|length }}</div>
+    </div>
+    {% if subas %}
+    <div class="stat-chip accent-success">
+        <div class="stat-chip-label">Subas que aumentaron ventas</div>
+        <div class="stat-chip-value">{{ ((subas_ok|length / subas|length) * 100) | round(0) | int }}%</div>
+        <div class="stat-chip-desc">de {{ subas|length }} suba{{ '' if subas|length == 1 else 's' }} con datos comparables</div>
+    </div>
+    {% endif %}
+    {% if variacion_prom is not none %}
+    <div class="stat-chip {% if variacion_prom >= 0 %}accent-success{% else %}accent-danger{% endif %}">
+        <div class="stat-chip-label">Variación promedio en ventas</div>
+        <div class="stat-chip-value">{{ '+' if variacion_prom >= 0 else '' }}{{ variacion_prom }}%</div>
+        <div class="stat-chip-desc">tras un cambio de precio</div>
+    </div>
+    {% endif %}
+</div>
 <div class="panel" data-mostrar-mas-scope>
     <table class="data-table">
         <thead><tr><th>Publicación</th><th>Cambio</th><th>Fecha</th><th class="num">Vendidas antes (7d)</th><th class="num">Vendidas después (7d)</th><th class="num">Variación</th></tr></thead>

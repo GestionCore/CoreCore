@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Santi Mens{% endblock %}</title>
+    <title>{% block title %}CoreLux{% endblock %}</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/icon-32.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
@@ -72,6 +72,7 @@
     <symbol id="icon-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></symbol>
     <symbol id="icon-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
     <symbol id="icon-credit-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
 </svg>
 
 <div id="toast-container"></div>
@@ -89,7 +90,7 @@
     </div>
     <div class="topnav-inner">
         <div class="topnav-zona-izq">
-            <a href="/dashboard" class="brand"><span class="brand-mark"></span><span>Santi Mens</span></a>
+            <a href="/dashboard" class="brand"><span class="brand-mark"></span><span>CoreLux</span></a>
             {% if cuentas_disponibles and cuentas_disponibles|length > 1 %}
             <div class="nav-dropdown" id="tour-nav-cuenta">
                 <button class="topnav-link nav-dropdown-toggle" type="button">
@@ -298,6 +299,10 @@
                 <svg class="icon" style="width:18px;height:18px;"><use href="#icon-users"/></svg>
                 <span>Referidos</span>
             </a>
+            <a href="/conectar_otra_cuenta" class="menu-lateral-item">
+                <svg class="icon" style="width:18px;height:18px;"><use href="#icon-plus"/></svg>
+                <span>Agregar otra cuenta</span>
+            </a>
         </div>
 
         <div class="menu-lateral-section">
@@ -435,8 +440,8 @@
 .menu-lateral-item:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
 .menu-lateral-item.active { color: var(--accent-brand); }
 .menu-lateral-item.active svg { color: var(--accent-brand); }
-.menu-lateral-logout { color: var(--semantic-danger, #ff4444); margin-bottom: 8px; }
-.menu-lateral-logout:hover { background: rgba(255,68,68,0.08); color: #ff6666; }
+.menu-lateral-logout { color: var(--danger); margin-bottom: 8px; }
+.menu-lateral-logout:hover { background: var(--danger-bg); color: var(--danger); }
 </style>
 <script>
 function abrirMenuLateral() {

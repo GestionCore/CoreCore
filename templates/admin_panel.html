@@ -29,7 +29,7 @@
         <div class="stat-chip-label">Cancelados</div>
         <div class="stat-chip-value text-muted">{{ stats.cancelado }}</div>
     </div>
-    <div class="stat-chip" style="{% if stats.inactivos > 0 %}border-color:var(--semantic-danger);{% endif %}">
+    <div class="stat-chip" style="{% if stats.inactivos > 0 %}border-color:var(--danger);{% endif %}">
         <div class="stat-chip-label">Inactivos</div>
         <div class="stat-chip-value {% if stats.inactivos > 0 %}text-danger{% else %}text-muted{% endif %}">{{ stats.inactivos }}</div>
     </div>
@@ -64,11 +64,11 @@
                 <td class="num">
                     <span id="badge-plan-{{ u.id }}" class="badge {% if u.plan == 'elite' %}badge-brand{% elif u.plan == 'base' %}badge-success{% elif u.plan == 'trial' %}badge-warning{% else %}badge-neutral{% endif %}">{{ u.plan }}</span>
                 </td>
-                <td class="num" style="font-size:0.82em; color:var(--text-muted);">
+                <td class="num" style="font-size:0.82em; color:var(--text-secondary);">
                     {% if u.trial_termina_en %}{{ u.trial_termina_en }}{% else %}—{% endif %}
                 </td>
                 <td class="num">{{ u.num_cuentas }}</td>
-                <td class="num" style="font-size:0.8em; color:var(--text-muted);">{{ u.ultima_sync }}</td>
+                <td class="num" style="font-size:0.8em; color:var(--text-secondary);">{{ u.ultima_sync }}</td>
                 <td class="num" style="font-size:0.85em;">
                     {% if u.racha_dias > 0 %}
                     <svg class="icon" style="width:11px;height:11px;color:var(--accent-brand);vertical-align:middle;"><use href="#icon-flame"/></svg> {{ u.racha_dias }}d
@@ -85,7 +85,7 @@
                         {% if u.activo %}Activo{% else %}Inactivo{% endif %}
                     </button>
                 </td>
-                <td class="num" style="font-size:0.8em; color:var(--text-muted);">{{ u.creado_en }}</td>
+                <td class="num" style="font-size:0.8em; color:var(--text-secondary);">{{ u.creado_en }}</td>
                 <td class="num" style="white-space:nowrap;">
                     <select class="btn btn-secondary" style="font-size:0.78em; padding:3px 6px;" onchange="cambiarPlan({{ u.id }}, this)">
                         <option value="">Cambiar plan...</option>

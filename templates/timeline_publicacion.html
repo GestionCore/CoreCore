@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Línea de Tiempo · Santi Mens{% endblock %}
+{% block title %}Línea de Tiempo · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div class="flex-gap" style="align-items:center;">
@@ -9,7 +9,7 @@
             <div class="page-subtitle">Línea de tiempo completa — {{ id_meli }}</div>
         </div>
     </div>
-    <a href="/publicacion/{{ id_meli }}/exportar_red" class="btn btn-denim">📱 Exportar para redes</a>
+    <a href="/publicacion/{{ id_meli }}/exportar_red" class="btn btn-denim"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg>Exportar para redes</a>
 </div>
 
 {% if not eventos %}
@@ -18,7 +18,7 @@
 <div class="panel">
     <div class="timeline">
         {% for e in eventos %}
-        <div class="timeline-item timeline-{{ e.tipo }}">
+        <div class="timeline-item timeline-{{ e.tipo }}" style="animation: fadeInUp 0.4s cubic-bezier(0.16,1,0.3,1) {{ (loop.index0 * 0.05) | round(2) }}s backwards;">
             <div class="timeline-icono">{{ e.icono }}</div>
             <div class="timeline-contenido">
                 <div class="timeline-fecha">{{ e.fecha }}</div>

@@ -65,7 +65,7 @@
   <div class="susc-cta susc-cta-activo">
     <p class="susc-cta-texto">
       Tu suscripción se renueva automáticamente cada mes vía Mercado Pago.
-      Si necesitás cambiar el plan, primero cancelá y luego suscribite al nuevo.
+      {% if plan == "elite" %}Para bajar al Plan Base, cancelá esta suscripción y suscribite al nuevo plan cuando quieras.{% endif %}
     </p>
     {% if plan == "base" %}
     <a href="/planes" class="btn-susc-upgrade">Mejorar a Plan Elite</a>
@@ -107,29 +107,33 @@
   padding: 2rem 1rem 3rem;
 }
 .susc-titulo {
+  font-family: var(--font-display);
   font-size: 1.6rem;
   font-weight: 700;
-  color: var(--color-accent);
+  color: var(--text-primary);
   margin-bottom: 1.5rem;
 }
 .susc-card {
-  background: var(--color-surface, #111);
-  border: 1px solid var(--color-border, #2a2a2a);
-  border-radius: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-radius: var(--radius-md);
   padding: 1.4rem;
   margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-card);
+  animation: fadeInUp 0.4s cubic-bezier(0.16,1,0.3,1) backwards;
 }
 .susc-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.55rem 0;
-  border-bottom: 1px solid var(--color-border, #222);
+  border-bottom: 1px solid var(--border-soft);
   gap: 1rem;
 }
 .susc-row:last-child { border-bottom: none; }
 .susc-label {
-  color: var(--color-text-muted, #888);
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 .susc-valor {
@@ -137,77 +141,81 @@
   font-size: 0.95rem;
   text-align: right;
 }
-.susc-alerta { color: #ff6b35; }
-.susc-precio-dia { font-weight: 400; font-size: 0.85em; color: var(--color-text-muted, #888); }
+.susc-alerta { color: var(--semantic-warning); }
+.susc-precio-dia { font-weight: 400; font-size: 0.85em; color: var(--text-faint); }
 .plan-chip {
   display: inline-block;
   padding: 3px 12px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.03em;
 }
-.plan-trial  { background: rgba(255,200,0,0.15); color: #ffc800; border: 1px solid #ffc800; }
-.plan-base   { background: rgba(0,230,185,0.12); color: var(--color-accent); border: 1px solid var(--color-accent); }
-.plan-elite  { background: rgba(0,230,185,0.2); color: var(--color-accent); border: 1px solid var(--color-accent); box-shadow: 0 0 10px rgba(0,230,185,0.2); }
-.plan-cancelado { background: rgba(255,60,60,0.12); color: #ff4444; border: 1px solid #ff4444; }
+.plan-trial  { background: var(--warning-bg); color: var(--accent-gold); border: 1px solid var(--accent-gold); }
+.plan-base   { background: rgba(176,107,255,0.12); color: var(--accent-primary); border: 1px solid var(--accent-primary); }
+.plan-elite  { background: var(--warning-bg); color: var(--accent-gold); border: 1px solid var(--accent-gold); box-shadow: 0 0 10px -2px var(--accent-gold-glow); }
+.plan-cancelado { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
 .susc-cta {
-  background: var(--color-surface, #111);
-  border: 1px solid var(--color-border, #2a2a2a);
-  border-radius: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-radius: var(--radius-md);
   padding: 1.3rem;
   margin-bottom: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   align-items: flex-start;
+  box-shadow: var(--shadow-card);
+  animation: fadeInUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.06s backwards;
 }
-.susc-cta-activo { border-color: rgba(0,230,185,0.3); }
+.susc-cta-activo { border-color: rgba(176,107,255,0.3); }
 .susc-cta-texto {
   margin: 0;
-  color: var(--color-text-muted, #aaa);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.5;
 }
 .btn-susc-planes {
   padding: 0.65rem 1.4rem;
-  border-radius: 8px;
-  background: var(--color-accent);
-  color: #000;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim));
+  color: #14100a;
   font-weight: 700;
   font-size: 0.95rem;
   text-decoration: none;
-  transition: opacity 0.2s;
+  box-shadow: 0 2px 14px -2px var(--accent-gold-glow);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
-.btn-susc-planes:hover { opacity: 0.85; }
+.btn-susc-planes:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-gold-glow); }
 .btn-susc-upgrade {
   padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  border: 1.5px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--accent-gold);
   background: transparent;
-  color: var(--color-accent);
+  color: var(--accent-gold);
   font-weight: 600;
   text-decoration: none;
   font-size: 0.9rem;
-  transition: background 0.2s, color 0.2s;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
-.btn-susc-upgrade:hover { background: var(--color-accent); color: #000; }
+.btn-susc-upgrade:hover { background: var(--accent-gold); color: #14100a; }
 .btn-susc-cancelar {
   padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  border: 1px solid #ff4444;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 77, 125, 0.4);
   background: transparent;
-  color: #ff4444;
+  color: var(--danger);
   font-size: 0.88rem;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
-.btn-susc-cancelar:hover { background: rgba(255,68,68,0.12); }
+.btn-susc-cancelar:hover { background: var(--danger-bg); }
 .susc-nota {
-  color: var(--color-text-muted, #666);
+  color: var(--text-faint);
   font-size: 0.82rem;
   line-height: 1.5;
-  border-top: 1px solid var(--color-border, #222);
+  border-top: 1px solid var(--border-soft);
   padding-top: 1rem;
   margin-top: 0.5rem;
 }
@@ -215,25 +223,30 @@
 /* Modal */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(5,6,10,0.65);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   display: flex; align-items: center; justify-content: center;
   z-index: 9000;
 }
 .modal-box {
-  background: var(--color-surface, #181818);
-  border: 1px solid #ff4444;
-  border-radius: 14px;
+  background: var(--glass-bg-alt);
+  border: 1px solid rgba(255, 77, 125, 0.4);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-md);
   padding: 2rem;
   max-width: 380px;
   width: 90%;
+  box-shadow: var(--shadow-elevated);
+  animation: fadeInUp 0.2s cubic-bezier(0.16,1,0.3,1);
 }
 .modal-titulo {
   margin: 0 0 0.8rem;
+  font-family: var(--font-display);
   font-size: 1.1rem;
-  color: #ff4444;
+  color: var(--danger);
 }
 .modal-texto {
-  color: var(--color-text, #ddd);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.5;
   margin: 0 0 1.4rem;
@@ -245,21 +258,27 @@
 }
 .btn-modal-cancel {
   padding: 0.55rem 1.1rem;
-  border-radius: 7px;
-  border: 1px solid var(--color-border, #333);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
   background: transparent;
-  color: var(--color-text, #ddd);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
   cursor: pointer;
+  transition: border-color var(--transition-fast);
 }
+.btn-modal-cancel:hover { border-color: var(--accent-primary); }
 .btn-modal-confirm {
   padding: 0.55rem 1.2rem;
-  border-radius: 7px;
-  background: #ff4444;
+  border-radius: var(--radius-sm);
+  background: var(--danger);
   border: none;
   color: #fff;
+  font-family: var(--font-ui);
   font-weight: 700;
   cursor: pointer;
+  transition: opacity var(--transition-fast);
 }
+.btn-modal-confirm:hover { opacity: 0.85; }
 </style>
 
 <script>
@@ -279,12 +298,12 @@ async function ejecutarCancelacion() {
     if (data.ok) {
       window.location.href = "/planes";
     } else {
-      alert(data.detalle || "Error al cancelar. Intentá de nuevo.");
+      mostrarToast(data.detalle || "No se pudo cancelar. Intentá de nuevo.", "error");
       btn.disabled = false;
       btn.textContent = "Sí, cancelar";
     }
   } catch {
-    alert("Error de conexión. Intentá de nuevo.");
+    mostrarToast("Error de conexión. Intentá de nuevo.", "error");
     btn.disabled = false;
     btn.textContent = "Sí, cancelar";
   }

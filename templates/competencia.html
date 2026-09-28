@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Espía de Competencia · Santi Mens{% endblock %}
+{% block title %}Espía de Competencia · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -30,8 +30,13 @@
 {% for r in rivales %}
 <div class="panel">
     <div class="panel-title">
-        <span>
+        <span class="row-flex" style="gap:10px;">
             {{ r.alias }}
+            {% if r.sparkline_puntos %}
+            <svg viewBox="0 0 70 24" class="sparkline" title="Precio en los últimos días">
+                <polyline points="{{ r.sparkline_puntos }}" fill="none" stroke="var(--accent-cyan)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            {% endif %}
             {% if r.tendencia_precio == 'bajó' %}<span class="badge badge-danger">Precio bajó</span>
             {% elif r.tendencia_precio == 'subió' %}<span class="badge badge-success">Precio subió</span>{% endif %}
         </span>
@@ -55,6 +60,8 @@
             {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <div class="alert-empty">Todavía no hay historial de esta publicación — el primer dato se registra en las próximas 24hs.</div>
     {% endif %}
 </div>
 {% endfor %}

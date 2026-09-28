@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Logros · Santi Mens{% endblock %}
+{% block title %}Logros · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
         <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-brand);"><use href="#icon-trophy"/></svg>Logros</h1>
-        <div class="page-subtitle">Misiones concretas armadas a partir de los datos reales de tu cuenta</div>
+        <div class="page-subtitle">Tareas concretas, basadas en los datos reales de tu cuenta</div>
     </div>
 </div>
 
@@ -17,7 +17,7 @@
 
 {% if recien_resueltas > 0 %}
 <div class="alert alert-success" style="text-align:center; font-size:1.05em;">
-    🎉 ¡Resolviste {{ recien_resueltas }} misión(es) desde la última vez! Buen trabajo.
+    <svg class="icon" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"><use href="#icon-check"/></svg>¡Resolviste {{ recien_resueltas }} misi{{ "ón" if recien_resueltas == 1 else "ones" }} desde la última vez! Buen trabajo.
 </div>
 {% endif %}
 
@@ -33,7 +33,7 @@
         <div class="stat-chip-label">Urgentes</div>
         <div class="stat-chip-value">{{ conteo_por_prioridad.urgente }}</div>
     </div>
-    <div class="stat-chip accent-gold">
+    <div class="stat-chip accent-warning">
         <div class="stat-chip-label">Importantes</div>
         <div class="stat-chip-value">{{ conteo_por_prioridad.importante }}</div>
     </div>

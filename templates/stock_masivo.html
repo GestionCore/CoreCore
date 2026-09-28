@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Gestión de Stock Masiva · Santi Mens{% endblock %}
+{% block title %}Gestión de Stock Masiva · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -18,6 +18,7 @@
 <form action="/actualizar_stock_multiple" method="POST">
     <input type="hidden" name="volver_a" value="/stock_masivo">
     <div id="acordeon-modelos">
+        <div id="acordeon-sin-resultados" class="alert-empty" style="display:none;">No encontramos ningún modelo con ese talle o color.</div>
         {% for m in modelos %}
         <div class="panel acordeon-item" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}">
             <div class="acordeon-header" onclick="toggleAcordeon(this)">
@@ -44,7 +45,7 @@
                                 {% else %}<span class="badge badge-neutral">Inactiva</span>{% endif %}
                             </td>
                             <td class="num">
-                                {% if v.full > 0 %}<input type="number" value="{{ v.propio }}" disabled style="max-width:90px; margin-left:auto;">
+                                {% if v.full > 0 %}<input type="number" value="{{ v.propio }}" disabled title="El stock de FULL se gestiona desde Mercado Libre, no se puede editar acá" style="max-width:90px; margin-left:auto;">
                                 {% else %}<input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" min="0" style="max-width:90px; margin-left:auto;">{% endif %}
                             </td>
                             <td class="num">{{ v.full }} u.</td>
@@ -61,16 +62,22 @@
 
 <script>
     function toggleAcordeon(header) {
+        const item = header.closest('.acordeon-item');
         const body = header.nextElementSibling;
         const abierto = body.style.display !== 'none';
         body.style.display = abierto ? 'none' : 'block';
-        header.querySelector('.acordeon-chevron').textContent = abierto ? '▾' : '▴';
+        item.classList.toggle('abierto', !abierto);
     }
     function filtrarAcordeon() {
         const q = document.getElementById('input-buscador-masivo').value;
+        let visibles = 0;
         document.querySelectorAll('.acordeon-item').forEach(item => {
-            item.style.display = coincideBusqueda(item.dataset.buscar, q) ? '' : 'none';
+            const coincide = coincideBusqueda(item.dataset.buscar, q);
+            item.style.display = coincide ? '' : 'none';
+            if (coincide) visibles++;
         });
+        const vacio = document.getElementById('acordeon-sin-resultados');
+        if (vacio) vacio.style.display = visibles === 0 ? '' : 'none';
     }
 </script>
 {% endblock %}

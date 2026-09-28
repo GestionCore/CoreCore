@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Calculadora de MeLi · Santi Mens{% endblock %}
+{% block title %}Calculadora de MeLi · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -138,7 +138,7 @@ async function calcular() {
         mostrarResultado(base, costo);
         mostrarComparativaCuotas(base, costo);
     } catch(e) {
-        mostrarToast('Error consultando la API', 'error');
+        mostrarToast('No pudimos calcularlo — probá de nuevo.', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<svg class="icon" style="margin-right:6px;vertical-align:middle;"><use href="#icon-chart"/></svg>Calcular';
@@ -152,21 +152,21 @@ function mostrarResultado(d, costo) {
     const gananciaNetaReal = costo > 0 ? (d.recibis - costo) : null;
     const pctGanancia = (costo > 0 && d.precio > 0) ? ((gananciaNetaReal / d.precio) * 100).toFixed(1) : null;
 
-    document.getElementById('panel-resultado').style.display = '';
+    mostrarPanelConAnimacion(document.getElementById('panel-resultado'));
     document.getElementById('resultado-contenido').innerHTML = `
         <div class="stat-strip" style="margin-bottom:16px;">
             <div class="stat-chip accent-primary">
                 <div class="stat-chip-label">Precio de venta</div>
                 <div class="stat-chip-value">${fmt(d.precio)}</div>
             </div>
-            <div class="stat-chip" style="border-color:var(--danger); background:rgba(255,68,68,0.06);">
+            <div class="stat-chip" style="border-color:var(--danger); background:var(--danger-bg);">
                 <div class="stat-chip-label" style="color:var(--danger);">Comisión MeLi</div>
                 <div class="stat-chip-value text-danger">${fmt(d.comision_total)}</div>
                 <div class="stat-chip-desc">${pct(d.pct_comision_base)} base${d.cargo_fijo ? ' + $' + Math.round(d.cargo_fijo) + ' fijo' : ''}</div>
             </div>
-            <div class="stat-chip" style="${d.costo_envio ? 'border-color:rgba(255,140,0,0.6); background:rgba(255,140,0,0.06);' : ''}">
-                <div class="stat-chip-label" style="${d.costo_envio ? 'color:#ff8c00;' : ''}">Costo de envío</div>
-                <div class="stat-chip-value" style="${d.costo_envio ? 'color:#ff8c00;' : ''}">${d.costo_envio !== null ? fmt(d.costo_envio) : '—'}</div>
+            <div class="stat-chip" style="${d.costo_envio ? 'border-color:var(--accent-cyan); background:rgba(46,230,255,0.06);' : ''}">
+                <div class="stat-chip-label" style="${d.costo_envio ? 'color:var(--accent-cyan);' : ''}">Costo de envío</div>
+                <div class="stat-chip-value" style="${d.costo_envio ? 'color:var(--accent-cyan);' : ''}">${d.costo_envio !== null ? fmt(d.costo_envio) : '—'}</div>
                 <div class="stat-chip-desc">${d.envio_obligatorio_gratis ? 'Obligatorio gratis' : (d.costo_envio === null ? 'Consultar' : 'A cargo tuyo')}</div>
             </div>
             <div class="stat-chip accent-success">
@@ -193,7 +193,7 @@ function mostrarResultado(d, costo) {
 }
 
 function mostrarComparativaCuotas(base, costo) {
-    document.getElementById('panel-cuotas').style.display = '';
+    mostrarPanelConAnimacion(document.getElementById('panel-cuotas'));
     // comision base sin cuotas
     const comisionBase = base.comision_total;
     const recibisBase = base.recibis;
@@ -206,9 +206,9 @@ function mostrarComparativaCuotas(base, costo) {
         const gananciaConCosto = costo > 0 ? recibis - costo : null;
         return `
             <div class="stat-chip ${c.cuotas === 1 ? 'accent-success' : diferencia < -base.precio * 0.15 ? '' : ''}"
-                 style="${c.cuotas === 1 ? '' : 'border-color:rgba(255,200,50,0.5); background:rgba(255,200,50,0.05);'}">
+                 style="${c.cuotas === 1 ? '' : 'border-color:var(--accent-gold); background:var(--warning-bg);'}">
                 <div class="stat-chip-label">${c.label}</div>
-                <div class="stat-chip-value" style="${c.cuotas === 1 ? '' : 'color:#ffc832;'}">${fmt(recibis)}</div>
+                <div class="stat-chip-value" style="${c.cuotas === 1 ? '' : 'color:var(--accent-gold);'}">${fmt(recibis)}</div>
                 <div class="stat-chip-desc">
                     Comisión: ${fmt(comisionTotal)}${c.pct > 0 ? ` (+${(c.pct*100).toFixed(1)}% financ.)` : ''}
                     ${costo > 0 ? ` · Neto: <strong>${fmt(gananciaConCosto)}</strong>` : ''}

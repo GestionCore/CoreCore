@@ -36,12 +36,9 @@
         .onb-opcion:hover { border-color: var(--accent-primary); background: rgba(255,255,255,0.02); }
         .onb-opcion input { accent-color: var(--accent-primary); width: 16px; height: 16px; flex-shrink: 0; }
         .onb-opcion:has(input:checked) { border-color: var(--accent-primary); background: rgba(176,107,255,0.08); }
-        .onb-error { color: var(--accent-red, #f66); font-size: 0.85em; margin-bottom: 16px; }
-        .onb-submit { width: 100%; padding: 14px 20px; border-radius: var(--radius-md); border: none; cursor: pointer;
-            font-family: var(--font-ui); font-size: 1em; font-weight: 700; color: #fff; margin-top: 8px;
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim));
-            box-shadow: 0 4px 24px -4px var(--accent-primary-glow); transition: transform 0.2s; }
-        .onb-submit:hover { transform: translateY(-2px); }
+        .onb-error { color: var(--danger); font-size: 0.85em; margin-bottom: 16px; }
+        .onb-submit { margin-top: 8px; font-size: 1em; padding: 14px 20px; }
+        .onb-submit:disabled { opacity: 0.7; cursor: default; transform: none; }
     </style>
 </head>
 <body>
@@ -54,7 +51,7 @@
 
     {% if error %}<div class="onb-error">{{ error }}</div>{% endif %}
 
-    <form action="{{ url_for('onboarding_guardar') }}" method="POST">
+    <form action="{{ url_for('onboarding_guardar') }}" method="POST" onsubmit="const b=this.querySelector('.onb-submit'); b.disabled=true; b.textContent='Guardando...';">
         <div class="onb-pregunta">
             <div class="onb-pregunta-titulo">¿Qué es lo que más te importa controlar de tu negocio?</div>
             <div class="onb-opciones">
@@ -82,7 +79,7 @@
             </div>
         </div>
 
-        <button type="submit" class="onb-submit">Continuar</button>
+        <button type="submit" class="btn btn-primary btn-block onb-submit">Continuar</button>
     </form>
 </div>
 
