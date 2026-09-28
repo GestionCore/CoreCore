@@ -317,9 +317,38 @@ def conectar():
     return redirect(oauth_meli.construir_url_autorizacion(state))
 
 
+@app.route("/conectar_otra_cuenta")
+@login_requerido
+def conectar_otra_cuenta():
+    """
+    Arranca el mismo flujo de OAuth que /conectar, pero marcado para que
+    /callback sepa que hay que VINCULAR la cuenta de MeLi que autorice al
+    usuario ya logueado (registro.vincular_cuenta_adicional), en vez de
+    tratarlo como un login nuevo — así es como un usuario Elite conecta
+    su segunda (o tercera...) cuenta sin desloguearse.
+
+    Solo plan Elite: el límite "Base = 1 cuenta" no tenía enforcement
+    real en el backend antes de esto — lo agregamos acá mismo, en el
+    único punto de entrada que puede sumar una cuenta.
+    """
+    from urllib.parse import urlencode
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT plan FROM usuarios WHERE id = %s", (g.usuario_id,))
+        fila = cursor.fetchone()
+    if not fila or fila[0] != "elite":
+        return redirect(f"/planes?{urlencode({'msg': 'Conectar más de una cuenta es una función del Plan Elite.', 'tipo': 'info'})}")
+
+    state = oauth_meli.generar_state()
+    session["oauth_state"] = state
+    session["vinculando_cuenta_extra"] = True
+    return redirect(oauth_meli.construir_url_autorizacion(state))
+
+
 MOTIVO_USUARIO_CANCELO = "usuario_cancelo"
 MOTIVO_INTENTO_VENCIDO = "intento_vencido"
 MOTIVO_GENERICO = "generico"
+MOTIVO_CUENTA_YA_VINCULADA = "cuenta_ya_vinculada"
 
 
 @app.route("/callback")
@@ -356,6 +385,38 @@ def callback():
     if not ok_datos:
         app.logger.warning("Callback OAuth: falló la consulta de datos del usuario — %s", datos_meli)
         return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
+
+    # Si venimos de "Agregar otra cuenta" (/conectar_otra_cuenta) y todavía
+    # hay una sesión válida, esta autorización se vincula al usuario_id YA
+    # logueado en vez de crear un usuario nuevo — así es como funciona de
+    # verdad el multi-cuenta de Plan Elite.
+    vinculando = session.pop("vinculando_cuenta_extra", False)
+    usuario_id_actual = session.get("usuario_id")
+
+    if vinculando and usuario_id_actual:
+        cuenta_id, resultado_vinculo = registro.vincular_cuenta_adicional(usuario_id_actual, datos_meli)
+        if resultado_vinculo == "ya_de_otro_usuario":
+            app.logger.warning("Callback OAuth: intento de vincular meli_user_id=%s, ya pertenece a otro usuario.", datos_meli.get("meli_user_id"))
+            return render_template("error_conexion.html", motivo=MOTIVO_CUENTA_YA_VINCULADA)
+
+        token_manager.guardar_tokens(
+            cuenta_id, resultado["access_token"], resultado["refresh_token"], resultado["expires_in"]
+        )
+        # Activa la cuenta recién vinculada — si ya tenía datos de una
+        # sincronización previa (reconexión), login_requerido la deja pasar
+        # directo; si es nueva, va a mostrarle sincronizando.html sola.
+        iniciar_sesion(usuario_id_actual, cuenta_id)
+        try:
+            from tasks.sync_tasks import sincronizar_todo_task
+            sincronizar_todo_task.delay(usuario_id_actual, cuenta_id)
+        except Exception:
+            import threading
+            threading.Thread(
+                target=sincronizador.sincronizar_todo,
+                args=(usuario_id_actual, cuenta_id),
+                daemon=True,
+            ).start()
+        return redirect(url_for("landing"))
 
     usuario_id, cuenta_id, es_nuevo = registro.crear_o_actualizar_login(datos_meli)
 

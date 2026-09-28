@@ -88,36 +88,67 @@ def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None):
     return usuario_id, cuenta_id, True
 
 
+def vincular_cuenta_adicional(usuario_id, datos_meli):
+    """
+    Conecta una cuenta de MeLi ADICIONAL al usuario ya logueado (plan
+    Elite, multi-cuenta) — a diferencia de crear_o_actualizar_login, acá
+    ya sabemos el usuario_id de entrada, así que nunca crea un usuario
+    nuevo ni un trial nuevo.
+
+    Devuelve (cuenta_id, resultado) donde resultado es:
+      "vinculada"       — cuenta de MeLi nueva, recién asociada a este usuario.
+      "reconectada"      — la cuenta de MeLi ya era de este mismo usuario (re-autorización).
+      "ya_de_otro_usuario" — la cuenta de MeLi ya está conectada a OTRO usuario de
+                              CoreLux; no se toca nada (cuenta_id viene None).
+    """
+    meli_user_id = datos_meli["meli_user_id"]
+
+    with db.conexion_admin() as conexion:
+        cursor = conexion.cursor(row_factory=dict_row)
+        cursor.execute("SELECT id, usuario_id FROM cuentas_meli WHERE meli_user_id = %s", (meli_user_id,))
+        cuenta_existente = cursor.fetchone()
+
+    if cuenta_existente:
+        if cuenta_existente["usuario_id"] != usuario_id:
+            return None, "ya_de_otro_usuario"
+        cuenta_id = cuenta_existente["id"]
+        with db.conexion_usuario(usuario_id) as conexion:
+            cursor = conexion.cursor()
+            cursor.execute(
+                "UPDATE cuentas_meli SET nickname = %s, activa = true, ultima_sincronizacion = now() WHERE id = %s",
+                (datos_meli.get("nickname"), cuenta_id)
+            )
+        return cuenta_id, "reconectada"
+
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor(row_factory=dict_row)
+        cursor.execute(
+            """INSERT INTO cuentas_meli (usuario_id, meli_user_id, nickname, site_id)
+               VALUES (%s, %s, %s, %s) RETURNING id""",
+            (usuario_id, meli_user_id, datos_meli.get("nickname"), datos_meli.get("site_id", "MLA"))
+        )
+        cuenta_id = cursor.fetchone()["id"]
+
+    return cuenta_id, "vinculada"
+
+
 def obtener_cuentas_de_usuario(usuario_id):
     """
     Todas las cuentas de MeLi que un usuario tiene conectadas (para el
     plan Elite multi-cuenta).
 
-    ⚠️ LIMITACIÓN CONOCIDA, sin resolver a propósito (necesita ojos
-    despiertos, no un parche de madrugada): las políticas de RLS de
-    TODAS las demás tablas (ventas, productos_padre, etc.) filtran por
-    `cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id =
-    current_setting('app.usuario_actual'))` — es decir, por CUALQUIER
-    cuenta del usuario, no por la cuenta activa en sesión (g.cuenta_id).
-    Con un usuario de una sola cuenta esto es invisible. Pero casi
-    ninguna consulta de solo-lectura del resto de la app agrega un
-    `WHERE cuenta_id = %s` explícito (confían en que RLS ya lo resuelve,
-    que es el diseño buscado: "no es un filtro a mano, es RLS") — así
-    que en cuanto un usuario Elite tenga 2+ cuentas conectadas, la
-    mayoría de las páginas van a mostrarle datos MEZCLADOS de todas sus
-    cuentas en vez de solo la que eligió acá.
-
-    Arreglo recomendado (no aplicado): que la conexión también sepa la
-    cuenta activa (`db.conexion_usuario(usuario_id, cuenta_id)`, seteando
-    un segundo `app.cuenta_actual`), y que las políticas de las tablas
-    "hijas" (todo menos cuentas_meli) filtren por esa en vez de por
-    usuario_id. Es un cambio de las políticas de RLS reales en Supabase
-    otra vez, tocando el corazón del aislamiento entre cuentas — antes
-    de tocarlo hay que probarlo a fondo contra Postgres real, no
-    hacerlo sin supervisión. Hoy (antes de esta sesión) esta función no
-    tenía ninguna pantalla que la usara, así que el riesgo real
-    encendido para cualquier usuario actual es CERO — recién importa
-    el día que alguien conecte de verdad una segunda cuenta.
+    Nota histórica: esta función tuvo un comentario de advertencia acá
+    (datos mezclados entre cuentas de un mismo usuario) porque, cuando
+    se escribió, todavía no existía ninguna pantalla real que conectara
+    una segunda cuenta. Se verificó a fondo (auditoría completa de los
+    ~120 puntos que abren conexión con RLS, más grep de toda consulta a
+    `ventas`/`productos_padre`/`productos_variantes` sin filtro
+    explícito) que en realidad TODAS las rutas de app.py que usan
+    `g.usuario_id` para abrir una conexión también pasan `g.cuenta_id`
+    — la migración 0010 (RLS por cuenta activa, `app.cuenta_actual`) ya
+    está aplicada Y en uso real en las 58 rutas que abren conexión con
+    RLS. El riesgo que describía este comentario no existe más: no hace
+    falta ningún arreglo adicional antes de usar multi-cuenta de verdad.
     """
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)

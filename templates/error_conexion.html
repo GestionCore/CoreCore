@@ -39,6 +39,8 @@
                 Parece que se canceló el permiso del lado de Mercado Libre. Si fue sin querer, no hay problema — probá de nuevo cuando quieras.
             {% elif motivo == 'intento_vencido' %}
                 El intento de conexión venció — por seguridad, estos enlaces duran poco. Solo hace falta volver a intentarlo.
+            {% elif motivo == 'cuenta_ya_vinculada' %}
+                Esa cuenta de Mercado Libre ya está conectada a otro login de CoreLux. Para usarla acá, primero hay que desconectarla del otro login.
             {% else %}
                 Puede pasar por muchos motivos y suele resolverse solo. Probá de nuevo en un momento — si sigue sin andar, escribinos y lo vemos juntos.
             {% endif %}
