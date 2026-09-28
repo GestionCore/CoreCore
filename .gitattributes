@@ -8,3 +8,4 @@ deploy/**/*.service text eol=lf
 deploy/**/*.conf text eol=lf
 deploy/**/*.py text eol=lf
 migrations/*.sql text eol=lf
+Procfile text eol=lf
