@@ -45,6 +45,12 @@ CREATE POLICY alertas_acceso_propio ON alertas_usuario
         usuario_id::text = current_setting('app.usuario_actual', true)
     );
 
+-- GRANT explícito — sin esto, "permission denied for table alertas_usuario"
+-- para el rol real de la app (mismo patrón encontrado en producción con
+-- navegacion_visitas y tendencias_seguimiento: RLS no alcanza sin esto).
+GRANT SELECT, INSERT, UPDATE, DELETE ON alertas_usuario TO app_backend;
+GRANT USAGE, SELECT ON alertas_usuario_id_seq TO app_backend;
+
 -- 3) Columnas de racha en cuentas_meli (pendientes de sesiones anteriores)
 --    IF NOT EXISTS evita error si ya fueron aplicadas manualmente.
 ALTER TABLE cuentas_meli

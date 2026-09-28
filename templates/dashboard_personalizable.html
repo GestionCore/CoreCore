@@ -212,6 +212,18 @@
         return _tickerPromiseCache;
     }
 
+    // Mismo caso que el ticker: el widget "Ganancia y Facturación del
+    // Día" y el hero strip (cargarHeroMetricasDia) piden exactamente lo
+    // mismo — antes pegaban /api/resumen_diario dos veces en la misma
+    // carga, sumando lentitud justo cuando más widgets hay activos.
+    let _resumenDiarioPromiseCache = null;
+    function _fetchResumenDiarioCompartido() {
+        if (!_resumenDiarioPromiseCache) {
+            _resumenDiarioPromiseCache = fetch('/api/resumen_diario').then(r => r.json());
+        }
+        return _resumenDiarioPromiseCache;
+    }
+
     function obtenerPrefsDashboard() {
         const guardado = localStorage.getItem(CLAVE_PREFS_DASHBOARD);
         if (guardado) return JSON.parse(guardado);
@@ -277,7 +289,7 @@
         if (prefs.resumen_dia) {
             const w = crearTarjetaWidget('resumen_dia', '/metricas');
             grid.appendChild(w);
-            fetch('/api/resumen_diario').then(r => r.json()).then(d => {
+            _fetchResumenDiarioCompartido().then(d => {
                 if (!d) { w.querySelector('div').outerHTML = '<div class="text-muted">Sin datos.</div>'; return; }
                 let variacion = '';
                 if (d.variacion_pct !== null && d.variacion_pct !== undefined) {
@@ -519,7 +531,7 @@
     async function cargarHeroMetricasDia() {
         // Facturado hoy + ventas hoy — dos APIs en paralelo
         const [resumen, hoy, tendencia, ticker] = await Promise.allSettled([
-            fetch('/api/resumen_diario').then(r => r.json()),
+            _fetchResumenDiarioCompartido(),
             fetch('/api/hoy').then(r => r.json()),
             fetch('/api/dashboard/tendencia_ventas').then(r => r.json()),
             _fetchTickerCompartido(),

@@ -15,30 +15,42 @@
         }
         .onb-tarjeta {
             position: relative; z-index: 2; width: 100%; max-width: 560px; margin: 24px;
-            padding: 44px 44px 36px; border-radius: var(--radius-lg);
+            padding: 40px 44px 36px; border-radius: var(--radius-lg);
             background: var(--glass-bg); border: 1px solid var(--glass-border);
             backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
             box-shadow: var(--shadow-elevated), 0 0 60px -20px var(--accent-primary-glow);
             animation: fadeInUp 0.5s cubic-bezier(0.16,1,0.3,1);
         }
-        .onb-marca { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .onb-marca { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
         .onb-marca span { font-family: var(--font-display); font-weight: 800; font-size: 1.15em; }
-        .onb-titulo { font-family: var(--font-display); font-size: 1.5em; font-weight: 700; margin: 18px 0 8px; }
-        .onb-subtitulo { color: var(--text-secondary); font-size: 0.92em; margin-bottom: 30px; line-height: 1.5; }
-        .onb-pregunta { margin-bottom: 26px; }
-        .onb-pregunta-titulo { font-weight: 600; font-size: 0.95em; margin-bottom: 12px; }
-        .onb-opciones { display: flex; flex-direction: column; gap: 8px; }
+
+        /* Progreso: "Paso X de 3" + barra fina */
+        .onb-progreso-fila { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .onb-progreso-texto { font-size: 0.78em; color: var(--text-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+        .onb-progreso-barra { height: 4px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden; margin-bottom: 28px; }
+        .onb-progreso-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-primary), var(--accent-cyan)); transition: width 0.35s cubic-bezier(0.16,1,0.3,1); }
+
+        .onb-titulo { font-family: var(--font-display); font-size: 1.4em; font-weight: 700; margin: 0 0 8px; }
+        .onb-subtitulo { color: var(--text-secondary); font-size: 0.92em; margin-bottom: 28px; line-height: 1.5; }
+        .onb-paso { display: none; }
+        .onb-paso.activo { display: block; animation: fadeInUp 0.3s cubic-bezier(0.16,1,0.3,1); }
+        .onb-pregunta-titulo { font-weight: 600; font-size: 1.05em; margin-bottom: 6px; }
+        .onb-pregunta-ayuda { font-size: 0.82em; color: var(--text-faint); margin-bottom: 16px; }
+        .onb-opciones { display: flex; flex-direction: column; gap: 8px; margin-bottom: 30px; }
         .onb-opcion {
-            display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-radius: var(--radius-md);
+            display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: var(--radius-md);
             border: 1px solid var(--border-soft); cursor: pointer; transition: border-color 0.15s, background 0.15s;
-            font-size: 0.9em;
+            font-size: 0.92em;
         }
         .onb-opcion:hover { border-color: var(--accent-primary); background: rgba(255,255,255,0.02); }
-        .onb-opcion input { accent-color: var(--accent-primary); width: 16px; height: 16px; flex-shrink: 0; }
+        .onb-opcion input { accent-color: var(--accent-primary); width: 17px; height: 17px; flex-shrink: 0; }
         .onb-opcion:has(input:checked) { border-color: var(--accent-primary); background: rgba(176,107,255,0.08); }
         .onb-error { color: var(--danger); font-size: 0.85em; margin-bottom: 16px; }
-        .onb-submit { margin-top: 8px; font-size: 1em; padding: 14px 20px; }
-        .onb-submit:disabled { opacity: 0.7; cursor: default; transform: none; }
+
+        .onb-nav { display: flex; gap: 12px; }
+        .onb-btn-atras { flex: 0 0 auto; }
+        .onb-btn-siguiente { flex: 1; font-size: 1em; padding: 14px 20px; }
+        .onb-btn-siguiente:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
     </style>
 </head>
 <body>
@@ -46,43 +58,88 @@
 
 <div class="onb-tarjeta">
     <div class="onb-marca"><span class="brand-mark"></span><span>CoreLux</span></div>
-    <div class="onb-titulo">Antes de arrancar, contanos un poco de tu negocio</div>
-    <div class="onb-subtitulo">Con esto ajustamos qué mostrarte primero — no cambia nada de tus datos, solo el orden en que los ves.</div>
+
+    <div class="onb-progreso-fila">
+        <span class="onb-progreso-texto">Paso <span id="onb-paso-actual">1</span> de 3</span>
+    </div>
+    <div class="onb-progreso-barra"><div class="onb-progreso-fill" id="onb-progreso-fill" style="width:33%;"></div></div>
 
     {% if error %}<div class="onb-error">{{ error }}</div>{% endif %}
 
-    <form action="{{ url_for('onboarding_guardar') }}" method="POST" onsubmit="const b=this.querySelector('.onb-submit'); b.disabled=true; b.textContent='Guardando...';">
-        <div class="onb-pregunta">
-            <div class="onb-pregunta-titulo">¿Qué es lo que más te importa controlar de tu negocio?</div>
+    <form action="{{ url_for('onboarding_guardar') }}" method="POST" id="form-onboarding" onsubmit="const b=this.querySelector('.onb-btn-siguiente'); b.disabled=true; b.textContent='Guardando...';">
+
+        <div class="onb-paso activo" data-paso="1">
+            <div class="onb-titulo">¿Qué es lo que más te importa controlar de tu negocio?</div>
+            <div class="onb-pregunta-ayuda">Elegí una o varias — lo que te sirva.</div>
             <div class="onb-opciones">
                 {% for valor, texto in opciones_prioridad.items() %}
-                <label class="onb-opcion"><input type="radio" name="prioridad_principal" value="{{ valor }}" required> {{ texto }}</label>
+                <label class="onb-opcion"><input type="checkbox" name="prioridad_principal" value="{{ valor }}" onchange="onbValidarPasoActual()"> {{ texto }}</label>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="onb-pregunta">
-            <div class="onb-pregunta-titulo">¿Hace cuánto vendés en Mercado Libre?</div>
+        <div class="onb-paso" data-paso="2">
+            <div class="onb-titulo">¿Hace cuánto vendés en Mercado Libre?</div>
             <div class="onb-opciones">
                 {% for valor, texto in opciones_experiencia.items() %}
-                <label class="onb-opcion"><input type="radio" name="experiencia_meli" value="{{ valor }}" required> {{ texto }}</label>
+                <label class="onb-opcion"><input type="radio" name="experiencia_meli" value="{{ valor }}" onchange="onbValidarPasoActual()" required> {{ texto }}</label>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="onb-pregunta">
-            <div class="onb-pregunta-titulo">¿Qué querés ver primero cuando entrás a CoreLux?</div>
+        <div class="onb-paso" data-paso="3">
+            <div class="onb-titulo">¿Qué querés ver primero cuando entrás a CoreLux?</div>
             <div class="onb-opciones">
                 {% for valor, texto in opciones_pantalla.items() %}
-                <label class="onb-opcion"><input type="radio" name="pantalla_preferida" value="{{ valor }}" required> {{ texto }}</label>
+                <label class="onb-opcion"><input type="radio" name="pantalla_preferida" value="{{ valor }}" onchange="onbValidarPasoActual()" required> {{ texto }}</label>
                 {% endfor %}
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-block onb-submit">Continuar</button>
+        <div class="onb-nav">
+            <button type="button" class="btn btn-secondary onb-btn-atras" id="onb-btn-atras" onclick="onbIrA(onbPasoActual - 1)" style="display:none;">Atrás</button>
+            <button type="button" class="btn btn-primary onb-btn-siguiente" id="onb-btn-siguiente" onclick="onbSiguiente()" disabled>Siguiente</button>
+        </div>
     </form>
 </div>
 
+<script>
+    const ONB_TOTAL_PASOS = 3;
+    let onbPasoActual = 1;
+
+    function onbPasoTieneSeleccion(paso) {
+        const cont = document.querySelector(`.onb-paso[data-paso="${paso}"]`);
+        return cont.querySelectorAll('input:checked').length > 0;
+    }
+
+    function onbValidarPasoActual() {
+        document.getElementById('onb-btn-siguiente').disabled = !onbPasoTieneSeleccion(onbPasoActual);
+    }
+
+    function onbIrA(paso) {
+        document.querySelector(`.onb-paso[data-paso="${onbPasoActual}"]`).classList.remove('activo');
+        onbPasoActual = paso;
+        document.querySelector(`.onb-paso[data-paso="${onbPasoActual}"]`).classList.add('activo');
+
+        document.getElementById('onb-paso-actual').textContent = onbPasoActual;
+        document.getElementById('onb-progreso-fill').style.width = Math.round((onbPasoActual / ONB_TOTAL_PASOS) * 100) + '%';
+        document.getElementById('onb-btn-atras').style.display = onbPasoActual > 1 ? '' : 'none';
+
+        const btnSiguiente = document.getElementById('onb-btn-siguiente');
+        btnSiguiente.textContent = onbPasoActual === ONB_TOTAL_PASOS ? 'Continuar' : 'Siguiente';
+        btnSiguiente.type = onbPasoActual === ONB_TOTAL_PASOS ? 'submit' : 'button';
+        onbValidarPasoActual();
+
+        document.querySelector('.onb-tarjeta').scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
+
+    function onbSiguiente() {
+        if (!onbPasoTieneSeleccion(onbPasoActual)) return;
+        if (onbPasoActual < ONB_TOTAL_PASOS) onbIrA(onbPasoActual + 1);
+    }
+
+    onbValidarPasoActual();
+</script>
 <script src="{{ url_for('static', filename='js/particulas.js') }}?v={{ static_v('js/particulas.js') }}" defer></script>
 </body>
 </html>

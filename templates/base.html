@@ -14,11 +14,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700;8..60,800;8..60,900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_v('css/style.css') }}">
     <script>
-        // Aplicamos el tema guardado ANTES de que se pinte la página, para
-        // que no haya un parpadeo del tema oscuro por defecto al cargar.
+        // Aplicamos el tema y el modo privacidad guardados ANTES de que se
+        // pinte la página, para que no haya ni un parpadeo del tema por
+        // defecto ni, más importante, un instante con montos sensibles
+        // visibles antes de que se tapen. Va en <html> (no en <body>,
+        // que todavía no existe acá) — por eso las reglas de modo
+        // privacidad en style.css apuntan a html.modo-privacidad.
         (function() {
             const temaGuardado = localStorage.getItem('tema');
             if (temaGuardado === 'light') document.documentElement.dataset.theme = 'light';
+            if (localStorage.getItem('modo_privacidad') === '1') document.documentElement.classList.add('modo-privacidad');
         })();
     </script>
 </head>

@@ -15,3 +15,10 @@ CREATE TABLE IF NOT EXISTS navegacion_visitas (
     ultima_visita   TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (usuario_id, nav_key)
 );
+
+-- Sin RLS (ver nota arriba), pero SÍ necesita GRANT explícito — el rol
+-- que corre esta migración (app_admin o postgres, según cómo se aplique)
+-- no es app_backend, así que sin esto la tabla queda creada pero
+-- inaccesible para la app real ("permission denied for table
+-- navegacion_visitas", encontrado en producción).
+GRANT SELECT, INSERT, UPDATE, DELETE ON navegacion_visitas TO app_backend;

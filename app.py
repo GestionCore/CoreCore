@@ -1376,10 +1376,10 @@ def onboarding_vista():
 @app.route("/onboarding/guardar", methods=["POST"])
 @login_requerido
 def onboarding_guardar():
-    prioridad = request.form.get("prioridad_principal")
+    prioridades = request.form.getlist("prioridad_principal")
     experiencia = request.form.get("experiencia_meli")
     pantalla = request.form.get("pantalla_preferida")
-    ok = onboarding.guardar_respuestas(g.usuario_id, prioridad, experiencia, pantalla)
+    ok = onboarding.guardar_respuestas(g.usuario_id, prioridades, experiencia, pantalla)
     if not ok:
         return render_template(
             "onboarding.html", opciones_prioridad=onboarding.OPCIONES_PRIORIDAD,

@@ -55,8 +55,8 @@ function revisarMensajeEnURL() {
 
 // ---------- Modo Privacidad ----------
 function alternarModoPrivacidad() {
-    document.body.classList.toggle('modo-privacidad');
-    localStorage.setItem('modo_privacidad', document.body.classList.contains('modo-privacidad') ? '1' : '0');
+    document.documentElement.classList.toggle('modo-privacidad');
+    localStorage.setItem('modo_privacidad', document.documentElement.classList.contains('modo-privacidad') ? '1' : '0');
 }
 
 // ---------- Panel personalizable (mostrar/ocultar paneles opcionales) ----------

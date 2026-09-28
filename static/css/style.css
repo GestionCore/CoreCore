@@ -352,11 +352,19 @@ a { color: inherit; text-decoration: none; }
 .hero-number-label { font-size: 0.32em; font-weight: 600; color: var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); margin-left: 8px; vertical-align: middle; }
 .stat-chip-desc { font-size: 0.78em; color: var(--text-faint); margin-top: 5px; }
 
-/* Modo privacidad */
-body.modo-privacidad .stat-chip-value,
-body.modo-privacidad td.num { filter: blur(6px); transition: filter 0.2s; }
-body.modo-privacidad .stat-chip-value:hover,
-body.modo-privacidad td.num:hover { filter: none; }
+/* Modo privacidad — la clase va en <html>, no en <body> (se aplica
+   desde un script inline en <head>, antes de que <body> exista, para
+   que no haya ni un parpadeo de montos sensibles al cargar).
+   .hero-number incluido a propósito: es la cifra más grande de cada
+   pantalla (Ganancia Neta Real, Facturación), la que más sentido tiene
+   tapar. Antes solo tapaba .stat-chip-value/td.num y dejaba visible
+   justo el número más importante. */
+html.modo-privacidad .stat-chip-value,
+html.modo-privacidad .hero-number,
+html.modo-privacidad td.num { filter: blur(6px); transition: filter 0.2s; }
+html.modo-privacidad .stat-chip-value:hover,
+html.modo-privacidad .hero-number:hover,
+html.modo-privacidad td.num:hover { filter: none; }
 
 /* Tables */
 table.data-table { width: 100%; border-collapse: collapse; }

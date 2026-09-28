@@ -40,3 +40,13 @@ CREATE POLICY tendencias_seguimiento_por_cuenta_propia ON tendencias_seguimiento
 
 CREATE POLICY tendencias_snapshots_por_cuenta_propia ON tendencias_snapshots
     USING (cuenta_id IN (SELECT id FROM cuentas_meli WHERE usuario_id = current_setting('app.usuario_actual')::bigint));
+
+-- GRANT explícito — RLS filtra QUÉ filas se ven, pero no reemplaza el
+-- permiso de base para tocar la tabla. Sin esto, "permission denied for
+-- table tendencias_seguimiento" (encontrado en producción), y encima
+-- ese error aborta la transacción completa y hace fallar en cascada
+-- cualquier otra consulta que comparta el mismo cursor (ver logros.py).
+GRANT SELECT, INSERT, UPDATE, DELETE ON tendencias_seguimiento TO app_backend;
+GRANT SELECT, INSERT, UPDATE, DELETE ON tendencias_snapshots TO app_backend;
+GRANT USAGE, SELECT ON tendencias_seguimiento_id_seq TO app_backend;
+GRANT USAGE, SELECT ON tendencias_snapshots_id_seq TO app_backend;
