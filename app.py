@@ -2930,6 +2930,15 @@ def webhook_mercadopago():
 
 # ─────────────────────────────────────────────────────────
 
+# A nivel de módulo (no solo dentro de "python app.py" directo) —
+# gunicorn importa este archivo como módulo y nunca ejecuta el bloque
+# de más abajo, así que si esta llamada quedaba ahí adentro, correr la
+# app por gunicorn (como en Railway) dejaba el sync automático sin
+# arrancar NUNCA, en silencio. scheduler.iniciar_scheduler() ya decide
+# solo si usa APScheduler o se lo cede a Celery Beat (según haya Redis
+# disponible), así que es seguro llamarlo siempre, una vez por proceso.
+scheduler.iniciar_scheduler()
+
 if __name__ == "__main__":
     if config.DEBUG:
         print("=" * 70)
@@ -2938,8 +2947,6 @@ if __name__ == "__main__":
         print("    interactiva a cualquiera que la vea — es ejecución de código")
         print("    remoto en tu máquina, no un detalle menor.")
         print("=" * 70)
-
-    scheduler.iniciar_scheduler()
 
     # Waitress: servidor WSGI de producción para Windows.
     # Para Linux en producción, usar Gunicorn (ver gunicorn.conf.py).
