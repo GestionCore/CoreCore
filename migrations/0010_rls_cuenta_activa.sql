@@ -237,5 +237,10 @@ ALTER POLICY configuracion_cuenta_por_cuenta_propia ON configuracion_cuenta
 
 -- tendencias_seguimiento y tendencias_snapshots: ver nota de ownership
 -- más arriba — se aplicaron aparte, no van en este archivo.
-
-INSERT INTO schema_migrations (version) VALUES ('0010') ON CONFLICT DO NOTHING;
+--
+-- El INSERT a schema_migrations NO va acá: esa tabla también la creó
+-- app_admin (por migrate.py), no postgres — el rol del SQL Editor no
+-- tiene permiso de escritura ahí. Supabase corre todo el pegado como
+-- UNA transacción, así que si el INSERT fallaba al final, deshacía
+-- las 19 ALTER POLICY de arriba también (pasó una vez). El registro
+-- en schema_migrations se hace aparte, vía conexion_admin.
