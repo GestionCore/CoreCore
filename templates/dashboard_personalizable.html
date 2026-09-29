@@ -470,18 +470,14 @@
                 w.innerHTML = `
                     <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
                         <div class="stat-chip-label">Últimas Ventas</div>
-                        <div style="margin-top:12px;">
-                            <table class="data-table" style="font-size:0.82em;">
-                                <tbody>
-                                ${d.map(v => `
-                                <tr>
-                                    <td style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">${v.nombre}</td>
-                                    <td class="text-muted num" style="white-space:nowrap;">×${v.cantidad}</td>
-                                    <td class="num" style="font-weight:600; white-space:nowrap;">${v.precio_f}</td>
-                                    <td class="text-muted num" style="white-space:nowrap;">${v.fecha}</td>
-                                </tr>`).join('')}
-                                </tbody>
-                            </table>
+                        <div style="margin-top:6px;">
+                            ${d.map(v => `
+                            <div class="mini-list-row">
+                                <span class="mini-list-qty">×${v.cantidad}</span>
+                                <span class="mini-list-titulo">${v.nombre}</span>
+                                <span class="mini-list-precio">${v.precio_f}</span>
+                                <span class="mini-list-fecha">${v.fecha}</span>
+                            </div>`).join('')}
                         </div>
                     </a>`;
             });

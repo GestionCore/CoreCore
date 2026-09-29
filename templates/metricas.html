@@ -81,20 +81,20 @@
 </form>
 <script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-metricas'));</script>
 
-<div class="stat-strip">
-    <div class="stat-chip accent-success">
-        <div class="stat-chip-label">Facturado</div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-success">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Facturado</span></div>
         <div class="stat-chip-value">${{ resumen.facturado }}
             {% if comparacion_anterior.variacion_facturado_pct is not none %}
-            <span class="{% if comparacion_anterior.variacion_facturado_pct >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:0.4em; vertical-align:middle; margin-left:4px;" title="vs. {{ comparacion_anterior.desde }} al {{ comparacion_anterior.hasta }} (${{ comparacion_anterior.facturado_formateado }})">
+            <span class="kpi-tendencia {{ 'up' if comparacion_anterior.variacion_facturado_pct >= 0 else 'down' }}" style="font-size:0.5em;" title="vs. {{ comparacion_anterior.desde }} al {{ comparacion_anterior.hasta }} (${{ comparacion_anterior.facturado_formateado }})">
                 {{ '▲' if comparacion_anterior.variacion_facturado_pct >= 0 else '▼' }} {{ comparacion_anterior.variacion_facturado_pct|abs }}%
             </span>
             {% endif %}
         </div>
-        <div class="text-muted" style="font-size:0.72em; margin-top:2px;">vs. período anterior ({{ comparacion_anterior.desde }} al {{ comparacion_anterior.hasta }})</div>
+        <div class="stat-chip-desc">vs. período anterior ({{ comparacion_anterior.desde }} al {{ comparacion_anterior.hasta }})</div>
     </div>
-    <div class="stat-chip {% if resumen.ganancia_neta_negativa %}accent-danger{% else %}accent-primary{% endif %}">
-        <div class="stat-chip-label">Ganancia Neta Real</div>
+    <div class="stat-chip kpi-card {% if resumen.ganancia_neta_negativa %}accent-danger{% else %}accent-primary{% endif %}">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-wallet"/></svg></span><span class="stat-chip-label">Ganancia Neta Real</span></div>
         <div class="stat-chip-value">${{ resumen.ganancia_neta }}</div>
         <div class="stat-chip-desc">Lo que queda en el bolsillo{% if resumen.raw.facturado %} · {{ (resumen.raw.ganancia_neta / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
     </div>

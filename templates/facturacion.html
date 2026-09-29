@@ -32,9 +32,9 @@
     <div class="text-muted" style="font-size:0.82em; margin-top:4px;">Facturado bruto menos cargos de MeLi y gastos operativos del período</div>
 </div>
 
-<div class="stat-strip">
-    <div class="stat-chip accent-denim"><div class="stat-chip-label">Facturado bruto (ventas)</div><div class="stat-chip-value">${{ facturado_bruto_formateado }}</div></div>
-    <div class="stat-chip accent-gold"><div class="stat-chip-label">Ganancia bruta real</div><div class="stat-chip-value">${{ ganancia_bruta_formateada }}</div><div class="stat-chip-desc">Facturado - Cargos de MeLi</div></div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="stat-chip-label">Facturado bruto (ventas)</span></div><div class="stat-chip-value">${{ facturado_bruto_formateado }}</div></div>
+    <div class="stat-chip kpi-card accent-gold"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Ganancia bruta real</span></div><div class="stat-chip-value">${{ ganancia_bruta_formateada }}</div><div class="stat-chip-desc">Facturado - Cargos de MeLi</div></div>
 </div>
 
 {% if barra_segmentos %}
