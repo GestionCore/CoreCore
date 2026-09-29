@@ -540,10 +540,15 @@ tr.row-alert { background: rgba(239, 68, 68, 0.05); }
 .btn-block { width: 100%; }
 
 label.field-label { display: block; font-size: 0.78em; color: var(--text-secondary); margin-bottom: 5px; font-weight: 500; }
-input[type="text"], input[type="number"], input[type="date"], select {
+/* textarea faltaba acá — sin esto quedaba con el estilo por defecto del
+   navegador (fondo blanco, letra negra), un textarea de otra era en
+   medio de una pantalla oscura. Encontrado en Preguntas (el cuadro de
+   respuesta a compradores), donde más se nota porque es de uso diario. */
+input[type="text"], input[type="number"], input[type="date"], select, textarea {
     background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: var(--text-primary);
     padding: 10px 13px; border-radius: var(--radius-sm); font-family: var(--font-data); font-size: 0.9em; width: 100%; transition: border-color 0.2s;
 }
+textarea { line-height: 1.5; }
 /* La flecha nativa del <select> es del navegador/SO — no del sistema de
    íconos de la app, así que desentonaba (un triángulo gris genérico al
    lado de tarjetas pulidas). appearance:none la saca y la reemplaza por
