@@ -418,6 +418,21 @@ a { color: inherit; text-decoration: none; }
     animation: pulse 1.8s infinite;
 }
 
+/* ---------- Comparador "lo que ves en MeLi" vs "lo que te queda de
+   verdad" — el mensaje central de CoreLux, hecho visual. Caja izquierda
+   apagada (el número que MeLi te resalta), caja derecha con borde vivo
+   (el número real, después de todos los costos). ---------- */
+.comparador-real { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+@media (max-width: 640px) { .comparador-real { grid-template-columns: 1fr; } }
+.comparador-caja { border-radius: var(--radius-md); padding: 16px 18px; }
+.comparador-caja-oficial { background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); }
+.comparador-caja-real { background: rgba(139, 92, 246, 0.06); border: 1px solid rgba(139, 92, 246, 0.35); }
+.comparador-caja-eyebrow { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; margin-bottom: 8px; }
+.comparador-caja-valor { font-family: var(--font-data); font-size: 1.5em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.comparador-caja-oficial .comparador-caja-valor { color: var(--text-secondary); }
+.comparador-caja-real .comparador-caja-valor { color: var(--accent-primary); }
+.comparador-caja-nota { font-size: 0.76em; color: var(--text-faint); margin-top: 4px; }
+
 /* ---------- Hero Numbers: la cifra que más importa en cada pantalla ---------- */
 .hero-number {
     font-family: var(--font-display);

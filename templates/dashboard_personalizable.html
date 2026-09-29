@@ -15,6 +15,19 @@
     <div class="hero-number" id="hero-ganancia-valor" style="font-size:2.6em;"><span class="skeleton">$0</span></div>
     <div class="text-muted" style="font-size:0.82em; margin-top:2px;">Después de comisiones, envíos, publicidad y costo de fabricación — la fórmula completa, no una aproximación.</div>
 
+    <div class="comparador-real">
+        <div class="comparador-caja comparador-caja-oficial">
+            <div class="comparador-caja-eyebrow">Lo que factura tu cuenta hoy</div>
+            <div class="comparador-caja-valor skeleton" id="comparador-facturado">$0</div>
+            <div class="comparador-caja-nota">El número que ves en MeLi, sin descontar nada todavía</div>
+        </div>
+        <div class="comparador-caja comparador-caja-real">
+            <div class="comparador-caja-eyebrow">Lo que te queda de verdad</div>
+            <div class="comparador-caja-valor skeleton" id="comparador-ganancia">$0</div>
+            <div class="comparador-caja-nota">Después de MeLi, envíos, publicidad y fabricación</div>
+        </div>
+    </div>
+
     <div class="hero-ganancia-compara">
         <div class="hero-ganancia-fila">
             <span class="hero-ganancia-fila-label">Hoy</span>
@@ -544,6 +557,8 @@
         if (resumen.status === 'fulfilled' && resumen.value) {
             const d = resumen.value;
             _heroSetValor('hero-facturado', `$${d.facturado_formateado}`, `${d.ordenes || 0} ventas · top: ${d.modelo_top || '—'}`, d.variacion_pct);
+            const elComp = document.getElementById('comparador-facturado');
+            if (elComp) { elComp.classList.remove('skeleton'); elComp.textContent = `$${d.facturado_formateado}`; }
         }
 
         if (hoy.status === 'fulfilled' && hoy.value) {
@@ -586,6 +601,13 @@
             heroGanancia.textContent = '$0';
             const signo = negativo ? '-' : '';
             animarNumeroHasta(heroGanancia, Math.abs(d.hoy.ganancia), v => signo + '$' + formatearNumeroAR(v, false));
+
+            const elCompGanancia = document.getElementById('comparador-ganancia');
+            if (elCompGanancia) {
+                elCompGanancia.classList.remove('skeleton');
+                elCompGanancia.textContent = signo + '$' + formatearNumeroAR(Math.abs(d.hoy.ganancia), false);
+                elCompGanancia.style.color = negativo ? 'var(--danger)' : 'var(--accent-primary)';
+            }
 
             // Barras comparativas: el mayor de los dos valores absolutos marca el 100%.
             const maxAbs = Math.max(Math.abs(d.hoy.ganancia), Math.abs(d.promedio_diario_14d.ganancia), 1);
