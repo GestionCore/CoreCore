@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-brand);"><use href="#icon-home"/></svg>Dashboard</h1>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-home"/></svg>Dashboard</h1>
         <div class="page-subtitle">Tu resumen del día — personalizalo a gusto</div>
     </div>
     <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-settings"/></svg> Personalizar</button>
@@ -613,7 +613,7 @@
             const elMargen = document.getElementById('pl-margen');
             elMargen.textContent = p.margen_f; elMargen.classList.remove('skeleton');
             elMargen.style.color = p.margen_negativo ? 'var(--danger)' : 'var(--success)';
-            document.getElementById('pl-tile-margen').style.borderColor = p.margen_negativo ? 'var(--danger)' : 'var(--accent-brand)';
+            document.getElementById('pl-tile-margen').style.borderColor = p.margen_negativo ? 'var(--danger)' : 'var(--accent-primary)';
 
             const filas = [
                 { label: 'Comisión MeLi', valor: p.comision, valor_f: p.comision_f },

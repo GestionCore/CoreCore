@@ -129,7 +129,7 @@
 
 <div class="filter-row" style="align-items:stretch;">
     <div class="panel" style="flex:1.3; min-width:320px;">
-        <div class="panel-title"><svg class="icon" style="color:var(--accent-brand);"><use href="#icon-bolt"/></svg> Punto de Equilibrio</div>
+        <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-bolt"/></svg> Punto de Equilibrio</div>
         {% if punto_equilibrio %}
         <div class="pe-badge {% if punto_equilibrio.superado %}pe-badge-ok{% else %}pe-badge-falta{% endif %}">
             {% if punto_equilibrio.superado %}Superado {{ punto_equilibrio.veces_superado }}x{% else %}Todavía no cubrís tus costos fijos{% endif %}
@@ -144,7 +144,7 @@
         {% endif %}
     </div>
     <div class="panel" style="flex:1; min-width:280px;">
-        <div class="panel-title"><svg class="icon" style="color:var(--accent-brand);"><use href="#icon-receipt"/></svg> Factura MeLi</div>
+        <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Factura MeLi</div>
         {% if factura_meli %}
         <div class="page-subtitle" style="margin-bottom:10px;">
             {{ factura_meli.date_from }} al {{ factura_meli.date_to }}
@@ -226,7 +226,7 @@
         </div>
     </div>
     <div class="panel" style="flex:1; min-width:300px;">
-        <div class="panel-title"><svg class="icon" style="color:var(--accent-brand);"><use href="#icon-credit-card"/></svg> Cómo te Pagan</div>
+        <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-credit-card"/></svg> Cómo te Pagan</div>
         {% if analitica_clientes.pct_cuotas is not none %}
         <div class="stat-strip" style="margin-bottom:16px;">
             <div class="stat-chip"><div class="stat-chip-label">En cuotas</div><div class="stat-chip-value">{{ analitica_clientes.pct_cuotas }}%</div><div class="stat-chip-desc">{{ analitica_clientes.cant_ordenes_cuotas }} órdenes</div></div>

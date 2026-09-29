@@ -42,8 +42,8 @@
         <text x="{{ cx }}" y="{{ sh + gap/2 + 4 }}" text-anchor="middle" fill="var(--text-faint)" font-size="10">{{ "%.1f"|format(pct_preg * 100) }}%</text>
         <!-- Preguntas -->
         <polygon points="{{ cx - w2/2 }},{{ y2 }} {{ cx + w2/2 }},{{ y2 }} {{ cx + w3/2 }},{{ y2 + sh }} {{ cx - w3/2 }},{{ y2 + sh }}"
-            fill="var(--accent-brand)" fill-opacity="0.2" stroke="var(--accent-brand)" stroke-opacity="0.55" stroke-width="1.5" stroke-linejoin="round"/>
-        <text x="{{ cx }}" y="{{ y2 + sh/2 + 6 }}" text-anchor="middle" fill="var(--accent-brand)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_preguntas | int }} preguntas</text>
+            fill="var(--accent-primary)" fill-opacity="0.2" stroke="var(--accent-primary)" stroke-opacity="0.55" stroke-width="1.5" stroke-linejoin="round"/>
+        <text x="{{ cx }}" y="{{ y2 + sh/2 + 6 }}" text-anchor="middle" fill="var(--accent-primary)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_preguntas | int }} preguntas</text>
         <!-- Conector + pct -->
         <line x1="{{ cx }}" y1="{{ y2 + sh }}" x2="{{ cx }}" y2="{{ y3 }}" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3,3"/>
         <text x="{{ cx }}" y="{{ y2 + sh + gap/2 + 4 }}" text-anchor="middle" fill="var(--text-faint)" font-size="10">{{ "%.1f"|format(pct_vnt * 100) }}%</text>
@@ -91,7 +91,7 @@
                 <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ '100' if e.visitas > 0 else '0' }}" style="width:0%; background:var(--accent-denim);"></div></div>
             </div>
             <div class="embudo-etapa">
-                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;color:var(--accent-brand);"><use href="#icon-info"/></svg>{{ e.preguntas }} preguntas</span>
+                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;color:var(--accent-primary);"><use href="#icon-info"/></svg>{{ e.preguntas }} preguntas</span>
                 <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ ((e.preguntas / e.visitas * 100) if e.visitas > 0 else 0)|round(1) }}" style="width:0%; background:var(--accent-gold);"></div></div>
             </div>
             <div class="embudo-etapa">
