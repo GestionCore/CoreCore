@@ -50,10 +50,9 @@
                                 {% else %}<span class="badge badge-neutral">Inactiva</span>{% endif %}
                             </td>
                             <td class="num">
-                                {% if v.full > 0 %}<input type="number" value="{{ v.propio }}" disabled title="El stock de FULL se gestiona desde Mercado Libre, no se puede editar acá" style="max-width:90px; margin-left:auto;">
-                                {% else %}<input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" min="0" style="max-width:90px; margin-left:auto;">{% endif %}
+                                <input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" min="0" style="max-width:90px; margin-left:auto;">
                             </td>
-                            <td class="num">{{ v.full }} u.</td>
+                            <td class="num"><span title="El stock de FULL se gestiona desde Mercado Libre, no se puede editar acá">{{ v.full }} u.</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -45,7 +45,7 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
                 fila["id_orden"], fila["id_meli"], fila["id_variante"], fila["titulo"], fila["cantidad"], fila["despachado"],
                 fila["comprador_nickname"], fila["comprador_nombre"], fila["thumbnail"], fila["shipment_id"], fila["tipo_logistica"]
             )
-            match_talle = re.search(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', titulo, re.IGNORECASE)
+            match_talle = re.search(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', titulo or "", re.IGNORECASE)
             talle = match_talle.group(0).upper() if match_talle else "Único"
             modelo = limpiar_titulo_modelo(titulo)
             clave = f"{id_orden}-{id_meli}-{id_variante}"

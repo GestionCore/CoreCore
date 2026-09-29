@@ -228,6 +228,12 @@
   display: flex; align-items: center; justify-content: center;
   z-index: 9000;
 }
+/* El atributo HTML "hidden" pierde contra cualquier regla de CSS de
+   autor que fije "display" (la hoja de estilos del navegador que lo
+   implementa tiene prioridad más baja que la nuestra) — sin esto el
+   modal quedaba visible apenas se entraba a /suscripcion y "Volver"
+   no lo cerraba nunca. */
+.modal-overlay[hidden] { display: none; }
 .modal-box {
   background: var(--glass-bg-alt);
   border: 1px solid rgba(255, 77, 125, 0.4);

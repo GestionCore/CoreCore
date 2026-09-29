@@ -505,7 +505,13 @@ function _iniciarChartPareto() {
             if (!canvas || !window.Chart) return;
             const root = getComputedStyle(document.documentElement);
             const colorP = root.getPropertyValue('--accent-primary').trim() || '#b06bff';
-            const colorF = root.getPropertyValue('--text-faint').trim() || '#56567a';
+            // --text-faint es el color MÁS tenue de la paleta (pensado para
+            // texto secundario decorativo, no para datos) — usarlo en los
+            // ejes de un gráfico dejaba los números de precio/unidades casi
+            // ilegibles sobre el fondo oscuro. --text-secondary tiene bastante
+            // más contraste y es el que se usa para texto funcional en el
+            // resto de la app.
+            const colorF = root.getPropertyValue('--text-secondary').trim() || '#9494b8';
             const maxU = Math.max(...d.puntos.map(p => p.unidades), 1);
             new Chart(canvas, {
                 type: 'bubble',
@@ -524,8 +530,8 @@ function _iniciarChartPareto() {
                         }
                     },
                     scales: {
-                        x: { ticks: { color: colorF, callback: v => '$' + v.toLocaleString('es-AR') }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Precio promedio', color: colorF, font: { size: 11 } } },
-                        y: { ticks: { color: colorF }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas', color: colorF, font: { size: 11 } } }
+                        x: { ticks: { color: colorF, font: { size: 12 }, callback: v => '$' + v.toLocaleString('es-AR') }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Precio promedio', color: colorF, font: { size: 12 } } },
+                        y: { ticks: { color: colorF, font: { size: 12 } }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas', color: colorF, font: { size: 12 } } }
                     }
                 }
             });

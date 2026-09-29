@@ -271,8 +271,43 @@ function aplicarUltimosDias(dias, boton) {
     const aISO = (d) => d.toISOString().split('T')[0];
     form.querySelector('input[name="fecha_desde"]').value = aISO(desde);
     form.querySelector('input[name="fecha_hasta"]').value = aISO(hoy);
+    // Feedback visual inmediato del botón tocado — el submit de abajo
+    // recarga la página enseguida, pero marcarUltimosDiasActivo() (más
+    // abajo) es quien deja el estado "presionado" correcto una vez que
+    // esa página nueva termina de cargar.
+    form.querySelectorAll('button[onclick^="aplicarUltimosDias("]').forEach(b => b.classList.remove('active'));
+    boton.classList.add('active');
     form.submit();
 }
+
+/**
+ * Al volver a cargar la página después de tocar "7/14/30 días" (o de
+ * entrar con un período ya guardado), ninguno de esos botones quedaba
+ * marcado como activo — parecía que el click no había hecho nada, aunque
+ * el período sí había cambiado. Se fija comparando fecha_desde/fecha_hasta
+ * (guardadas en el data-desde/data-hasta de .rango-fechas, que sí vienen
+ * del server) contra la cantidad de días de cada botón.
+ */
+function marcarUltimosDiasActivo() {
+    document.querySelectorAll('.rango-fechas[data-desde][data-hasta]').forEach(cont => {
+        const form = cont.closest('form');
+        const desdeStr = cont.dataset.desde, hastaStr = cont.dataset.hasta;
+        if (!form || !desdeStr || !hastaStr) return;
+        const botones = form.querySelectorAll('button[onclick^="aplicarUltimosDias("]');
+        if (!botones.length) return;
+        const desde = new Date(desdeStr + 'T00:00:00');
+        const hasta = new Date(hastaStr + 'T00:00:00');
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        const terminaHoy = Math.abs(hasta - hoy) < 86400000;
+        const dias = Math.round((hasta - desde) / 86400000) + 1;
+        botones.forEach(b => {
+            const m = b.getAttribute('onclick').match(/aplicarUltimosDias\((\d+)/);
+            const n = m ? parseInt(m[1], 10) : null;
+            b.classList.toggle('active', terminaHoy && n === dias);
+        });
+    });
+}
+document.addEventListener('DOMContentLoaded', marcarUltimosDiasActivo);
 
 /**
  * Selector de rango de fechas unificado (pedido explícito) — reemplaza
@@ -819,6 +854,14 @@ async function actualizarTicker() {
         window._ultimoTickerData = data;
     } catch (e) {
         console.error('Error actualizando ticker:', e);
+        // Sin esto, un error acá (server 502, JSON inválido, etc.) dejaba
+        // el pill de arriba con el efecto skeleton (brillo animado) para
+        // siempre — parecía "cargando" sin fin en vez de mostrar que no
+        // se pudo traer el dato.
+        const elVentas = document.getElementById('ticker-ventas');
+        const elLiberacion = document.getElementById('ticker-liberacion');
+        if (elVentas) { elVentas.classList.remove('skeleton'); elVentas.textContent = 'No se pudo cargar'; }
+        if (elLiberacion) { elLiberacion.classList.remove('skeleton'); elLiberacion.textContent = 'No se pudo cargar'; }
     }
 }
 

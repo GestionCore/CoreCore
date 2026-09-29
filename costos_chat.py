@@ -63,12 +63,14 @@ def procesar_mensaje(historial_mensajes):
     cada vez que se confirma o se cierra el chat).
     """
     prompt = PROMPT_SISTEMA.format(fecha_hoy=datetime.now().strftime("%Y-%m-%d"))
-    # max_tokens más alto que el de un solo gasto (era 400) — un mensaje
-    # con 2-3 gastos en una sola confirmación necesita más lugar para la
-    # lista completa; con el límite viejo, pedir varios de una vez cortaba
-    # la respuesta a mitad de camino y volvía vacía ("La IA respondió sin
-    # texto de contenido"), justo el caso que esto tiene que soportar.
-    ok, respuesta = ia_asistente.preguntar_ia_conversacion(prompt, historial_mensajes, max_tokens=900, temperatura=0.2)
+    # max_tokens generoso — un mensaje con varios gastos en una sola
+    # confirmación necesita lugar para la lista JSON completa. 900 ya
+    # había sido subido una vez para tolerar 2 gastos, pero seguía
+    # cortando la respuesta a mitad de camino (JSON inválido → "no
+    # terminé de entender eso") apenas el usuario describía un tercero.
+    # 2000 deja margen cómodo para bastantes más sin acercarse al límite
+    # real del modelo.
+    ok, respuesta = ia_asistente.preguntar_ia_conversacion(prompt, historial_mensajes, max_tokens=2000, temperatura=0.2)
 
     if not ok:
         return {"accion": "error", "mensaje": f"No pude conectar con la IA ({respuesta}). Podés cargar el gasto a mano en el formulario de abajo."}

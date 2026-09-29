@@ -615,7 +615,16 @@ def api_hoy():
 @app.route("/api/ticker")
 @login_requerido
 def api_ticker():
-    return jsonify(dashboard_mod.obtener_ticker(g.usuario_id, g.cuenta_id))
+    # Este ticker vive en el nav de TODAS las páginas — si esto tira sin
+    # capturar, el pill de arriba queda con el efecto skeleton (el
+    # "círculo"/franja que se supone brilla mientras carga) trabado para
+    # siempre, porque el JS de global.js no tenía manejo de error: solo
+    # logueaba en consola y dejaba el elemento tal cual estaba.
+    try:
+        return jsonify(dashboard_mod.obtener_ticker(g.usuario_id, g.cuenta_id))
+    except Exception as e:
+        print(f"[Dashboard] ⚠️ Error armando el ticker: {e}")
+        return jsonify(None), 502
 
 
 @app.route("/api/quiebre_stock")
@@ -2023,10 +2032,15 @@ def api_calculadora_buscar_categoria():
         headers = {}
     try:
         # Búsqueda por dominio/keyword (devuelve las categorías con mejor score semántico)
+        # OJO: este endpoint de MeLi rechaza con 400 cualquier "limit" fuera
+        # de 1-8 (a diferencia de la mayoría de sus otros endpoints, que
+        # toleran hasta 50) — con 10 esta búsqueda fallaba SIEMPRE de forma
+        # silenciosa (cae al fallback, que es mucho menos preciso) para
+        # cualquier término, no solo los nuevos.
         resp = meli_http.get(
             "https://api.mercadolibre.com/sites/MLA/domain_discovery/search",
             headers=headers,
-            params={"q": q, "limit": 10},
+            params={"q": q, "limit": 8},
         )
         resultados = []
         if resp.status_code == 200:

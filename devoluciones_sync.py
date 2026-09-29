@@ -33,9 +33,21 @@ LIMITE_OFFSET = 1000  # mismo tope de MeLi que ya mordimos con órdenes e ítems
 
 
 def _mapear_tipo_claim(tipo_meli, stage):
+    """
+    Valores reales documentados por MeLi para el campo "type" de
+    /post-purchase/v1/claims/search: "return" (devolución), "cancel_sale"
+    (cancelación hecha por el vendedor) y "change" (cambio de producto/
+    talle — muy común en indumentaria). Ninguno de estos tres afecta la
+    reputación por sí solo; lo que sí la afecta es un reclamo real que
+    entra en mediación. Antes "change" no estaba contemplado y caía en el
+    default "claim" — por eso un simple cambio de talle aparecía en la
+    UI mezclado con reclamos graves.
+    """
     tipo_meli = (tipo_meli or "").lower()
     stage = (stage or "").lower()
     if "return" in tipo_meli or "devol" in tipo_meli:
+        return "return"
+    if "change" in tipo_meli or "cambio" in tipo_meli:
         return "return"
     if "cancel" in tipo_meli:
         return "cancelacion"
