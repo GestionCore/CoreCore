@@ -69,10 +69,10 @@
     </form>
 </div>
 
-<div class="stat-strip">
-    <div class="stat-chip accent-denim"><div class="stat-chip-label">Gastos fijos</div><div class="stat-chip-value">${{ stats.fijos }}</div></div>
-    <div class="stat-chip accent-denim"><div class="stat-chip-label">Gastos variables</div><div class="stat-chip-value">${{ stats.variables }}</div></div>
-    <div class="stat-chip accent-danger"><div class="stat-chip-label">Total del período</div><div class="stat-chip-value">${{ stats.total }}</div></div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-wallet"/></svg></span><span class="stat-chip-label">Gastos fijos</span></div><div class="stat-chip-value">${{ stats.fijos }}</div></div>
+    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="stat-chip-label">Gastos variables</span></div><div class="stat-chip-value">${{ stats.variables }}</div></div>
+    <div class="stat-chip kpi-card accent-danger"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-alert"/></svg></span><span class="stat-chip-label">Total del período</span></div><div class="stat-chip-value">${{ stats.total }}</div></div>
 </div>
 
 <div class="panel">
