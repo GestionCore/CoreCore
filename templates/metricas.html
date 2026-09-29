@@ -30,7 +30,7 @@
         <div class="stat-chip"><div class="stat-chip-label">Devoluciones</div><div class="stat-chip-value">{{ posventa.devoluciones }}</div></div>
         <div class="stat-chip"><div class="stat-chip-label">Cancelaciones</div><div class="stat-chip-value">{{ posventa.cancelaciones }}</div></div>
         <div class="stat-chip"><div class="stat-chip-label">Reclamos</div><div class="stat-chip-value">{{ posventa.reclamos }}</div></div>
-        <div class="stat-chip accent-gold"><div class="stat-chip-label">Dinero Retenido</div><div class="stat-chip-value">${{ posventa.dinero_retenido }}</div></div>
+        <div class="stat-chip accent-warning"><div class="stat-chip-label">Dinero Retenido</div><div class="stat-chip-value">${{ posventa.dinero_retenido }}</div></div>
     </div>
 
     {% if posventa.ranking_motivos_devolucion %}
@@ -108,12 +108,12 @@
         <div class="stat-chip-value" style="color:var(--accent-cyan);">${{ resumen.envios }}</div>
         <div class="stat-chip-desc">Costo de logística{% if resumen.raw.facturado %} · {{ (resumen.raw.envios / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
     </div>
-    <div class="stat-chip" style="border-color:var(--accent-gold); background:var(--warning-bg);">
-        <div class="stat-chip-label" style="color:var(--accent-gold);">Publicidad</div>
-        <div class="stat-chip-value" style="color:var(--accent-gold);">${{ resumen.costo_ads }}</div>
+    <div class="stat-chip">
+        <div class="stat-chip-label">Publicidad</div>
+        <div class="stat-chip-value">${{ resumen.costo_ads }}</div>
         <div class="stat-chip-desc">Gasto en Ads{% if resumen.raw.facturado %} · {{ (resumen.raw.costo_ads / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
     </div>
-    <div class="stat-chip accent-gold">
+    <div class="stat-chip">
         <div class="stat-chip-label">Costo de Fabricación</div>
         <div class="stat-chip-value">${{ resumen.costo_fabricacion }}</div>
         <div class="stat-chip-desc">Costo del producto{% if resumen.raw.facturado %} · {{ (resumen.raw.costo_fabricacion / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
