@@ -28,17 +28,17 @@
 </div>
 {% else %}
 
-<div class="stat-strip">
-    <div class="stat-chip accent-danger">
-        <div class="stat-chip-label">Urgentes</div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-danger">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-alert"/></svg></span><span class="stat-chip-label">Urgentes</span></div>
         <div class="stat-chip-value">{{ conteo_por_prioridad.urgente }}</div>
     </div>
-    <div class="stat-chip accent-warning">
-        <div class="stat-chip-label">Importantes</div>
+    <div class="stat-chip kpi-card accent-warning">
+        <div class="kpi-card-top"><span class="kpi-card-icon" style="background:var(--semantic-warning-bg); color:var(--semantic-warning);"><svg class="icon"><use href="#icon-flame"/></svg></span><span class="stat-chip-label">Importantes</span></div>
         <div class="stat-chip-value">{{ conteo_por_prioridad.importante }}</div>
     </div>
-    <div class="stat-chip accent-primary">
-        <div class="stat-chip-label">Opcionales</div>
+    <div class="stat-chip kpi-card accent-primary">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-trophy"/></svg></span><span class="stat-chip-label">Opcionales</span></div>
         <div class="stat-chip-value">{{ conteo_por_prioridad.opcional }}</div>
     </div>
 </div>

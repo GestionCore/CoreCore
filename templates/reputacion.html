@@ -25,9 +25,9 @@
     {% endif %}
 </div>
 
-<div class="stat-strip">
-    <div class="stat-chip {% if rep.tasa_cancelacion > 5 %}accent-danger{% else %}accent-success{% endif %}">
-        <div class="stat-chip-label">Tasa de cancelación</div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card {% if rep.tasa_cancelacion > 5 %}accent-danger{% else %}accent-success{% endif %}">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-star"/></svg></span><span class="stat-chip-label">Tasa de cancelación</span></div>
         <div class="stat-chip-value">{{ rep.tasa_cancelacion }}%</div>
     </div>
 </div>

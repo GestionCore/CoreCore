@@ -61,24 +61,24 @@
     <div class="text-muted" style="font-size:0.76em; margin-top:14px;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg>Este monto no incluye IVA — por eso puede verse más bajo que el total de Publicidad que mostramos en Facturación.</div>
 </div>
 
-<div class="stat-strip">
-    <div class="stat-chip accent-primary" title="Cuánto volvió por cada peso invertido en Ads — MeLi usa esta métrica como la principal desde 2026">
-        <div class="stat-chip-label">ROAS general</div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-primary" title="Cuánto volvió por cada peso invertido en Ads — MeLi usa esta métrica como la principal desde 2026">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-bolt"/></svg></span><span class="stat-chip-label">ROAS general</span></div>
         <div class="stat-chip-value">{{ roas_general if roas_general is not none else '—' }}{% if roas_general %}x{% endif %}</div>
         <div class="stat-chip-desc">Retorno por cada $ invertido</div>
     </div>
-    <div class="stat-chip accent-gold" title="Qué porcentaje de tus ventas por ads se fue en pagar la publicidad — es la métrica inversa al ROAS (ACOS = 100/ROAS)">
-        <div class="stat-chip-label">ACOS general</div>
+    <div class="stat-chip kpi-card accent-primary" title="Qué porcentaje de tus ventas por ads se fue en pagar la publicidad — es la métrica inversa al ROAS (ACOS = 100/ROAS)">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-percent"/></svg></span><span class="stat-chip-label">ACOS general</span></div>
         <div class="stat-chip-value">{{ acos_general if acos_general is not none else '—' }}{% if acos_general %}%{% endif %}</div>
         <div class="stat-chip-desc">% de venta que se va en Ads</div>
     </div>
-    <div class="stat-chip accent-denim" title="Gasto en Ads sobre TU FACTURACIÓN TOTAL del período (no solo lo atribuido a ads) — mide qué tan dependiente sos de la pauta para vender en general">
-        <div class="stat-chip-label">TACOS</div>
+    <div class="stat-chip kpi-card accent-primary" title="Gasto en Ads sobre TU FACTURACIÓN TOTAL del período (no solo lo atribuido a ads) — mide qué tan dependiente sos de la pauta para vender en general">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-percent"/></svg></span><span class="stat-chip-label">TACOS</span></div>
         <div class="stat-chip-value">{{ tacos if tacos is not none else '—' }}{% if tacos %}%{% endif %}</div>
         <div class="stat-chip-desc">Ads / facturación total (${{ facturacion_total_negocio_formateada }})</div>
     </div>
-    <div class="stat-chip accent-success">
-        <div class="stat-chip-label">Unidades por Ads</div>
+    <div class="stat-chip kpi-card accent-success">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-box"/></svg></span><span class="stat-chip-label">Unidades por Ads</span></div>
         <div class="stat-chip-value">{{ unidades_total }}</div>
         <div class="stat-chip-desc">{{ clicks_total }} clicks totales</div>
     </div>

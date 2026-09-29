@@ -54,11 +54,11 @@
     </svg>
 </div>
 
-<div class="stat-strip">
-    <div class="stat-chip accent-denim"><div class="stat-chip-label">Visitas totales (30d)</div><div class="stat-chip-value">{{ total_visitas }}</div></div>
-    <div class="stat-chip accent-gold"><div class="stat-chip-label">Preguntas (30d)</div><div class="stat-chip-value">{{ total_preguntas }}</div></div>
-    <div class="stat-chip accent-success"><div class="stat-chip-label">Ventas totales (30d)</div><div class="stat-chip-value">{{ total_ventas }}</div></div>
-    <div class="stat-chip accent-danger"><div class="stat-chip-label">Para revisar ficha</div><div class="stat-chip-value">{{ a_revisar|length }}</div></div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-eye"/></svg></span><span class="stat-chip-label">Visitas totales (30d)</span></div><div class="stat-chip-value">{{ total_visitas }}</div></div>
+    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-chat"/></svg></span><span class="stat-chip-label">Preguntas (30d)</span></div><div class="stat-chip-value">{{ total_preguntas }}</div></div>
+    <div class="stat-chip kpi-card accent-success"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-box"/></svg></span><span class="stat-chip-label">Ventas totales (30d)</span></div><div class="stat-chip-value">{{ total_ventas }}</div></div>
+    <div class="stat-chip kpi-card accent-danger"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-alert"/></svg></span><span class="stat-chip-label">Para revisar ficha</span></div><div class="stat-chip-value">{{ a_revisar|length }}</div></div>
 </div>
 
 <div class="panel" data-mostrar-mas-scope>
