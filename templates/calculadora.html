@@ -206,9 +206,9 @@ function mostrarComparativaCuotas(base, costo) {
         const gananciaConCosto = costo > 0 ? recibis - costo : null;
         return `
             <div class="stat-chip ${c.cuotas === 1 ? 'accent-success' : diferencia < -base.precio * 0.15 ? '' : ''}"
-                 style="${c.cuotas === 1 ? '' : 'border-color:var(--accent-gold); background:var(--warning-bg);'}">
+                 style="${c.cuotas === 1 ? '' : 'border-color:var(--semantic-warning); background:var(--semantic-warning-bg);'}">
                 <div class="stat-chip-label">${c.label}</div>
-                <div class="stat-chip-value" style="${c.cuotas === 1 ? '' : 'color:var(--accent-gold);'}">${fmt(recibis)}</div>
+                <div class="stat-chip-value" style="${c.cuotas === 1 ? '' : 'color:var(--semantic-warning);'}">${fmt(recibis)}</div>
                 <div class="stat-chip-desc">
                     Comisión: ${fmt(comisionTotal)}${c.pct > 0 ? ` (+${(c.pct*100).toFixed(1)}% financ.)` : ''}
                     ${costo > 0 ? ` · Neto: <strong>${fmt(gananciaConCosto)}</strong>` : ''}

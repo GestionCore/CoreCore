@@ -15,21 +15,21 @@
 {% set subas = cambios | selectattr('direccion', 'equalto', 'subió') | rejectattr('variacion_pct', 'none') | list %}
 {% set subas_ok = subas | selectattr('variacion_pct', 'ge', 0) | list %}
 {% set variacion_prom = ((validos | map(attribute='variacion_pct') | sum) / validos|length) | round(1) if validos else none %}
-<div class="stat-strip">
-    <div class="stat-chip accent-primary">
-        <div class="stat-chip-label">Cambios registrados</div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-primary">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-trend"/></svg></span><span class="stat-chip-label">Cambios registrados</span></div>
         <div class="stat-chip-value">{{ cambios|length }}</div>
     </div>
     {% if subas %}
-    <div class="stat-chip accent-success">
-        <div class="stat-chip-label">Subas que aumentaron ventas</div>
+    <div class="stat-chip kpi-card accent-success">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-chart"/></svg></span><span class="stat-chip-label">Subas que aumentaron ventas</span></div>
         <div class="stat-chip-value">{{ ((subas_ok|length / subas|length) * 100) | round(0) | int }}%</div>
         <div class="stat-chip-desc">de {{ subas|length }} suba{{ '' if subas|length == 1 else 's' }} con datos comparables</div>
     </div>
     {% endif %}
     {% if variacion_prom is not none %}
-    <div class="stat-chip {% if variacion_prom >= 0 %}accent-success{% else %}accent-danger{% endif %}">
-        <div class="stat-chip-label">Variación promedio en ventas</div>
+    <div class="stat-chip kpi-card {% if variacion_prom >= 0 %}accent-success{% else %}accent-danger{% endif %}">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-percent"/></svg></span><span class="stat-chip-label">Variación promedio en ventas</span></div>
         <div class="stat-chip-value">{{ '+' if variacion_prom >= 0 else '' }}{{ variacion_prom }}%</div>
         <div class="stat-chip-desc">tras un cambio de precio</div>
     </div>

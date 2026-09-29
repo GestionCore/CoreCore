@@ -45,14 +45,14 @@
 </div>
 
 {% if ventas %}
-<div class="stat-strip">
-    <div class="stat-chip accent-primary">
-        <div class="stat-chip-label">Total vendido fuera de MeLi</div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-primary">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Total vendido fuera de MeLi</span></div>
         <div class="stat-chip-value">${{ "{:,.0f}".format(ventas | sum(attribute='total')).replace(",", ".") }}</div>
         <div class="stat-chip-desc">de las últimas {{ ventas|length }} ventas</div>
     </div>
-    <div class="stat-chip accent-success">
-        <div class="stat-chip-label">Unidades</div>
+    <div class="stat-chip kpi-card accent-success">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-box"/></svg></span><span class="stat-chip-label">Unidades</span></div>
         <div class="stat-chip-value">{{ ventas | sum(attribute='cantidad') }}</div>
     </div>
 </div>
