@@ -139,7 +139,7 @@
 <div class="panel panel-colapsable {% if mono.alertas %}abierto{% endif %}" id="panel-monotributo" role="button" tabindex="0" aria-expanded="{{ 'true' if mono.alertas else 'false' }}" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
     <div class="panel-title">
         <span>
-            <svg class="icon" style="width:16px;height:16px;margin-right:6px;vertical-align:middle;color:var(--accent-gold);"><use href="#icon-file-text"/></svg>
+            <svg class="icon" style="width:16px;height:16px;margin-right:6px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-file-text"/></svg>
             Monotributo
             {% if mono.categoria_real and mono.categoria_declarada and mono.categoria_real != mono.categoria_declarada %}
             <span class="badge badge-warning" style="margin-left:8px;">Revisar categoría</span>

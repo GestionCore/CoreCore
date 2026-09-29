@@ -433,6 +433,24 @@ a { color: inherit; text-decoration: none; }
 .comparador-caja-real .comparador-caja-valor { color: var(--accent-primary); }
 .comparador-caja-nota { font-size: 0.76em; color: var(--text-faint); margin-top: 4px; }
 
+/* ---------- Waterfall de costos: fila por fila (label + barra + monto)
+   en vez de una sola barra apilada — se lee de un vistazo cuánto pesa
+   cada concepto y a dónde llega la plata al final. ---------- */
+.waterfall-fila { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.waterfall-fila-label { flex: 0 0 150px; font-size: 0.85em; color: var(--text-secondary); }
+.waterfall-fila-barra-fondo { flex: 1; height: 8px; border-radius: 99px; background: rgba(255,255,255,0.05); overflow: hidden; }
+.waterfall-fila-barra { height: 100%; border-radius: 99px; background: var(--danger); transition: width 0.6s cubic-bezier(0.16,1,0.3,1); }
+.waterfall-fila-monto { flex: 0 0 120px; text-align: right; font-family: var(--font-data); font-weight: 600; font-size: 0.88em; font-variant-numeric: tabular-nums; color: var(--danger); }
+.waterfall-fila.total-inicial .waterfall-fila-barra { background: var(--text-secondary); }
+.waterfall-fila.total-inicial .waterfall-fila-monto { color: var(--text-primary); font-weight: 700; }
+.waterfall-fila.total-final { border-top: 1px solid var(--border-soft); margin-top: 4px; padding-top: 14px; }
+.waterfall-fila.total-final .waterfall-fila-label { font-weight: 700; color: var(--text-primary); }
+.waterfall-fila.total-final .waterfall-fila-barra { background: var(--success); }
+.waterfall-fila.total-final .waterfall-fila-monto { color: var(--success); font-weight: 800; font-size: 1.05em; }
+.waterfall-fila.total-final.negativo .waterfall-fila-barra { background: var(--danger); }
+.waterfall-fila.total-final.negativo .waterfall-fila-monto { color: var(--danger); }
+@media (max-width: 560px) { .waterfall-fila-label { flex-basis: 100px; } .waterfall-fila-monto { flex-basis: 90px; } }
+
 /* ---------- Hero Numbers: la cifra que más importa en cada pantalla ---------- */
 .hero-number {
     font-family: var(--font-display);

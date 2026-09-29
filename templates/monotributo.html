@@ -20,13 +20,13 @@
 </div>
 {% endfor %}
 
-<div class="stat-strip">
-    <div class="stat-chip">
-        <div class="stat-chip-label">Facturación últimos 12 meses</div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="stat-chip-label">Facturación últimos 12 meses</span></div>
         <div class="stat-chip-value">${{ "%.2f"|format(facturacion_12m)|replace(",", "@")|replace(".", ",")|replace("@", ".") }}</div>
     </div>
-    <div class="stat-chip accent-gold">
-        <div class="stat-chip-label">Categoría según tu facturación real</div>
+    <div class="stat-chip kpi-card accent-gold">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-file-text"/></svg></span><span class="stat-chip-label">Categoría según tu facturación real</span></div>
         <div class="stat-chip-value">{{ categoria_real or "Fuera de escala" }}</div>
     </div>
     {% if categoria_declarada %}
