@@ -157,7 +157,7 @@ async function cargarHud() {
 
 // ---------- Celebración breve (confeti) al completar algo al 100% ----------
 function celebrarConfeti() {
-    const colores = ['176, 107, 255', '46, 230, 255', '255, 217, 61', '41, 230, 176'];
+    const colores = ['139, 92, 246', '46, 230, 255', '255, 217, 61', '41, 230, 176'];
     const cantidad = 28;
     for (let i = 0; i < cantidad; i++) {
         const p = document.createElement('div');

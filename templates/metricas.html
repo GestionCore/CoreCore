@@ -515,7 +515,7 @@ function _iniciarChartPareto() {
             const maxU = Math.max(...d.puntos.map(p => p.unidades), 1);
             new Chart(canvas, {
                 type: 'bubble',
-                data: { datasets: [{ label: 'Modelos', data: d.puntos.map(p => ({ x: p.precio, y: p.unidades, r: Math.max(4, (p.unidades/maxU)*22), titulo: p.titulo })), backgroundColor: 'rgba(176,107,255,0.45)', borderColor: colorP, borderWidth: 1 }] },
+                data: { datasets: [{ label: 'Modelos', data: d.puntos.map(p => ({ x: p.precio, y: p.unidades, r: Math.max(4, (p.unidades/maxU)*22), titulo: p.titulo })), backgroundColor: 'rgba(139, 92, 246,0.45)', borderColor: colorP, borderWidth: 1 }] },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     animation: { duration: 500 },

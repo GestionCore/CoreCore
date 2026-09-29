@@ -1,53 +1,68 @@
 :root {
-    /* Base: negro con un dejo de azul oscuro profundo, no negro puro —
-       da esa sensación de "espacio digital" en vez de plano. */
-    --bg-base: #05060f;
-    --bg-surface: #0a0b1a;
-    --bg-deep-blue: #0d1130;
-    --glass-bg: rgba(13, 15, 38, 0.68);
-    --glass-bg-alt: rgba(18, 21, 48, 0.75);
-    --glass-border: rgba(168, 130, 255, 0.16);
-    --border-soft: rgba(255, 255, 255, 0.07);
+    /* ============================================================
+       CoreLux — Design System v2 ("SaaS de alta gama, identidad propia")
+       Referencia estructural: Escalafy (grafito plano, tarjetas sólidas,
+       números protagonistas). Paleta: NO se copia su rosa/magenta —
+       CoreLux sigue siendo violeta + dorado, pero con la misma disciplina:
+       fondo plano sin degradé ni ruido, tarjetas grafito con borde
+       casi invisible, y el color con un solo trabajo cada uno (ver abajo).
+       ============================================================ */
 
-    --text-primary: #f7f7ff;
-    --text-secondary: #9494b8;
-    --text-faint: #56567a;
+    /* ---------- Fondo: negro grafito plano, sin degradé azulado ---------- */
+    --bg-base: #0a0a0c;
+    --bg-surface: #0e0e12;
+    --bg-deep-blue: #0a0a0c; /* alias legacy — ya no hay degradé, mismo valor que bg-base */
 
-    /* Violeta neón + cian como segundo neón (guiño directo a Tron) — el
-       combo violeta/cian sobre negro-azulado es la base del look
-       futurista/vaporwave. El amarillo queda reservado para momentos
-       puntuales (ganancia, alertas de valor), nunca de fondo. */
-    --accent-primary: #b06bff;
-    --accent-primary-dim: #8b3ffc;
-    --accent-primary-glow: rgba(176, 107, 255, 0.55);
-    --accent-cyan: #2ee6ff;
-    --accent-cyan-glow: rgba(46, 230, 255, 0.5);
-    --accent-gold: #ffd93d;
-    --accent-gold-dim: #e6ac00;
-    --accent-gold-glow: rgba(255, 217, 61, 0.45);
+    /* ---------- Tarjetas: grafito sólido, borde ultra-fino y neutro ----------
+       Antes eran "glass" translúcido (alpha 0.68/0.75 + blur 14px) con
+       borde violeta brillante — leía como un panel de nave espacial.
+       Ahora son superficies sólidas y quietas; el contraste lo da la
+       jerarquía tipográfica, no el brillo del borde. */
+    --glass-bg: #131318;
+    --glass-bg-alt: #17171d;
+    --glass-border: #232329;
+    --border-soft: rgba(255, 255, 255, 0.06);
+
+    --text-primary: #ffffff;
+    --text-secondary: #94a3b8;
+    --text-faint: #5b6472;
+
+    /* ---------- Violeta: identidad + TODA acción (CTAs, estados activos,
+       loaders, líneas de tendencia). Es el color que más se ve. ---------- */
+    --accent-primary: #8b5cf6;
+    --accent-primary-dim: #7c3aed;
+    --accent-primary-glow: rgba(139, 92, 246, 0.35);
+    --accent-cyan: #38bdf8;              /* uso puntual en gráficos (una serie más, no identidad) */
+    --accent-cyan-glow: rgba(56, 189, 248, 0.25);
     --accent-denim: var(--accent-primary); /* compat: nombre viejo, mismo valor */
 
-    /* ---------- Identidad de marca (logo, racha, watermark) ----------
-       Separado de --accent-gold para que "brand" y "advertencia" no
-       compartan el mismo token — antes ambos usaban el mismo dorado. */
-    --accent-brand: #f5a623;
-    --accent-brand-dim: #d9860f;
-    --accent-brand-glow: rgba(245, 166, 35, 0.45);
+    /* ---------- Dorado: acento premium, con precisión ----------
+       Logo, badges de estatus (VIP / MercadoLíder), hitos y logros
+       destacados. NUNCA botones de uso común, nunca advertencias/errores
+       — para eso está --semantic-warning y --danger. accent-brand queda
+       como alias del mismo dorado (ya no hace falta separarlo: la regla
+       ahora es "dorado = marca/premium", punto). */
+    --accent-gold: #f2c94c;
+    --accent-gold-dim: #d4a017;
+    --accent-gold-glow: rgba(242, 201, 76, 0.30);
+    --accent-brand: var(--accent-gold);
+    --accent-brand-dim: var(--accent-gold-dim);
+    --accent-brand-glow: var(--accent-gold-glow);
 
-    /* ---------- Semántica de estado — cada color tiene un solo rol ---------- */
-    --success: #29e6b0;
-    --success-bg: rgba(41, 230, 176, 0.12);
-    --danger: #ff4d7d;
-    --danger-bg: rgba(255, 77, 125, 0.12);
-    --warning: #ffd93d;         /* compat: alias legacy → mismo que accent-gold */
-    --warning-bg: rgba(255, 217, 61, 0.12);
-    --semantic-warning: #e8822e;        /* naranja: alertas y advertencias */
-    --semantic-warning-bg: rgba(232, 130, 46, 0.13);
+    /* ---------- Semántica financiera — cada color un solo rol ---------- */
+    --success: #22c55e;                 /* ganancia neta, cobros, números positivos */
+    --success-bg: rgba(34, 197, 94, 0.12);
+    --danger: #f43f5e;                  /* reclamos, quiebre de stock, pérdida */
+    --danger-bg: rgba(244, 63, 94, 0.12);
+    --warning: #f2c94c;                 /* compat: alias legacy */
+    --warning-bg: rgba(242, 201, 76, 0.10);
+    --semantic-warning: #f0a13b;         /* naranja: alertas y advertencias reales */
+    --semantic-warning-bg: rgba(240, 161, 59, 0.13);
     --semantic-achieve: #a78bfa;        /* violeta pastel: logros, badges, hitos */
     --semantic-achieve-bg: rgba(167, 139, 250, 0.13);
-    --semantic-info: #00e5c4;           /* verde-cian: información contextual */
-    --semantic-info-bg: rgba(0, 229, 196, 0.11);
-    --semantic-danger-glow: rgba(255, 77, 125, 0.4);
+    --semantic-info: #38bdf8;           /* información contextual */
+    --semantic-info-bg: rgba(56, 189, 248, 0.11);
+    --semantic-danger-glow: rgba(244, 63, 94, 0.35);
 
     --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-display: 'Source Serif Pro', 'Source Serif 4', Georgia, serif;
@@ -59,7 +74,7 @@
     --text-sm:  0.82em;   /* texto secundario, subtítulos chicos */
     --text-base: 0.90em;  /* texto de cuerpo, celdas de tabla */
     --text-md:  1.05em;   /* títulos de panel, UI mediano */
-    --text-lg:  1.40em;   /* cifras grandes en chips */
+    --text-lg:  1.55em;   /* cifras grandes en chips — antes 1.40em, KPI ejecutivo pide más presencia */
     --text-xl:  1.85em;   /* page-title */
     --text-hero: 2.60em;  /* hero number: la cifra más importante */
 
@@ -67,12 +82,15 @@
     --radius-md: 14px;
     --radius-lg: 20px;
     --radius-pill: 999px;
-    --shadow-card: 0 4px 28px -4px rgba(0, 0, 0, 0.6);
-    --shadow-elevated: 0 18px 44px -8px rgba(0, 0, 0, 0.7);
-    --shadow-glow-primary: 0 0 34px -2px var(--accent-primary-glow);
-    --shadow-glow-cyan: 0 0 34px -2px var(--accent-cyan-glow);
-    --shadow-glow-gold: 0 0 34px -2px var(--accent-gold-glow);
-    --shadow-glow-brand: 0 0 34px -2px var(--accent-brand-glow);
+    /* Sombras neutras (negro puro), no teñidas de violeta — el brillo de
+       color queda reservado a :hover, como un acento puntual, no como
+       aura permanente de cada tarjeta. */
+    --shadow-card: 0 2px 10px -2px rgba(0, 0, 0, 0.5);
+    --shadow-elevated: 0 14px 34px -10px rgba(0, 0, 0, 0.6);
+    --shadow-glow-primary: 0 0 22px -4px var(--accent-primary-glow);
+    --shadow-glow-cyan: 0 0 22px -4px var(--accent-cyan-glow);
+    --shadow-glow-gold: 0 0 22px -4px var(--accent-gold-glow);
+    --shadow-glow-brand: 0 0 22px -4px var(--accent-brand-glow);
 
     /* ---------- Sistema de transiciones (un solo idioma para todo) ---------- */
     --transition-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -106,9 +124,9 @@
     --accent-gold-dim: #92400e;
     --accent-gold-glow: rgba(180, 83, 9, 0.18);
 
-    --accent-brand: #b45309;
-    --accent-brand-dim: #92400e;
-    --accent-brand-glow: rgba(180, 83, 9, 0.20);
+    --accent-brand: var(--accent-gold);
+    --accent-brand-dim: var(--accent-gold-dim);
+    --accent-brand-glow: var(--accent-gold-glow);
     --success: #059669;
     --success-bg: rgba(5, 150, 105, 0.10);
     --danger: #dc2626;
@@ -149,12 +167,11 @@ html { color-scheme: dark; }
 body {
     margin: 0;
     background-color: var(--bg-base);
-    background-image:
-        radial-gradient(circle at 12% -8%, rgba(176, 107, 255, 0.16) 0%, transparent 42%),
-        radial-gradient(circle at 100% 8%, rgba(46, 230, 255, 0.10) 0%, transparent 40%),
-        radial-gradient(circle at 50% 100%, rgba(139, 63, 252, 0.10) 0%, transparent 50%),
-        linear-gradient(180deg, var(--bg-base) 0%, var(--bg-deep-blue) 140%),
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    /* Un único glow violeta, muy tenue, arriba a la izquierda — misma idea
+       que la referencia (Escalafy tiene un glow apenas visible detrás del
+       hero), nada de degradé azulado ni textura de ruido tapando la
+       lectura. El resto de la pantalla es negro grafito plano. */
+    background-image: radial-gradient(circle at 15% -10%, rgba(139, 92, 246, 0.07) 0%, transparent 45%);
     background-attachment: fixed;
     color: var(--text-primary);
     font-family: var(--font-ui);
@@ -197,7 +214,7 @@ a { color: inherit; text-decoration: none; }
    etc.) siguen con .stat-chip-value en blanco por default — a propósito:
    no todo dato necesita un color, solo el que sí importa resaltar. */
 .stat-chip.accent-gold:hover { border-color: rgba(251, 191, 36, 0.4); box-shadow: var(--shadow-glow-gold); }
-.stat-chip.accent-denim:hover, .stat-chip.accent-primary:hover { border-color: rgba(176, 107, 255, 0.4); box-shadow: var(--shadow-glow-primary); }
+.stat-chip.accent-denim:hover, .stat-chip.accent-primary:hover { border-color: rgba(139, 92, 246, 0.4); box-shadow: var(--shadow-glow-primary); }
 .stat-chip.accent-warning:hover { border-color: rgba(232, 130, 46, 0.5); box-shadow: 0 0 32px -4px rgba(232, 130, 46, 0.35); }
 .stat-chip.accent-success:hover { border-color: rgba(34, 211, 165, 0.4); box-shadow: 0 0 32px -4px rgba(34, 211, 165, 0.35); }
 .stat-chip.accent-danger:hover { border-color: rgba(245, 72, 107, 0.4); box-shadow: 0 0 32px -4px rgba(245, 72, 107, 0.35); }
@@ -256,7 +273,7 @@ a { color: inherit; text-decoration: none; }
     transition: border-color 0.2s, box-shadow 0.2s; min-width: 260px; justify-content: flex-start;
     justify-self: center;
 }
-.buscador-central:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(176,107,255,0.2); }
+.buscador-central:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(139,92,246,0.2); }
 .buscador-central kbd { margin-left: auto; background: rgba(255,255,255,0.08); border-radius: 4px; padding: 2px 6px; font-family: var(--font-data); font-size: 0.85em; }
 @media (max-width: 900px) { .buscador-central span { display: none; } .buscador-central { min-width: auto; } }
 /* Entre ~900 y ~1300px el ancho mínimo combinado de logo + buscador +
@@ -278,7 +295,7 @@ a { color: inherit; text-decoration: none; }
 .topnav-link { display: inline-flex; align-items: center; padding: 8px 10px; border-radius: var(--radius-sm); color: var(--text-secondary); font-weight: 500; font-size: 0.88em; transition: background var(--transition-fast), color var(--transition-fast); white-space: nowrap; }
 .topnav-link .icon { margin-right: 6px; width: 15px; height: 15px; }
 .topnav-link:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
-.topnav-link.active { background: rgba(255,255,255,0.06); color: var(--accent-brand); }
+.topnav-link.active { background: rgba(255,255,255,0.06); color: var(--accent-primary); }
 .btn-sync-todo { padding: 8px 14px; font-size: 0.85em; flex-shrink: 0; }
 
 /* Layout & Panels */
@@ -289,8 +306,10 @@ a { color: inherit; text-decoration: none; }
 .page-subtitle { color: var(--text-secondary); font-size: 0.9em; }
 
 .panel {
+    /* Tarjeta sólida (grafito plano), no glass translúcido — --glass-bg
+       ya es un color opaco, así que el blur de acá no aportaba nada
+       visible salvo costo de renderizado. */
     background: var(--glass-bg); border: 1px solid var(--glass-border);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     border-radius: var(--radius-md); padding: 26px; margin-bottom: 24px;
     box-shadow: var(--shadow-card); overflow-x: auto;
     transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
@@ -307,10 +326,10 @@ a { color: inherit; text-decoration: none; }
 .panel:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-elevated), 0 0 24px -8px var(--accent-primary-glow);
-    border-color: rgba(176, 107, 255, 0.4);
+    border-color: rgba(139, 92, 246, 0.4);
 }
 .panel-title { font-size: var(--text-md); font-weight: 700; margin: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.panel-title .icon { color: var(--accent-brand); }
+.panel-title .icon { color: var(--accent-primary); }
 
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .anim-entrada-js { animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -336,7 +355,7 @@ a { color: inherit; text-decoration: none; }
     animation: fadeInUp 0.4s ease backwards;
     transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
 }
-.stat-chip:hover { transform: translateY(-3px); box-shadow: var(--shadow-elevated); border-color: rgba(176, 107, 255, 0.35); }
+.stat-chip:hover { transform: translateY(-3px); box-shadow: var(--shadow-elevated); border-color: rgba(139, 92, 246, 0.35); }
 .stat-chip:nth-child(1) { animation-delay: 0.02s; } .stat-chip:nth-child(2) { animation-delay: 0.07s; }
 .stat-chip:nth-child(3) { animation-delay: 0.12s; } .stat-chip:nth-child(4) { animation-delay: 0.17s; }
 .stat-chip:nth-child(5) { animation-delay: 0.22s; } .stat-chip:nth-child(6) { animation-delay: 0.27s; }
@@ -415,14 +434,20 @@ tr.row-alert { background: rgba(239, 68, 68, 0.05); }
 }
 @keyframes expandirRipple { to { transform: scale(2.6); opacity: 0; } }
 .btn:active { transform: scale(0.96); }
-.btn-primary { background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim)); color: #14100a; box-shadow: 0 2px 14px -2px var(--accent-gold-glow); }
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-gold-glow); }
+/* El violeta es el color de ACCIÓN (identidad + CTA), así que .btn-primary
+   y .btn-denim son ahora el mismo botón — antes .btn-primary era dorado,
+   dejando el dorado (que se reserva para detalles premium: logo, badges
+   VIP, hitos) haciendo de botón de uso diario en 15 pantallas distintas. */
+.btn-primary, .btn-denim { background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); color: #fff; box-shadow: 0 2px 14px -2px var(--accent-primary-glow); }
+.btn-primary:hover, .btn-denim:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-primary-glow); }
 .btn-secondary { background: rgba(255,255,255,0.05); border-color: var(--glass-border); color: var(--text-primary); }
-.btn-secondary:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(176, 107, 255, 0.25); }
-.btn-denim { background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); color: #fff; box-shadow: 0 2px 14px -2px var(--accent-primary-glow); }
-.btn-denim:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-primary-glow); }
-.btn-danger { background: var(--danger-bg); border-color: rgba(245, 72, 107, 0.4); color: var(--danger); }
-.btn-danger:hover { box-shadow: 0 0 0 1px rgba(245, 72, 107, 0.3); }
+.btn-secondary:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.25); }
+/* Botón dorado — reservado para los pocos casos realmente "premium"
+   (upgrade a Plan Elite, etc.), no el botón de acción por default. */
+.btn-gold { background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim)); color: #14100a; box-shadow: 0 2px 14px -2px var(--accent-gold-glow); }
+.btn-gold:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-gold-glow); }
+.btn-danger { background: var(--danger-bg); border-color: rgba(244, 63, 94, 0.4); color: var(--danger); }
+.btn-danger:hover { box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.3); }
 .btn-block { width: 100%; }
 
 label.field-label { display: block; font-size: 0.78em; color: var(--text-secondary); margin-bottom: 5px; font-weight: 500; }
@@ -485,7 +510,7 @@ select option { background: #14162a; color: var(--text-primary); }
 }
 @keyframes radarPulso {
     0% { box-shadow: 0 0 0 0 var(--accent-primary-glow); }
-    100% { box-shadow: 0 0 0 16px rgba(176, 107, 255, 0); }
+    100% { box-shadow: 0 0 0 16px rgba(139, 92, 246, 0); }
 }
 
 /* Comando universal (Ctrl+K) */
@@ -585,7 +610,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .drawer-tabs { display: flex; border-bottom: 1px solid var(--glass-border); overflow-x: auto; }
 .drawer-tab { padding: 12px 16px; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.85em; font-weight:600; white-space: nowrap; border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s; }
 .drawer-tab:hover { color: var(--text-primary); }
-.drawer-tab.active { color: var(--accent-brand); border-bottom-color: var(--accent-brand); text-shadow: 0 0 12px var(--accent-brand-glow); }
+.drawer-tab.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
 .drawer-body { flex: 1; overflow-y: auto; padding: 20px 22px; }
 .drawer-loading { text-align: center; color: var(--text-faint); padding: 40px 0; }
 
@@ -625,22 +650,41 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 @keyframes pulseCurva { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 
 
-/* ---------- Nav agrupado en desplegables ---------- */
+/* ---------- Nav agrupado en desplegables (mega-menu) ----------
+   Cada opción ahora es ícono + nombre + una línea que explica el
+   beneficio, no solo el nombre de la página — para alguien que no sabe
+   de memoria qué hace "Embudo de Conversión", la descripción hace ese
+   trabajo ahí mismo, sin tener que entrar a averiguar. */
 .nav-dropdown { position: relative; }
 .nav-dropdown-toggle { background: none; border: none; font-family: var(--font-ui); }
 .nav-chevron { font-size: 0.7em; margin-left: 4px; opacity: 0.6; }
-.nav-dropdown.active > .nav-dropdown-toggle { background: rgba(255,255,255,0.06); color: var(--accent-brand); }
+.nav-dropdown.active > .nav-dropdown-toggle { background: rgba(255,255,255,0.06); color: var(--accent-primary); }
 .nav-dropdown-menu {
-    position: absolute; top: 100%; left: 0; margin-top: 6px; min-width: 190px;
-    background: var(--glass-bg-alt); border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
-    backdrop-filter: blur(16px); box-shadow: var(--shadow-elevated);
-    display: none; flex-direction: column; padding: 6px; z-index: 60;
+    position: absolute; top: 100%; left: 0; margin-top: 8px; min-width: 340px;
+    background: var(--glass-bg-alt); border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-elevated);
+    display: none; flex-direction: column; padding: 8px; z-index: 60;
 }
 .nav-dropdown:hover .nav-dropdown-menu, .nav-dropdown.open .nav-dropdown-menu { display: flex; }
-.nav-dropdown-item { padding: 9px 12px; border-radius: 6px; color: var(--text-secondary); font-size: 0.88em; }
-.nav-dropdown-item:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
-.nav-dropdown-item.active { color: var(--accent-brand); font-weight: 600; }
-.nav-badge-usado { color: var(--accent-brand); font-size: 10px; margin-left: 6px; vertical-align: middle; }
+.nav-dropdown-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 12px; border-radius: var(--radius-sm); color: var(--text-secondary);
+    transition: background var(--transition-fast);
+}
+.nav-dropdown-item:hover { background: rgba(255,255,255,0.05); }
+.nav-dropdown-item-icon {
+    width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(139, 92, 246, 0.10); color: var(--accent-primary);
+    margin-top: 1px;
+}
+.nav-dropdown-item-icon .icon { width: 15px; height: 15px; }
+.nav-dropdown-item-texto { min-width: 0; }
+.nav-dropdown-item-nombre { font-size: 0.9em; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; }
+.nav-dropdown-item-desc { font-size: 0.78em; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+.nav-dropdown-item.active .nav-dropdown-item-nombre { color: var(--accent-primary); }
+.nav-dropdown-item.active .nav-dropdown-item-icon { background: rgba(139, 92, 246, 0.18); }
+.nav-badge-usado { color: var(--accent-gold); font-size: 10px; margin-left: 6px; vertical-align: middle; }
 
 /* ---------- Tab-strip persistente por grupo (Finanzas / Crecimiento / Catálogo) ----------
    En vez de tener que reabrir el dropdown cada vez que se quiere ir de una
@@ -667,11 +711,11 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 .subnav-tab:hover { color: var(--text-primary); }
-.subnav-tab.active { color: var(--accent-brand); border-bottom-color: var(--accent-brand); }
+.subnav-tab.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
 .subnav-tab-badge {
     font-size: 9px; font-weight: 700; letter-spacing: 0.03em;
-    color: var(--accent-brand); background: rgba(245, 166, 35, 0.14);
-    border: 1px solid rgba(245, 166, 35, 0.3);
+    color: var(--accent-gold); background: rgba(242, 201, 76, 0.14);
+    border: 1px solid rgba(242, 201, 76, 0.3);
     padding: 2px 6px; border-radius: 4px; line-height: 1.3;
 }
 
@@ -745,7 +789,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
 }
 .tendencias-tab:hover { color: var(--text-primary); }
-.tendencias-tab.activo { color: var(--accent-brand); border-bottom-color: var(--accent-brand); }
+.tendencias-tab.activo { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
 
 .veredicto-caja { background: rgba(255,255,255,0.03); border-radius: var(--radius-md); padding: 14px 16px; }
 
@@ -1002,7 +1046,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 /* ---------- Dashboard personalizable ---------- */
 .grid-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
 .widget-dashboard { display: block; text-decoration: none; color: inherit; cursor: pointer; min-height: 110px; }
-.widget-dashboard:hover { border-color: rgba(176,107,255,0.4); }
+.widget-dashboard:hover { border-color: rgba(139,92,246,0.4); }
 .widget-dashboard-ancho { grid-column: span 2; cursor: default; position: relative; }
 .widget-dashboard-ancho:hover { border-color: var(--glass-border); }
 .btn-descargar-grafico {
@@ -1049,7 +1093,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 }
 .tour-anillo {
     position: fixed; border: 2px solid var(--accent-primary); border-radius: 10px;
-    box-shadow: 0 0 0 4px rgba(176,107,255,0.18), 0 0 24px rgba(176,107,255,0.35);
+    box-shadow: 0 0 0 4px rgba(139,92,246,0.18), 0 0 24px rgba(139,92,246,0.35);
     transition: all 0.25s cubic-bezier(0.16,1,0.3,1); pointer-events: none;
 }
 .tour-tarjeta {
@@ -1107,7 +1151,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 /* Nivel 1 — Hero: el foco de la pantalla, máxima elevación */
 .card-hero {
     background: var(--glass-bg-alt);
-    border: 1px solid rgba(176, 107, 255, 0.28);
+    border: 1px solid rgba(139, 92, 246, 0.28);
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     border-radius: var(--radius-md); padding: 30px;
     box-shadow: var(--shadow-elevated), 0 0 40px -10px var(--accent-primary-glow);
@@ -1117,7 +1161,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 .card-hero:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-elevated), 0 0 56px -8px var(--accent-primary-glow);
-    border-color: rgba(176, 107, 255, 0.5);
+    border-color: rgba(139, 92, 246, 0.5);
 }
 
 /* Nivel 2 — Panel: agrupador estándar (alias semántico de .panel) */
@@ -1133,7 +1177,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 .card-panel:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-elevated), 0 0 24px -8px var(--accent-primary-glow);
-    border-color: rgba(176, 107, 255, 0.4);
+    border-color: rgba(139, 92, 246, 0.4);
 }
 
 /* Nivel 3 — Detail: soporte y contexto, mínima elevación */
@@ -1206,6 +1250,6 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 .rf-vacio { cursor: default; }
 .rf-vacio:hover { background: none; }
 .rf-hoy { box-shadow: inset 0 0 0 1px var(--accent-gold); }
-.rf-en-rango { background: rgba(176,107,255,0.15); border-radius: 0; color: var(--text-primary); }
+.rf-en-rango { background: rgba(139,92,246,0.15); border-radius: 0; color: var(--text-primary); }
 .rf-limite { background: var(--accent-primary); color: #fff; font-weight: 700; }
 .rf-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-soft); text-align: center; font-size: 0.8em; color: var(--text-secondary); font-family: var(--font-data); }

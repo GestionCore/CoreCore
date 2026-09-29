@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const colorTextoSec = est.getPropertyValue('--text-secondary').trim();
     const pluginBrillo = {
         id: 'brilloAds',
-        beforeDatasetsDraw(chart) { chart.ctx.save(); chart.ctx.shadowColor = 'rgba(176,107,255,0.5)'; chart.ctx.shadowBlur = 10; },
+        beforeDatasetsDraw(chart) { chart.ctx.save(); chart.ctx.shadowColor = 'rgba(139, 92, 246,0.5)'; chart.ctx.shadowBlur = 10; },
         afterDatasetsDraw(chart) { chart.ctx.restore(); }
     };
     new Chart(ctx, {
@@ -245,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { labels: { color: colorTextoSec, usePointStyle: true, pointStyle: 'circle' } },
-                tooltip: { backgroundColor: 'rgba(13,15,38,0.95)', borderColor: 'rgba(176,107,255,0.25)', borderWidth: 1, padding: 12, cornerRadius: 8,
+                tooltip: { backgroundColor: 'rgba(13,15,38,0.95)', borderColor: 'rgba(139, 92, 246,0.25)', borderWidth: 1, padding: 12, cornerRadius: 8,
                     callbacks: { label: (c) => c.dataset.yAxisID === 'y1' ? ` ${c.dataset.label}: ${c.parsed.y}` : ` ${c.dataset.label}: $${c.parsed.y.toLocaleString('es-AR')}` } }
             },
             scales: {
