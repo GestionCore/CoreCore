@@ -60,28 +60,24 @@
 </div>
 
 <!-- ── Hero del día: las 4 métricas que importan siempre ─────────────────── -->
-<div class="stat-strip" id="hero-metricas-dia">
-    <div class="stat-chip accent-gold" id="hero-facturado">
-        <svg class="stat-chip-icon"><use href="#icon-coin"/></svg>
-        <div class="stat-chip-label">Facturado Hoy</div>
+<div class="stat-strip stat-strip-kpi" id="hero-metricas-dia">
+    <div class="stat-chip kpi-card accent-gold" id="hero-facturado">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Facturado Hoy</span></div>
         <div class="stat-chip-value skeleton" style="min-width:100px;">—</div>
         <div class="stat-chip-desc" id="hero-facturado-sub">—</div>
     </div>
-    <div class="stat-chip accent-primary" id="hero-ordenes">
-        <svg class="stat-chip-icon" style="color:var(--accent-primary);"><use href="#icon-box"/></svg>
-        <div class="stat-chip-label">Ventas Hoy</div>
+    <div class="stat-chip kpi-card accent-primary" id="hero-ordenes">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-box"/></svg></span><span class="stat-chip-label">Ventas Hoy</span></div>
         <div class="stat-chip-value skeleton" style="min-width:60px;">—</div>
         <div class="stat-chip-desc" id="hero-ordenes-sub">—</div>
     </div>
-    <div class="stat-chip accent-success" id="hero-mes">
-        <svg class="stat-chip-icon" style="color:var(--success);"><use href="#icon-chart"/></svg>
-        <div class="stat-chip-label">Facturado Últimos 14 días</div>
+    <div class="stat-chip kpi-card accent-success" id="hero-mes">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-chart"/></svg></span><span class="stat-chip-label">Facturado Últimos 14 días</span></div>
         <div class="stat-chip-value skeleton" style="min-width:100px;">—</div>
         <div class="stat-chip-desc" id="hero-mes-sub">—</div>
     </div>
-    <div class="stat-chip" id="hero-salud">
-        <svg class="stat-chip-icon" style="color:var(--accent-cyan);"><use href="#icon-star"/></svg>
-        <div class="stat-chip-label">Salud de Cuenta</div>
+    <div class="stat-chip kpi-card" id="hero-salud">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-star"/></svg></span><span class="stat-chip-label">Salud de Cuenta</span></div>
         <div class="stat-chip-value skeleton" style="min-width:60px;">—</div>
         <div class="stat-chip-desc" id="hero-salud-sub">—</div>
     </div>
@@ -523,11 +519,19 @@
         } catch (e) { console.error(e); }
     }
 
-    function _heroSetValor(chipId, valor, desc) {
+    function _heroSetValor(chipId, valor, desc, tendenciaPct) {
         const chip = document.getElementById(chipId);
         if (!chip) return;
         const val = chip.querySelector('.stat-chip-value');
-        if (val) { val.classList.remove('skeleton'); val.textContent = valor; }
+        if (val) {
+            val.classList.remove('skeleton');
+            if (tendenciaPct !== null && tendenciaPct !== undefined) {
+                const sube = tendenciaPct >= 0;
+                val.innerHTML = `${valor} <span class="kpi-tendencia ${sube ? 'up' : 'down'}" style="font-size:0.5em;">${sube ? '▲' : '▼'} ${Math.abs(tendenciaPct)}%</span>`;
+            } else {
+                val.textContent = valor;
+            }
+        }
         const sub = chip.querySelector('.stat-chip-desc');
         if (sub) sub.textContent = desc || '';
     }
@@ -543,12 +547,7 @@
 
         if (resumen.status === 'fulfilled' && resumen.value) {
             const d = resumen.value;
-            let txt = `$${d.facturado_formateado}`;
-            if (d.variacion_pct !== null && d.variacion_pct !== undefined) {
-                const flecha = d.variacion_pct >= 0 ? '▲' : '▼';
-                txt += ` ${flecha} ${Math.abs(d.variacion_pct)}%`;
-            }
-            _heroSetValor('hero-facturado', txt, `${d.ordenes || 0} ventas · top: ${d.modelo_top || '—'}`);
+            _heroSetValor('hero-facturado', `$${d.facturado_formateado}`, `${d.ordenes || 0} ventas · top: ${d.modelo_top || '—'}`, d.variacion_pct);
         }
 
         if (hoy.status === 'fulfilled' && hoy.value) {

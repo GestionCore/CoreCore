@@ -362,6 +362,30 @@ a { color: inherit; text-decoration: none; }
 .stat-chip-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 7px; font-weight: 600; }
 .stat-chip-value { font-family: var(--font-data); font-size: var(--text-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
 
+/* ---------- KPI ejecutivo (hero del Dashboard) ----------
+   Ícono chico en chip redondeado (no el ícono suelto de 22px de antes)
+   + la cifra bien grande y en negrita, como corresponde al número que
+   más se mira en toda la pantalla. */
+.kpi-card { padding: 20px 22px; }
+.kpi-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.kpi-card-icon {
+    width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(139, 92, 246, 0.12); color: var(--accent-primary);
+}
+.kpi-card-icon .icon { width: 16px; height: 16px; }
+.kpi-card.accent-gold .kpi-card-icon { background: var(--accent-gold-glow); color: var(--accent-gold); }
+.kpi-card.accent-success .kpi-card-icon { background: var(--success-bg); color: var(--success); }
+.kpi-card.accent-danger .kpi-card-icon { background: var(--danger-bg); color: var(--danger); }
+.kpi-card .stat-chip-label { margin-bottom: 0; }
+.kpi-card .stat-chip-value { font-size: 30px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; }
+.kpi-card .stat-chip-desc { margin-top: 8px; }
+/* Flecha de tendencia vs. período anterior — verde/rojo según signo,
+   nunca mezclado con el color base de la tarjeta. */
+.kpi-tendencia { font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi-tendencia.up { color: var(--success); }
+.kpi-tendencia.down { color: var(--danger); }
+
 /* ---------- Hero Numbers: la cifra que más importa en cada pantalla ---------- */
 .hero-number {
     font-family: var(--font-display);
