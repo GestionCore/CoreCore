@@ -278,11 +278,12 @@
         <span><span class="margen-dot margen-dot-pierde"></span>Pierde plata (&lt;0%)</span>
     </div>
     <table class="data-table">
-        <thead><tr><th>Modelo</th><th class="num">Unidades</th><th class="num">Precio prom.</th><th class="num">Comisión u.</th><th class="num">Envío u.</th><th class="num">Ads u.</th><th class="num">Costo u.</th><th class="num">Neto u.</th><th class="num">Neto total</th></tr></thead>
+        <thead><tr><th></th><th>Modelo</th><th class="num">Unidades</th><th class="num">Precio prom.</th><th class="num">Comisión u.</th><th class="num">Envío u.</th><th class="num">Ads u.</th><th class="num">Costo u.</th><th class="num">Neto u.</th><th class="num">Neto total</th></tr></thead>
         <tbody>
             {% for c in consolidados %}
             {% set margen_pct = ((c.raw.neto_total / c.raw.total_facturado * 100) if c.raw.total_facturado else 0) %}
             <tr class="fila-margen-{{ 'ok' if margen_pct >= 15 else ('limite' if margen_pct >= 0 else 'pierde') }} {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
+                <td style="width:50px; padding-right:0;">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="" class="thumb-sm">{% endif %}</td>
                 <td><strong>{{ c.titulo }}</strong></td>
                 <td class="num">{{ c.unidades }}</td>
                 <td class="num">${{ c.precio_promedio }}</td>
