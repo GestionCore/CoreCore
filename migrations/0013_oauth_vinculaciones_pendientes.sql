@@ -43,5 +43,6 @@ GRANT SELECT, INSERT, DELETE ON oauth_vinculaciones_pendientes TO app_backend;
 -- de crear la tabla, no en la migración. Con una política explícita
 -- que siempre permite, da lo mismo si Supabase prende RLS de nuevo.
 ALTER TABLE oauth_vinculaciones_pendientes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS oauth_vinculaciones_pendientes_acceso_backend ON oauth_vinculaciones_pendientes;
 CREATE POLICY oauth_vinculaciones_pendientes_acceso_backend ON oauth_vinculaciones_pendientes
     USING (true) WITH CHECK (true);
