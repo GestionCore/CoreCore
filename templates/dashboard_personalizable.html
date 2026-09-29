@@ -331,7 +331,7 @@
                     const canvas = document.getElementById(canvasId);
                     if (!canvas || !window.Chart) return;
                     const rootStyle = getComputedStyle(document.documentElement);
-                    const colorPrimario = rootStyle.getPropertyValue('--accent-primary').trim() || '#b06bff';
+                    const colorPrimario = rootStyle.getPropertyValue('--accent-primary').trim() || '#8b5cf6';
                     const colorCian = rootStyle.getPropertyValue('--accent-cyan').trim() || '#2ee6ff';
                     new Chart(canvas, {
                         type: 'line',

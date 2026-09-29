@@ -261,7 +261,7 @@
     const seguimientos = {{ seguimientos | tojson }};
     if (!window.Chart) return;
     const root = getComputedStyle(document.documentElement);
-    const colorPrimario = root.getPropertyValue('--accent-primary').trim() || '#b06bff';
+    const colorPrimario = root.getPropertyValue('--accent-primary').trim() || '#8b5cf6';
     seguimientos.forEach(s => {
         if (!s.tiene_historial_suficiente) return;
         const canvas = document.getElementById('chart-seg-' + s.id);

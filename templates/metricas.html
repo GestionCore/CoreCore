@@ -462,7 +462,7 @@ function _iniciarChartPareto() {
     const serie = {{ (pareto_ganancia.serie if pareto_ganancia else []) | tojson }};
     if (!serie.length) return;
     const root = getComputedStyle(document.documentElement);
-    const colorPrimario = root.getPropertyValue('--accent-primary').trim() || '#b06bff';
+    const colorPrimario = root.getPropertyValue('--accent-primary').trim() || '#8b5cf6';
     const colorGold = root.getPropertyValue('--accent-brand').trim() || '#f5a623';
     const colorFaint = root.getPropertyValue('--text-faint').trim() || '#56567a';
     new Chart(canvas, {
@@ -505,7 +505,7 @@ function _iniciarChartPareto() {
             const canvas = document.getElementById('canvas-correlacion');
             if (!canvas || !window.Chart) return;
             const root = getComputedStyle(document.documentElement);
-            const colorP = root.getPropertyValue('--accent-primary').trim() || '#b06bff';
+            const colorP = root.getPropertyValue('--accent-primary').trim() || '#8b5cf6';
             // --text-faint es el color MÁS tenue de la paleta (pensado para
             // texto secundario decorativo, no para datos) — usarlo en los
             // ejes de un gráfico dejaba los números de precio/unidades casi
