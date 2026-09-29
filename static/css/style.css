@@ -549,6 +549,13 @@ input[type="text"], input[type="number"], input[type="date"], select, textarea {
     padding: 10px 13px; border-radius: var(--radius-sm); font-family: var(--font-data); font-size: 0.9em; width: 100%; transition: border-color 0.2s;
 }
 textarea { line-height: 1.5; }
+/* El ícono de calendario de input[type=date] es del navegador (Chromium
+   lo pinta en gris oscuro/negro por default) — sobre nuestro fondo
+   oscuro quedaba casi invisible, imposible de encontrar con el ojo.
+   invert lo pasa a un gris claro legible; no es Firefox-compatible
+   (ese motor no soporta este pseudo-elemento), pero ahí el navegador ya
+   respeta color-scheme:dark solo, así que no hace falta el parche. */
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.75); cursor: pointer; }
 /* La flecha nativa del <select> es del navegador/SO — no del sistema de
    íconos de la app, así que desentonaba (un triángulo gris genérico al
    lado de tarjetas pulidas). appearance:none la saca y la reemplaza por
@@ -666,7 +673,7 @@ select option { background: #14162a; color: var(--text-primary); }
 .chat-window.open { display: flex; animation: fadeInUp 0.2s ease; }
 .chat-header { padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--glass-border); font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
 .chat-body { flex: 1; padding: 16px; overflow-y: auto; font-size: 0.9em; display: flex; flex-direction: column; gap: 12px; }
-.chat-msg-bot { background: rgba(255,255,255,0.04); padding: 11px 15px; border-radius: 10px; border-left: 3px solid var(--accent-gold); }
+.chat-msg-bot { background: rgba(255,255,255,0.04); padding: 11px 15px; border-radius: 10px; border-left: 3px solid var(--accent-primary); }
 .chat-msg-user { background: var(--accent-denim); color: white; padding: 11px 15px; border-radius: 10px; align-self: flex-end; max-width: 85%; }
 .chat-footer { padding: 12px; background: rgba(255,255,255,0.03); border-top: 1px solid var(--glass-border); display: flex; gap: 8px; }
 
@@ -841,7 +848,13 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 /* ---------- P&L waterfall de 14 días (Dashboard) ---------- */
 .pl-waterfall { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
 .pl-tile { flex: 1; min-width: 150px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 16px 18px; }
-.pl-tile-resultado { border-color: var(--accent-brand); background: rgba(245, 166, 35, 0.06); }
+/* El borde de este tile lo pisa el JS en tiempo real (violeta si el
+   margen es positivo, rojo si es negativo — ver cargarGananciaDiaVsPromedio
+   en dashboard_personalizable.html) — el fondo quedaba fijo en un
+   naranja viejo sin relación con ninguno de los dos casos, mezclándose
+   mal con cualquiera de los dos bordes. Fondo neutro, el borde ya dice
+   todo lo que hace falta decir. */
+.pl-tile-resultado { border-color: var(--accent-primary); background: rgba(139, 92, 246, 0.06); }
 .pl-tile-valor { font-size: 1.5em; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .pl-operador { font-size: 1.6em; font-weight: 700; color: var(--text-faint); flex-shrink: 0; }
 .pl-detalle-tabla { display: flex; flex-direction: column; gap: 10px; }
