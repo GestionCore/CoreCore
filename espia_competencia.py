@@ -57,6 +57,7 @@ def relevar_competidores(cursor, cuenta_id):
             es_full = item.get("shipping", {}).get("logistic_type") == "fulfillment"
             sold_quantity = item.get("sold_quantity", 0)
             titulo = item.get("title")
+            thumbnail = item.get("secure_thumbnail") or item.get("thumbnail")
             fotos = item.get("pictures", []) or []
             foto_principal_id = fotos[0].get("id") if fotos else None
 
@@ -68,8 +69,8 @@ def relevar_competidores(cursor, cuenta_id):
             foto_cambio = bool(fila_anterior and fila_anterior[0] and foto_principal_id and fila_anterior[0] != foto_principal_id)
 
             cursor.execute(
-                "UPDATE competidores_seguimiento SET titulo_actual = %s WHERE cuenta_id = %s AND id_meli_rival = %s",
-                (titulo, cuenta_id, id_rival)
+                "UPDATE competidores_seguimiento SET titulo_actual = %s, thumbnail = %s WHERE cuenta_id = %s AND id_meli_rival = %s",
+                (titulo, thumbnail, cuenta_id, id_rival)
             )
             cursor.execute("""
                 INSERT INTO competidores_historial (cuenta_id, id_meli_rival, fecha, precio, stock_disponible, es_full, sold_quantity, foto_principal_id)
@@ -93,13 +94,13 @@ def relevar_competidores(cursor, cuenta_id):
 
 def obtener_panorama_competencia(cursor, cuenta_id):
     cursor.execute(
-        "SELECT id_meli_rival, alias, titulo_actual FROM competidores_seguimiento WHERE cuenta_id = %s ORDER BY agregado_en DESC",
+        "SELECT id_meli_rival, alias, titulo_actual, thumbnail FROM competidores_seguimiento WHERE cuenta_id = %s ORDER BY agregado_en DESC",
         (cuenta_id,)
     )
     rivales = cursor.fetchall()
 
     panorama = []
-    for id_rival, alias, titulo_actual in rivales:
+    for id_rival, alias, titulo_actual, thumbnail in rivales:
         cursor.execute("""
             SELECT fecha, precio, stock_disponible, es_full, sold_quantity
             FROM competidores_historial WHERE cuenta_id = %s AND id_meli_rival = %s ORDER BY fecha DESC LIMIT 7
@@ -131,6 +132,7 @@ def obtener_panorama_competencia(cursor, cuenta_id):
 
         panorama.append({
             "id_meli_rival": id_rival, "alias": alias or titulo_actual or id_rival, "titulo_actual": titulo_actual,
+            "thumbnail": thumbnail,
             "historial": [{"fecha": h[0].strftime("%Y-%m-%d") if hasattr(h[0], "strftime") else h[0], "precio": h[1], "stock": h[2], "es_full": bool(h[3]), "vendidos": h[4]} for h in historial],
             "tendencia_precio": tendencia_precio,
             "sparkline_puntos": sparkline_puntos,
