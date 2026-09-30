@@ -38,7 +38,7 @@ GRUPOS_NAV = {
         "paginas": [
             {"nav_key": "promociones", "label": "Promociones", "href": "/promociones", "endpoint": "promociones_vista"},
             {"nav_key": "tendencias", "label": "Tendencias", "href": "/tendencias", "endpoint": "tendencias_vista"},
-            {"nav_key": "competencia", "label": "Espía de Competencia", "href": "/competencia", "endpoint": "competencia_vista"},
+            {"nav_key": "competencia", "label": "Competencia", "href": "/competencia", "endpoint": "competencia_vista"},
             {"nav_key": "embudo_conversion", "label": "Embudo de Conversión", "href": "/embudo_conversion", "endpoint": "embudo_conversion_vista"},
             {"nav_key": "reputacion", "label": "Reputación", "href": "/reputacion", "endpoint": "reputacion_vista"},
             {"nav_key": "publicidad", "label": "Publicidad", "href": "/publicidad", "endpoint": "publicidad_vista"},

@@ -1372,32 +1372,42 @@ def reputacion_vista():
 @login_requerido
 def competencia_vista():
     import db
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return redirect(url_for("reconectar"))
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        rivales = espia_competencia.obtener_panorama_competencia(cursor, g.cuenta_id)
-    return render_template("competencia.html", rivales=rivales, active_nav="competencia")
+        productos = espia_competencia.obtener_panorama_competencia(cursor, g.cuenta_id)
+        ids_propios = espia_competencia.ids_publicaciones_propias(cursor)
+    sugerencias = espia_competencia.sugerir_productos_propios(access_token, ids_propios, {p["id_producto"] for p in productos})
+    return render_template("competencia.html", productos=productos, sugerencias=sugerencias, active_nav="competencia")
 
 
-@app.route("/competencia/agregar", methods=["POST"])
+@app.route("/api/competencia/agregar", methods=["POST"])
 @login_requerido
-def competencia_agregar():
+def api_competencia_agregar():
     import db
-    id_meli_rival = request.form.get("id_meli_rival", "").strip()
-    alias = request.form.get("alias", "").strip()
-    if id_meli_rival:
-        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-            cursor = conexion.cursor()
-            espia_competencia.agregar_competidor(cursor, g.cuenta_id, id_meli_rival, alias)
-    return redirect("/competencia")
+    datos = request.get_json(silent=True) or {}
+    texto = (datos.get("producto") or "").strip()
+    alias = (datos.get("alias") or "").strip()[:80]
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "mensaje": "Tu cuenta de Mercado Libre está desconectada — reconectala para seguir productos."}), 401
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        ok, mensaje = espia_competencia.agregar_competidor(cursor, access_token, g.cuenta_id, texto, alias)
+    return jsonify({"ok": ok, "mensaje": mensaje}), (200 if ok else 400)
 
 
-@app.route("/competencia/eliminar/<id_meli_rival>", methods=["POST"])
+@app.route("/competencia/eliminar/<id_producto>", methods=["POST"])
 @login_requerido
-def competencia_eliminar(id_meli_rival):
+def competencia_eliminar(id_producto):
     import db
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        espia_competencia.eliminar_competidor(cursor, g.cuenta_id, id_meli_rival)
+        espia_competencia.eliminar_competidor(cursor, g.cuenta_id, id_producto)
     return redirect("/competencia")
 
 

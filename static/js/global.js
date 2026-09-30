@@ -483,7 +483,7 @@ const PASOS_TUTORIAL = [
     { selector: '#tour-nav-finanzas', titulo: 'Finanzas', texto: 'Ganancia Real, Facturación, Costos y más — todo lo que tiene que ver con la plata.' },
     { selector: '#tour-nav-crecimiento', titulo: 'Crecimiento', texto: 'Promociones, tendencias, competencia y publicidad — para vender más, no solo para medir lo que ya vendiste.' },
     { selector: '#btn-sincronizar-todo', titulo: 'Sincronizar Todo', texto: 'Trae lo último de Mercado Libre bajo demanda. De fondo, esto ya corre solo cada tanto — no hace falta que lo toques seguido.' },
-    { selector: '.ticker-bar', titulo: 'Estado en vivo', texto: 'Ventas de hoy, salud de la cuenta y el estado del bridge de WhatsApp, siempre a la vista.' },
+    { selector: '.ticker-bar', titulo: 'Estado en vivo', texto: 'Ventas de hoy, plata que se libera mañana, reclamos activos y salud de la cuenta, siempre a la vista.' },
 ];
 
 let _tourPasoActual = 0;
@@ -804,16 +804,7 @@ async function actualizarTicker() {
         elLiberacion.classList.remove('skeleton');
         elVentas.textContent = `Hoy: ${data.ventas_hoy} venta(s) ($${data.facturado_hoy})`;
         elLiberacion.textContent = `Disponible mañana: $${data.liberacion_manana}`;
-        
-        const dot = document.getElementById('ticker-bridge-dot');
-        const texto = document.getElementById('ticker-bridge-texto');
-        if (data.bridge_activo) { 
-            dot.className = 'ticker-dot dot-on'; 
-            texto.textContent = 'Bridge WA Activo'; 
-        } else { 
-            dot.className = 'ticker-dot dot-off'; 
-            texto.textContent = 'Bridge WA Desconectado'; 
-        }
+
 
         const pillInc = document.getElementById('ticker-incidencias-pill');
         const txtInc = document.getElementById('ticker-incidencias-texto');
@@ -975,7 +966,7 @@ const ATAJOS_COMANDO = [
     { alias: ['manual', 'mostrador', 'directo'], texto: 'Ir a Ventas fuera de MeLi', url: '/ventas_manuales' },
     { alias: ['prom', 'promo', 'promociones'], texto: 'Ir a Promociones', url: '/promociones' },
     { alias: ['tend', 'tendencias'], texto: 'Ir a Tendencias', url: '/tendencias' },
-    { alias: ['comp', 'competencia', 'espia'], texto: 'Ir a Espía de Competencia', url: '/competencia' },
+    { alias: ['comp', 'competencia', 'espia'], texto: 'Ir a Competencia', url: '/competencia' },
     { alias: ['embudo', 'conversion'], texto: 'Ir a Embudo de Conversión', url: '/embudo_conversion' },
     { alias: ['rep', 'reputacion'], texto: 'Ir a Reputación', url: '/reputacion' },
     { alias: ['ads', 'publicidad'], texto: 'Ir a Publicidad', url: '/publicidad' },

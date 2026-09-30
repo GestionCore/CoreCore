@@ -93,9 +93,13 @@ def _tarea_sincronizar_todo():
 def _tarea_relevar_competencia():
     for cuenta_id, usuario_id in _obtener_cuentas_activas():
         try:
+            access_token = token_manager.asegurar_token_valido(cuenta_id)
+        except token_manager.CuentaDesconectada:
+            continue
+        try:
             with db.conexion_usuario(usuario_id) as conexion:
                 cursor = conexion.cursor()
-                relevados = espia_competencia.relevar_competidores(cursor, cuenta_id)
+                relevados = espia_competencia.relevar_competidores(cursor, cuenta_id, access_token)
                 if relevados:
                     print(f"[Scheduler APScheduler] 🔍 Cuenta {cuenta_id}: {relevados} rival(es) relevado(s).")
         except Exception as e:

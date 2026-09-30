@@ -1,69 +1,115 @@
 {% extends "base.html" %}
-{% block title %}Espía de Competencia · CoreLux{% endblock %}
+{% block title %}Competencia · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Espía de Publicaciones Rivales</h1>
-        <div class="page-subtitle">Seguimiento diario de precio, stock y ventas de la competencia (datos públicos)</div>
+        <h1 class="page-title">Competencia en catálogo</h1>
+        <div class="page-subtitle">Seguí un producto de catálogo y mirá cuántos vendedores lo ofrecen, a qué precio y cómo evoluciona día a día</div>
     </div>
 </div>
 
 <div class="panel">
-    <div class="panel-title">Agregar publicación a seguir</div>
-    <form action="/competencia/agregar" method="POST" class="filter-row">
-        <div class="field-group" style="flex:1;">
-            <label class="field-label">ID de MeLi (ej: MLA123456789)</label>
-            <input type="text" name="id_meli_rival" placeholder="MLA..." required>
+    <div class="panel-title">Seguir un producto</div>
+    <form id="form-seguir-producto" class="filter-row">
+        <div class="field-group" style="flex:2; min-width:240px;">
+            <label class="field-label" for="input-producto">Link de la ficha de catálogo o ID del producto</label>
+            <input type="text" id="input-producto" name="producto" placeholder="https://www.mercadolibre.com.ar/…/p/MLA12345678" required autocomplete="off">
         </div>
-        <div class="field-group" style="flex:1;">
-            <label class="field-label">Alias (opcional)</label>
-            <input type="text" name="alias" placeholder="Ej: Competidor Palermo">
+        <div class="field-group" style="flex:1; min-width:160px;">
+            <label class="field-label" for="input-alias">Alias (opcional)</label>
+            <input type="text" id="input-alias" name="alias" placeholder="Ej: Termo 1L" maxlength="80">
         </div>
-        <button type="submit" class="btn btn-primary">Agregar</button>
+        <button type="submit" class="btn btn-primary" id="btn-seguir-producto">Seguir</button>
     </form>
+    <div class="text-muted" style="font-size:0.78em; margin-top:10px;">
+        <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
+        Mercado Libre no permite consultar precio, stock ni ventas de publicaciones puntuales de otros vendedores; sí permite ver todas las ofertas que compiten dentro de una ficha de catálogo. Encontrás el link desde cualquier publicación, en "Ver más opciones de compra".
+    </div>
+
+    {% if sugerencias %}
+    <div style="margin-top:16px;">
+        <div class="page-subtitle" style="margin-bottom:8px;">Tus publicaciones que están en catálogo — tocá una para seguir contra quién competís:</div>
+        <div class="flex-gap">
+            {% for s in sugerencias %}
+            <button type="button" class="badge badge-neutral btn-sugerencia" style="cursor:pointer; font-size:0.85em; padding:8px 14px;"
+                data-producto="{{ s.id_producto }}" data-alias="{{ s.titulo }}" title="{{ s.id_producto }}">{{ s.titulo }}</button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 
-{% if not rivales %}
-<div class="panel"><div class="alert-empty">Todavía no estás siguiendo ninguna publicación rival.</div></div>
+{% if not productos %}
+<div class="panel"><div class="alert-empty">Todavía no seguís ningún producto — pegá el link de una ficha de catálogo arriba para empezar.</div></div>
 {% endif %}
 
-{% for r in rivales %}
+{% for p in productos %}
 <div class="panel">
     <div class="panel-title">
         <span class="row-flex" style="gap:10px;">
-            {% if r.thumbnail %}<img src="{{ r.thumbnail }}" alt="" class="thumb-sm" style="width:32px;height:32px;">{% endif %}
-            {{ r.alias }}
-            {% if r.sparkline_puntos %}
-            <svg viewBox="0 0 70 24" class="sparkline" title="Precio en los últimos días">
-                <polyline points="{{ r.sparkline_puntos }}" fill="none" stroke="var(--accent-cyan)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            {% if p.thumbnail %}<img src="{{ p.thumbnail }}" alt="" class="thumb-sm" style="width:32px;height:32px;">{% endif %}
+            {{ p.alias }}
+            {% if p.sparkline_puntos %}
+            <svg viewBox="0 0 70 24" class="sparkline" role="img" aria-label="Precio más bajo en los últimos días">
+                <polyline points="{{ p.sparkline_puntos }}" fill="none" stroke="var(--accent-cyan)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             {% endif %}
-            {% if r.tendencia_precio == 'bajó' %}<span class="badge badge-danger">Precio bajó</span>
-            {% elif r.tendencia_precio == 'subió' %}<span class="badge badge-success">Precio subió</span>{% endif %}
+            {% if p.tendencia_precio == 'bajó' %}<span class="badge badge-danger">Precio más bajo: bajó</span>
+            {% elif p.tendencia_precio == 'subió' %}<span class="badge badge-success">Precio más bajo: subió</span>{% endif %}
         </span>
-        <form action="/competencia/eliminar/{{ r.id_meli_rival }}" method="POST" onsubmit="confirmarAccion('¿Dejar de seguir esta publicación?', this, 'Dejar de seguir'); return false;" style="display:inline;">
+        <form action="/competencia/eliminar/{{ p.id_producto }}" method="POST" onsubmit="confirmarAccion('¿Dejar de seguir este producto?', this, 'Dejar de seguir'); return false;" style="display:inline;">
             <button type="submit" class="btn btn-danger">Dejar de seguir</button>
         </form>
     </div>
-    <div class="text-muted" style="margin-bottom:10px; font-size:0.85em;">{{ r.titulo_actual or 'Sin datos todavía — se releva una vez al día' }} · {{ r.id_meli_rival }}</div>
-    {% if r.historial %}
+    <div class="text-muted" style="margin-bottom:10px; font-size:0.85em;">
+        {% if p.titulo_actual and p.titulo_actual != p.alias %}{{ p.titulo_actual }} · {% endif %}{{ p.id_producto }}
+    </div>
+    {% if p.historial %}
+    <div style="overflow-x:auto;">
     <table class="data-table">
-        <thead><tr><th>Fecha</th><th class="num">Precio</th><th class="num">Stock</th><th>Logística</th><th class="num">Vendidos (acum.)</th></tr></thead>
+        <thead><tr><th>Fecha</th><th class="num">Ofertas</th><th class="num">Vendedores</th><th class="num">Precio más bajo</th><th class="num">Precio típico</th><th class="num">Precio más alto</th><th class="num">Con FULL</th></tr></thead>
         <tbody>
-            {% for h in r.historial %}
+            {% for h in p.historial %}
             <tr>
                 <td>{{ h.fecha }}</td>
-                <td class="num">{% if h.precio %}${{ "%.2f"|format(h.precio) }}{% else %}-{% endif %}</td>
-                <td class="num">{{ h.stock }}</td>
-                <td>{% if h.es_full %}<span class="badge badge-neutral">FULL</span>{% else %}Propia{% endif %}</td>
-                <td class="num">{{ h.vendidos }}</td>
+                <td class="num">{{ h.ofertas }}</td>
+                <td class="num">{{ h.vendedores }}</td>
+                <td class="num">{% if h.precio_min is not none %}${{ "{:,.0f}".format(h.precio_min).replace(",", ".") }}{% else %}—{% endif %}</td>
+                <td class="num">{% if h.precio_mediano is not none %}${{ "{:,.0f}".format(h.precio_mediano).replace(",", ".") }}{% else %}—{% endif %}</td>
+                <td class="num">{% if h.precio_max is not none %}${{ "{:,.0f}".format(h.precio_max).replace(",", ".") }}{% else %}—{% endif %}</td>
+                <td class="num">{% if h.pct_full is not none %}{{ h.pct_full|string|replace('.', ',') }}%{% else %}—{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
     {% else %}
-    <div class="alert-empty">Todavía no hay historial de esta publicación — el primer dato se registra en las próximas 24hs.</div>
+    <div class="alert-empty">Todavía no hay datos de este producto — el primero se registra en las próximas 24 hs.</div>
     {% endif %}
 </div>
 {% endfor %}
+
+<script>
+async function seguirProducto(producto, alias) {
+    const boton = document.getElementById('btn-seguir-producto');
+    boton.disabled = true;
+    try {
+        const resp = await fetch('/api/competencia/agregar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ producto, alias })
+        });
+        const d = await resp.json();
+        if (d.ok) { mostrarToast(d.mensaje, 'success'); setTimeout(() => window.location.reload(), 900); }
+        else { mostrarToast(d.mensaje || 'No se pudo seguir ese producto.', 'error'); boton.disabled = false; }
+    } catch (e) { mostrarToast('Error de conexión.', 'error'); boton.disabled = false; }
+}
+
+document.getElementById('form-seguir-producto').addEventListener('submit', (e) => {
+    e.preventDefault();
+    seguirProducto(document.getElementById('input-producto').value, document.getElementById('input-alias').value);
+});
+document.querySelectorAll('.btn-sugerencia').forEach(btn => {
+    btn.addEventListener('click', () => seguirProducto(btn.dataset.producto, btn.dataset.alias));
+});
+</script>
 {% endblock %}
