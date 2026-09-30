@@ -1,104 +1,66 @@
 {% extends "base.html" %}
-{% block title %}Referidos — CoreLux{% endblock %}
+{% from "_ux.html" import kpi, vacio %}
+{% block title %}Referidos · CoreLux{% endblock %}
 
 {% block content %}
+{% set registrados = referidos|selectattr('convertido_en')|list|length %}
 <div class="page-header">
-  <h1 class="page-title">Programa de Referidos</h1>
-  <p class="page-subtitle">Invitá a otros vendedores de Mercado Libre y hacé crecer la comunidad.</p>
-</div>
-
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
-  <div class="panel">
-    <div class="panel-title">Tu link de invitación</div>
-    {% if referral_link %}
-    <div class="row-flex" style="flex-wrap:wrap;">
-      <input id="referral-input" type="text" value="{{ referral_link }}" readonly
-             style="flex:1;min-width:200px;font-size:0.85em;">
-      <button class="btn btn-primary" onclick="copiarLink()" id="btn-copiar">
-        <svg class="icon" style="width:14px;height:14px;"><use href="#icon-copy"/></svg>Copiar
-      </button>
-    </div>
-    <p class="text-muted" style="margin-top:10px;font-size:0.78em;">
-      Código: <strong style="font-family:var(--font-data);letter-spacing:1px;color:var(--text-primary);">{{ referral_code }}</strong>
-    </p>
-    {% else %}
-    <p class="text-muted" style="font-size:0.85em;">No se pudo generar tu link. Contactá a soporte.</p>
-    {% endif %}
-  </div>
-
-  <div class="panel">
-    <div class="panel-title">Resumen</div>
-    <div class="stat-strip" style="margin-bottom:0;">
-      <div class="stat-chip accent-primary">
-        <div class="stat-chip-label">Invitados</div>
-        <div class="stat-chip-value">{{ referidos|length }}</div>
-      </div>
-      <div class="stat-chip accent-success">
-        <div class="stat-chip-label">Registrados</div>
-        <div class="stat-chip-value">{{ referidos|selectattr('convertido_en')|list|length }}</div>
-      </div>
-    </div>
+  <div>
+    <h1 class="page-title">Programa de referidos</h1>
+    <div class="page-subtitle">Invitá a otros vendedores de Mercado Libre: <strong>compartí tu link y seguí cuántos se registraron</strong></div>
   </div>
 </div>
 
-<div class="panel">
-  <div class="panel-title">Historial de referidos</div>
+<!-- ── 1. TU LINK: copiarlo es la acción de esta pantalla ───────────────── -->
+<div class="ux-hero ux-accion">
+  <div class="ux-hero-etiqueta">Tu link de invitación</div>
+  {% if referral_link %}
+  <div class="flex-gap" style="margin-top:12px; flex-wrap:wrap;">
+    <input id="referral-input" type="text" value="{{ referral_link }}" readonly aria-label="Tu link de invitación" style="flex:1; min-width:240px; font-size:0.95em; font-weight:700;">
+    <button type="button" class="btn btn-primary btn-lg" onclick="copiarLink()" id="btn-copiar"><svg class="icon"><use href="#icon-copy"/></svg>Copiar mi link</button>
+  </div>
+  <div class="ux-hero-nota" style="margin-top:12px;">Tu código: <b style="font-family:var(--font-data); letter-spacing:1px; color:var(--text-primary);">{{ referral_code }}</b></div>
+  {% else %}
+  <div class="ux-hero-frase">No pudimos generar tu link ahora. <b>Escribinos a soporte</b> y lo resolvemos.</div>
+  {% endif %}
+</div>
+
+<div class="ux-kpis" style="grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));">
+  {{ kpi("Invitados", referidos|length, "accion", "users", "personas a las que les llegó tu link") }}
+  {{ kpi("Registrados", registrados, "ok" if registrados else "neutral", "check", "ya crearon su cuenta") }}
+</div>
+
+<div class="ux-seccion ux-accion">Historial de referidos</div>
+<div class="panel" style="padding:0; overflow:hidden;">
   {% if referidos %}
+  <div style="overflow-x:auto; padding:6px 12px 12px;">
   <table class="data-table">
-    <thead>
-      <tr>
-        <th>Email</th>
-        <th>Fecha de invitación</th>
-        <th>Estado</th>
-      </tr>
-    </thead>
+    <thead><tr><th>Email</th><th>Fecha de invitación</th><th>Estado</th></tr></thead>
     <tbody>
       {% for r in referidos %}
       <tr>
-        <td style="font-family:var(--font-data);font-size:0.9em;">{{ r.email or "—" }}</td>
-        <td class="text-muted" style="font-size:0.9em;">
-          {{ r.creado_en.strftime('%d/%m/%Y') if r.creado_en else "—" }}
-        </td>
-        <td>
-          {% if r.convertido_en %}
-            <span class="badge badge-success">Registrado</span>
-          {% else %}
-            <span class="badge badge-neutral">Pendiente</span>
-          {% endif %}
-        </td>
+        <td style="font-family:var(--font-data); font-size:0.9em;"><b>{{ r.email or "—" }}</b></td>
+        <td class="text-muted">{{ r.creado_en.strftime('%d/%m/%Y') if r.creado_en else "—" }}</td>
+        <td>{% if r.convertido_en %}<span class="ux-pill ux-ok">Registrado</span>{% else %}<span class="ux-pill ux-neutral ux-pill-suave">Pendiente</span>{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% else %}
-  <div class="alert-empty" style="padding-top:10px;">
-    <svg class="icon" style="width:40px;height:40px;margin-bottom:12px;opacity:.4;"><use href="#icon-users"/></svg>
-    <p style="margin:0;font-size:0.95em;">Todavía no invitaste a nadie.</p>
-    <p style="margin:8px 0 0;font-size:0.85em;">Compartí tu link y empezá a construir tu red.</p>
   </div>
+  {% else %}
+  <div style="padding:20px;">{{ vacio("Todavía no invitaste a nadie", "Copiá tu link y compartilo con otros vendedores: cada uno que se registre aparece acá.", "users", "accion") }}</div>
   {% endif %}
 </div>
 
 <script>
 function copiarLink() {
-  var input = document.getElementById('referral-input');
-  var btn = document.getElementById('btn-copiar');
-  var iconoOriginal = btn.innerHTML;
-  function marcarCopiado() {
-    btn.innerHTML = '<svg class="icon" style="width:14px;height:14px;"><use href="#icon-check"/></svg>Copiado';
-    setTimeout(function() { btn.innerHTML = iconoOriginal; }, 2000);
-  }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(input.value).then(marcarCopiado).catch(function() { seleccionarFallback(input); marcarCopiado(); });
-  } else {
-    seleccionarFallback(input);
-    marcarCopiado();
-  }
-}
-function seleccionarFallback(input) {
-  input.select();
-  input.setSelectionRange(0, 99999);
-  document.execCommand('copy');
+  const input = document.getElementById('referral-input');
+  const btn = document.getElementById('btn-copiar');
+  const original = btn.innerHTML;
+  const marcarCopiado = () => { btn.innerHTML = '<svg class="icon"><use href="#icon-check"/></svg>¡Copiado!'; mostrarToast('Link copiado — ya lo podés compartir', 'success'); setTimeout(() => { btn.innerHTML = original; }, 2200); };
+  const respaldo = () => { input.select(); input.setSelectionRange(0, 99999); document.execCommand('copy'); marcarCopiado(); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(input.value).then(marcarCopiado).catch(respaldo);
+  else respaldo();
 }
 </script>
 {% endblock %}

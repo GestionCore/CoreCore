@@ -1,299 +1,88 @@
 {% extends "base.html" %}
-{% block title %}Mi Suscripción — CoreLux{% endblock %}
+{% from "_ux.html" import banner, kpi %}
+{% block title %}Mi suscripción · CoreLux{% endblock %}
 {% block content %}
-<div class="susc-wrap">
-  <h1 class="susc-titulo">Mi Suscripción</h1>
+{# Sin suscripción de Mercado Pago (cuentas de cortesía, por ejemplo) no hay nada para cancelar ni renovar #}
+{% set con_cobro = mp_suscripcion_id is not none %}
+{% set tono = 'danger' if plan == 'cancelado' else ('gold' if plan == 'elite' else ('accion' if plan == 'base' else ('warn' if (dias_trial is not none and dias_trial <= 3) else 'info'))) %}
+{% set nombre_plan = 'Prueba gratuita' if plan == 'trial' else ('Plan Base' if plan == 'base' else ('Plan Elite' if plan == 'elite' else ('Cancelado' if plan == 'cancelado' else plan))) %}
 
-  <!-- Estado actual -->
-  <div class="susc-card">
-    <div class="susc-row">
-      <span class="susc-label">Plan activo</span>
-      <span class="susc-valor plan-chip plan-{{ plan }}">
-        {% if plan == "trial" %}Prueba gratuita
-        {% elif plan == "base" %}Plan Base
-        {% elif plan == "elite" %}Plan Elite
-        {% elif plan == "cancelado" %}Cancelado
-        {% else %}{{ plan }}{% endif %}
-      </span>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Mi suscripción</h1>
+        <div class="page-subtitle">Tu plan, cuánto te queda de prueba y cómo se cobra</div>
     </div>
-
-    {% if plan == "trial" and dias_trial is not none %}
-    <div class="susc-row">
-      <span class="susc-label">Días restantes de prueba</span>
-      <span class="susc-valor {% if dias_trial <= 3 %}susc-alerta{% endif %}">
-        {{ dias_trial }} día{{ "s" if dias_trial != 1 else "" }}
-      </span>
-    </div>
-    {% endif %}
-
-    {% if precio_mensual %}
-    <div class="susc-row">
-      <span class="susc-label">Precio</span>
-      <span class="susc-valor">${{ "{:,.0f}".format(precio_mensual).replace(",", ".") }} / mes <span class="susc-precio-dia">(${{ "{:,.0f}".format(precio_por_dia).replace(",", ".") }} por día)</span></span>
-    </div>
-    {% endif %}
-
-    {% if activada_en %}
-    <div class="susc-row">
-      <span class="susc-label">Suscripción activa desde</span>
-      <span class="susc-valor">{{ activada_en.strftime("%d/%m/%Y") }}</span>
-    </div>
-    {% endif %}
-
-    {% if email %}
-    <div class="susc-row">
-      <span class="susc-label">Email en Mercado Pago</span>
-      <span class="susc-valor">{{ email }}</span>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- CTAs según estado -->
-  {% if plan in ("trial", "cancelado") %}
-  <div class="susc-cta">
-    <p class="susc-cta-texto">
-      {% if plan == "cancelado" %}
-        Tu suscripción fue cancelada. Podés volver a suscribirte cuando quieras.
-      {% else %}
-        Pasate a un plan pago para mantener acceso cuando termine la prueba.
-      {% endif %}
-    </p>
-    <a href="/planes" class="btn-susc-planes">Ver planes disponibles</a>
-  </div>
-
-  {% elif plan in ("base", "elite") %}
-  <div class="susc-cta susc-cta-activo">
-    <p class="susc-cta-texto">
-      Tu suscripción se renueva automáticamente cada mes vía Mercado Pago.
-      {% if plan == "elite" %}Para bajar al Plan Base, cancelá esta suscripción y suscribite al nuevo plan cuando quieras.{% endif %}
-    </p>
-    {% if plan == "base" %}
-    <a href="/planes" class="btn-susc-upgrade">Mejorar a Plan Elite</a>
-    {% endif %}
-    <button class="btn-susc-cancelar" id="btn-cancelar"
-            onclick="confirmarCancelacion()">
-      Cancelar suscripción
-    </button>
-  </div>
-  {% endif %}
-
-  <div class="susc-nota">
-    <p>Los cobros son procesados por Mercado Pago. CoreLux nunca almacena datos de tu tarjeta.</p>
-    <p>Si tenés un problema con el cobro, contactá a Mercado Pago directamente o escribinos a soporte.</p>
-  </div>
 </div>
 
-<!-- Modal de confirmación de cancelación -->
-<div id="modal-cancelar" class="modal-overlay" hidden>
-  <div class="modal-box">
-    <h3 class="modal-titulo">¿Cancelar suscripción?</h3>
-    <p class="modal-texto">
-      Perderás acceso a CoreLux al finalizar el período actual.
-      Esta acción se procesa en Mercado Pago y <strong>no se puede deshacer</strong>.
-    </p>
-    <div class="modal-acciones">
-      <button class="btn-modal-cancel" onclick="cerrarModal()">Volver</button>
-      <button class="btn-modal-confirm" id="btn-confirmar-cancelar" onclick="ejecutarCancelacion()">
-        Sí, cancelar
-      </button>
+<!-- ── 1. TU PLAN ─────────────────────────────────────────────────────── -->
+<div class="ux-hero ux-{{ tono }}" style="max-width:760px;">
+    <div class="ux-hero-etiqueta">Plan activo</div>
+    <div class="ux-hero-numero" style="font-size:clamp(1.8em, 5vw, 2.6em);">{{ nombre_plan }}</div>
+
+    {% if plan == 'trial' and dias_trial is not none %}
+    <div class="ux-hero-frase">
+        {% if dias_trial <= 0 %}<b>Tu prueba terminó.</b> Elegí un plan para seguir usando CoreLux.
+        {% else %}Te quedan <b>{{ dias_trial }} día{{ 's' if dias_trial != 1 }}</b> de prueba gratuita{% if dias_trial <= 3 %} — <b>conviene elegir un plan ya</b> para no perder el acceso{% endif %}.{% endif %}
     </div>
-  </div>
+    <div class="ux-barra" style="height:12px; margin-top:12px;"><span style="width:{{ ((14 - [dias_trial, 14]|min) / 14 * 100)|round(0) }}%;"></span></div>
+    <div class="ux-hero-nota">Prueba de 14 días</div>
+    {% elif plan == 'cancelado' %}
+    <div class="ux-hero-frase">Tu suscripción fue cancelada. <b>Podés volver cuando quieras</b> y retomar con todos tus datos.</div>
+    {% elif plan == 'elite' and not con_cobro %}
+    <div class="ux-hero-frase"><b>Este plan está incluido en tu cuenta sin costo.</b> No hay nada para pagar ni renovar.</div>
+    {% elif precio_mensual %}
+    <div class="ux-hero-frase"><b>${{ "{:,.0f}".format(precio_mensual).replace(",", ".") }} por mes</b> — ${{ "{:,.0f}".format(precio_por_dia).replace(",", ".") }} por día{% if activada_en %} · activo desde el {{ activada_en.strftime("%d/%m/%Y") }}{% endif %}.</div>
+    {% endif %}
+
+    <div class="flex-gap" style="margin-top:18px;">
+        {% if plan in ('trial', 'cancelado') %}
+        <a href="/planes" class="btn btn-gold btn-lg">Ver planes y elegir el mío</a>
+        {% elif plan == 'base' %}
+        <a href="/planes" class="btn btn-gold btn-lg">Mejorar a Plan Elite</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if plan in ('base', 'elite') and con_cobro %}
+<div class="panel" style="max-width:760px;">
+    <div class="panel-title">Cobro y renovación</div>
+    <div class="ux-kpis" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); margin-bottom:14px;">
+        {{ kpi("Renovación", "Automática", "ok", "refresh", "cada mes, vía Mercado Pago") }}
+        {% if email %}{{ kpi("Email en Mercado Pago", email, "neutral", "file-text", "") }}{% endif %}
+    </div>
+    {% if plan == 'elite' %}<div class="text-muted" style="font-size:0.85em; margin-bottom:12px;">Para bajar al Plan Base: cancelá esta suscripción y suscribite al nuevo plan cuando quieras.</div>{% endif %}
+    <button type="button" class="btn btn-danger" id="btn-cancelar" onclick="confirmarCancelacion()">Cancelar suscripción</button>
+</div>
+{% endif %}
+
+<div class="text-muted" style="font-size:0.82em; line-height:1.6; max-width:760px;">
+    Los cobros los procesa Mercado Pago: CoreLux no guarda los datos de tu tarjeta. Si tenés un problema con un cobro, contactá a Mercado Pago o escribinos a soporte.
+</div>
+
+<!-- Confirmación de cancelación -->
+<div id="modal-cancelar" class="susc-modal" hidden>
+    <div class="susc-modal-caja" role="dialog" aria-modal="true" aria-labelledby="modal-cancelar-titulo">
+        <h3 id="modal-cancelar-titulo" style="margin:0 0 10px; font-family:var(--font-display); color:var(--danger);">¿Cancelar la suscripción?</h3>
+        <p style="color:var(--text-secondary); line-height:1.5; margin:0 0 20px;">
+            Perdés el acceso a CoreLux al terminar el período actual. Se procesa en Mercado Pago y <b>no se puede deshacer</b>.
+        </p>
+        <div class="flex-gap" style="justify-content:flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Volver</button>
+            <button type="button" class="btn btn-urgente" id="btn-confirmar-cancelar" onclick="ejecutarCancelacion()">Sí, cancelar</button>
+        </div>
+    </div>
 </div>
 
 <style>
-.susc-wrap {
-  max-width: 580px;
-  margin: 0 auto;
-  padding: 2rem 1rem 3rem;
-}
-.susc-titulo {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 1.5rem;
-}
-.susc-card {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border-radius: var(--radius-md);
-  padding: 1.4rem;
-  margin-bottom: 1.5rem;
-  box-shadow: var(--shadow-card);
-  animation: fadeInUp 0.4s cubic-bezier(0.16,1,0.3,1) backwards;
-}
-.susc-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.55rem 0;
-  border-bottom: 1px solid var(--border-soft);
-  gap: 1rem;
-}
-.susc-row:last-child { border-bottom: none; }
-.susc-label {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-.susc-valor {
-  font-weight: 600;
-  font-size: 0.95rem;
-  text-align: right;
-}
-.susc-alerta { color: var(--semantic-warning); }
-.susc-precio-dia { font-weight: 400; font-size: 0.85em; color: var(--text-faint); }
-.plan-chip {
-  display: inline-block;
-  padding: 3px 12px;
-  border-radius: var(--radius-pill);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-.plan-trial  { background: var(--warning-bg); color: var(--accent-gold); border: 1px solid var(--accent-gold); }
-.plan-base   { background: rgba(139, 92, 246,0.12); color: var(--accent-primary); border: 1px solid var(--accent-primary); }
-.plan-elite  { background: var(--warning-bg); color: var(--accent-gold); border: 1px solid var(--accent-gold); box-shadow: 0 0 10px -2px var(--accent-gold-glow); }
-.plan-cancelado { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
-.susc-cta {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border-radius: var(--radius-md);
-  padding: 1.3rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: flex-start;
-  box-shadow: var(--shadow-card);
-  animation: fadeInUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.06s backwards;
-}
-.susc-cta-activo { border-color: rgba(139, 92, 246,0.3); }
-.susc-cta-texto {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-.btn-susc-planes {
-  padding: 0.65rem 1.4rem;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim));
-  color: #14100a;
-  font-weight: 700;
-  font-size: 0.95rem;
-  text-decoration: none;
-  box-shadow: 0 2px 14px -2px var(--accent-gold-glow);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-}
-.btn-susc-planes:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-gold-glow); }
-.btn-susc-upgrade {
-  padding: 0.6rem 1.2rem;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--accent-gold);
-  background: transparent;
-  color: var(--accent-gold);
-  font-weight: 600;
-  text-decoration: none;
-  font-size: 0.9rem;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-.btn-susc-upgrade:hover { background: var(--accent-gold); color: #14100a; }
-.btn-susc-cancelar {
-  padding: 0.6rem 1.2rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(244, 63, 94, 0.4);
-  background: transparent;
-  color: var(--danger);
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-.btn-susc-cancelar:hover { background: var(--danger-bg); }
-.susc-nota {
-  color: var(--text-faint);
-  font-size: 0.82rem;
-  line-height: 1.5;
-  border-top: 1px solid var(--border-soft);
-  padding-top: 1rem;
-  margin-top: 0.5rem;
-}
-.susc-nota p { margin: 0.25rem 0; }
-/* Modal */
-.modal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(5,6,10,0.65);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 9000;
-}
-/* El atributo HTML "hidden" pierde contra cualquier regla de CSS de
-   autor que fije "display" (la hoja de estilos del navegador que lo
-   implementa tiene prioridad más baja que la nuestra) — sin esto el
-   modal quedaba visible apenas se entraba a /suscripcion y "Volver"
-   no lo cerraba nunca. */
-.modal-overlay[hidden] { display: none; }
-.modal-box {
-  background: var(--glass-bg-alt);
-  border: 1px solid rgba(244, 63, 94, 0.4);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  border-radius: var(--radius-md);
-  padding: 2rem;
-  max-width: 380px;
-  width: 90%;
-  box-shadow: var(--shadow-elevated);
-  animation: fadeInUp 0.2s cubic-bezier(0.16,1,0.3,1);
-}
-.modal-titulo {
-  margin: 0 0 0.8rem;
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  color: var(--danger);
-}
-.modal-texto {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  line-height: 1.5;
-  margin: 0 0 1.4rem;
-}
-.modal-acciones {
-  display: flex;
-  gap: 0.8rem;
-  justify-content: flex-end;
-}
-.btn-modal-cancel {
-  padding: 0.55rem 1.1rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--glass-border);
-  background: transparent;
-  color: var(--text-primary);
-  font-family: var(--font-ui);
-  cursor: pointer;
-  transition: border-color var(--transition-fast);
-}
-.btn-modal-cancel:hover { border-color: var(--accent-primary); }
-.btn-modal-confirm {
-  padding: 0.55rem 1.2rem;
-  border-radius: var(--radius-sm);
-  background: var(--danger);
-  border: none;
-  color: #fff;
-  font-family: var(--font-ui);
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity var(--transition-fast);
-}
-.btn-modal-confirm:hover { opacity: 0.85; }
+.susc-modal { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; background: rgba(5,6,10,0.65); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.susc-modal[hidden] { display: none; }   /* el atributo hidden pierde contra cualquier display de autor: sin esto el modal quedaba siempre visible */
+.susc-modal-caja { background: var(--glass-bg-alt); border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); border-radius: var(--radius-md); padding: 28px; max-width: 400px; width: 90%; box-shadow: var(--shadow-elevated); }
 </style>
 
 <script>
-function confirmarCancelacion() {
-  document.getElementById("modal-cancelar").hidden = false;
-}
-function cerrarModal() {
-  document.getElementById("modal-cancelar").hidden = true;
-}
+function confirmarCancelacion() { document.getElementById("modal-cancelar").hidden = false; }
+function cerrarModal() { document.getElementById("modal-cancelar").hidden = true; }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarModal(); });
 async function ejecutarCancelacion() {
   const btn = document.getElementById("btn-confirmar-cancelar");
   btn.disabled = true;
@@ -301,17 +90,11 @@ async function ejecutarCancelacion() {
   try {
     const resp = await fetch("/suscripcion/cancelar", { method: "POST" });
     const data = await resp.json();
-    if (data.ok) {
-      window.location.href = "/planes";
-    } else {
-      mostrarToast(data.detalle || "No se pudo cancelar. Intentá de nuevo.", "error");
-      btn.disabled = false;
-      btn.textContent = "Sí, cancelar";
-    }
+    if (data.ok) { window.location.href = "/planes"; }
+    else { mostrarToast(data.detalle || "No se pudo cancelar. Intentá de nuevo.", "error"); btn.disabled = false; btn.textContent = "Sí, cancelar"; }
   } catch {
     mostrarToast("Error de conexión. Intentá de nuevo.", "error");
-    btn.disabled = false;
-    btn.textContent = "Sí, cancelar";
+    btn.disabled = false; btn.textContent = "Sí, cancelar";
   }
 }
 </script>

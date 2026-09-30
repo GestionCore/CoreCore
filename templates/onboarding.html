@@ -27,7 +27,7 @@
         /* Progreso: "Paso X de 3" + barra fina */
         .onb-progreso-fila { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .onb-progreso-texto { font-size: 0.78em; color: var(--text-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-        .onb-progreso-barra { height: 4px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden; margin-bottom: 28px; }
+        .onb-progreso-barra { height: 8px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden; margin-bottom: 28px; }
         .onb-progreso-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-primary), var(--accent-cyan)); transition: width 0.35s cubic-bezier(0.16,1,0.3,1); }
 
         .onb-titulo { font-family: var(--font-display); font-size: 1.4em; font-weight: 700; margin: 0 0 8px; }
@@ -54,7 +54,6 @@
     </style>
 </head>
 <body>
-<canvas id="fondo-particulas" data-seccion="finanzas"></canvas>
 
 <div class="onb-tarjeta">
     <div class="onb-marca"><span class="brand-mark"></span><span>CoreLux</span></div>
@@ -126,7 +125,7 @@
         document.getElementById('onb-btn-atras').style.display = onbPasoActual > 1 ? '' : 'none';
 
         const btnSiguiente = document.getElementById('onb-btn-siguiente');
-        btnSiguiente.textContent = onbPasoActual === ONB_TOTAL_PASOS ? 'Continuar' : 'Siguiente';
+        btnSiguiente.textContent = onbPasoActual === ONB_TOTAL_PASOS ? 'Empezar a usar CoreLux' : 'Siguiente';
         btnSiguiente.type = onbPasoActual === ONB_TOTAL_PASOS ? 'submit' : 'button';
         onbValidarPasoActual();
 
@@ -140,6 +139,5 @@
 
     onbValidarPasoActual();
 </script>
-<script src="{{ url_for('static', filename='js/particulas.js') }}?v={{ static_v('js/particulas.js') }}" defer></script>
 </body>
 </html>

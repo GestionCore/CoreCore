@@ -44,7 +44,7 @@
 <!-- ── 2. CREAR UN DESCUENTO: con el resultado en vivo ──────────────────── -->
 <div class="panel" id="form-crear-descuento-panel">
     <div class="panel-title"><svg class="icon"><use href="#icon-plus"/></svg> Crear un descuento propio</div>
-    <form action="/promociones/crear_descuento" method="POST" class="filter-row" id="form-crear-descuento">
+    <form action="/promociones/crear_descuento" method="POST" class="filter-row" id="form-crear-descuento" onsubmit="return confirmarCrearDescuento(this);">
         <div class="field-group" style="flex:2; min-width:240px;">
             <label class="field-label" for="select-promo-item">Qué publicación</label>
             <select name="id_meli" id="select-promo-item" required>
@@ -144,7 +144,7 @@
                 <td><span class="ux-pill ux-neutral ux-pill-suave">{{ o.status }}</span></td>
                 <td>
                     {% if o.status == 'candidate' %}
-                    <form action="/promociones/participar_relampago" method="POST" class="flex-gap" style="align-items:center;">
+                    <form action="/promociones/participar_relampago" method="POST" class="flex-gap" style="align-items:center;" onsubmit="confirmarAccion('¿Sumarte a esta oferta relámpago?', this, 'Participar', 'Se publica en Mercado Libre con el precio y el stock que cargaste.'); return false;">
                         <input type="hidden" name="id_meli" value="{{ o.id }}">
                         <input type="number" step="0.01" name="deal_price" placeholder="Precio oferta" required style="max-width:130px;">
                         <input type="number" name="stock" placeholder="Stock" required style="max-width:90px;">
@@ -216,6 +216,16 @@
     const programarSim = () => { clearTimeout(_timerSim); _timerSim = setTimeout(actualizarSimuladorPromo, 400); };
     $sel.addEventListener('change', programarSim);
     $deal.addEventListener('input', programarSim);
+
+    // Crear un descuento cambia el precio real en Mercado Libre: se confirma antes de tocar nada
+    function confirmarCrearDescuento(form) {
+        const opcion = $sel.selectedOptions[0];
+        const precio = parseFloat($deal.value);
+        confirmarAccion('¿Crear este descuento en Mercado Libre?', form, 'Crear descuento',
+            `${opcion ? opcion.textContent.split(' — ')[0] : ''}
+Precio con descuento: ${UX.plata(precio)}`);
+        return false;
+    }
 
     document.querySelectorAll('[data-promocionar]').forEach(b => b.addEventListener('click', () => {
         $sel.value = b.dataset.promocionar;

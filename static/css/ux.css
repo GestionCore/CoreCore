@@ -310,3 +310,13 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-escalera span { height: 14px; border-radius: 99px; }
 .ux-escalera span.actual { height: 20px; margin-top: -3px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ux-c) 28%, transparent); }
 .ux-escalera-etiquetas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; font-size: 0.7em; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+
+/* ---------- Tema claro: lo que style.css dejaba fijo en oscuro y los rellenos translúcidos blancos que ahí no se ven ---------- */
+:root[data-theme="light"] .topnav { background: rgba(255, 255, 255, 0.9); }
+:root[data-theme="light"] .subnav-tabs { background: rgba(255, 255, 255, 0.85); }
+:root[data-theme="light"] .ux-barra { background: rgba(0, 0, 0, 0.09); }
+:root[data-theme="light"] .ux-reparto { background: rgba(0, 0, 0, 0.08); }
+:root[data-theme="light"] .ux-detalle > summary:hover { background: rgba(0, 0, 0, 0.03); }
+:root[data-theme="light"] .ux-modelo-cabecera { background: rgba(0, 0, 0, 0.025); }
+:root[data-theme="light"] .ux-pill:not(.ux-pill-suave) { color: #ffffff; }
+:root[data-theme="light"] .ux-pill.ux-warn:not(.ux-pill-suave), :root[data-theme="light"] .ux-pill.ux-gold:not(.ux-pill-suave) { color: #ffffff; }

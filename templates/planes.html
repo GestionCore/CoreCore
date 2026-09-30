@@ -17,6 +17,10 @@
   {% endif %}
 </div>
 
+{% if aviso %}
+<div class="planes-aviso" role="alert"><strong>{{ aviso }}</strong></div>
+{% endif %}
+
 <div class="planes-grid">
 
   <!-- Plan Base -->
@@ -94,6 +98,7 @@
 </div>
 
 <style>
+.planes-aviso { max-width: 720px; margin: 0 auto 1.2rem; padding: 0.9rem 1.2rem; border-radius: var(--radius-sm); background: var(--semantic-warning-bg); border: 1px solid var(--semantic-warning); color: var(--semantic-warning); text-align: center; }
 .planes-hero {
   text-align: center;
   padding: 2.5rem 1rem 1.5rem;

@@ -3103,7 +3103,13 @@ def planes_vista():
     if plan_actual == "trial" and trial_termina_en:
         delta = trial_termina_en - datetime.now(timezone.utc)
         dias_trial = max(0, delta.days)
-    return render_template("planes.html", plan_actual=plan_actual, dias_trial=dias_trial)
+    # Los errores del alta de suscripción vuelven acá con un código (antes el navegador mostraba un JSON crudo)
+    avisos = {
+        "sin_pagos": "Los pagos todavía no están habilitados en esta cuenta. Escribinos y te activamos el plan a mano.",
+        "plan_invalido": "No reconocimos ese plan — elegí uno de los de abajo.",
+        "mp_error": "No pudimos conectar con Mercado Pago ahora. Probá de nuevo en unos minutos.",
+    }
+    return render_template("planes.html", plan_actual=plan_actual, dias_trial=dias_trial, aviso=avisos.get(request.args.get("aviso")))
 
 
 @app.route("/suscripcion")
@@ -3144,11 +3150,11 @@ def suscripcion_vista():
 def suscripcion_iniciar():
     """Crea el link de pago en MP y redirige al usuario."""
     if not config.MP_ACCESS_TOKEN:
-        return jsonify({"ok": False, "detalle": "Pagos no configurados — contactá al soporte."}), 503
+        return redirect(url_for("planes_vista", aviso="sin_pagos"))
 
     plan = request.form.get("plan", "")
     if plan not in ("base", "elite"):
-        return jsonify({"ok": False, "detalle": "Plan inválido."}), 400
+        return redirect(url_for("planes_vista", aviso="plan_invalido"))
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -3161,7 +3167,7 @@ def suscripcion_iniciar():
         init_point, preapproval_id = pagos.crear_link_suscripcion(plan, g.usuario_id, email, back_url)
     except Exception as e:
         print(f"[Pagos] ❌ Error creando suscripción para usuario {g.usuario_id}: {e}")
-        return jsonify({"ok": False, "detalle": "Error conectando con Mercado Pago. Intentá de nuevo."}), 502
+        return redirect(url_for("planes_vista", aviso="mp_error"))
 
     # Guardamos el preapproval_id antes de redirigir para poder actualizar el estado en el retorno
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:

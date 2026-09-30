@@ -9,7 +9,7 @@ Objetivo: que cada pantalla se entienda **en 5 segundos** — cómo voy, qué te
 - [x] Fase 2 — Stock · Despacho · Preguntas · Stock masivo
 - [x] Fase 3 — Facturación · Costos · Monotributo · Reporte fiscal · Calculadora · Ventas fuera de MeLi · Historial de precios
 - [x] Fase 4 — Promociones · Publicidad · Reputación · Embudo · Logros · Tendencias · Competencia
-- [ ] Fase 5 — Landing · Onboarding · Planes · Suscripción · Referidos · Conectar · Sincronizando · errores
+- [x] Fase 5 — Landing · Onboarding · Planes · Suscripción · Referidos · Conectar · Sincronizando · errores
 - [ ] Fase 6 — transversales
 
 ## 1. Diagnóstico (lo que se ve hoy, medido en la app real)
