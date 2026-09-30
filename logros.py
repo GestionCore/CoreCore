@@ -52,7 +52,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
                 "id": "stock_critico", "categoria": "stock", "icono": "📦", "prioridad": nivel,
                 "titulo": f"{len(en_riesgo)} talle(s) por quedarse sin stock",
                 "descripcion": f"Al ritmo de venta actual, {len(en_riesgo)} variante(s) se agotan pronto" + (f" — {len(urgentes)} en menos de 2 días." if urgentes else "."),
-                "link": "/", "link_texto": "Ver en Stock"
+                "link": "/stock", "link_texto": "Ver en Stock"
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error detectando stock crítico: {e}")
@@ -65,7 +65,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
                 "id": "curva_rota", "categoria": "stock", "icono": "⚖️", "prioridad": "importante",
                 "titulo": f"{len(curva_rota)} modelo(s) con la curva de talles rota",
                 "descripcion": "Se están quedando sin los talles centrales (M/L/XL) mientras sobran los extremos — frena la venta del modelo entero.",
-                "link": "/", "link_texto": "Ver modelos"
+                "link": "/stock", "link_texto": "Ver modelos"
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error detectando curva rota: {e}")
@@ -79,7 +79,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
             misiones.append({
                 "id": "reclamos_abiertos", "categoria": "reclamos", "icono": "⚠️", "prioridad": "urgente" if cant_reclamos >= 3 else "importante",
                 "titulo": f"{cant_reclamos} reclamo(s)/devolución(es) sin resolver",
-                "descripcion": f"Hay ${monto_retenido_fmt} retenidos esperando resolución — cada día que pasa sin responder puede sumar a tu reputación negativa.",
+                "descripcion": (f"Hay ${monto_retenido_fmt} retenidos esperando resolución — cada día que pasa sin responder puede sumar a tu reputación negativa." if monto_retenido else "Cada día que pasa sin responder puede sumar a tu reputación negativa."),
                 "link": "/metricas", "link_texto": "Ver reclamos"
             })
     except Exception as e:
@@ -94,7 +94,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
                 "id": "preguntas_viejas", "categoria": "atencion", "icono": "❓", "prioridad": "importante",
                 "titulo": f"{preguntas_viejas} pregunta(s) sin responder hace más de 24hs",
                 "descripcion": "Una pregunta sin responder es una venta que se enfría.",
-                "link": None, "link_texto": None
+                "link": "/preguntas", "link_texto": "Responder preguntas"
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error detectando preguntas viejas: {e}")

@@ -53,6 +53,7 @@ import exportador_redes
 import scheduler
 import ventas_manuales
 import pagos
+import utils
 from utils import formatear_moneda, formatear_moneda_entera
 from datetime import datetime, timedelta, timezone
 
@@ -100,6 +101,12 @@ except Exception as _e:
     import warnings
     warnings.warn(f"[Cache] Redis no disponible, usando SimpleCache: {_e}")
     cache.init_app(app, config={"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 300})
+
+
+# Filtros de formato para plantillas: {{ valor|plata }}, {{ valor|pct }}, {{ valor|numero }}
+app.add_template_filter(utils.plata, "plata")
+app.add_template_filter(utils.porcentaje, "pct")
+app.add_template_filter(utils.numero, "numero")
 
 
 @app.context_processor
@@ -764,6 +771,39 @@ def api_dashboard_logro_top():
         m = resultado["misiones"][0]
         return jsonify({"hay_mision": True, "titulo": m["titulo"], "descripcion": m["descripcion"], "prioridad": m["prioridad"], "link": m["link"]})
     return jsonify({"hay_mision": False})
+
+
+@app.route("/api/dashboard/acciones_hoy")
+@login_requerido
+def api_dashboard_acciones_hoy():
+    """
+    "Lo que tenés que hacer hoy": las misiones de Logros más prioritarias,
+    listas para mostrar como tarjetas con botón. Las opcionales solo se
+    incluyen si hay poco más importante, para que la lista no se llene de
+    cosas que pueden esperar.
+    """
+    import db
+    headers = None
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        headers = {"Authorization": f"Bearer {access_token}"}
+    except token_manager.CuentaDesconectada:
+        pass
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        resultado = logros_mod.obtener_logros(cursor, g.cuenta_id, headers)
+    misiones = resultado["misiones"]
+    importantes = [m for m in misiones if m["prioridad"] != "opcional"]
+    elegidas = importantes[:4] if len(importantes) >= 3 else (importantes + [m for m in misiones if m["prioridad"] == "opcional"])[:3]
+    return jsonify({
+        "total": len(misiones),
+        "urgentes": sum(1 for m in misiones if m["prioridad"] == "urgente"),
+        "acciones": [
+            {"id": m["id"], "prioridad": m["prioridad"], "categoria": m["categoria"], "titulo": m["titulo"],
+             "detalle": m["descripcion"], "link": m.get("link"), "link_texto": m.get("link_texto")}
+            for m in elegidas
+        ],
+    })
 
 
 @app.route("/api/dashboard/ganancia_dia_vs_promedio")

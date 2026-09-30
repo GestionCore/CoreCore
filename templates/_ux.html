@@ -1,0 +1,46 @@
+{#
+  Macros de los componentes de foco (static/css/ux.css). Uso:
+      {% from "_ux.html" import banner, kpi, vacio, seccion %}
+  tono: ok | danger | warn | info | accion | gold | neutral
+  Los textos que llevan **negrita** se pasan como HTML ya armado (titulo_html):
+  si vienen de la base o de MeLi, escaparlos con |e ANTES de meterles <b>.
+#}
+
+{% macro banner(tono="info", icono="info", titulo_html="", detalle="", cta_texto=None, cta_href=None, cta_clase="btn-primary") %}
+<div class="ux-banner ux-{{ tono }}" role="status">
+    <div class="ux-banner-icono"><svg class="icon" aria-hidden="true"><use href="#icon-{{ icono }}"/></svg></div>
+    <div class="ux-banner-cuerpo">
+        <div class="ux-banner-titulo">{{ titulo_html|safe }}</div>
+        {% if detalle %}<div class="ux-banner-detalle">{{ detalle }}</div>{% endif %}
+    </div>
+    {% if cta_texto and cta_href %}<a class="btn {{ cta_clase }}" href="{{ cta_href }}">{{ cta_texto }}</a>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro kpi(etiqueta, valor, tono="accion", icono="chart", sub_html="", href=None, id=None) %}
+<{{ 'a' if href else 'div' }} {% if href %}href="{{ href }}"{% endif %} {% if id %}id="{{ id }}"{% endif %} class="ux-kpi ux-{{ tono }}">
+    <div class="ux-kpi-etiqueta"><svg class="icon" aria-hidden="true"><use href="#icon-{{ icono }}"/></svg>{{ etiqueta }}</div>
+    <div class="ux-kpi-valor">{{ valor }}</div>
+    <div class="ux-kpi-sub">{{ sub_html|safe }}</div>
+</{{ 'a' if href else 'div' }}>
+{% endmacro %}
+
+{% macro delta(valor, mejor_si_sube=True, sufijo="%") %}
+{%- if valor is not none -%}
+{%- set bueno = (valor >= 0) == mejor_si_sube -%}
+<span class="ux-delta {{ 'ux-neutral' if valor == 0 else ('ux-ok' if bueno else 'ux-danger') }}">{{ '▲' if valor >= 0 else '▼' }} {{ valor|abs|round(1)|string|replace('.', ',') }}{{ sufijo }}</span>
+{%- endif -%}
+{% endmacro %}
+
+{% macro vacio(titulo, texto="", icono="plus", tono="accion", cta_texto=None, cta_href=None) %}
+<div class="ux-vacio ux-{{ tono }}">
+    <div class="ux-vacio-icono"><svg class="icon" aria-hidden="true"><use href="#icon-{{ icono }}"/></svg></div>
+    <div class="ux-vacio-titulo">{{ titulo }}</div>
+    {% if texto %}<div class="ux-vacio-texto">{{ texto }}</div>{% endif %}
+    {% if cta_texto and cta_href %}<a class="btn btn-primary btn-lg" href="{{ cta_href }}">{{ cta_texto }}</a>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro seccion(titulo, tono="accion") %}
+<div class="ux-seccion ux-{{ tono }}">{{ titulo }}</div>
+{% endmacro %}

@@ -112,7 +112,9 @@ def obtener_ticker(usuario_id, cuenta_id=None):
             hora_str = h.strftime("%H:%M") if hasattr(h, "strftime") else (h or "")[:5]
             ventas_hoy_detalle.append({"titulo": t, "cantidad": c, "precio_formateado": formatear_moneda(p), "hora": hora_str})
 
-        cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved')")
+        # Mismo criterio que Logros ("reclamos/devoluciones sin resolver"): una cancelación no es algo
+        # que el vendedor tenga que resolver — sin esto el header decía 9 y Logros 8 para lo mismo.
+        cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved') AND tipo != 'cancelacion'")
         incidencias_activas = cursor.fetchone()[0] or 0
 
         salud = salud_cuenta.calcular_score_salud(cursor)

@@ -52,3 +52,35 @@ def limpiar_titulo_modelo(titulo):
     t = re.sub(r'\s+\d+\s*$', '', t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
+
+
+def plata(valor, decimales=0):
+    """
+    "$1.234.567" — formato único de plata para pantallas y filtros Jinja
+    ({{ valor|plata }}). Signo adelante del $ ("-$1.500"), punto de miles,
+    coma decimal. Devuelve "—" si no hay dato, para no mostrar un $0 falso.
+    """
+    try:
+        val = float(valor)
+    except (TypeError, ValueError):
+        return "—"
+    texto = f"{abs(val):,.{decimales}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return ("-" if val < 0 else "") + "$" + texto
+
+
+def porcentaje(valor, decimales=1):
+    """"12,5%" — coma decimal, sin ceros de más. "—" si no hay dato."""
+    try:
+        val = float(valor)
+    except (TypeError, ValueError):
+        return "—"
+    texto = f"{val:.{decimales}f}".rstrip("0").rstrip(".") if decimales else f"{val:.0f}"
+    return texto.replace(".", ",") + "%"
+
+
+def numero(valor):
+    """Entero con punto de miles: 12.345. "—" si no hay dato."""
+    try:
+        return f"{float(valor):,.0f}".replace(",", ".")
+    except (TypeError, ValueError):
+        return "—"

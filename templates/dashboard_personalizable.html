@@ -1,103 +1,73 @@
 {% extends "base.html" %}
+{% from "_ux.html" import banner %}
 {% block title %}Dashboard · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
         <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-home"/></svg>Dashboard</h1>
-        <div class="page-subtitle">Tu resumen del día — personalizalo a gusto</div>
+        <div class="page-subtitle" id="dashboard-fecha"><strong>Hoy</strong> — tu resumen del día</div>
     </div>
     <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-settings"/></svg> Personalizar</button>
 </div>
 
-<!-- ── Hero: Ganancia Neta Real de HOY vs. tu promedio diario (14 días) ──── -->
-<div class="panel panel-hero-ganancia" id="hero-ganancia-dia">
-    <div class="stat-chip-label">Ganancia Neta Real — Hoy<span class="badge-en-vivo">En vivo</span></div>
-    <div class="hero-number" id="hero-ganancia-valor" style="font-size:2.6em;"><span class="skeleton">$0</span></div>
-    <div class="text-muted" style="font-size:0.82em; margin-top:2px;">Después de comisiones, envíos, publicidad y costo de fabricación — la fórmula completa, no una aproximación.</div>
+<!-- ── 1. CÓMO VOY: ganancia neta real de hoy, teñida según cómo viene el día ─ -->
+<div class="ux-hero ux-info" id="hero-ganancia-dia">
+    <div class="ux-hero-etiqueta">Ganancia neta real · hoy <span class="badge-en-vivo">En vivo</span></div>
+    <div class="ux-hero-numero" id="hero-ganancia-valor"><span class="skeleton">$000.000</span></div>
+    <div class="ux-hero-frase" id="hero-frase"><span class="skeleton" style="display:inline-block; width:min(480px,90%); height:1.1em;">&nbsp;</span></div>
 
-    <div class="comparador-real">
-        <div class="comparador-caja comparador-caja-oficial">
-            <div class="comparador-caja-eyebrow">Lo que factura tu cuenta hoy</div>
-            <div class="comparador-caja-valor skeleton" id="comparador-facturado">$0</div>
-            <div class="comparador-caja-nota">El número que ves en MeLi, sin descontar nada todavía</div>
-        </div>
-        <div class="comparador-caja comparador-caja-real">
-            <div class="comparador-caja-eyebrow">Lo que te queda de verdad</div>
-            <div class="comparador-caja-valor skeleton" id="comparador-ganancia">$0</div>
-            <div class="comparador-caja-nota">Después de MeLi, envíos, publicidad y fabricación</div>
-        </div>
-    </div>
-
-    <div class="hero-ganancia-compara">
-        <div class="hero-ganancia-fila">
-            <span class="hero-ganancia-fila-label">Hoy</span>
-            <div class="checklist-barra"><div class="checklist-fill" id="barra-hoy" style="width:0%;"></div></div>
-            <span class="hero-ganancia-fila-valor" id="valor-hoy">—</span>
-        </div>
-        <div class="hero-ganancia-fila">
-            <span class="hero-ganancia-fila-label">Promedio 14d</span>
-            <div class="checklist-barra"><div class="checklist-fill hero-ganancia-fill-neutro" id="barra-promedio" style="width:0%;"></div></div>
-            <span class="hero-ganancia-fila-valor" id="valor-promedio">—</span>
-        </div>
-    </div>
-
-    <div class="alert" id="hero-ganancia-mensaje" style="display:none; margin-top:16px; margin-bottom:0;"></div>
-</div>
-
-<!-- ── Resultado de los últimos 14 días: FACTURADO − COSTOS = MARGEN ─────── -->
-<div class="panel panel-colapsable" id="panel-pl-14d" role="button" tabindex="0" aria-expanded="false" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
-    <div class="panel-title">
-        <span>Resultado de los últimos 14 días</span>
-        <span class="chevron-colapsable">▾</span>
-    </div>
-    <div class="pl-waterfall" id="pl-waterfall">
+    <div class="pl-waterfall ux-cascada" id="hero-cascada" style="margin-top:20px;">
         <div class="pl-tile">
-            <div class="stat-chip-label">Facturado</div>
-            <div class="pl-tile-valor skeleton" id="pl-facturado">$0</div>
+            <div class="stat-chip-label">Facturado hoy</div>
+            <div class="pl-tile-valor skeleton" id="hero-facturado-hoy">$0</div>
         </div>
         <div class="pl-operador">−</div>
         <div class="pl-tile">
-            <div class="stat-chip-label">Costos totales</div>
-            <div class="pl-tile-valor text-danger skeleton" id="pl-costos">$0</div>
+            <div class="stat-chip-label">Costos</div>
+            <div class="pl-tile-valor text-danger skeleton" id="hero-costos-hoy">$0</div>
         </div>
         <div class="pl-operador">=</div>
-        <div class="pl-tile pl-tile-resultado" id="pl-tile-margen">
-            <div class="stat-chip-label">Margen neto</div>
-            <div class="pl-tile-valor skeleton" id="pl-margen">$0</div>
+        <div class="pl-tile pl-tile-resultado" id="hero-tile-queda">
+            <div class="stat-chip-label">Te queda</div>
+            <div class="pl-tile-valor skeleton" id="hero-queda-hoy">$0</div>
         </div>
     </div>
-    <div class="contenido-colapsable">
-        <div class="pl-detalle-tabla" id="pl-detalle"></div>
+    <div class="ux-hero-nota" id="hero-nota">Después de comisiones de MeLi, envíos, publicidad y costo de fabricación — la fórmula completa.</div>
+
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:18px;">
+        <div class="hero-ganancia-fila">
+            <span class="hero-ganancia-fila-label"><b>Hoy</b></span>
+            <div class="ux-barra" style="flex:1;"><span id="barra-hoy" style="width:0%;"></span></div>
+            <span class="hero-ganancia-fila-valor" id="valor-hoy">—</span>
+        </div>
+        <div class="hero-ganancia-fila">
+            <span class="hero-ganancia-fila-label">Promedio diario (14 d)</span>
+            <div class="ux-barra ux-neutral" style="flex:1;"><span id="barra-promedio" style="width:0%;"></span></div>
+            <span class="hero-ganancia-fila-valor" id="valor-promedio">—</span>
+        </div>
     </div>
-    <div class="text-muted" style="font-size:0.76em; margin-top:10px;">Click para ver el detalle de costos (comisión, envíos, publicidad, fabricación) — % sobre lo facturado.</div>
 </div>
 
-<!-- ── Hero del día: las 4 métricas que importan siempre ─────────────────── -->
-<div class="stat-strip stat-strip-kpi" id="hero-metricas-dia">
-    <div class="stat-chip kpi-card accent-gold" id="hero-facturado">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Facturado Hoy</span></div>
-        <div class="stat-chip-value skeleton" style="min-width:100px;">—</div>
-        <div class="stat-chip-desc" id="hero-facturado-sub">—</div>
+<!-- ── 2. QUÉ HAGO: cola de acciones (misiones de Logros, con botón) ──────── -->
+<div id="bloque-acciones">
+    <div class="ux-acciones-titulo">Lo que tenés que hacer hoy <span class="ux-contador" id="acciones-contador" style="display:none;"></span></div>
+    <div class="ux-lista-acciones" id="lista-acciones">
+        <div class="skeleton" style="height:64px; border-radius:12px; width:100%;"></div>
+        <div class="skeleton" style="height:64px; border-radius:12px; width:100%;"></div>
     </div>
-    <div class="stat-chip kpi-card accent-primary" id="hero-ordenes">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-box"/></svg></span><span class="stat-chip-label">Ventas Hoy</span></div>
-        <div class="stat-chip-value skeleton" style="min-width:60px;">—</div>
-        <div class="stat-chip-desc" id="hero-ordenes-sub">—</div>
-    </div>
-    <div class="stat-chip kpi-card accent-success" id="hero-mes">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-chart"/></svg></span><span class="stat-chip-label">Facturado Últimos 14 días</span></div>
-        <div class="stat-chip-value skeleton" style="min-width:100px;">—</div>
-        <div class="stat-chip-desc" id="hero-mes-sub">—</div>
-    </div>
-    <div class="stat-chip kpi-card" id="hero-salud">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-star"/></svg></span><span class="stat-chip-label">Salud de Cuenta</span></div>
-        <div class="stat-chip-value skeleton" style="min-width:60px;">—</div>
-        <div class="stat-chip-desc" id="hero-salud-sub">—</div>
-    </div>
+</div>
+
+<!-- ── 3. NÚMEROS DEL DÍA ───────────────────────────────────────────────── -->
+<div class="ux-kpis" id="kpis-dia">
+    <a href="/metricas" class="ux-kpi ux-accion" id="kpi-facturado"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-coin"/></svg>Facturado hoy</div><div class="ux-kpi-valor"><span class="skeleton">$0</span></div><div class="ux-kpi-sub">&nbsp;</div></a>
+    <div class="ux-kpi ux-info" id="kpi-ventas"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-box"/></svg>Ventas hoy</div><div class="ux-kpi-valor"><span class="skeleton">0</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
+    <a href="/metricas" class="ux-kpi ux-ok" id="kpi-14d"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-chart"/></svg>Facturado · 14 días</div><div class="ux-kpi-valor"><span class="skeleton">$0</span></div><div class="ux-kpi-sub">&nbsp;</div></a>
+    <a href="/metricas" class="ux-kpi ux-ok" id="kpi-reclamos"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-alert"/></svg>Reclamos activos</div><div class="ux-kpi-valor"><span class="skeleton">0</span></div><div class="ux-kpi-sub">&nbsp;</div></a>
+    <div class="ux-kpi ux-ok" id="kpi-salud"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-star"/></svg>Salud de la cuenta</div><div class="ux-kpi-valor"><span class="skeleton">00</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
 </div>
 
 <div class="panel" id="panel-personalizar-dashboard" style="display:none;">
-    <div class="panel-title">¿Qué querés ver acá?</div>
+    <div class="panel-title">¿Qué más querés ver acá?</div>
     <div class="flex-gap" id="checks-widgets-dashboard" style="flex-wrap:wrap;"></div>
 </div>
 
@@ -114,17 +84,41 @@
     </div>
 </div>
 
+<!-- ── 4. DETALLE: resultado de 14 días, gráficos, rankings ─────────────── -->
+<details class="ux-detalle" id="panel-pl-14d" open>
+    <summary>Resultado de los últimos 14 días <span class="ux-detalle-nota">facturado − costos = margen</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="pl-waterfall ux-cascada" id="pl-waterfall">
+            <div class="pl-tile">
+                <div class="stat-chip-label">Facturado</div>
+                <div class="pl-tile-valor skeleton" id="pl-facturado">$0</div>
+            </div>
+            <div class="pl-operador">−</div>
+            <div class="pl-tile">
+                <div class="stat-chip-label">Costos totales</div>
+                <div class="pl-tile-valor text-danger skeleton" id="pl-costos">$0</div>
+            </div>
+            <div class="pl-operador">=</div>
+            <div class="pl-tile pl-tile-resultado" id="pl-tile-margen">
+                <div class="stat-chip-label">Margen neto</div>
+                <div class="pl-tile-valor skeleton" id="pl-margen">$0</div>
+            </div>
+        </div>
+        <div class="pl-detalle-tabla" id="pl-detalle" style="margin-top:18px;"></div>
+        <div class="text-muted" style="font-size:0.76em; margin-top:10px;">Cada costo como % de lo facturado en el período.</div>
+    </div>
+</details>
+
 <div id="grid-widgets-dashboard" class="grid-dashboard"></div>
 
 {% if ventas_por_provincia %}
 <div class="panel">
-    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-map-pin"/></svg> Ventas por Provincia</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">Últimos 30 días, según el destino del envío.</div>
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-map-pin"/></svg> Ventas por provincia <span class="text-muted" style="font-weight:500; font-size:0.78em;">últimos 30 días, según el destino del envío</span></div>
     <div class="pl-detalle-tabla">
         {% for p in ventas_por_provincia[:10] %}
         <div class="pl-detalle-fila">
             <span class="pl-detalle-label">{{ p.provincia }}</span>
-            <div class="checklist-barra" style="flex:1;"><div class="checklist-fill" style="width:{{ p.pct }}%;"></div></div>
+            <div class="ux-barra" style="flex:1;"><span style="width:{{ p.pct }}%;"></span></div>
             <span class="pl-detalle-valor">${{ p.facturado_formateado }} <span style="color:var(--text-faint); font-size:0.82em;">({{ p.ventas }})</span></span>
         </div>
         {% endfor %}
@@ -136,42 +130,39 @@
 {% endif %}
 
 {% if mono %}
-<div class="panel panel-colapsable {% if mono.alertas %}abierto{% endif %}" id="panel-monotributo" role="button" tabindex="0" aria-expanded="{{ 'true' if mono.alertas else 'false' }}" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
-    <div class="panel-title">
-        <span>
-            <svg class="icon" style="width:16px;height:16px;margin-right:6px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-file-text"/></svg>
-            Monotributo
-            {% if mono.categoria_real and mono.categoria_declarada and mono.categoria_real != mono.categoria_declarada %}
-            <span class="badge badge-warning" style="margin-left:8px;">Revisar categoría</span>
-            {% endif %}
-        </span>
-        <span class="chevron-colapsable">▾</span>
-    </div>
-    <div class="contenido-colapsable">
+<details class="ux-detalle" id="panel-monotributo" {% if mono.alertas %}open{% endif %}>
+    <summary>
+        <svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-file-text"/></svg>
+        Monotributo
+        {% if mono.categoria_real and mono.categoria_declarada and mono.categoria_real != mono.categoria_declarada %}
+        <span class="ux-pill ux-warn">Revisar categoría</span>
+        {% endif %}
+    </summary>
+    <div class="ux-detalle-cuerpo">
         {% if not mono.categoria_declarada %}
-        <div class="alert alert-info">Todavía no declaraste en qué categoría estás inscripto — elegila abajo para comparar contra tu facturación real.</div>
+        {{ banner("info", "info", "<b>Declará tu categoría</b> para compararla con tu facturación real", "Elegila abajo — lo demás se calcula solo.") }}
         {% endif %}
         {% for a in mono.alertas %}
-        <div class="alert {% if a.tipo == 'urgente' %}alert-danger{% elif a.tipo == 'oportunidad' %}alert-success{% else %}alert-warning{% endif %}">{{ a.texto }}</div>
+        {{ banner("danger" if a.tipo == 'urgente' else ("ok" if a.tipo == 'oportunidad' else "warn"), "alert" if a.tipo != 'oportunidad' else "check", a.texto|e) }}
         {% endfor %}
 
-        <div class="stat-strip" style="margin-bottom:16px;">
-            <div class="stat-chip">
-                <div class="stat-chip-label">Facturación últimos 12 meses</div>
-                <div class="stat-chip-value">${{ "%.0f"|format(mono.facturacion_12m)|replace(",", "@")|replace(".", ",")|replace("@", ".") }}</div>
+        <div class="ux-kpis">
+            <div class="ux-kpi ux-accion">
+                <div class="ux-kpi-etiqueta">Facturación últimos 12 meses</div>
+                <div class="ux-kpi-valor">{{ mono.facturacion_12m|plata }}</div>
             </div>
-            <div class="stat-chip accent-gold">
-                <div class="stat-chip-label">Categoría según tu facturación real</div>
-                <div class="stat-chip-value">{{ mono.categoria_real or "Fuera de escala" }}</div>
+            <div class="ux-kpi ux-gold">
+                <div class="ux-kpi-etiqueta">Categoría según tu facturación</div>
+                <div class="ux-kpi-valor">{{ mono.categoria_real or "Fuera de escala" }}</div>
             </div>
             {% if mono.categoria_declarada %}
-            <div class="stat-chip">
-                <div class="stat-chip-label">Categoría declarada</div>
-                <div class="stat-chip-value">{{ mono.categoria_declarada }}</div>
+            <div class="ux-kpi ux-info">
+                <div class="ux-kpi-etiqueta">Categoría declarada</div>
+                <div class="ux-kpi-valor">{{ mono.categoria_declarada }}</div>
             </div>
-            <div class="stat-chip">
-                <div class="stat-chip-label">Cuota mensual</div>
-                <div class="stat-chip-value">${{ "%.0f"|format(mono.cuota_mensual_declarada)|replace(",", "@")|replace(".", ",")|replace("@", ".") }}</div>
+            <div class="ux-kpi ux-neutral">
+                <div class="ux-kpi-etiqueta">Cuota mensual</div>
+                <div class="ux-kpi-valor">{{ mono.cuota_mensual_declarada|plata }}</div>
             </div>
             {% endif %}
         </div>
@@ -182,86 +173,77 @@
                 <select name="categoria_monotributo" class="field-input">
                     <option value="">Sin declarar</option>
                     {% for e in mono.escalas %}
-                    <option value="{{ e.categoria }}" {% if e.categoria == mono.categoria_declarada %}selected{% endif %}>{{ e.categoria }} — hasta ${{ "%.0f"|format(e.tope_anual) }}/año</option>
+                    <option value="{{ e.categoria }}" {% if e.categoria == mono.categoria_declarada %}selected{% endif %}>{{ e.categoria }} — hasta {{ e.tope_anual|plata }}/año</option>
                     {% endfor %}
                 </select>
             </div>
-            <button type="submit" class="btn btn-denim" style="align-self:flex-end;">Guardar</button>
+            <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Guardar</button>
         </form>
 
         <div class="text-muted" style="font-size:0.76em;">Escalas vigentes desde {{ mono.vigente_desde }} para "venta de cosas muebles" — esto avisa y sugiere; la decisión final siempre conviene confirmarla con tu contador.</div>
     </div>
-</div>
+</details>
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
+    // Tarjetas opcionales del panel "Personalizar". Las piezas clave del día (ganancia, acciones,
+    // KPIs, resultado de 14 días) ya son fijas arriba: antes se repetían acá como widgets.
     const WIDGETS_DISPONIBLES = [
-        { id: 'resumen_dia', nombre: 'Ganancia y Facturación del Día', default: true },
-        { id: 'tendencia_ventas', nombre: 'Gráfico: Tendencia de Ventas (14 días)', default: true },
-        { id: 'ventas_vivo', nombre: 'Ventas en Vivo', default: true },
-        { id: 'salud', nombre: 'Salud de Cuenta', default: true },
-        { id: 'top_productos', nombre: 'Top Productos del Mes', default: true },
-        { id: 'ultimas_ventas', nombre: 'Últimas Ventas', default: true },
-        { id: 'reclamos', nombre: 'Devoluciones y Reclamos', default: false },
-        { id: 'costos', nombre: 'Margen Promedio (Costos)', default: false },
-        { id: 'stock_riesgo', nombre: 'Stock en Riesgo', default: false },
-        { id: 'logro_top', nombre: 'Misión Prioritaria (Logros)', default: true },
+        { id: 'tendencia_ventas', nombre: 'Gráfico: tendencia de ventas (14 días)', default: true },
+        { id: 'top_productos', nombre: 'Top productos del mes', default: true },
+        { id: 'ultimas_ventas', nombre: 'Últimas ventas', default: true },
+        { id: 'costos', nombre: 'Margen promedio del catálogo', default: false },
+        { id: 'stock_riesgo', nombre: 'Talles en riesgo de quiebre', default: false },
     ];
     const CLAVE_PREFS_DASHBOARD = 'dashboard_widgets_activos';
 
-    // El widget "Salud de Cuenta" del grid y el chip de salud del hero
-    // strip piden los mismos datos — se comparte una sola promesa en
-    // vez de disparar /api/ticker dos veces en la misma carga de página.
+    // Varios bloques piden los mismos datos: se comparte una sola promesa por endpoint.
     let _tickerPromiseCache = null;
     function _fetchTickerCompartido() {
-        if (!_tickerPromiseCache) {
-            _tickerPromiseCache = fetch('/api/ticker').then(r => r.json());
-        }
+        if (!_tickerPromiseCache) _tickerPromiseCache = fetch('/api/ticker').then(r => r.json());
         return _tickerPromiseCache;
     }
-
-    // Mismo caso que el ticker: el widget "Ganancia y Facturación del
-    // Día" y el hero strip (cargarHeroMetricasDia) piden exactamente lo
-    // mismo — antes pegaban /api/resumen_diario dos veces en la misma
-    // carga, sumando lentitud justo cuando más widgets hay activos.
     let _resumenDiarioPromiseCache = null;
     function _fetchResumenDiarioCompartido() {
-        if (!_resumenDiarioPromiseCache) {
-            _resumenDiarioPromiseCache = fetch('/api/resumen_diario').then(r => r.json());
-        }
+        if (!_resumenDiarioPromiseCache) _resumenDiarioPromiseCache = fetch('/api/resumen_diario').then(r => r.json());
         return _resumenDiarioPromiseCache;
+    }
+    let _gananciaPromiseCache = null;
+    function _fetchGananciaCompartida() {
+        if (!_gananciaPromiseCache) _gananciaPromiseCache = fetch('/api/dashboard/ganancia_dia_vs_promedio').then(r => r.json());
+        return _gananciaPromiseCache;
+    }
+    let _tendenciaPromiseCache = null;
+    function _fetchTendenciaCompartida() {
+        if (!_tendenciaPromiseCache) _tendenciaPromiseCache = fetch('/api/dashboard/tendencia_ventas').then(r => r.json());
+        return _tendenciaPromiseCache;
     }
 
     function obtenerPrefsDashboard() {
-        const guardado = localStorage.getItem(CLAVE_PREFS_DASHBOARD);
-        if (guardado) return JSON.parse(guardado);
-        const defaults = {};
-        WIDGETS_DISPONIBLES.forEach(w => { defaults[w.id] = w.default; });
-        return defaults;
+        let guardado = null;
+        try { guardado = JSON.parse(localStorage.getItem(CLAVE_PREFS_DASHBOARD)); } catch (e) { /* preferencias corruptas: se usan las de fábrica */ }
+        const prefs = {};
+        WIDGETS_DISPONIBLES.forEach(w => { prefs[w.id] = guardado && w.id in guardado ? !!guardado[w.id] : w.default; });
+        return prefs;
     }
-
     function guardarPrefsDashboard(prefs) {
-        localStorage.setItem(CLAVE_PREFS_DASHBOARD, JSON.stringify(prefs));
+        try { localStorage.setItem(CLAVE_PREFS_DASHBOARD, JSON.stringify(prefs)); } catch (e) { /* sin almacenamiento: no pasa nada */ }
     }
 
     function togglePersonalizarDashboard() {
         const panel = document.getElementById('panel-personalizar-dashboard');
-        const abrir = panel.style.display === 'none';
-        if (abrir) {
+        if (panel.style.display === 'none') {
             const prefs = obtenerPrefsDashboard();
-            const cont = document.getElementById('checks-widgets-dashboard');
-            cont.innerHTML = WIDGETS_DISPONIBLES.map(w => `
+            document.getElementById('checks-widgets-dashboard').innerHTML = WIDGETS_DISPONIBLES.map(w => `
                 <label class="flex-gap" style="align-items:center; cursor:pointer; background:rgba(255,255,255,0.03); padding:8px 14px; border-radius:8px;">
                     <input type="checkbox" data-widget-id="${w.id}" ${prefs[w.id] ? 'checked' : ''} onchange="alCambiarWidget(this)"> ${w.nombre}
-                </label>
-            `).join('');
+                </label>`).join('');
             mostrarPanelConAnimacion(panel);
         } else {
             panel.style.display = 'none';
         }
     }
-
     function alCambiarWidget(checkbox) {
         const prefs = obtenerPrefsDashboard();
         prefs[checkbox.dataset.widgetId] = checkbox.checked;
@@ -277,11 +259,6 @@
         div.innerHTML = '<div class="skeleton" style="height:70px;border-radius:8px;"></div>';
         return div;
     }
-
-    // No es un <a> como los demás: adentro va un botón de descarga con su
-    // propio link (<a download>) — anidar <a> dentro de <a> es HTML
-    // inválido y el click del botón terminaría disparando la navegación
-    // del padre.
     function crearTarjetaWidgetDiv(id) {
         const div = document.createElement('div');
         div.className = 'panel widget-dashboard';
@@ -295,125 +272,46 @@
         const grid = document.getElementById('grid-widgets-dashboard');
         grid.innerHTML = '';
 
-        if (prefs.resumen_dia) {
-            const w = crearTarjetaWidget('resumen_dia', '/metricas');
-            grid.appendChild(w);
-            _fetchResumenDiarioCompartido().then(d => {
-                if (!d) { w.querySelector('div').outerHTML = '<div class="text-muted">Sin datos.</div>'; return; }
-                let variacion = '';
-                if (d.variacion_pct !== null && d.variacion_pct !== undefined) {
-                    const pos = d.variacion_pct >= 0;
-                    variacion = `<span class="${pos?'text-success':'text-danger'}" style="font-size:0.5em; margin-left:8px;">${pos?'▲':'▼'} ${Math.abs(d.variacion_pct)}%</span>`;
-                }
-                w.innerHTML = `<div class="stat-chip-label">Facturado Hoy</div><div class="hero-number" style="font-size:1.9em;">$${d.facturado_formateado}${variacion}</div>
-                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.ordenes} ventas · ${d.unidades} unidades · Top: ${d.modelo_top || '—'}</div>`;
-            });
-        }
-
         if (prefs.tendencia_ventas) {
             const w = crearTarjetaWidgetDiv('tendencia_ventas');
             w.classList.add('widget-dashboard-ancho');
             grid.appendChild(w);
-            fetch('/api/dashboard/tendencia_ventas').then(r => r.json()).then(d => {
+            _fetchTendenciaCompartida().then(d => {
                 if (!d.serie || !d.serie.length) { w.innerHTML = '<div class="text-muted">Sin datos todavía.</div>'; return; }
                 const canvasId = 'chart-tendencia-' + Date.now();
                 w.innerHTML = `
                     <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
                         <div class="stat-chip-label">Facturación — últimos ${d.serie.length} días</div>
-                        <div class="hero-number" style="font-size:1.5em; margin-bottom:16px;">$${d.total_formateado}<span class="hero-number-label">total del período</span></div>
-                        <div style="position:relative; height:120px;">
-                            <canvas id="${canvasId}"></canvas>
-                        </div>
-                        <div class="grafico-tendencia-ejes" style="margin-top:6px;"><span>${d.serie[0].fecha}</span><span>Prom. diario: $${d.promedio_diario_formateado}</span><span>${d.serie[d.serie.length - 1].fecha}</span></div>
+                        <div class="hero-number" style="font-size:1.5em; margin-bottom:16px;">$${UX.esc(d.total_formateado)}<span class="hero-number-label">total del período</span></div>
+                        <div style="position:relative; height:120px;"><canvas id="${canvasId}" role="img" aria-label="Facturación diaria de los últimos ${d.serie.length} días"></canvas></div>
+                        <div class="grafico-tendencia-ejes" style="margin-top:6px;"><span>${UX.esc(d.serie[0].fecha)}</span><span>Prom. diario: $${UX.esc(d.promedio_diario_formateado)}</span><span>${UX.esc(d.serie[d.serie.length - 1].fecha)}</span></div>
                     </a>`;
-                // Render chart after DOM update
                 requestAnimationFrame(() => {
                     const canvas = document.getElementById(canvasId);
                     if (!canvas || !window.Chart) return;
-                    const rootStyle = getComputedStyle(document.documentElement);
-                    const colorPrimario = rootStyle.getPropertyValue('--accent-primary').trim() || '#8b5cf6';
-                    const colorCian = rootStyle.getPropertyValue('--accent-cyan').trim() || '#38bdf8';
+                    const colorPrimario = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary').trim() || '#8b5cf6';
                     new Chart(canvas, {
                         type: 'line',
                         data: {
                             labels: d.serie.map(p => p.fecha),
                             datasets: [{
-                                data: d.serie.map(p => p.facturado),
-                                borderColor: colorPrimario,
+                                data: d.serie.map(p => p.facturado), borderColor: colorPrimario, borderWidth: 2.5,
                                 backgroundColor: (ctx) => {
                                     const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 120);
                                     g.addColorStop(0, 'rgba(139, 92, 246, 0.35)');
                                     g.addColorStop(1, 'rgba(139, 92, 246, 0)');
                                     return g;
                                 },
-                                borderWidth: 2,
-                                pointRadius: d.serie.length > 20 ? 0 : 3,
-                                pointHoverRadius: 5,
-                                pointBackgroundColor: colorCian,
-                                tension: 0.35,
-                                fill: true,
+                                pointRadius: d.serie.length > 20 ? 0 : 3, pointHoverRadius: 5, pointBackgroundColor: colorPrimario, tension: 0.35, fill: true,
                             }]
                         },
                         options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            animation: { duration: 600, easing: 'easeOutQuart' },
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    backgroundColor: 'rgba(18,21,48,0.92)',
-                                    borderColor: 'rgba(168,130,255,0.25)',
-                                    borderWidth: 1,
-                                    titleColor: '#f7f7ff',
-                                    bodyColor: colorPrimario,
-                                    callbacks: {
-                                        label: ctx => `$${ctx.raw.toLocaleString('es-AR', {minimumFractionDigits:0})}`
-                                    }
-                                }
-                            },
-                            scales: {
-                                x: {
-                                    display: false,
-                                    grid: { display: false }
-                                },
-                                y: {
-                                    display: false,
-                                    grid: { display: false },
-                                    beginAtZero: true
-                                }
-                            }
+                            responsive: true, maintainAspectRatio: false, animation: { duration: 600, easing: 'easeOutQuart' },
+                            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => UX.plata(ctx.raw) } } },
+                            scales: { x: { display: false, grid: { display: false } }, y: { display: false, grid: { display: false }, beginAtZero: true } }
                         }
                     });
                 });
-            });
-        }
-
-        if (prefs.ventas_vivo) {
-            const w = crearTarjetaWidget('ventas_vivo', '/metricas');
-            grid.appendChild(w);
-            fetch('/api/hoy').then(r => r.json()).then(d => {
-                w.innerHTML = `<div class="stat-chip-label">Ventas en Vivo</div><div class="hero-number acento-primario" style="font-size:1.9em;">${d.ordenes_hoy || 0}</div>
-                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.unidades_hoy || 0} unidades hoy</div>`;
-            });
-        }
-
-        if (prefs.salud) {
-            const w = crearTarjetaWidget('salud', '/');
-            grid.appendChild(w);
-            _fetchTickerCompartido().then(d => {
-                let color = 'var(--success)';
-                if (d.salud_score < 45) color = 'var(--danger)'; else if (d.salud_score < 65) color = 'var(--semantic-warning)';
-                w.innerHTML = `<div class="stat-chip-label">Salud de Cuenta</div><div class="hero-number plano" style="font-size:1.9em; color:${color};">${d.salud_score ?? '—'}</div>
-                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.salud_etiqueta || ''}</div>`;
-            });
-        }
-
-        if (prefs.reclamos) {
-            const w = crearTarjetaWidget('reclamos', '/metricas');
-            grid.appendChild(w);
-            fetch('/api/dashboard/reclamos_resumen').then(r => r.json()).then(d => {
-                w.innerHTML = `<div class="stat-chip-label">Reclamos Abiertos</div><div class="hero-number ${d.cantidad > 0 ? 'acento-danger' : ''}" style="font-size:1.9em;">${d.cantidad}</div>
-                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">$${d.monto_formateado} retenidos</div>`;
             });
         }
 
@@ -422,48 +320,43 @@
             grid.appendChild(w);
             fetch('/api/dashboard/costos_resumen').then(r => r.json()).then(d => {
                 if (d.margen_promedio === null) { w.innerHTML = '<div class="text-muted">Sin datos de costo cargados todavía.</div>'; return; }
-                // Mismos umbrales que la tabla de márgenes de Ganancia Real
-                // (≥15% ok, 0-15% al límite, <0% pierde) — para que el mismo
-                // número signifique lo mismo en toda la app.
-                const acentoMargen = d.margen_promedio >= 15 ? 'acento-success' : (d.margen_promedio >= 0 ? 'acento-warning' : 'acento-danger');
-                w.innerHTML = `<div class="stat-chip-label">Margen Promedio del Catálogo</div><div class="hero-number ${acentoMargen}" style="font-size:1.9em;">${d.margen_promedio}%</div>
-                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">Más ajustado: ${d.peor.titulo.slice(0,30)}... (${d.peor.margen_pct}%)</div>`;
+                // Mismos umbrales que la tabla de márgenes de Ganancia Real (≥15% ok, 0-15% al límite, <0% pierde)
+                const acento = d.margen_promedio >= 15 ? 'acento-success' : (d.margen_promedio >= 0 ? 'acento-warning' : 'acento-danger');
+                w.innerHTML = `<div class="stat-chip-label">Margen promedio del catálogo</div><div class="hero-number ${acento}" style="font-size:1.9em;">${UX.esc(d.margen_promedio)}%</div>
+                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">Más ajustado: ${UX.esc(d.peor.titulo.slice(0, 30))}… (${UX.esc(d.peor.margen_pct)}%)</div>`;
             });
         }
 
         if (prefs.stock_riesgo) {
-            const w = crearTarjetaWidget('stock_riesgo', '/');
+            const w = crearTarjetaWidget('stock_riesgo', '/stock');
             grid.appendChild(w);
             fetch('/api/quiebre_stock').then(r => r.json()).then(d => {
-                w.innerHTML = `<div class="stat-chip-label">Talles en Riesgo de Quiebre</div><div class="hero-number ${d.length > 0 ? 'acento-warning' : 'acento-success'}" style="font-size:1.9em;">${d.length}</div>
-                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.length > 0 ? 'Revisar antes de perder ventas' : 'Todo en orden'}</div>`;
+                w.innerHTML = `<div class="stat-chip-label">Talles en riesgo de quiebre</div><div class="hero-number ${d.length > 0 ? 'acento-warning' : 'acento-success'}" style="font-size:1.9em;">${d.length}</div>
+                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.length > 0 ? '<b>Revisalos</b> antes de perder ventas' : 'Todo en orden'}</div>`;
             });
         }
-
 
         if (prefs.top_productos) {
             const w = crearTarjetaWidgetDiv('top_productos');
             w.classList.add('widget-dashboard-ancho');
             grid.appendChild(w);
             fetch('/api/dashboard/top_productos').then(r => r.json()).then(d => {
-                if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Top Productos</div><div class="text-muted" style="margin-top:10px;">Sin ventas este mes.</div>'; return; }
+                if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Top productos</div><div class="text-muted" style="margin-top:10px;">Sin ventas este mes.</div>'; return; }
                 const maxPct = d[0].pct || 1;
                 w.innerHTML = `
                     <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
-                        <div class="stat-chip-label">Top Productos — últimos 30 días</div>
-                        <div style="margin-top:14px; display:flex; flex-direction:column; gap:10px;">
+                        <div class="stat-chip-label">Top productos — últimos 30 días</div>
+                        <div style="margin-top:14px; display:flex; flex-direction:column; gap:12px;">
                             ${d.map((p, i) => `
                                 <div style="display:flex; align-items:center; gap:10px;">
-                                    <span style="width:18px; text-align:right; font-size:0.78em; color:var(--text-faint); font-weight:700;">${i+1}</span>
+                                    <span style="width:22px; text-align:center; font-size:0.85em; font-weight:800; color:${i === 0 ? 'var(--accent-gold)' : 'var(--text-faint)'};">${i + 1}</span>
                                     <div style="flex:1; min-width:0;">
-                                        <div style="font-size:0.85em; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.nombre}</div>
-                                        <div style="height:5px; border-radius:3px; background:var(--glass-border); margin-top:4px; overflow:hidden;">
-                                            <div class="top-prod-barra" data-w="${Math.round(p.pct/maxPct*100)}" style="height:100%; width:0%; background:var(--accent-primary); border-radius:3px; transition:width 0.5s cubic-bezier(0.16,1,0.3,1);"></div>
-                                        </div>
+                                        <div style="font-size:0.88em; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${UX.esc(p.nombre)}</div>
+                                        <div class="ux-barra ux-accion" style="height:6px; margin-top:5px;"><span class="top-prod-barra" data-w="${Math.round(p.pct / maxPct * 100)}" style="width:0%;"></span></div>
                                     </div>
                                     <div style="text-align:right; white-space:nowrap;">
-                                        <div style="font-size:0.82em; font-weight:600;">${p.facturado_f}</div>
-                                        <div style="font-size:0.73em; color:var(--text-faint);">${p.unidades} u.</div>
+                                        <div style="font-size:0.88em; font-weight:800;">${UX.esc(p.facturado_f)}</div>
+                                        <div style="font-size:0.73em; color:var(--text-faint);">${UX.esc(p.unidades)} u.</div>
                                     </div>
                                 </div>`).join('')}
                         </div>
@@ -479,166 +372,191 @@
             w.classList.add('widget-dashboard-ancho');
             grid.appendChild(w);
             fetch('/api/dashboard/ultimas_ventas').then(r => r.json()).then(d => {
-                if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Últimas Ventas</div><div class="text-muted" style="margin-top:10px;">Sin ventas recientes.</div>'; return; }
+                if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Últimas ventas</div><div class="text-muted" style="margin-top:10px;">Sin ventas recientes.</div>'; return; }
                 w.innerHTML = `
                     <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
-                        <div class="stat-chip-label">Últimas Ventas</div>
+                        <div class="stat-chip-label">Últimas ventas</div>
                         <div style="margin-top:6px;">
                             ${d.map(v => `
                             <div class="mini-list-row">
-                                <span class="mini-list-qty">×${v.cantidad}</span>
-                                <span class="mini-list-titulo">${v.nombre}</span>
-                                <span class="mini-list-precio">${v.precio_f}</span>
-                                <span class="mini-list-fecha">${v.fecha}</span>
+                                <span class="mini-list-qty">×${UX.esc(v.cantidad)}</span>
+                                <span class="mini-list-titulo">${UX.esc(v.nombre)}</span>
+                                <span class="mini-list-precio">${UX.esc(v.precio_f)}</span>
+                                <span class="mini-list-fecha">${UX.esc(v.fecha)}</span>
                             </div>`).join('')}
                         </div>
                     </a>`;
-            });
-        }
-
-        if (prefs.logro_top) {
-            const w = crearTarjetaWidget('logro_top', '/logros');
-            grid.appendChild(w);
-            fetch('/api/dashboard/logro_top').then(r => r.json()).then(d => {
-                if (!d.hay_mision) { w.innerHTML = '<div class="stat-chip-label">Logros</div><div class="text-success" style="margin-top:10px;"><svg class="icon" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"><use href="#icon-check"/></svg>Sin misiones pendientes</div>'; return; }
-                const color = d.prioridad === 'urgente' ? 'var(--danger)' : (d.prioridad === 'importante' ? 'var(--semantic-warning)' : 'var(--accent-primary)');
-                w.innerHTML = `<div class="stat-chip-label">Misión Prioritaria</div><div style="font-weight:700; margin-top:8px; color:${color};">${d.titulo}</div>
-                    <div class="text-muted" style="font-size:0.82em; margin-top:6px;">${d.descripcion}</div>`;
             });
         }
     }
 
     async function cargarChecklistPerfil() {
         try {
-            const resp = await fetch('/api/onboarding/checklist');
-            const d = await resp.json();
+            const d = await (await fetch('/api/onboarding/checklist')).json();
             if (!d.pasos || !d.pasos.length || d.porcentaje >= 100) return; // ya está completo — no ocupa lugar
-
             document.getElementById('panel-checklist-perfil').style.display = '';
             document.getElementById('checklist-contador').textContent = `${d.completos}/${d.total}`;
             document.getElementById('checklist-fill').style.width = d.porcentaje + '%';
             document.getElementById('checklist-items').innerHTML = d.pasos.map(p => {
                 const tag = p.link && !p.completo ? 'a' : 'div';
-                const href = p.link && !p.completo ? `href="${p.link}"` : '';
+                const href = p.link && !p.completo ? `href="${UX.esc(p.link)}"` : '';
                 return `<${tag} ${href} class="checklist-item ${p.completo ? 'completo' : ''}">
                     <span class="checklist-check">${p.completo ? '✓' : ''}</span>
-                    <span class="checklist-texto">${p.texto}</span>
+                    <span class="checklist-texto">${UX.esc(p.texto)}</span>
                 </${tag}>`;
             }).join('');
         } catch (e) { console.error(e); }
     }
 
-    function _heroSetValor(chipId, valor, desc, tendenciaPct) {
-        const chip = document.getElementById(chipId);
-        if (!chip) return;
-        const val = chip.querySelector('.stat-chip-value');
-        if (val) {
-            val.classList.remove('skeleton');
-            if (tendenciaPct !== null && tendenciaPct !== undefined) {
-                const sube = tendenciaPct >= 0;
-                val.innerHTML = `${valor} <span class="kpi-tendencia ${sube ? 'up' : 'down'}" style="font-size:0.5em;">${sube ? '▲' : '▼'} ${Math.abs(tendenciaPct)}%</span>`;
-            } else {
-                val.textContent = valor;
+    // ── 2. Qué hago: acciones prioritarias ───────────────────────────────────
+    async function cargarAcciones() {
+        const cont = document.getElementById('lista-acciones');
+        const contador = document.getElementById('acciones-contador');
+        try {
+            const [d, ganancia] = await Promise.all([
+                fetch('/api/dashboard/acciones_hoy').then(r => r.json()),
+                _fetchGananciaCompartida().catch(() => null),
+            ]);
+            // Sin costo de fabricación cargado, la "ganancia neta real" de arriba es más alta que la verdadera:
+            // es lo primero que hay que arreglar, así que va al frente de la lista.
+            const p = ganancia && ganancia.periodo_14d;
+            if (p && p.facturado > 0 && p.costo_fabricacion === 0) {
+                d.acciones = [{
+                    prioridad: 'importante', categoria: 'financiero',
+                    titulo: 'Tu ganancia no descuenta el costo de fabricación',
+                    detalle: 'Todavía no cargaste lo que te cuesta fabricar tus productos, así que la ganancia que ves es más alta que la real.',
+                    link: '/costos', link_texto: 'Cargar costos',
+                }].concat(d.acciones || []);
+                d.total = (d.total || 0) + 1;
             }
+            if (!d.acciones || !d.acciones.length) {
+                cont.innerHTML = UX.banner({ tono: 'ok', icono: 'check', tituloHtml: '<b>Todo en orden.</b> No hay nada urgente para hoy', detalle: 'Volvé a mirar más tarde: te avisamos acá apenas aparezca algo que requiera tu atención.' });
+                return;
+            }
+            contador.textContent = d.total;
+            contador.style.display = '';
+            cont.innerHTML = d.acciones.map(a => UX.accion({ prioridad: a.prioridad, categoria: a.categoria, titulo: a.titulo, detalle: a.detalle, link: a.link, linkTexto: a.link_texto })).join('');
+        } catch (e) {
+            cont.innerHTML = '';
+            document.getElementById('bloque-acciones').style.display = 'none';
         }
-        const sub = chip.querySelector('.stat-chip-desc');
-        if (sub) sub.textContent = desc || '';
     }
 
-    async function cargarHeroMetricasDia() {
-        // Facturado hoy + ventas hoy — dos APIs en paralelo
+    // "5.601.298,88" → "5.601.299": en un número grande los centavos son ruido
+    function sinCentavos(texto) {
+        const m = String(texto).match(/^([\d.]+),(\d+)$/);
+        if (!m) return texto;
+        const entero = parseInt(m[1].replace(/\./g, ''), 10) + (parseInt(m[2].slice(0, 1), 10) >= 5 ? 1 : 0);
+        return entero.toLocaleString('es-AR');
+    }
+
+    // ── 3. KPIs del día ──────────────────────────────────────────────────────
+    function _pintarKpi(id, { tono, valor, subHtml }) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = 'ux-kpi ux-' + tono;
+        el.querySelector('.ux-kpi-valor').textContent = valor;
+        el.querySelector('.ux-kpi-sub').innerHTML = subHtml || '';
+    }
+
+    async function cargarKpisDia() {
         const [resumen, hoy, tendencia, ticker] = await Promise.allSettled([
-            _fetchResumenDiarioCompartido(),
-            fetch('/api/hoy').then(r => r.json()),
-            fetch('/api/dashboard/tendencia_ventas').then(r => r.json()),
-            _fetchTickerCompartido(),
+            _fetchResumenDiarioCompartido(), fetch('/api/hoy').then(r => r.json()), _fetchTendenciaCompartida(), _fetchTickerCompartido(),
         ]);
 
         if (resumen.status === 'fulfilled' && resumen.value) {
             const d = resumen.value;
-            _heroSetValor('hero-facturado', `$${d.facturado_formateado}`, `${d.ordenes || 0} ventas · top: ${d.modelo_top || '—'}`, d.variacion_pct);
-            const elComp = document.getElementById('comparador-facturado');
-            if (elComp) { elComp.classList.remove('skeleton'); elComp.textContent = `$${d.facturado_formateado}`; }
+            const vs = (d.variacion_pct !== null && d.variacion_pct !== undefined) ? ' ' + UX.delta(d.variacion_pct) + ' <span style="font-size:0.9em;">vs. ayer</span>' : '';
+            const top = d.modelo_top ? (d.modelo_top.length > 26 ? d.modelo_top.slice(0, 26) + '…' : d.modelo_top) : '—';
+            _pintarKpi('kpi-facturado', { tono: 'accion', valor: '$' + sinCentavos(d.facturado_formateado), subHtml: `<b>${UX.esc(d.ordenes || 0)}</b> ventas · top: <span title="${UX.esc(d.modelo_top || '')}">${UX.esc(top)}</span>${vs}` });
         }
-
         if (hoy.status === 'fulfilled' && hoy.value) {
             const d = hoy.value;
-            _heroSetValor('hero-ordenes', d.ordenes_hoy ?? '—', `${d.unidades_hoy || 0} unidades hoy`);
+            _pintarKpi('kpi-ventas', { tono: 'info', valor: String(d.ordenes_hoy ?? 0), subHtml: `<b>${UX.esc(d.unidades_hoy || 0)}</b> unidades vendidas hoy` });
         }
-
-        if (tendencia.status === 'fulfilled' && tendencia.value?.total_formateado) {
+        if (tendencia.status === 'fulfilled' && tendencia.value && tendencia.value.total_formateado) {
             const d = tendencia.value;
-            _heroSetValor('hero-mes', `$${d.total_formateado}`, `Prom. diario: $${d.promedio_diario_formateado}`);
+            _pintarKpi('kpi-14d', { tono: 'ok', valor: '$' + sinCentavos(d.total_formateado), subHtml: `Promedio diario: <b>$${UX.esc(sinCentavos(d.promedio_diario_formateado))}</b>` });
         }
-
         if (ticker.status === 'fulfilled' && ticker.value) {
             const d = ticker.value;
-            const chip = document.getElementById('hero-salud');
-            if (chip) {
-                const val = chip.querySelector('.stat-chip-value');
-                if (val) {
-                    val.classList.remove('skeleton');
-                    val.textContent = d.salud_score ?? '—';
-                    let color = 'var(--success)';
-                    if (d.salud_score < 45) color = 'var(--danger)';
-                    else if (d.salud_score < 65) color = 'var(--semantic-warning)';
-                    val.style.color = color;
-                }
-                const sub = chip.querySelector('.stat-chip-desc');
-                if (sub) sub.textContent = d.salud_etiqueta || '';
-            }
+            const inc = d.incidencias_activas || 0;
+            _pintarKpi('kpi-reclamos', {
+                tono: inc > 0 ? 'danger' : 'ok', valor: String(inc),
+                subHtml: inc > 0 ? '<b>Resolvelos</b> para proteger tu reputación' : 'Sin reclamos ni devoluciones abiertas',
+            });
+            const score = d.salud_score;
+            _pintarKpi('kpi-salud', {
+                tono: score === null || score === undefined ? 'neutral' : (score >= 65 ? 'ok' : (score >= 45 ? 'warn' : 'danger')),
+                valor: score ?? '—', subHtml: `<b>${UX.esc(d.salud_etiqueta || '')}</b>`,
+            });
         }
     }
 
+    // ── 1. Cómo voy: hero de ganancia + resultado de 14 días ─────────────────
     async function cargarGananciaDiaVsPromedio() {
         try {
-            const resp = await fetch('/api/dashboard/ganancia_dia_vs_promedio');
-            const d = await resp.json();
+            const d = await _fetchGananciaCompartida();
+            const hero = document.getElementById('hero-ganancia-dia');
+            const gHoy = d.hoy.ganancia, gProm = d.promedio_diario_14d.ganancia;
+            const negativo = gHoy < 0;
 
-            const negativo = d.hoy.ganancia < 0;
-            const heroGanancia = document.getElementById('hero-ganancia-valor');
-            heroGanancia.className = 'hero-number ' + (negativo ? 'acento-danger' : 'acento-success');
-            heroGanancia.textContent = '$0';
-            const signo = negativo ? '-' : '';
-            animarNumeroHasta(heroGanancia, Math.abs(d.hoy.ganancia), v => signo + '$' + formatearNumeroAR(v, false));
-
-            const elCompGanancia = document.getElementById('comparador-ganancia');
-            if (elCompGanancia) {
-                elCompGanancia.classList.remove('skeleton');
-                elCompGanancia.textContent = signo + '$' + formatearNumeroAR(Math.abs(d.hoy.ganancia), false);
-                elCompGanancia.style.color = negativo ? 'var(--danger)' : 'var(--accent-primary)';
+            // Estado: el día no terminó, así que "por debajo del promedio" a la mañana es normal.
+            // Solo se marca en alerta (naranja) pasadas las 18 hs y por debajo del 60% del promedio.
+            const ratio = gProm > 0 ? gHoy / gProm : null;
+            const hora = new Date().getHours();
+            let tono = 'ok', frase;
+            if (negativo) {
+                tono = 'danger';
+                frase = `Hoy vas <b>en pérdida</b>: <b>${UX.plata(gHoy)}</b>. Revisá comisiones, envíos y publicidad de las ventas del día.`;
+            } else if (ratio === null) {
+                tono = gHoy > 0 ? 'ok' : 'info';
+                frase = gHoy > 0 ? `Llevás <b>${UX.plata(gHoy)}</b> de ganancia neta hoy.` : 'Todavía no hay ventas hoy — <b>el día recién empieza</b>.';
+            } else if (ratio >= 1) {
+                frase = `Llevás <b>${UX.plata(gHoy)}</b> de ganancia: ya <b>superaste tu promedio diario</b> de ${UX.plata(gProm)} (${UX.pct(Math.round(ratio * 100), 0)}).`;
+            } else {
+                tono = (hora >= 18 && ratio < 0.6) ? 'warn' : 'info';
+                frase = `Llevás <b>${UX.plata(gHoy)}</b> de ganancia, el <b>${UX.pct(Math.round(ratio * 100), 0)}</b> de tu promedio diario (${UX.plata(gProm)}).` + (hora < 18 ? ' El día todavía no terminó.' : '');
             }
+            hero.className = 'ux-hero ux-' + tono;
+            document.getElementById('hero-frase').innerHTML = frase;
 
-            // Barras comparativas: el mayor de los dos valores absolutos marca el 100%.
-            const maxAbs = Math.max(Math.abs(d.hoy.ganancia), Math.abs(d.promedio_diario_14d.ganancia), 1);
+            const heroNumero = document.getElementById('hero-ganancia-valor');
+            heroNumero.textContent = '$0';
+            const signo = negativo ? '-' : '';
+            animarNumeroHasta(heroNumero, Math.abs(gHoy), v => signo + '$' + formatearNumeroAR(v, false));
+
+            // Cascada de hoy: facturado − costos = te queda
+            const facturadoHoy = d.hoy.facturado, costosHoy = facturadoHoy - gHoy;
+            const set = (id, txt) => { const el = document.getElementById(id); el.textContent = txt; el.classList.remove('skeleton'); };
+            set('hero-facturado-hoy', UX.plata(facturadoHoy));
+            set('hero-costos-hoy', UX.plata(costosHoy));
+            set('hero-queda-hoy', UX.plata(gHoy));
+            const queda = document.getElementById('hero-queda-hoy');
+            queda.style.color = negativo ? 'var(--danger)' : 'var(--success)';
+            document.getElementById('hero-tile-queda').style.borderColor = negativo ? 'var(--danger)' : 'var(--success)';
+
+            // Barras hoy vs. promedio: el mayor valor absoluto marca el 100%
+            const maxAbs = Math.max(Math.abs(gHoy), Math.abs(gProm), 1);
             const barraHoy = document.getElementById('barra-hoy');
-            barraHoy.style.width = Math.max(4, Math.round(Math.abs(d.hoy.ganancia) / maxAbs * 100)) + '%';
-            if (d.hoy.ganancia < 0) barraHoy.style.background = 'var(--danger)';
-            document.getElementById('barra-promedio').style.width = Math.max(4, Math.round(Math.abs(d.promedio_diario_14d.ganancia) / maxAbs * 100)) + '%';
+            barraHoy.style.width = Math.max(4, Math.round(Math.abs(gHoy) / maxAbs * 100)) + '%';
+            barraHoy.parentElement.className = 'ux-barra ux-' + (negativo ? 'danger' : 'ok');
+            document.getElementById('barra-promedio').style.width = Math.max(4, Math.round(Math.abs(gProm) / maxAbs * 100)) + '%';
             document.getElementById('valor-hoy').textContent = d.hoy.ganancia_f;
             document.getElementById('valor-promedio').textContent = d.promedio_diario_14d.ganancia_f;
 
-            const msg = document.getElementById('hero-ganancia-mensaje');
-            if (d.variacion_pct !== null) {
-                msg.className = 'alert ' + (d.por_encima_promedio ? 'alert-success' : 'alert-warning');
-                msg.style.display = '';
-                msg.textContent = d.por_encima_promedio
-                    ? `Estás ${Math.abs(d.variacion_pct)}% por encima de tu promedio diario de los últimos 14 días.`
-                    : `Estás ${Math.abs(d.variacion_pct)}% por debajo de tu promedio diario de los últimos 14 días.`;
-            }
-
+            // Resultado de los últimos 14 días
             const p = d.periodo_14d;
-            const elFact = document.getElementById('pl-facturado');
-            elFact.textContent = p.facturado_f; elFact.classList.remove('skeleton');
-            const elCostos = document.getElementById('pl-costos');
-            elCostos.textContent = p.costos_totales_f; elCostos.classList.remove('skeleton');
-            const elMargen = document.getElementById('pl-margen');
-            elMargen.textContent = p.margen_f; elMargen.classList.remove('skeleton');
-            elMargen.style.color = p.margen_negativo ? 'var(--danger)' : 'var(--success)';
-            document.getElementById('pl-tile-margen').style.borderColor = p.margen_negativo ? 'var(--danger)' : 'var(--accent-primary)';
-
+            if (p.facturado > 0 && p.costo_fabricacion === 0) {
+                document.getElementById('hero-nota').innerHTML = '<b style="color:var(--semantic-warning);">Ojo:</b> todavía no cargaste el costo de fabricación, así que la ganancia real es <b>menor</b> a la que ves. <a href="/costos"><b>Cargalo ahora</b></a>.';
+            }
+            set('pl-facturado', p.facturado_f);
+            set('pl-costos', p.costos_totales_f);
+            set('pl-margen', p.margen_f);
+            document.getElementById('pl-margen').style.color = p.margen_negativo ? 'var(--danger)' : 'var(--success)';
+            document.getElementById('pl-tile-margen').style.borderColor = p.margen_negativo ? 'var(--danger)' : 'var(--success)';
             const filas = [
-                { label: 'Comisión MeLi', valor: p.comision, valor_f: p.comision_f },
+                { label: 'Comisión de MeLi', valor: p.comision, valor_f: p.comision_f },
                 { label: 'Envíos', valor: p.envios, valor_f: p.envios_f },
                 { label: 'Publicidad', valor: p.costo_ads, valor_f: p.costo_ads_f },
                 { label: 'Costo de fabricación', valor: p.costo_fabricacion, valor_f: p.costo_fabricacion_f },
@@ -646,16 +564,25 @@
             document.getElementById('pl-detalle').innerHTML = filas.map(f => {
                 const pct = p.facturado > 0 ? Math.round(f.valor / p.facturado * 100) : 0;
                 return `<div class="pl-detalle-fila">
-                    <span class="pl-detalle-label">${f.label}</span>
-                    <div class="checklist-barra" style="flex:1;"><div class="checklist-fill" style="width:${Math.min(pct,100)}%; background:var(--danger);"></div></div>
-                    <span class="pl-detalle-valor">${f.valor_f} <span style="color:var(--text-faint); font-size:0.85em;">(${pct}%)</span></span>
+                    <span class="pl-detalle-label">${UX.esc(f.label)}</span>
+                    <div class="ux-barra ux-danger" style="flex:1;"><span style="width:${Math.min(pct, 100)}%;"></span></div>
+                    <span class="pl-detalle-valor">${UX.esc(f.valor_f)} <span style="color:var(--text-faint); font-size:0.85em;">(${pct}%)</span></span>
                 </div>`;
             }).join('');
         } catch (e) {
             console.error('[Dashboard] Error cargando ganancia vs promedio', e);
+            document.getElementById('hero-frase').textContent = 'No pudimos calcular la ganancia de hoy en este momento. Probá recargar en un rato.';
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => { renderizarWidgetsActivos(); cargarChecklistPerfil(); cargarHeroMetricasDia(); cargarGananciaDiaVsPromedio(); });
+    document.addEventListener('DOMContentLoaded', () => {
+        const fecha = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+        document.getElementById('dashboard-fecha').innerHTML = `<strong>Hoy, ${UX.esc(fecha)}</strong> — tu resumen del día`;
+        cargarGananciaDiaVsPromedio();
+        cargarAcciones();
+        cargarKpisDia();
+        renderizarWidgetsActivos();
+        cargarChecklistPerfil();
+    });
 </script>
 {% endblock %}
