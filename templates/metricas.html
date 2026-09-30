@@ -103,7 +103,7 @@
         <div class="stat-chip-value text-danger">${{ resumen.comision }}</div>
         <div class="stat-chip-desc">Cargo por venta{% if resumen.raw.facturado %} · {{ (resumen.raw.comision / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
     </div>
-    <div class="stat-chip" style="border-color:var(--accent-cyan); background:rgba(46,230,255,0.06);">
+    <div class="stat-chip" style="border-color:var(--accent-cyan); background:rgba(56,189,248,0.06);">
         <div class="stat-chip-label" style="color:var(--accent-cyan);">Envíos</div>
         <div class="stat-chip-value" style="color:var(--accent-cyan);">${{ resumen.envios }}</div>
         <div class="stat-chip-desc">Costo de logística{% if resumen.raw.facturado %} · {{ (resumen.raw.envios / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
@@ -426,8 +426,8 @@ function _iniciarChartEvolucionMensual() {
     const serie = {{ evolucion_mensual | tojson }};
     if (!serie.length) return;
     const root = getComputedStyle(document.documentElement);
-    const colorDanger = root.getPropertyValue('--danger').trim() || '#ff4d7d';
-    const colorSuccess = root.getPropertyValue('--success').trim() || '#29e6b0';
+    const colorDanger = root.getPropertyValue('--danger').trim() || '#f43f5e';
+    const colorSuccess = root.getPropertyValue('--success').trim() || '#22c55e';
     const colorFaint = root.getPropertyValue('--text-faint').trim() || '#56567a';
     new Chart(canvas, {
         type: 'bar',

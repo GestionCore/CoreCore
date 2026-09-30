@@ -209,13 +209,13 @@ a { color: inherit; text-decoration: none; }
 .stat-chip.accent-success .stat-chip-icon, .stat-chip.accent-success .stat-chip-value { color: var(--success); }
 .stat-chip.accent-danger .stat-chip-icon, .stat-chip.accent-danger .stat-chip-value { color: var(--danger); }
 .stat-chip.accent-warning .stat-chip-icon, .stat-chip.accent-warning .stat-chip-value { color: var(--semantic-warning); }
-.stat-chip.accent-warning { border-color: rgba(232, 130, 46, 0.3); }
+.stat-chip.accent-warning { border-color: rgba(240, 161, 59, 0.3); }
 /* Las tarjetas SIN variante de acento (conteos neutros, "total histórico",
    etc.) siguen con .stat-chip-value en blanco por default — a propósito:
    no todo dato necesita un color, solo el que sí importa resaltar. */
 .stat-chip.accent-gold:hover { border-color: rgba(251, 191, 36, 0.4); box-shadow: var(--shadow-glow-gold); }
 .stat-chip.accent-denim:hover, .stat-chip.accent-primary:hover { border-color: rgba(139, 92, 246, 0.4); box-shadow: var(--shadow-glow-primary); }
-.stat-chip.accent-warning:hover { border-color: rgba(232, 130, 46, 0.5); box-shadow: 0 0 32px -4px rgba(232, 130, 46, 0.35); }
+.stat-chip.accent-warning:hover { border-color: rgba(240, 161, 59, 0.5); box-shadow: 0 0 32px -4px rgba(240, 161, 59, 0.35); }
 .stat-chip.accent-success:hover { border-color: rgba(34, 211, 165, 0.4); box-shadow: 0 0 32px -4px rgba(34, 211, 165, 0.35); }
 .stat-chip.accent-danger:hover { border-color: rgba(245, 72, 107, 0.4); box-shadow: 0 0 32px -4px rgba(245, 72, 107, 0.35); }
 
@@ -476,7 +476,7 @@ a { color: inherit; text-decoration: none; }
 }
 .hero-number.acento-success {
     background: none; -webkit-text-fill-color: var(--success); color: var(--success);
-    filter: drop-shadow(0 0 18px rgba(41, 230, 176, 0.4));
+    filter: drop-shadow(0 0 18px rgba(34, 197, 94, 0.4));
 }
 .hero-number.acento-warning {
     background: none; -webkit-text-fill-color: var(--semantic-warning); color: var(--semantic-warning);
@@ -514,6 +514,11 @@ tr.row-alert { background: rgba(239, 68, 68, 0.05); }
 
 /* Buttons & Inputs */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 0.9em; font-weight: 600; cursor: pointer; transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast); border: 1px solid transparent; font-family: var(--font-ui); position: relative; overflow: hidden; }
+/* Varios formularios ponen btn.disabled = true por JS mientras guardan
+   (para evitar doble-click) pero sin esto se veía IDÉNTICO a un botón
+   habilitado — mismo color, mismo cursor de mano — nada le avisaba al
+   usuario que ya estaba procesando el click. */
+.btn:disabled, .btn.disabled { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
 
 /* ---------- Efecto ripple al hacer click (JS crea el span, esto lo anima) ---------- */
 .btn-ripple {
@@ -596,11 +601,18 @@ select option { background: #14162a; color: var(--text-primary); }
 .badge-neutral { background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--glass-border); }
 
 /* Alertas */
+/* Los 4 border-color de abajo quedaron hardcodeados con los valores
+   VIEJOS de semantic-warning/info/danger/success cuando se reescribió
+   la paleta — el borde de cada alerta no coincidía más con su propio
+   fondo/texto (ej: alert-info con fondo y letra celeste nueva, pero
+   borde verde-azulado de la paleta anterior). Se pasan a los mismos
+   tokens que ya usan background/color, así quedan siempre sincronizados
+   pase lo que pase con la paleta de acá en adelante. */
 .alert { padding: 11px 15px; border-radius: var(--radius-sm); font-size: 0.85em; margin-bottom: 16px; border: 1px solid; }
-.alert-warning { background: var(--semantic-warning-bg); border-color: rgba(232, 130, 46, 0.35); color: var(--semantic-warning); }
-.alert-info { background: var(--semantic-info-bg); border-color: rgba(0, 229, 196, 0.3); color: var(--semantic-info); }
-.alert-danger { background: var(--danger-bg); border-color: rgba(255, 77, 125, 0.35); color: var(--danger); }
-.alert-success { background: var(--success-bg); border-color: rgba(41, 230, 176, 0.35); color: var(--success); }
+.alert-warning { background: var(--semantic-warning-bg); border-color: var(--semantic-warning); color: var(--semantic-warning); }
+.alert-info { background: var(--semantic-info-bg); border-color: var(--semantic-info); color: var(--semantic-info); }
+.alert-danger { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+.alert-success { background: var(--success-bg); border-color: var(--success); color: var(--success); }
 .alert-empty { text-align: center; color: var(--text-faint); padding: 46px 10px 30px; font-size: 0.88em; position: relative; }
 .alert-empty::before, .alert-empty::after {
     content: ''; position: absolute; top: 0; left: 50%; width: 34px; height: 34px;
@@ -662,7 +674,7 @@ select option { background: #14162a; color: var(--text-primary); }
 .id-copiable:hover { color: var(--accent-denim); }
 .destello-copiado { animation: destelloCopiado 0.5s ease-out; border-radius: 3px; }
 @keyframes destelloCopiado {
-    0% { background: rgba(46, 230, 255, 0.35); box-shadow: 0 0 12px var(--accent-cyan-glow); }
+    0% { background: rgba(56, 189, 248, 0.35); box-shadow: 0 0 12px var(--accent-cyan-glow); }
     100% { background: transparent; box-shadow: none; }
 }
 
@@ -882,7 +894,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .roas-slider { margin-top: 20px; max-width: 420px; margin-left: auto; margin-right: auto; }
 .roas-slider-track { position: relative; height: 10px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: visible; }
 .roas-slider-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-brand), var(--success)); transition: width 0.5s cubic-bezier(0.16,1,0.3,1); }
-.roas-slider-fill-riesgo { background: linear-gradient(90deg, var(--danger), var(--semantic-warning, #e8822e)); }
+.roas-slider-fill-riesgo { background: linear-gradient(90deg, var(--danger), var(--semantic-warning, #f0a13b)); }
 .roas-slider-marca { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--text-primary); opacity: 0.55; }
 .roas-slider-etiquetas { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.74em; color: var(--text-faint); }
 
@@ -899,11 +911,11 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .margen-leyenda { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.78em; color: var(--text-secondary); margin-bottom: 12px; }
 .margen-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 .margen-dot-ok { background: var(--success); }
-.margen-dot-limite { background: var(--semantic-warning, #e8822e); }
+.margen-dot-limite { background: var(--semantic-warning, #f0a13b); }
 .margen-dot-pierde { background: var(--danger); }
 .fila-margen-ok { border-left: 3px solid var(--success); }
-.fila-margen-limite { border-left: 3px solid var(--semantic-warning, #e8822e); }
-.fila-margen-pierde { border-left: 3px solid var(--danger); background: rgba(255, 77, 125, 0.04); }
+.fila-margen-limite { border-left: 3px solid var(--semantic-warning, #f0a13b); }
+.fila-margen-pierde { border-left: 3px solid var(--danger); background: rgba(244, 63, 94, 0.04); }
 
 /* ---------- Tendencias: tabs del explorador, veredicto, seguimientos ---------- */
 .tendencias-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--glass-border); }
@@ -1163,9 +1175,9 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
     font-family: var(--font-data); font-weight: 700; font-size: 0.95em; flex-shrink: 0;
     border: 2px solid; transition: box-shadow 0.2s;
 }
-.seo-score-alto { border-color: var(--success); color: var(--success); box-shadow: 0 0 12px -2px rgba(41,230,176,0.4); }
-.seo-score-medio { border-color: var(--semantic-warning); color: var(--semantic-warning); box-shadow: 0 0 12px -2px rgba(232,130,46,0.4); }
-.seo-score-bajo { border-color: var(--danger); color: var(--danger); box-shadow: 0 0 12px -2px rgba(255,77,125,0.4); }
+.seo-score-alto { border-color: var(--success); color: var(--success); box-shadow: 0 0 12px -2px rgba(34,197,94,0.4); }
+.seo-score-medio { border-color: var(--semantic-warning); color: var(--semantic-warning); box-shadow: 0 0 12px -2px rgba(240,161,59,0.4); }
+.seo-score-bajo { border-color: var(--danger); color: var(--danger); box-shadow: 0 0 12px -2px rgba(244,63,94,0.4); }
 
 /* ---------- Dashboard personalizable ---------- */
 .grid-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }

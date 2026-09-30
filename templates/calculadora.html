@@ -164,7 +164,7 @@ function mostrarResultado(d, costo) {
                 <div class="stat-chip-value text-danger">${fmt(d.comision_total)}</div>
                 <div class="stat-chip-desc">${pct(d.pct_comision_base)} base${d.cargo_fijo ? ' + $' + Math.round(d.cargo_fijo) + ' fijo' : ''}</div>
             </div>
-            <div class="stat-chip" style="${d.costo_envio ? 'border-color:var(--accent-cyan); background:rgba(46,230,255,0.06);' : ''}">
+            <div class="stat-chip" style="${d.costo_envio ? 'border-color:var(--accent-cyan); background:rgba(56,189,248,0.06);' : ''}">
                 <div class="stat-chip-label" style="${d.costo_envio ? 'color:var(--accent-cyan);' : ''}">Costo de envío</div>
                 <div class="stat-chip-value" style="${d.costo_envio ? 'color:var(--accent-cyan);' : ''}">${d.costo_envio !== null ? fmt(d.costo_envio) : '—'}</div>
                 <div class="stat-chip-desc">${d.envio_obligatorio_gratis ? 'Obligatorio gratis' : (d.costo_envio === null ? 'Consultar' : 'A cargo tuyo')}</div>

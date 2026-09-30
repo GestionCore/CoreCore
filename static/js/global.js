@@ -157,7 +157,7 @@ async function cargarHud() {
 
 // ---------- Celebración breve (confeti) al completar algo al 100% ----------
 function celebrarConfeti() {
-    const colores = ['139, 92, 246', '46, 230, 255', '255, 217, 61', '41, 230, 176'];
+    const colores = ['139, 92, 246', '56, 189, 248', '242, 201, 76', '34, 197, 94'];
     const cantidad = 28;
     for (let i = 0; i < cantidad; i++) {
         const p = document.createElement('div');
@@ -832,7 +832,7 @@ async function actualizarTicker() {
             txtSalud.textContent = `Salud: ${data.salud_score} (${data.salud_etiqueta})`;
             let color = 'var(--success)';
             if (data.salud_score < 45) color = 'var(--danger)';
-            else if (data.salud_score < 65) color = getComputedStyle(document.documentElement).getPropertyValue('--semantic-warning').trim() || '#e8822e';
+            else if (data.salud_score < 65) color = getComputedStyle(document.documentElement).getPropertyValue('--semantic-warning').trim() || '#f0a13b';
             dotSalud.style.background = color;
             dotSalud.style.boxShadow = `0 0 6px ${color}`;
         }
