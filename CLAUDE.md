@@ -112,7 +112,13 @@ scopeado por cuenta_id antes de confiar en él.
   confirmación explícita antes de guardar — nunca escribe directo.
   `gastos_operativos` ahora soporta `recurrente` + `fecha_fin`, con
   prorrateo por día en `costos.py` cuando el período elegido es más
-  corto que un mes.
+  corto que un mes. También carga **costo de fabricación por grupo de
+  productos** ("las camperas de jean valen 12000"): la IA solo extrae
+  grupo + monto; quién es el grupo lo resuelve
+  `resolver_grupos_de_productos` SIN IA (todas las palabras del grupo
+  en el título, singularizadas; el grupo más específico se queda con
+  la publicación), y la confirmación muestra cada modelo afectado con su
+  costo de antes. Confirmar guarda solo los ids que el usuario vio, bajo RLS.
 - **Multi-cuenta real (Plan Elite)**: `/conectar_otra_cuenta` vincula
   una segunda cuenta de MeLi al usuario YA logueado (en vez de crear un
   usuario nuevo, que es lo que hacía `/conectar` siempre) —

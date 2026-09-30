@@ -606,7 +606,7 @@ async function enviarMensajeCostosChat(evento) {
             _agregarBurbujaCostosChat(texto, false);
             _costosChatHistorial.push({ role: 'assistant', content: JSON.stringify(data) });
         } else if (data.accion === 'confirmar') {
-            _mostrarPropuestaCostosChat(data.gastos || []);
+            _mostrarPropuestaCostosChat(data.gastos || [], data.costos_productos || []);
         }
     } catch (e) {
         _agregarBurbujaCostosChat('No pude conectar — intentá de nuevo en un momento.', false);
@@ -617,41 +617,70 @@ async function enviarMensajeCostosChat(evento) {
     return false;
 }
 
-function _mostrarPropuestaCostosChat(gastos) {
+function _mostrarPropuestaCostosChat(gastos, costosProductos) {
     const cont = document.getElementById('costos-chat-propuesta');
-    const filas = gastos.map(propuesta => {
+    const plata = n => '$' + Number(n).toLocaleString('es-AR');
+    const pub = n => n === 1 ? 'publicación' : 'publicaciones';
+    const estiloFila = 'font-size:0.9em; line-height:1.7; color:var(--text-secondary); padding:6px 0; border-top:1px solid var(--glass-border);';
+
+    const filasGastos = gastos.map(propuesta => {
         const tipoTexto = propuesta.recurrente ? `Recurrente desde ${propuesta.fecha_desde}` : `Único, el ${propuesta.fecha_desde}`;
-        return `<div style="font-size:0.9em; line-height:1.7; color:var(--text-secondary); padding:6px 0; border-top:1px solid var(--glass-border);">
-            <strong style="color:var(--text-primary);">${propuesta.concepto}</strong> — $${Number(propuesta.monto).toLocaleString('es-AR')}
-            — ${propuesta.categoria === 'fijo' ? 'Fijo' : 'Variable'} — ${tipoTexto}
+        return `<div style="${estiloFila}">
+            <strong style="color:var(--text-primary);">${escapeHtml(String(propuesta.concepto))}</strong> — ${plata(propuesta.monto)}
+            — ${propuesta.categoria === 'fijo' ? 'Fijo' : 'Variable'} — ${escapeHtml(tipoTexto)}
         </div>`;
     }).join('');
-    const titulo = gastos.length > 1 ? `Voy a cargar estos ${gastos.length} gastos:` : 'Voy a cargar:';
+
+    // Costos de fabricación por producto: se muestra CADA modelo que se va a tocar, con su costo de antes
+    const antes = m => m.costo_actual_max <= 0 ? 'sin costo cargado' : (m.costo_actual_min === m.costo_actual_max ? `antes ${plata(m.costo_actual_min)}` : `antes ${plata(m.costo_actual_min)} a ${plata(m.costo_actual_max)}`);
+    const bloquesCostos = costosProductos.map(cp => {
+        if (!cp.total) {
+            return `<div style="${estiloFila}"><strong style="color:var(--semantic-warning);">⚠ No encontré publicaciones para «${escapeHtml(cp.grupo)}»</strong> — no se carga nada para ese grupo. Podés corregirlo y mandarlo de nuevo.</div>`;
+        }
+        const modelos = cp.modelos.map(m => `<div style="padding-left:14px;">· ${escapeHtml(m.modelo)} <span style="color:var(--text-faint);">— ${m.cantidad} ${pub(m.cantidad)} (${antes(m)})</span></div>`).join('');
+        return `<div style="${estiloFila}"><strong style="color:var(--text-primary);">Costo de fabricación ${plata(cp.costo)} por unidad</strong> para «${escapeHtml(cp.grupo)}» — <b>${cp.total} ${pub(cp.total)}</b>${modelos}</div>`;
+    }).join('');
+
+    const partes = [];
+    if (gastos.length) partes.push(gastos.length > 1 ? `${gastos.length} gastos` : '1 gasto');
+    const totalPubs = costosProductos.reduce((s, cp) => s + (cp.total || 0), 0);
+    if (totalPubs) partes.push(`el costo de ${totalPubs} ${pub(totalPubs)}`);
+    const titulo = partes.length ? `Voy a cargar ${partes.join(' y ')}:` : 'No hay nada para cargar todavía:';
     cont.innerHTML = `
         <div class="panel" style="border-color:var(--accent-primary); margin:0 0 14px;">
             <div style="font-weight:600; margin-bottom:4px;">${titulo}</div>
-            ${filas}
+            ${filasGastos}${bloquesCostos}
             <div style="display:flex; gap:10px; margin-top:14px;">
-                <button type="button" class="btn btn-denim" onclick="confirmarPropuestaCostosChat()">Confirmar</button>
+                ${partes.length ? '<button type="button" class="btn btn-primary" onclick="confirmarPropuestaCostosChat()">Confirmar y cargar</button>' : ''}
                 <button type="button" class="btn btn-secondary" onclick="corregirPropuestaCostosChat()">Corregir</button>
             </div>
         </div>
     `;
     cont.style.display = 'block';
-    cont.dataset.propuesta = JSON.stringify(gastos);
+    cont.dataset.propuesta = JSON.stringify({
+        gastos,
+        costos_productos: costosProductos.filter(cp => cp.total).map(cp => ({ costo: cp.costo, ids: cp.modelos.flatMap(m => m.ids) })),
+    });
 }
 
 async function confirmarPropuestaCostosChat() {
     const cont = document.getElementById('costos-chat-propuesta');
-    const propuestas = JSON.parse(cont.dataset.propuesta);
+    const { gastos, costos_productos } = JSON.parse(cont.dataset.propuesta);
+    const pub = n => n === 1 ? 'publicación' : 'publicaciones';
     try {
         const resp = await fetch('/api/costos_chat/confirmar', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ propuestas })
+            body: JSON.stringify({ propuestas: gastos, costos_productos })
         });
         const data = await resp.json();
         if (data.ok) {
-            window.location.reload();
+            const dichos = [];
+            if (data.gastos) dichos.push(`${data.gastos} gasto${data.gastos === 1 ? '' : 's'}`);
+            if (data.publicaciones) dichos.push(`costo de ${data.publicaciones} ${pub(data.publicaciones)}`);
+            const params = new URLSearchParams(window.location.search);
+            params.set('msg', `Listo: cargué ${dichos.join(' y ') || 'los datos'}.`); params.set('tipo', 'success');
+            window.location.search = params.toString();
+            return;
         } else {
             _agregarBurbujaCostosChat('No se pudo guardar: ' + (data.error || 'error desconocido'), false);
         }

@@ -1718,7 +1718,7 @@ def api_costos_chat():
     historial = datos.get("historial", [])
     if not historial or not isinstance(historial, list):
         return jsonify({"accion": "error", "mensaje": "Faltó el mensaje."}), 400
-    resultado = costos_chat.procesar_mensaje(historial)
+    resultado = costos_chat.procesar_mensaje(historial, g.usuario_id, g.cuenta_id)
     return jsonify(resultado)
 
 
@@ -1727,10 +1727,13 @@ def api_costos_chat():
 def api_costos_chat_confirmar():
     datos = request.get_json(silent=True) or {}
     propuestas = datos.get("propuestas")
-    if not propuestas:
+    costos_productos = datos.get("costos_productos")
+    if not propuestas and not costos_productos:
         return jsonify({"ok": False, "error": "Falta la propuesta."}), 400
-    ok, mensaje = costos_chat.confirmar_y_guardar(g.usuario_id, g.cuenta_id, propuestas)
-    return jsonify({"ok": ok, "error": None if ok else mensaje})
+    ok, resultado = costos_chat.confirmar_y_guardar(g.usuario_id, g.cuenta_id, propuestas, costos_productos)
+    if not ok:
+        return jsonify({"ok": False, "error": resultado})
+    return jsonify({"ok": True, "error": None, "gastos": resultado["gastos"], "publicaciones": resultado["publicaciones"]})
 
 
 @app.route("/api/chat_ia", methods=["POST"])

@@ -105,12 +105,12 @@
 </form>
 
 <div class="panel">
-    <div class="panel-title"><svg class="icon"><use href="#icon-chat"/></svg> Contame un gasto y lo cargo por vos</div>
-    <div class="page-subtitle" style="margin-bottom:12px;">Por ejemplo: <em>"el alquiler sale 150 mil por mes desde julio"</em>. <b>Nunca se guarda nada sin que lo confirmes.</b></div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-chat"/></svg> Contame tus costos y los cargo por vos</div>
+    <div class="page-subtitle" style="margin-bottom:12px;">Gastos: <em>"el alquiler sale 150 mil por mes desde julio"</em>. Costo de tus productos: <em>"las camperas de jean me cuestan 12000 y las medias 3000"</em>. <b>Antes de guardar te muestro todo lo que va a cambiar para que lo confirmes.</b></div>
     <div id="costos-chat-mensajes" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px; max-height:280px; overflow-y:auto;"></div>
     <div id="costos-chat-propuesta" style="display:none;"></div>
     <form id="costos-chat-form" onsubmit="return enviarMensajeCostosChat(event)" class="filter-row" style="margin:0;">
-        <input type="text" id="costos-chat-input" class="field-input" placeholder="Escribí el gasto con tus palabras…" style="flex:1;" autocomplete="off">
+        <input type="text" id="costos-chat-input" class="field-input" placeholder="Escribí un gasto o el costo de tus productos…" style="flex:1;" autocomplete="off">
         <button type="submit" class="btn btn-primary">Enviar</button>
     </form>
 </div>
