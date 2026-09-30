@@ -10,7 +10,7 @@ Objetivo: que cada pantalla se entienda **en 5 segundos** — cómo voy, qué te
 - [x] Fase 3 — Facturación · Costos · Monotributo · Reporte fiscal · Calculadora · Ventas fuera de MeLi · Historial de precios
 - [x] Fase 4 — Promociones · Publicidad · Reputación · Embudo · Logros · Tendencias · Competencia
 - [x] Fase 5 — Landing · Onboarding · Planes · Suscripción · Referidos · Conectar · Sincronizando · errores
-- [ ] Fase 6 — transversales
+- [x] Fase 6 — transversales (header y tablas en celular, tema claro, sin desbordes a 375 px en las 23 pantallas; queda pendiente el rendimiento de /metricas en local: el costo es la latencia a la base)
 
 ## 1. Diagnóstico (lo que se ve hoy, medido en la app real)
 

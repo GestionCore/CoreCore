@@ -184,6 +184,38 @@ scopeado por cuenta_id antes de confiar en él.
 - Entregar solo los archivos que cambiaron, respetando la carpeta real
   del proyecto (no volver a comprimir todo el proyecto entero cada vez).
 
+## UX v3 — rediseño de todas las pantallas (2026-09-30)
+Plan y checklist en `PLAN_UX.md`. El usuario pidió "100% experiencia de
+usuario": foco rápido, botones y frases con **negrita** sobre lo que pasa,
+y color donde hay que mirar. Piezas (usarlas, no reinventar HTML):
+- `static/css/ux.css` — componentes de foco. Un solo mecanismo de color:
+  cada pieza lee `--ux-c` y se tiñe con una clase de estado (`ux-ok`
+  verde=plata/todo bien · `ux-danger` rojo=urgente/pierde plata ·
+  `ux-warn` naranja=atención · `ux-info` celeste · `ux-accion` violeta ·
+  `ux-gold` logros/premium · `ux-neutral`). Clases: `ux-banner`, `ux-hero`,
+  `ux-kpi(s)`, `ux-item-accion` (cola "qué hago"), `ux-pill`, `ux-detalle`
+  (`<details>` plegable), `ux-vacio`, `ux-barra`, `ux-barra-accion`
+  (barra fija "N cambios sin guardar"), `ux-tabla-cards` (tabla → tarjetas
+  en celular), `ux-periodo` (barra de período).
+- `templates/_ux.html` — macros Jinja (`banner`, `kpi`, `delta`, `vacio`,
+  `seccion`) y `static/js/ux.js` — `UX.banner/kpi/accion/plata/pct/esc`
+  para pantallas armadas con fetch. Filtros Jinja `|plata |pct |numero`.
+- Regla de las pantallas: cómo voy → qué hago → números → detalle plegado.
+  Un botón primario por pantalla; el historial y las tablas largas al final.
+- **Todo texto externo (MeLi, base, usuario) se escapa** (`UX.esc` / autoescape).
+  `|safe` solo para HTML armado por nosotros.
+- Cuidado con el costo de fabricación en $0: la "ganancia" queda inflada. Las
+  pantallas lo avisan (Dashboard, Ganancia Real, Costos) y el hero no se pinta
+  de verde en ese caso.
+- Trampas conocidas: en Jinja `dict.items` choca con la clave `items` (usar
+  otro nombre); `\b`/`\n` dentro de heredocs de bash/python se corrompen al
+  editar archivos (usar Edit/Write); el tema claro necesita overrides en
+  `ux.css` para lo que `style.css` deja fijo en oscuro.
+- Lo que NO se tocó a propósito: backend de cálculos de plata, RLS, sync.
+- MeLi cerró (403) `/sites/{site}/search`, el detalle de publicaciones ajenas
+  (`/items/{id}`) y `/highlights`: Tendencias y Competencia se rehicieron sobre
+  `/products/search`, `/products/{id}/items`, `/categories`, `/users`.
+
 ## Deploy — Fly.io, no Railway (cambiado 2026-09-29)
 - Producción real: **Fly.io**, app `corecore`, región `gru` (São Paulo)
   — mismo `fly.toml` en la raíz. Railway se descartó porque no tiene
@@ -246,7 +278,7 @@ MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones corridas hasta `0015_competidores_thumbnail.sql` — 
+- Migraciones corridas hasta `0016_competencia_catalogo.sql` — 
   verificá `migrate.py --status` contra Supabase real antes de asumir
   cuál es la última aplicada, el número más alto en `migrations/` no
   siempre coincide con lo corrido de verdad.
