@@ -14,7 +14,36 @@ import meli_http
 # proyecto no necesita ir indexado por cuenta_id. Las categorías casi
 # no cambian de nombre, TTL largo como en logistica.py.
 _cache_nombre_categoria = {}
+_cache_camino_categoria = {}
 TTL_SEGUNDOS = 6 * 3600
+
+
+def caminos_de_categorias(cat_ids, headers=None):
+    """
+    {category_id: "Ropa y Accesorios › Ropa Deportiva › Medias"} para varias categorías a la vez.
+    MeLi devuelve categorías con el MISMO nombre en rubros distintos (hay 5 "Medias": ropa interior,
+    deportiva, bebés, hockey…); sin el camino completo no hay forma de saber cuál elegir.
+    """
+    def _camino(cat_id):
+        cacheado = _cache_camino_categoria.get(cat_id)
+        if cacheado and (time.time() - cacheado[1]) < TTL_SEGUNDOS:
+            return cat_id, cacheado[0]
+        try:
+            resp = meli_http.get(f"https://api.mercadolibre.com/categories/{cat_id}", headers=headers or {})
+            if resp.status_code != 200:
+                return cat_id, None
+            data = resp.json()
+            camino = " › ".join(p["name"] for p in (data.get("path_from_root") or [])) or data.get("name")
+        except Exception:
+            return cat_id, None
+        _cache_camino_categoria[cat_id] = (camino, time.time())
+        return cat_id, camino
+
+    unicos = list(dict.fromkeys(cat_ids))
+    if not unicos:
+        return {}
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        return dict(pool.map(_camino, unicos))
 
 
 def obtener_categorias_del_catalogo(headers, cursor, limite=30):

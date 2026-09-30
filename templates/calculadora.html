@@ -90,8 +90,12 @@ function elegirCategoria(id, nombre) {
 function opcionCategoria(c) {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'ux-opcion'; b.setAttribute('role', 'option');
-    b.innerHTML = `<b>${UX.esc(c.nombre)}</b><span>${UX.esc(c.id)}</span>`;
-    b.addEventListener('click', () => elegirCategoria(c.id, c.nombre));
+    // Mismo nombre en rubros distintos ("Medias" de bebés, de hockey…): el camino completo es lo que las diferencia
+    const partes = c.camino ? c.camino.split(' › ') : [];
+    const rubro = partes.length > 1 ? partes[0] : '';
+    b.classList.add('ux-opcion-doble');
+    b.innerHTML = `<b>${UX.esc(c.nombre)}</b><span>${UX.esc(c.camino || c.id)}</span>`;
+    b.addEventListener('click', () => elegirCategoria(c.id, rubro ? `${c.nombre} · ${rubro}` : c.nombre));
     return b;
 }
 

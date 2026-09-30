@@ -302,6 +302,8 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-opcion { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--border-soft); background: transparent; color: var(--text-primary); font-family: var(--font-ui); font-size: 0.88em; text-align: left; cursor: pointer; }
 .ux-opcion:hover, .ux-opcion:focus-visible { background: color-mix(in srgb, var(--accent-primary) 14%, transparent); }
 .ux-opcion span { color: var(--text-faint); font-size: 0.82em; }
+.ux-opcion-doble { flex-direction: column; align-items: flex-start; gap: 2px; }   /* nombre arriba, camino completo debajo: hay categorías con el mismo nombre en rubros distintos */
+.ux-opcion-doble span { line-height: 1.35; }
 .ux-opcion-msg { padding: 10px 14px; color: var(--text-secondary); font-size: 0.85em; }
 @media (max-width: 900px) { .ux-calc { grid-template-columns: 1fr; } .ux-calc > .panel { position: static; } }
 

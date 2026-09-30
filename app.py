@@ -2171,8 +2171,13 @@ def api_calculadora_buscar_categoria():
                 cat_id = item.get("category_id")
                 if cat_id and cat_id not in seen:
                     seen.add(cat_id)
-                    nombre = item.get("domain_name") or item.get("category_name") or cat_id
+                    nombre = item.get("category_name") or item.get("domain_name") or cat_id
                     resultados.append({"id": cat_id, "nombre": nombre})
+            # Varias categorías comparten nombre ("Medias" está en ropa interior, deportiva, bebés…):
+            # se agrega el camino completo para poder distinguirlas.
+            caminos = calculadora_costos.caminos_de_categorias([r["id"] for r in resultados], headers)
+            for r in resultados:
+                r["camino"] = caminos.get(r["id"])
         if not resultados:
             # Último fallback, sin depender de ningún endpoint "inteligente"
             # de MeLi (domain_discovery/search predictor pueden no devolver
