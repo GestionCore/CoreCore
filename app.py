@@ -1759,11 +1759,19 @@ def facturacion_vista():
                     if "venta" in categoria: pct_comision += monto
                     elif "env" in categoria: pct_envios += monto
                     elif "public" in categoria: pct_publicidad += monto
-                pct_neto = max(facturado_bruto - pct_comision - pct_envios - pct_publicidad, 0)
+                # MeLi no siempre manda group_description usable (para varias
+                # cuentas viene vacío y todo cae en "Otros cargos"/"Bonificaciones"
+                # del desglose de abajo) — lo que no matcheó ninguna palabra clave
+                # NO se descarta ni se cuenta como ganancia: se muestra aparte,
+                # para que el total del waterfall siga sumando lo mismo que
+                # total_cargos (el número real que ya usa Ganancia Neta Real).
+                pct_otros = max(total_cargos - pct_comision - pct_envios - pct_publicidad, 0.0)
+                pct_neto = max(facturado_bruto - total_cargos, 0)
                 barra_segmentos = {
                     "comision": round((pct_comision / facturado_bruto) * 100, 1),
                     "envios": round((pct_envios / facturado_bruto) * 100, 1),
                     "publicidad": round((pct_publicidad / facturado_bruto) * 100, 1),
+                    "otros": round((pct_otros / facturado_bruto) * 100, 1),
                     "neto": round((pct_neto / facturado_bruto) * 100, 1)
                 }
                 # Mismos montos de arriba, pero en $ y en formato de "cascada"
@@ -1775,9 +1783,17 @@ def facturacion_vista():
                     {"label": "Comisión MeLi", "monto_formateado": "-$" + formatear_moneda(pct_comision), "pct_ancho": round(pct_comision / _max_waterfall * 100, 1)},
                     {"label": "Envíos", "monto_formateado": "-$" + formatear_moneda(pct_envios), "pct_ancho": round(pct_envios / _max_waterfall * 100, 1)},
                     {"label": "Publicidad", "monto_formateado": "-$" + formatear_moneda(pct_publicidad), "pct_ancho": round(pct_publicidad / _max_waterfall * 100, 1)},
-                    {"label": "Gastos operativos", "monto_formateado": "-$" + formatear_moneda(gastos_periodo), "pct_ancho": round(gastos_periodo / _max_waterfall * 100, 1)},
-                    {"label": "Ganancia neta final", "monto_formateado": ("-$" if ganancia_neta_final < 0 else "$") + formatear_moneda(abs(ganancia_neta_final)), "pct_ancho": round(abs(ganancia_neta_final) / _max_waterfall * 100, 1), "es_total_final": True, "es_negativo": ganancia_neta_final < 0},
                 ]
+                if pct_otros > 0.01:
+                    waterfall_facturacion.append(
+                        {"label": "Otros cargos de MeLi (sin categorizar)", "monto_formateado": "-$" + formatear_moneda(pct_otros), "pct_ancho": round(pct_otros / _max_waterfall * 100, 1)}
+                    )
+                waterfall_facturacion.append(
+                    {"label": "Gastos operativos", "monto_formateado": "-$" + formatear_moneda(gastos_periodo), "pct_ancho": round(gastos_periodo / _max_waterfall * 100, 1)}
+                )
+                waterfall_facturacion.append(
+                    {"label": "Ganancia neta final", "monto_formateado": ("-$" if ganancia_neta_final < 0 else "$") + formatear_moneda(abs(ganancia_neta_final)), "pct_ancho": round(abs(ganancia_neta_final) / _max_waterfall * 100, 1), "es_total_final": True, "es_negativo": ganancia_neta_final < 0}
+                )
 
     periodos_vista = [
         {"key": p.get("key"), "date_from": p.get("period", {}).get("date_from"),
