@@ -8,7 +8,7 @@ Objetivo: que cada pantalla se entienda **en 5 segundos** — cómo voy, qué te
 - [x] Fase 1 — Dashboard · Ganancia Real (piloto, pendiente de aprobación del look)
 - [x] Fase 2 — Stock · Despacho · Preguntas · Stock masivo
 - [x] Fase 3 — Facturación · Costos · Monotributo · Reporte fiscal · Calculadora · Ventas fuera de MeLi · Historial de precios
-- [ ] Fase 4 — Promociones · Publicidad · Reputación · Embudo · Logros · Tendencias · Competencia
+- [x] Fase 4 — Promociones · Publicidad · Reputación · Embudo · Logros · Tendencias · Competencia
 - [ ] Fase 5 — Landing · Onboarding · Planes · Suscripción · Referidos · Conectar · Sincronizando · errores
 - [ ] Fase 6 — transversales
 

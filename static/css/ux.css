@@ -304,3 +304,9 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-opcion span { color: var(--text-faint); font-size: 0.82em; }
 .ux-opcion-msg { padding: 10px 14px; color: var(--text-secondary); font-size: 0.85em; }
 @media (max-width: 900px) { .ux-calc { grid-template-columns: 1fr; } .ux-calc > .panel { position: static; } }
+
+/* ---------- Escalera de niveles (reputación): 5 tramos, el actual resaltado ---------- */
+.ux-escalera { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 18px; }
+.ux-escalera span { height: 14px; border-radius: 99px; }
+.ux-escalera span.actual { height: 20px; margin-top: -3px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ux-c) 28%, transparent); }
+.ux-escalera-etiquetas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; font-size: 0.7em; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }

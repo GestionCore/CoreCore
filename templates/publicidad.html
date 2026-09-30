@@ -1,132 +1,99 @@
 {% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
 {% block title %}Publicidad · CoreLux{% endblock %}
 {% block content %}
+{% set tono = 'info' if te_deja_ganancia is none else ('ok' if te_deja_ganancia else 'danger') %}
+{% set con_recomendacion = campanas|selectattr('recomendacion')|list if campanas else [] %}
+
 <div class="page-header">
     <div>
         <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-percent"/></svg>Publicidad</h1>
-        <div class="page-subtitle">Product Ads — rendimiento real de tus campañas</div>
+        <div class="page-subtitle">Product Ads — <strong>si tu pauta te deja plata o te la come</strong></div>
     </div>
-    <form action="/publicidad" method="GET" class="filter-row" style="margin:0;">
-        <div class="rango-fechas" id="rango-publicidad" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
-            <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-publicidad')"></button>
-            <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
-        </div>
-        <button type="submit" class="btn btn-denim" style="align-self:flex-end;">Actualizar</button>
-        <div style="display:flex; gap:6px; align-self:flex-end;">
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(7, this)">7 días</button>
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(14, this)">14 días</button>
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(30, this)">30 días</button>
-        </div>
-    </form>
 </div>
+
+<form action="/publicidad" method="GET" class="ux-periodo no-imprimir">
+    <div class="ux-periodo-botones">
+        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(7, this)">7 días</button>
+        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(14, this)">14 días</button>
+        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(30, this)">30 días</button>
+    </div>
+    <div class="rango-fechas" id="rango-publicidad" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
+        <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-publicidad')"></button>
+        <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
+    </div>
+    <button type="submit" class="btn btn-primary">Ver período</button>
+</form>
 <script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-publicidad'));</script>
 
 {% if not ads_disponible %}
-<div class="panel"><div class="alert-empty">No encontramos una cuenta de anunciante de Product Ads asociada — si nunca activaste publicidad en Mercado Libre, es esperable que no haya nada acá todavía.</div></div>
+{{ vacio("No encontramos una cuenta de anunciante de Product Ads", "Si nunca activaste publicidad en Mercado Libre es normal que no haya nada acá todavía. Cuando tengas campañas, ves si te convienen.", "percent", "info") }}
 {% else %}
 
-<div class="panel" style="text-align:center; padding:34px 26px;">
-    <div class="stat-chip-label" style="margin-bottom:6px;">Retorno de la Publicidad (ROAS)</div>
-    <div class="hero-number {% if te_deja_ganancia is not none %}{{ 'acento-success' if te_deja_ganancia else 'acento-danger' }}{% endif %}">{{ roas_general if roas_general is not none else '—' }}{% if roas_general %}x{% endif %}</div>
-    <div class="text-muted" style="font-size:0.85em; margin-top:6px;">
+<!-- ── 1. ¿ME CONVIENE? ────────────────────────────────────────────────── -->
+<div class="ux-hero ux-{{ tono }}">
+    <div class="ux-hero-etiqueta">Retorno de la publicidad (ROAS)
+        {% if te_deja_ganancia is not none %}<span class="ux-pill {{ 'ux-ok' if te_deja_ganancia else 'ux-danger' }}">{{ 'Te deja ganancia' if te_deja_ganancia else 'Te está achicando el margen' }}</span>{% endif %}
+    </div>
+    <div class="ux-hero-numero">{{ roas_general|string|replace('.', ',') ~ 'x' if roas_general is not none else '—' }}</div>
+    <div class="ux-hero-frase">
         {% if roas_general is not none %}
-        Por cada $1 en pauta, volvieron ${{ roas_general }} en ventas atribuidas — invertiste ${{ costo_total_formateado }} y generó ${{ ventas_atribuidas_formateado }}.
-        {% else %}
-        Todavía no hay datos suficientes para calcular el retorno en este período.
-        {% endif %}
+        Por cada <b>$1</b> en pauta volvieron <b>{{ ('$' ~ (roas_general|string|replace('.', ','))) }}</b> en ventas — invertiste <b>${{ costo_total_formateado }}</b> y generó <b>${{ ventas_atribuidas_formateado }}</b>.
+        {% else %}Todavía no hay datos suficientes para calcular el retorno en este período.{% endif %}
     </div>
-
-    {% if te_deja_ganancia is not none %}
-    <div style="margin-top:16px;">
-        <span class="pe-badge {% if te_deja_ganancia %}pe-badge-ok{% else %}pe-badge-falta{% endif %}">
-            {% if te_deja_ganancia %}Te deja ganancia{% else %}Te está achicando el margen{% endif %}
-        </span>
-    </div>
-    {% endif %}
 
     {% if roas_slider %}
-    <div class="roas-slider">
+    <div class="roas-slider" style="margin-top:20px;">
         <div class="roas-slider-track">
             <div class="roas-slider-fill {% if not te_deja_ganancia %}roas-slider-fill-riesgo{% endif %}" style="width:{{ roas_slider.pct_actual }}%;"></div>
             <div class="roas-slider-marca" style="left:{{ roas_slider.pct_equilibrio }}%;" title="Punto de equilibrio: {{ roas_equilibrio }}x — por debajo de esto, la pauta te come margen"></div>
         </div>
         <div class="roas-slider-etiquetas">
             <span>0x</span>
-            <span>Equilibrio: {{ roas_equilibrio }}x</span>
-            <span>Tu ROAS: {{ roas_general }}x</span>
+            <span><b>Equilibrio: {{ roas_equilibrio }}x</b></span>
+            <span><b>Tu ROAS: {{ roas_general }}x</b></span>
         </div>
     </div>
     {% endif %}
-
-    <div class="text-muted" style="font-size:0.76em; margin-top:14px;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg>Este monto no incluye IVA — por eso puede verse más bajo que el total de Publicidad que mostramos en Facturación.</div>
+    <div class="ux-hero-nota">Este monto no incluye IVA, por eso puede verse más bajo que el total de Publicidad en Facturación.</div>
 </div>
 
-<div class="stat-strip stat-strip-kpi">
-    <div class="stat-chip kpi-card accent-primary" title="Cuánto volvió por cada peso invertido en Ads — MeLi usa esta métrica como la principal desde 2026">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-bolt"/></svg></span><span class="stat-chip-label">ROAS general</span></div>
-        <div class="stat-chip-value">{{ roas_general if roas_general is not none else '—' }}{% if roas_general %}x{% endif %}</div>
-        <div class="stat-chip-desc">Retorno por cada $ invertido</div>
-    </div>
-    <div class="stat-chip kpi-card accent-primary" title="Qué porcentaje de tus ventas por ads se fue en pagar la publicidad — es la métrica inversa al ROAS (ACOS = 100/ROAS)">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-percent"/></svg></span><span class="stat-chip-label">ACOS general</span></div>
-        <div class="stat-chip-value">{{ acos_general if acos_general is not none else '—' }}{% if acos_general %}%{% endif %}</div>
-        <div class="stat-chip-desc">% de venta que se va en Ads</div>
-    </div>
-    <div class="stat-chip kpi-card accent-primary" title="Gasto en Ads sobre TU FACTURACIÓN TOTAL del período (no solo lo atribuido a ads) — mide qué tan dependiente sos de la pauta para vender en general">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-percent"/></svg></span><span class="stat-chip-label">TACOS</span></div>
-        <div class="stat-chip-value">{{ tacos if tacos is not none else '—' }}{% if tacos %}%{% endif %}</div>
-        <div class="stat-chip-desc">Ads / facturación total (${{ facturacion_total_negocio_formateada }})</div>
-    </div>
-    <div class="stat-chip kpi-card accent-success">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-box"/></svg></span><span class="stat-chip-label">Unidades por Ads</span></div>
-        <div class="stat-chip-value">{{ unidades_total }}</div>
-        <div class="stat-chip-desc">{{ clicks_total }} clicks totales</div>
-    </div>
-</div>
-
-{% if pct_venta_directa is not none or pct_origen_pagado is not none %}
-<div class="filter-row" style="align-items:stretch;">
-    {% if pct_venta_directa is not none %}
-    <div class="panel" style="flex:1; min-width:280px;">
-        <div class="panel-title">Directa vs. Indirecta</div>
-        <div class="page-subtitle" style="margin-bottom:14px;">De las ventas atribuidas a Ads: cuántas fueron del producto anunciado vs. otro producto del catálogo.</div>
-        <div class="split-bar">
-            <div class="split-bar-directa" style="width:{{ pct_venta_directa }}%;"></div>
-            <div class="split-bar-indirecta" style="width:{{ pct_venta_indirecta }}%;"></div>
+<!-- ── 2. QUÉ HACER CON CADA CAMPAÑA ─────────────────────────────────────── -->
+{% if con_recomendacion %}
+<div class="ux-acciones-titulo">Qué hacer con tus campañas <span class="ux-contador">{{ con_recomendacion|length }}</span></div>
+<div class="ux-lista-acciones">
+    {% for c in con_recomendacion %}
+    <div class="ux-item-accion ux-{{ 'danger' if c.recomendacion.tipo == 'urgente' else ('ok' if c.recomendacion.tipo == 'oportunidad' else 'warn') }}">
+        <div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-{{ 'trend' if c.recomendacion.tipo == 'oportunidad' else 'alert' }}"/></svg></div>
+        <div class="ux-item-accion-cuerpo">
+            <div class="ux-item-accion-titulo">{{ c.nombre }}</div>
+            <div class="ux-item-accion-detalle">{{ c.recomendacion.texto }}</div>
         </div>
-        <div class="split-bar-leyenda">
-            <span><span class="split-bar-dot split-bar-dot-directa"></span>Directa {{ pct_venta_directa }}% · ${{ venta_directa_formateada }}</span>
-            <span><span class="split-bar-dot split-bar-dot-indirecta"></span>Indirecta {{ pct_venta_indirecta }}% · ${{ venta_indirecta_formateada }}</span>
-        </div>
+        {% if c.roas is not none %}<span class="ux-pill {{ 'ux-danger' if c.roas_bajo else 'ux-ok' }}">ROAS {{ c.roas|string|replace('.', ',') }}x</span>{% endif %}
     </div>
-    {% endif %}
-    {% if pct_origen_pagado is not none %}
-    <div class="panel" style="flex:1; min-width:280px;">
-        <div class="panel-title">Origen de tus Ventas</div>
-        <div class="page-subtitle" style="margin-bottom:14px;">De toda tu facturación del período: cuánto vino de un click pago vs. orgánico.</div>
-        <div class="split-bar">
-            <div class="split-bar-directa" style="width:{{ pct_origen_pagado }}%;"></div>
-            <div class="split-bar-indirecta" style="width:{{ pct_origen_organico }}%;"></div>
-        </div>
-        <div class="split-bar-leyenda">
-            <span><span class="split-bar-dot split-bar-dot-directa"></span>Con publicidad {{ pct_origen_pagado }}% · ${{ ventas_atribuidas_formateado }}</span>
-            <span><span class="split-bar-dot split-bar-dot-indirecta"></span>Orgánicas {{ pct_origen_organico }}% · ${{ ventas_organicas_formateada }}</span>
-        </div>
-    </div>
-    {% endif %}
+    {% endfor %}
 </div>
 {% endif %}
 
-<div class="panel">
-    <div class="panel-title">Gasto vs. Ventas atribuidas por día</div>
-    <div style="height:260px; position:relative;"><canvas id="chartAdsEvolucion"></canvas></div>
+<!-- ── 3. NÚMEROS ─────────────────────────────────────────────────────── -->
+<div class="ux-kpis">
+    {{ kpi("ROAS general", (roas_general|string|replace('.', ',') ~ 'x') if roas_general is not none else '—', tono, "bolt", "retorno por cada $ invertido") }}
+    {{ kpi("ACOS general", ((acos_general|string|replace('.', ',') ~ '%') if acos_general is not none else '—'), "warn", "percent", "% de la venta que se va en Ads · más bajo es mejor") }}
+    {{ kpi("TACOS", ((tacos|string|replace('.', ',') ~ '%') if tacos is not none else '—'), "info", "percent", "Ads sobre tu facturación total ($" ~ facturacion_total_negocio_formateada ~ ")") }}
+    {{ kpi("Unidades por Ads", unidades_total, "ok", "box", clicks_total ~ " clicks totales") }}
 </div>
 
-<div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">Campañas ({{ campanas|length }})</div>
+<!-- ── 4. EVOLUCIÓN ─────────────────────────────────────────────────────── -->
+<div class="ux-seccion ux-accion">Gasto vs. unidades vendidas, por día</div>
+<div class="panel"><div style="height:260px; position:relative;"><canvas id="chartAdsEvolucion" role="img" aria-label="Gasto en publicidad y unidades vendidas por día"></canvas></div></div>
+
+<!-- ── 5. CAMPAÑAS ─────────────────────────────────────────────────────── -->
+<div class="ux-seccion ux-info">Campañas <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ campanas|length }}</span></div>
+<div class="panel" style="padding:0; overflow:hidden;" data-mostrar-mas-scope>
     {% if not campanas %}
-    <div class="alert-empty">No hay campañas con datos en este período.</div>
+    <div style="padding:20px;">{{ vacio("No hay campañas con datos en este período", "Probá con un rango más amplio.", "calendar", "info") }}</div>
     {% else %}
+    <div style="overflow-x:auto; padding:6px 12px 12px;">
     <table class="data-table">
         <thead>
             <tr>
@@ -137,77 +104,89 @@
         </thead>
         <tbody>
             {% for c in campanas %}
-            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
+            <tr class="{{ 'ux-fila-danger' if c.roas_bajo else '' }} {% if loop.index > 6 %}oculto-mostrar-mas{% endif %}">
+                <td class="ux-col-titulo"><b>{{ c.nombre }}</b></td>
                 <td>
-                    <strong>{{ c.nombre }}</strong>
-                    {% if c.recomendacion %}
-                    <div style="margin-top:4px;">
-                        <span class="badge {% if c.recomendacion.tipo == 'urgente' %}badge-danger{% elif c.recomendacion.tipo == 'oportunidad' %}badge-success{% else %}badge-warning{% endif %}" style="font-size:0.72em;">
-                            {{ c.recomendacion.texto }}
-                        </span>
-                    </div>
-                    {% endif %}
+                    {% if c.estado == 'active' %}<span class="ux-pill ux-ok">Activa</span>
+                    {% elif c.estado == 'paused' %}<span class="ux-pill ux-warn">Pausada</span>
+                    {% else %}<span class="ux-pill ux-neutral ux-pill-suave">{{ c.estado }}</span>{% endif %}
                 </td>
-                <td>
-                    {% if c.estado == 'active' %}<span class="badge badge-success">Activa</span>
-                    {% elif c.estado == 'paused' %}<span class="badge badge-warning">Pausada</span>
-                    {% else %}<span class="badge badge-neutral">{{ c.estado }}</span>{% endif %}
-                </td>
-                <td class="num">
-                    {% if c.presupuesto_formateado %}
-                        ${{ c.presupuesto_formateado }}
-                        <div class="text-muted" style="font-size:0.75em;">{{ c.pct_presupuesto }}% usado</div>
-                    {% else %}—{% endif %}
-                </td>
-                <td class="num text-danger">${{ c.costo_formateado }}</td>
+                <td class="num">{% if c.presupuesto_formateado %}${{ c.presupuesto_formateado }}<div class="text-muted" style="font-size:0.75em;">{{ c.pct_presupuesto }}% usado</div>{% else %}—{% endif %}</td>
+                <td class="num text-danger"><b>${{ c.costo_formateado }}</b></td>
                 <td class="num">{{ c.clicks }}</td>
                 <td class="num">{{ c.ctr }}%</td>
                 <td class="num">{{ c.cvr }}%</td>
-                <td class="num">
-                    {% if c.roas is not none %}
-                        <span class="{% if c.roas_bajo %}text-danger{% else %}text-success{% endif %}"><strong>{{ c.roas }}x</strong></span>
-                    {% else %}—{% endif %}
-                </td>
-                <td class="num">{{ (c.acos|round(1)) if c.acos is not none else '—' }}{% if c.acos is not none %}%{% endif %}</td>
-                <td class="num text-success">${{ c.ventas_atribuidas_formateado }}</td>
+                <td class="num">{% if c.roas is not none %}<span class="ux-pill {{ 'ux-danger' if c.roas_bajo else 'ux-ok' }}">{{ c.roas|string|replace('.', ',') }}x</span>{% else %}—{% endif %}</td>
+                <td class="num">{{ ((c.acos|round(1))|string|replace('.', ',') ~ '%') if c.acos is not none else '—' }}</td>
+                <td class="num text-success"><b>${{ c.ventas_atribuidas_formateado }}</b></td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    {% if campanas|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ campanas|length - 5 }} más...</button>
-    {% endif %}
-    {% if campanas|selectattr('roas_bajo')|list %}
-    <div class="alert alert-warning" style="margin-top:16px;">
-        <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-alert"/></svg>Las campañas marcadas en rojo tienen un ROAS por debajo de 3x (referencia típica de equilibrio) — vale la pena revisar si conviene bajarles presupuesto o pausarlas.
     </div>
+    {% if campanas|length > 6 %}<div style="padding:0 16px 16px;"><button type="button" class="btn btn-secondary btn-block" onclick="mostrarMasGenerico(this)">Ver las {{ campanas|length - 6 }} campañas restantes</button></div>{% endif %}
+    {% if campanas|selectattr('roas_bajo')|list %}
+    <div style="padding:0 16px 16px;">{{ banner("warn", "alert", "<b>Las campañas en rojo tienen ROAS menor a 3x</b> (referencia típica de equilibrio)", "Conviene bajarles presupuesto o pausarlas.") }}</div>
     {% endif %}
     {% endif %}
 </div>
 
-{% if costo_ads_por_publicacion %}
-<div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">Costo de Ads por publicación (últimas ventas del período)</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">
-        Mismo dato que usamos en Ganancia Real para descontar Ads de tu ganancia neta real, acá para verlo sin cambiar de pantalla.
+<!-- ── 6. MÁS DETALLE ──────────────────────────────────────────────────── -->
+{% if pct_venta_directa is not none or pct_origen_pagado is not none %}
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-chart"/></svg> De dónde vienen tus ventas <span class="ux-detalle-nota">directa vs. indirecta · pagas vs. orgánicas</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="filter-row" style="align-items:stretch;">
+            {% if pct_venta_directa is not none %}
+            <div style="flex:1; min-width:280px;">
+                <div class="page-subtitle" style="margin-bottom:10px;"><b>Directa vs. indirecta</b> — de las ventas atribuidas a Ads, cuántas fueron del producto anunciado y cuántas de otro de tu catálogo.</div>
+                <div class="split-bar"><div class="split-bar-directa" style="width:{{ pct_venta_directa }}%;"></div><div class="split-bar-indirecta" style="width:{{ pct_venta_indirecta }}%;"></div></div>
+                <div class="split-bar-leyenda">
+                    <span><span class="split-bar-dot split-bar-dot-directa"></span>Directa {{ pct_venta_directa }}% · ${{ venta_directa_formateada }}</span>
+                    <span><span class="split-bar-dot split-bar-dot-indirecta"></span>Indirecta {{ pct_venta_indirecta }}% · ${{ venta_indirecta_formateada }}</span>
+                </div>
+            </div>
+            {% endif %}
+            {% if pct_origen_pagado is not none %}
+            <div style="flex:1; min-width:280px;">
+                <div class="page-subtitle" style="margin-bottom:10px;"><b>Origen de tus ventas</b> — de toda tu facturación, cuánto vino de un click pago y cuánto fue orgánico.</div>
+                <div class="split-bar"><div class="split-bar-directa" style="width:{{ pct_origen_pagado }}%;"></div><div class="split-bar-indirecta" style="width:{{ pct_origen_organico }}%;"></div></div>
+                <div class="split-bar-leyenda">
+                    <span><span class="split-bar-dot split-bar-dot-directa"></span>Con publicidad {{ pct_origen_pagado }}% · ${{ ventas_atribuidas_formateado }}</span>
+                    <span><span class="split-bar-dot split-bar-dot-indirecta"></span>Orgánicas {{ pct_origen_organico }}% · ${{ ventas_organicas_formateada }}</span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
-    <table class="data-table">
-        <thead><tr><th>Publicación</th><th class="num">Invertido</th></tr></thead>
-        <tbody>
-            {% for item in costo_ads_por_publicacion %}
-            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}><td>{{ item.titulo }}</td><td class="num text-danger">${{ item.costo_formateado }}</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% if costo_ads_por_publicacion|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ costo_ads_por_publicacion|length - 5 }} más...</button>
-    {% endif %}
-</div>
+</details>
 {% endif %}
 
-<div class="page-subtitle">
-    <svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg><strong>ROAS</strong> = cuánto volvió por cada peso invertido (más alto = mejor). <strong>ACOS</strong> = qué % de esa venta se fue en pagar el anuncio (más bajo = mejor, es la métrica inversa al ROAS). <strong>TACOS</strong> es un cálculo propio de CoreLux: mide el gasto en Ads sobre TODA tu facturación del período, para ver qué tan dependiente sos de la pauta en general.
-</div>
+{% if costo_ads_por_publicacion %}
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-gold);"><use href="#icon-tag"/></svg> Cuánto gastó en Ads cada publicación <span class="ux-detalle-nota">el mismo dato que descuenta Ganancia Real</span></summary>
+    <div class="ux-detalle-cuerpo" data-mostrar-mas-scope>
+        <table class="data-table">
+            <thead><tr><th>Publicación</th><th class="num">Invertido</th></tr></thead>
+            <tbody>
+                {% for item in costo_ads_por_publicacion %}
+                <tr class="{% if loop.index > 8 %}oculto-mostrar-mas{% endif %}"><td class="ux-col-titulo">{{ item.titulo }}</td><td class="num text-danger"><b>${{ item.costo_formateado }}</b></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if costo_ads_por_publicacion|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver {{ costo_ads_por_publicacion|length - 8 }} más</button>{% endif %}
+    </div>
+</details>
+{% endif %}
+
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--semantic-info);"><use href="#icon-info"/></svg> Qué significan ROAS, ACOS y TACOS</summary>
+    <div class="ux-detalle-cuerpo" style="line-height:1.7; font-size:0.9em;">
+        <p><b>ROAS:</b> cuánto volvió por cada peso invertido. Más alto es mejor.</p>
+        <p><b>ACOS:</b> qué porcentaje de esa venta se fue en pagar el anuncio (es la inversa del ROAS). Más bajo es mejor.</p>
+        <p><b>TACOS:</b> cálculo propio de CoreLux — el gasto en Ads sobre <i>toda</i> tu facturación, para ver qué tan dependiente sos de la pauta para vender.</p>
+    </div>
+</details>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
@@ -215,43 +194,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const ctx = document.getElementById('chartAdsEvolucion');
     if (!ctx || !window.Chart) return; // Chart.js no cargó (ej. sin internet) — no rompemos la página por esto
     const datos = {{ chart_data | tojson | safe }};
-    const ctx2d = ctx.getContext('2d');
-
-    function crearDegradado(color) {
-        const g = ctx2d.createLinearGradient(0, 0, 0, ctx.height || 260);
-        g.addColorStop(0, color + '55'); g.addColorStop(1, color + '00');
-        return g;
-    }
     const est = getComputedStyle(document.documentElement);
-    const colorGasto = est.getPropertyValue('--accent-gold').trim();
-    const colorUnidades = est.getPropertyValue('--success').trim();
-    const colorTextoSec = est.getPropertyValue('--text-secondary').trim();
-    const pluginBrillo = {
-        id: 'brilloAds',
-        beforeDatasetsDraw(chart) { chart.ctx.save(); chart.ctx.shadowColor = 'rgba(139, 92, 246,0.5)'; chart.ctx.shadowBlur = 10; },
-        afterDatasetsDraw(chart) { chart.ctx.restore(); }
-    };
+    const colorGasto = est.getPropertyValue('--semantic-warning').trim() || '#f0a13b';
+    const colorUnidades = est.getPropertyValue('--success').trim() || '#22c55e';
+    const colorTexto = est.getPropertyValue('--text-secondary').trim();
+    const degradado = (color) => { const g = ctx.getContext('2d').createLinearGradient(0, 0, 0, 260); g.addColorStop(0, color + '55'); g.addColorStop(1, color + '00'); return g; };
     new Chart(ctx, {
         type: 'line',
         data: {
             labels: datos.labels || [],
             datasets: [
-                { label: 'Gasto en Ads ($)', data: datos.gasto || [], borderColor: colorGasto, backgroundColor: crearDegradado(colorGasto), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, yAxisID: 'y' },
-                { label: 'Unidades vendidas', data: datos.unidades || [], borderColor: colorUnidades, backgroundColor: crearDegradado(colorUnidades), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, yAxisID: 'y1' }
+                { label: 'Gasto en Ads ($)', data: datos.gasto || [], borderColor: colorGasto, backgroundColor: degradado(colorGasto), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, yAxisID: 'y' },
+                { label: 'Unidades vendidas', data: datos.unidades || [], borderColor: colorUnidades, backgroundColor: degradado(colorUnidades), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, yAxisID: 'y1' }
             ]
         },
-        plugins: [pluginBrillo],
         options: {
             responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { labels: { color: colorTextoSec, usePointStyle: true, pointStyle: 'circle' } },
-                tooltip: { backgroundColor: 'rgba(13,15,38,0.95)', borderColor: 'rgba(139, 92, 246,0.25)', borderWidth: 1, padding: 12, cornerRadius: 8,
-                    callbacks: { label: (c) => c.dataset.yAxisID === 'y1' ? ` ${c.dataset.label}: ${c.parsed.y}` : ` ${c.dataset.label}: $${c.parsed.y.toLocaleString('es-AR')}` } }
+                legend: { labels: { color: colorTexto, usePointStyle: true, pointStyle: 'circle' } },
+                tooltip: { padding: 12, cornerRadius: 8, callbacks: { label: (c) => c.dataset.yAxisID === 'y1' ? ` ${c.dataset.label}: ${c.parsed.y}` : ` ${c.dataset.label}: ${UX.plata(c.parsed.y)}` } }
             },
             scales: {
-                x: { ticks: { color: colorTextoSec }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                y: { position: 'left', ticks: { color: colorGasto }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Gasto ($)', color: colorTextoSec } },
-                y1: { position: 'right', ticks: { color: colorUnidades, precision: 0 }, grid: { display: false }, title: { display: true, text: 'Unidades', color: colorTextoSec } }
+                x: { ticks: { color: colorTexto }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { position: 'left', ticks: { color: colorGasto }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Gasto ($)', color: colorTexto } },
+                y1: { position: 'right', ticks: { color: colorUnidades, precision: 0 }, grid: { display: false }, title: { display: true, text: 'Unidades', color: colorTexto } }
             }
         }
     });

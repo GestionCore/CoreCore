@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_ux.html" import kpi %}
 {% block title %}Tendencias y Mercado · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -19,58 +20,32 @@
 {% set cat = rc.categoria %}
 {% set v = rc.veredicto %}
 {% set seg_auto = (seguimientos | selectattr('automatico'))|list|first %}
-<div class="panel" style="border-left:3px solid var(--accent-primary);">
-    <div class="panel-title">Tu categoría: {{ cat.nombre }}</div>
-    {% if cat.camino|length > 1 %}
-    <div class="text-muted" style="font-size:0.8em; margin:-6px 0 16px;">{{ cat.camino|join(' › ') }}</div>
-    {% endif %}
-    <div class="stat-strip stat-strip-kpi" style="margin-bottom:16px;">
-        {% if cat.total is not none %}
-        <div class="stat-chip kpi-card accent-primary">
-            <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-users"/></svg></span><span class="stat-chip-label">Publicaciones activas</span></div>
-            <div class="stat-chip-value">{{ "{:,}".format(cat.total).replace(",", ".") }}</div>
-            <div class="stat-chip-desc">en toda la categoría</div>
-        </div>
-        {% endif %}
-        {% if cat.hermanas and cat.hermanas.de >= 3 %}
-        <div class="stat-chip kpi-card">
-            <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-trend"/></svg></span><span class="stat-chip-label">Tamaño en su rubro</span></div>
-            <div class="stat-chip-value">{{ cat.hermanas.posicion }}ª de {{ cat.hermanas.de }}</div>
-            <div class="stat-chip-desc">por publicaciones, dentro de {{ cat.hermanas.rubro_nombre }}</div>
-        </div>
-        {% endif %}
-        {% if cat.share_rubro_pct is not none %}
-        <div class="stat-chip kpi-card">
-            <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Peso en el rubro</span></div>
-            <div class="stat-chip-value">{{ cat.share_rubro_pct|string|replace('.', ',') }}%</div>
-            <div class="stat-chip-desc">de las publicaciones de {{ cat.hermanas.rubro_nombre if cat.hermanas else 'su rubro' }}</div>
-        </div>
-        {% endif %}
-        {% if seg_auto and seg_auto.tendencia_pct is not none %}
-        <div class="stat-chip kpi-card">
-            <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-trend"/></svg></span><span class="stat-chip-label">Evolución de la oferta</span></div>
-            <div class="stat-chip-value">{{ '+' if seg_auto.tendencia_pct >= 0 else '' }}{{ seg_auto.tendencia_pct|string|replace('.', ',') }}%</div>
-            <div class="stat-chip-desc">publicaciones en {{ seg_auto.serie|length }} días de datos</div>
-        </div>
-        {% endif %}
+{# Competencia alta = más pelea por la misma vitrina (rojo), baja = más lugar (verde) #}
+{% set tono_cat = 'danger' if v.competencia_nivel == 'alta' else ('warn' if v.competencia_nivel == 'media' else ('ok' if v.competencia_nivel == 'baja' else 'info')) %}
+<div class="ux-hero ux-{{ tono_cat }}">
+    <div class="ux-hero-etiqueta">Tu categoría
+        {% if v.competencia_nivel %}<span class="ux-pill ux-{{ tono_cat }}">{{ 'Mucha competencia' if v.competencia_nivel == 'alta' else ('Competencia media' if v.competencia_nivel == 'media' else 'Poca competencia') }}</span>{% endif %}
     </div>
-    <div class="veredicto-caja">
-        {% if v.competencia_nivel %}
-        <span class="badge {% if v.competencia_nivel == 'alta' %}badge-danger{% elif v.competencia_nivel == 'media' %}badge-warning{% else %}badge-success{% endif %}">{{ v.competencia_texto }}</span>
-        {% endif %}
-        <div style="margin-top:10px; font-size:0.9em;">{{ v.resumen }}</div>
-        {% if v.competencia_contexto %}<div class="text-muted" style="font-size:0.8em; margin-top:4px;">{{ v.competencia_contexto }}.</div>{% endif %}
+    <div class="ux-hero-numero" style="font-size:clamp(1.6em, 4.5vw, 2.4em);">{{ cat.nombre }}</div>
+    {% if cat.camino|length > 1 %}<div class="ux-hero-nota" style="margin-top:0;">{{ cat.camino|join(' › ') }}</div>{% endif %}
+    <div class="ux-hero-frase" style="margin-top:10px;">{{ v.resumen }}{% if v.competencia_contexto %} <span class="text-muted">{{ v.competencia_contexto }}.</span>{% endif %}</div>
+    <div class="flex-gap" style="margin-top:16px;">
+        <button type="button" class="btn btn-primary btn-lg" id="btn-analizar-mi-categoria" data-cat-id="{{ rc.category_id }}" data-cat-nombre="{{ cat.nombre }}"><svg class="icon"><use href="#icon-search"/></svg>Analizar precios y vendedores</button>
     </div>
-    <div class="flex-gap" style="margin-top:14px;">
-        <button type="button" class="btn btn-primary" id="btn-analizar-mi-categoria" data-cat-id="{{ rc.category_id }}" data-cat-nombre="{{ cat.nombre }}">Analizar precios y vendedores de esta categoría</button>
-    </div>
-    {% if not seg_auto or not seg_auto.tiene_historial_suficiente %}
-    <div class="text-muted" style="font-size:0.78em; margin-top:12px;">
-        <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
-        Registramos un dato por día de esta categoría: en unos días vas a ver acá si la cantidad de publicaciones sube o baja.
-    </div>
-    {% endif %}
 </div>
+
+<div class="ux-kpis">
+    {% if cat.total is not none %}{{ kpi("Publicaciones activas", "{:,}".format(cat.total).replace(",", "."), tono_cat, "users", "en toda la categoría") }}{% endif %}
+    {% if cat.hermanas and cat.hermanas.de >= 3 %}{{ kpi("Tamaño en su rubro", cat.hermanas.posicion ~ "ª de " ~ cat.hermanas.de, "accion", "trend", "por publicaciones, dentro de " ~ cat.hermanas.rubro_nombre) }}{% endif %}
+    {% if cat.share_rubro_pct is not none %}{{ kpi("Peso en el rubro", (cat.share_rubro_pct|string|replace('.', ',')) ~ "%", "info", "coin", "de las publicaciones de " ~ (cat.hermanas.rubro_nombre if cat.hermanas else 'su rubro')) }}{% endif %}
+    {% if seg_auto and seg_auto.tendencia_pct is not none %}{{ kpi("Evolución de la oferta", ('+' if seg_auto.tendencia_pct >= 0 else '') ~ (seg_auto.tendencia_pct|string|replace('.', ',')) ~ "%", "neutral", "trend", "publicaciones en " ~ seg_auto.serie|length ~ " días de datos") }}{% endif %}
+</div>
+{% if not seg_auto or not seg_auto.tiene_historial_suficiente %}
+<div class="text-muted" style="font-size:0.8em; margin:-12px 0 20px;">
+    <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
+    Registramos un dato por día de esta categoría: en unos días vas a ver acá si la cantidad de publicaciones sube o baja.
+</div>
+{% endif %}
 {% endif %}
 
 <div class="panel" id="panel-explorador">
@@ -441,7 +416,7 @@ const _CLASE_CONCENTRACION = { alta: 'badge-warning', media: 'badge-info', baja:
 const _CLASE_PRECIO = { amplio: 'badge-info', medio: 'badge-neutral', estrecho: 'badge-warning' };
 
 function _chip(etiqueta, valor, extra) {
-    return `<div class="stat-chip"><div class="stat-chip-label">${etiqueta}</div><div class="stat-chip-value">${valor}</div>${extra ? `<div class="stat-chip-desc">${extra}</div>` : ''}</div>`;
+    return UX.kpi({ tono: 'accion', icono: 'chart', etiqueta, valor, subHtml: extra || '' });
 }
 
 function _filaPorcentaje(etiqueta, pct) {
@@ -575,7 +550,7 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
                 <div class="flex-gap">${badges.join(' ')}</div>
                 <div style="margin-top:10px; font-size:0.9em;">${esc(v.resumen || '')}</div>
             </div>
-            <div class="stat-strip" style="margin-bottom:16px;">${chips.join('')}</div>
+            <div class="ux-kpis">${chips.join('')}</div>
             ${muestraSuficiente && histogramaHtml ? `<div class="page-subtitle" style="margin-bottom:8px;">Distribución de precios en la muestra:</div><div style="display:flex; flex-direction:column; gap:6px; margin-bottom:18px;">${histogramaHtml}</div>` : ''}
             ${competenciaHtml}
             <div class="flex-gap" style="margin-bottom:18px;">

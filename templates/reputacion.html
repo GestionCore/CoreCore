@@ -1,146 +1,114 @@
 {% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
 {% block title %}Reputación · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Reputación y Confianza</h1>
-        <div class="page-subtitle">Datos oficiales de tu cuenta en Mercado Libre</div>
+        <h1 class="page-title">Reputación</h1>
+        <div class="page-subtitle">Tu nivel en Mercado Libre — <strong>datos oficiales de tu cuenta</strong>. Es lo que más pesa en tu visibilidad y en la confianza de los compradores.</div>
     </div>
 </div>
 
 {% if not rep %}
-<div class="panel"><div class="alert-empty">No se pudo traer tu reputación ahora mismo — probá de nuevo en un rato.</div></div>
+{{ vacio("No pudimos traer tu reputación ahora", "Probá de nuevo en un rato — suele ser algo momentáneo de Mercado Libre.", "refresh", "warn") }}
 {% else %}
+{% set niveles = ['1_red', '2_orange', '3_yellow', '4_light_green', '5_green'] %}
+{% set colores = {'1_red': 'var(--danger)', '2_orange': 'var(--semantic-warning)', '3_yellow': 'var(--accent-gold)', '4_light_green': '#86d96b', '5_green': 'var(--success)'} %}
+{% set tono = 'ok' if rep.nivel_id in ['5_green', '4_light_green'] else ('danger' if rep.nivel_id == '1_red' else 'warn') %}
+{% set idx = niveles.index(rep.nivel_id) if rep.nivel_id in niveles else none %}
+{% set total_calif = rep.ratings_positivas + rep.ratings_neutras + rep.ratings_negativas %}
+{% set pct_positivas = (rep.ratings_positivas / total_calif * 100) if total_calif else none %}
 
-<div class="panel" style="text-align:center; padding:36px 26px;">
-    <div class="stat-chip-label" style="margin-bottom:8px;">Nivel de reputación</div>
-    <div class="hero-number
-        {% if rep.nivel_id in ['5_green', '4_light_green'] %}acento-primario
-        {% elif rep.nivel_id == '1_red' %}acento-danger
-        {% elif rep.nivel_id == '2_orange' %}acento-warning{% endif %}">
-        {{ rep.nivel_nombre.split(' (')[0] }}
+<!-- ── 1. CÓMO ESTÁ MI REPUTACIÓN ──────────────────────────────────────── -->
+<div class="ux-hero ux-{{ tono }}">
+    <div class="ux-hero-etiqueta">Nivel de reputación
+        {% if rep.power_seller_nombre %}<span class="ux-pill ux-gold"><svg class="icon" style="width:12px;height:12px;"><use href="#icon-trophy"/></svg>MercadoLíder {{ rep.power_seller_nombre }}</span>{% endif %}
     </div>
-    {% if rep.power_seller_nombre %}
-    <div style="margin-top:10px;"><span class="badge badge-achieve" style="font-size:0.9em;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"><use href="#icon-trophy"/></svg>Mercado Líder {{ rep.power_seller_nombre }}</span></div>
+    <div class="ux-hero-numero">{{ rep.nivel_nombre.split(' (')[0] }}</div>
+    {% if idx is not none %}
+    <!-- Escalera de 5 niveles: el tuyo está marcado -->
+    <div class="ux-escalera" role="img" aria-label="Nivel {{ idx + 1 }} de 5">
+        {% for n in niveles %}<span class="{{ 'actual' if loop.index0 == idx }}" style="background:{{ colores[n] }}; opacity:{{ 1 if loop.index0 == idx else 0.28 }};"></span>{% endfor %}
+    </div>
+    <div class="ux-escalera-etiquetas"><span>Rojo</span><span>Naranja</span><span>Amarillo</span><span>Verde claro</span><span>Verde</span></div>
     {% endif %}
-</div>
-
-<div class="stat-strip stat-strip-kpi">
-    <div class="stat-chip kpi-card {% if rep.tasa_cancelacion > 5 %}accent-danger{% else %}accent-success{% endif %}">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-star"/></svg></span><span class="stat-chip-label">Tasa de cancelación</span></div>
-        <div class="stat-chip-value">{{ rep.tasa_cancelacion }}%</div>
+    <div class="ux-hero-frase" style="margin-top:14px;">
+        {% if tono == 'ok' %}Tu reputación es <b>sólida</b>: mantené los despachos a tiempo y los reclamos resueltos.
+        {% elif tono == 'danger' %}Tu reputación está <b>en riesgo</b>: resolvé reclamos abiertos y despachá a tiempo para recuperar nivel.
+        {% else %}Podés <b>mejorarla</b>: lo que más ayuda es resolver reclamos rápido y despachar dentro del plazo.{% endif %}
     </div>
 </div>
 
-<div class="filter-row" style="align-items:stretch;">
-    <div class="panel" style="flex:1; min-width:280px;">
-        <div class="panel-title">Historial de transacciones</div>
-        <div style="height:200px; position:relative; margin-bottom:14px;"><canvas id="chartTransacciones"></canvas></div>
-        <table class="data-table">
-            <tbody>
-                <tr><td>Total histórico</td><td class="num">{{ rep.total_transacciones }}</td></tr>
-                <tr><td>Completadas</td><td class="num text-success">{{ rep.completadas }}</td></tr>
-                <tr><td>Canceladas / devueltas <span class="text-muted" style="font-size:0.85em;">(número oficial de MeLi)</span></td><td class="num text-danger">{{ rep.canceladas }}</td></tr>
-            </tbody>
-        </table>
-        <div class="text-muted" style="font-size:0.78em; margin-top:8px;">MeLi agrupa cancelaciones, devoluciones y ventas no completadas en este único número — no las separa ni en su propia API. Abajo tenés el desglose real de lo que CoreLux registró.</div>
-    </div>
+{% if tono != 'ok' %}
+{{ banner(tono, "alert", "<b>Qué hacer para subir de nivel</b>: reclamos al día y despachos en tiempo", "Revisá los reclamos y devoluciones abiertos: cada uno sin resolver puede sumar a tu reputación negativa.", "Ver reclamos abiertos", "/metricas#seccion-reclamos", "btn-alerta" if tono == 'warn' else "btn-urgente") }}
+{% endif %}
 
-    <div class="panel" style="flex:1; min-width:280px;">
-        <div class="panel-title">Calificaciones recibidas</div>
-        <div style="height:200px; position:relative; margin-bottom:14px;"><canvas id="chartCalificaciones"></canvas></div>
-        <table class="data-table">
-            <tbody>
-                <tr><td><i class="ue-dot" style="background:var(--success);"></i>Positivas</td><td class="num text-success">{{ rep.ratings_positivas }}</td></tr>
-                <tr><td><i class="ue-dot" style="background:var(--text-faint);"></i>Neutras</td><td class="num">{{ rep.ratings_neutras }}</td></tr>
-                <tr><td><i class="ue-dot" style="background:var(--danger);"></i>Negativas</td><td class="num text-danger">{{ rep.ratings_negativas }}</td></tr>
-            </tbody>
-        </table>
-    </div>
+<!-- ── 2. NÚMEROS ─────────────────────────────────────────────────────── -->
+<div class="ux-kpis">
+    {{ kpi("Tasa de cancelación", rep.tasa_cancelacion|pct, "danger" if rep.tasa_cancelacion > 5 else "ok", "x", "canceladas o devueltas sobre el total") }}
+    {# Con muy pocas calificaciones el porcentaje no dice nada (1 calificación = 0% o 100%): se muestra neutro y se aclara #}
+    {% if pct_positivas is not none %}{{ kpi("Calificaciones positivas", pct_positivas|pct(0), ("ok" if pct_positivas >= 90 else ("warn" if pct_positivas >= 75 else "danger")) if total_calif >= 10 else "neutral", "star", total_calif|numero ~ (" calificación recibida — muestra muy chica" if total_calif == 1 else " calificaciones recibidas" ~ (" — muestra chica" if total_calif < 10 else ""))) }}{% endif %}
+    {% if rep.reclamos.tasa is not none %}{{ kpi("Tasa de reclamos", (rep.reclamos.tasa * 100)|pct(2), "info", "alert", "métrica que arma tu nivel") }}{% endif %}
+    {% if rep.demora_en_despacho.tasa is not none %}{{ kpi("Demora en el despacho", (rep.demora_en_despacho.tasa * 100)|pct(2), "info", "truck", "métrica que arma tu nivel") }}{% endif %}
+    {% if rep.cancelaciones_metrica.tasa is not none %}{{ kpi("Cancelaciones (métrica de nivel)", (rep.cancelaciones_metrica.tasa * 100)|pct(2), "info", "x", "métrica que arma tu nivel") }}{% endif %}
 </div>
 
 {% if incidencias_por_tipo.devoluciones or incidencias_por_tipo.reclamos or incidencias_por_tipo.cancelaciones %}
-<div class="panel">
-    <div class="panel-title">Desglose real: devoluciones, reclamos y cancelaciones</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">
-        A diferencia del número agrupado de MeLi de arriba, esto sí distingue cada tipo — con lo que CoreLux sincronizó desde tu cuenta.
-    </div>
-    <div class="stat-strip">
-        <div class="stat-chip accent-primary"><div class="stat-chip-label">Devoluciones</div><div class="stat-chip-value">{{ incidencias_por_tipo.devoluciones }}</div></div>
-        <div class="stat-chip accent-warning"><div class="stat-chip-label">Reclamos</div><div class="stat-chip-value">{{ incidencias_por_tipo.reclamos }}</div></div>
-        <div class="stat-chip accent-danger"><div class="stat-chip-label">Cancelaciones</div><div class="stat-chip-value">{{ incidencias_por_tipo.cancelaciones }}</div></div>
-    </div>
+<div class="ux-seccion ux-warn">Desglose real de lo que registramos</div>
+<div class="text-muted" style="font-size:0.88em; margin:-6px 0 12px;">Mercado Libre junta cancelaciones, devoluciones y ventas no completadas en un solo número. Acá ves cada tipo por separado, con lo que CoreLux sincronizó de tu cuenta.</div>
+<div class="ux-kpis">
+    {{ kpi("Devoluciones", incidencias_por_tipo.devoluciones, "warn", "refresh") }}
+    {{ kpi("Reclamos", incidencias_por_tipo.reclamos, "danger", "alert") }}
+    {{ kpi("Cancelaciones", incidencias_por_tipo.cancelaciones, "neutral", "x") }}
 </div>
 {% endif %}
 
-{% if rep.reclamos.tasa is not none or rep.demora_en_despacho.tasa is not none or rep.cancelaciones_metrica.tasa is not none %}
-<div class="panel">
-    <div class="panel-title">Métricas de calidad (las que arman tu nivel)</div>
-    <table class="data-table">
-        <tbody>
-            {% if rep.reclamos.tasa is not none %}
-            <tr><td>Tasa de reclamos</td><td class="num">{{ (rep.reclamos.tasa * 100)|round(2) }}%</td></tr>
-            {% endif %}
-            {% if rep.demora_en_despacho.tasa is not none %}
-            <tr><td>Demora en el despacho</td><td class="num">{{ (rep.demora_en_despacho.tasa * 100)|round(2) }}%</td></tr>
-            {% endif %}
-            {% if rep.cancelaciones_metrica.tasa is not none %}
-            <tr><td>Cancelaciones (métrica de calidad)</td><td class="num">{{ (rep.cancelaciones_metrica.tasa * 100)|round(2) }}%</td></tr>
-            {% endif %}
-        </tbody>
-    </table>
-</div>
-{% endif %}
-
-<div class="page-subtitle">
-    <svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg>Estos son los mismos números que usa MeLi para calcular tu nivel de reputación — bajarlos es lo que más impacto tiene en tu visibilidad y en la confianza de tus compradores.
-</div>
+<!-- ── 3. HISTORIAL ─────────────────────────────────────────────────────── -->
+<details class="ux-detalle" open>
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-chart"/></svg> Transacciones y calificaciones <span class="ux-detalle-nota">{{ rep.total_transacciones|numero }} transacciones históricas</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="filter-row" style="align-items:flex-start;">
+            <div style="flex:1; min-width:260px;">
+                <div class="page-subtitle" style="margin-bottom:8px;"><b>Historial de transacciones</b></div>
+                <div style="height:200px; position:relative; margin-bottom:12px;"><canvas id="chartTransacciones" role="img" aria-label="Transacciones completadas, canceladas y en curso"></canvas></div>
+                <table class="data-table"><tbody>
+                    <tr><td>Completadas</td><td class="num text-success"><b>{{ rep.completadas|numero }}</b></td></tr>
+                    <tr><td>Canceladas / devueltas</td><td class="num text-danger"><b>{{ rep.canceladas|numero }}</b></td></tr>
+                </tbody></table>
+            </div>
+            <div style="flex:1; min-width:260px;">
+                <div class="page-subtitle" style="margin-bottom:8px;"><b>Calificaciones recibidas</b></div>
+                <div style="height:200px; position:relative; margin-bottom:12px;"><canvas id="chartCalificaciones" role="img" aria-label="Calificaciones positivas, neutras y negativas"></canvas></div>
+                <table class="data-table"><tbody>
+                    <tr><td><i class="ue-dot" style="background:var(--success);"></i>Positivas</td><td class="num text-success"><b>{{ rep.ratings_positivas|numero }}</b></td></tr>
+                    <tr><td><i class="ue-dot" style="background:var(--accent-gold);"></i>Neutras</td><td class="num"><b>{{ rep.ratings_neutras|numero }}</b></td></tr>
+                    <tr><td><i class="ue-dot" style="background:var(--danger);"></i>Negativas</td><td class="num text-danger"><b>{{ rep.ratings_negativas|numero }}</b></td></tr>
+                </tbody></table>
+            </div>
+        </div>
+    </div>
+</details>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.Chart) return;
     const estilo = getComputedStyle(document.documentElement);
-    const cSuccess = estilo.getPropertyValue('--success').trim();
-    const cDanger = estilo.getPropertyValue('--danger').trim();
-    const cGold = estilo.getPropertyValue('--accent-gold').trim();
-    const cTextoSec = estilo.getPropertyValue('--text-secondary').trim();
-    const opcionesComunes = {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { color: cTextoSec, usePointStyle: true, pointStyle: 'circle', padding: 12 } } }
-    };
+    const cSuccess = estilo.getPropertyValue('--success').trim(), cDanger = estilo.getPropertyValue('--danger').trim();
+    const cGold = estilo.getPropertyValue('--accent-gold').trim(), cTextoSec = estilo.getPropertyValue('--text-secondary').trim();
+    const opciones = { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { color: cTextoSec, usePointStyle: true, pointStyle: 'circle', padding: 12 } } } };
 
     const ctxTrans = document.getElementById('chartTransacciones');
     if (ctxTrans) {
-        const completadas = {{ rep.completadas }};
-        const canceladas = {{ rep.canceladas }};
+        const completadas = {{ rep.completadas }}, canceladas = {{ rep.canceladas }};
         const enCurso = Math.max({{ rep.total_transacciones }} - completadas - canceladas, 0);
-        new Chart(ctxTrans, {
-            type: 'doughnut',
-            data: {
-                labels: ['Completadas', 'Canceladas / devueltas', 'En curso / otro'],
-                datasets: [{ data: [completadas, canceladas, enCurso], backgroundColor: [cSuccess, cDanger, cTextoSec], borderWidth: 0 }]
-            },
-            options: opcionesComunes
-        });
+        new Chart(ctxTrans, { type: 'doughnut', data: { labels: ['Completadas', 'Canceladas / devueltas', 'En curso / otro'], datasets: [{ data: [completadas, canceladas, enCurso], backgroundColor: [cSuccess, cDanger, cTextoSec], borderWidth: 0 }] }, options: opciones });
     }
-
     const ctxCalif = document.getElementById('chartCalificaciones');
     if (ctxCalif) {
-        new Chart(ctxCalif, {
-            type: 'doughnut',
-            data: {
-                labels: ['Positivas', 'Neutras', 'Negativas'],
-                datasets: [{
-                    data: [{{ rep.ratings_positivas }}, {{ rep.ratings_neutras }}, {{ rep.ratings_negativas }}],
-                    backgroundColor: [cSuccess, cGold, cDanger], borderWidth: 0
-                }]
-            },
-            options: opcionesComunes
-        });
+        new Chart(ctxCalif, { type: 'doughnut', data: { labels: ['Positivas', 'Neutras', 'Negativas'], datasets: [{ data: [{{ rep.ratings_positivas }}, {{ rep.ratings_neutras }}, {{ rep.ratings_negativas }}], backgroundColor: [cSuccess, cGold, cDanger], borderWidth: 0 }] }, options: opciones });
     }
 });
 </script>
-
 {% endif %}
 {% endblock %}

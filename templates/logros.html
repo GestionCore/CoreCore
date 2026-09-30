@@ -1,89 +1,83 @@
 {% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
 {% block title %}Logros · CoreLux{% endblock %}
 {% block content %}
+{% set tono = 'danger' if conteo_por_prioridad.urgente else ('warn' if conteo_por_prioridad.importante else ('accion' if misiones else 'ok')) %}
+{% set ICONOS = {'stock': 'box', 'reclamos': 'alert', 'atencion': 'chat', 'seo': 'edit', 'financiero': 'coin', 'tendencias': 'trend'} %}
+
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-trophy"/></svg>Logros</h1>
-        <div class="page-subtitle">Tareas concretas, basadas en los datos reales de tu cuenta</div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-gold);"><use href="#icon-trophy"/></svg>Logros</h1>
+        <div class="page-subtitle">Tareas concretas, sacadas de <strong>los datos reales de tu cuenta</strong> — resolverlas es plata y reputación</div>
     </div>
 </div>
 
-{% if mensaje_coach or coach_pendiente %}
-<div class="panel" id="panel-coach" style="border-left:3px solid var(--accent-primary);">
-    <div class="panel-title"><svg class="icon"><use href="#icon-bolt"/></svg> Prioridad de hoy</div>
-    <div style="line-height:1.6;" id="coach-texto">{% if mensaje_coach %}{{ mensaje_coach }}{% else %}<div class="skeleton" style="height:44px; width:100%; border-radius:8px;"></div>{% endif %}</div>
+{% if recien_resueltas > 0 %}
+{{ banner("gold", "trophy", "<b>¡Resolviste " ~ recien_resueltas ~ " misi" ~ ("ón" if recien_resueltas == 1 else "ones") ~ " desde la última vez!</b> Buen trabajo", "Seguí así: cada una que cerrás se suma a tus logros conseguidos.") }}
+{% endif %}
+
+{% if mensaje_todo_bien %}
+<div class="ux-hero ux-ok" style="text-align:center;">
+    <div class="ux-hero-numero" style="font-size:2.2em;">Todo en orden</div>
+    <div class="ux-hero-frase">No detectamos nada pendiente en tu cuenta ahora mismo — lo estás haciendo bien. Volvé a revisar en unos días.</div>
+</div>
+{% else %}
+
+<!-- ── 1. LA PRIORIDAD DE HOY ───────────────────────────────────────────── -->
+<div class="ux-hero ux-{{ tono }}">
+    <div class="ux-hero-etiqueta">{{ misiones|length }} misi{{ 'ón' if misiones|length == 1 else 'ones' }} por resolver
+        {% if conteo_por_prioridad.urgente %}<span class="ux-pill ux-danger">{{ conteo_por_prioridad.urgente }} urgente{{ 's' if conteo_por_prioridad.urgente > 1 }}</span>{% endif %}
+        {% if conteo_por_prioridad.importante %}<span class="ux-pill ux-warn">{{ conteo_por_prioridad.importante }} importante{{ 's' if conteo_por_prioridad.importante > 1 }}</span>{% endif %}
+        {% if conteo_por_prioridad.opcional %}<span class="ux-pill ux-accion">{{ conteo_por_prioridad.opcional }} opcional{{ 'es' if conteo_por_prioridad.opcional > 1 }}</span>{% endif %}
+    </div>
+    <div class="ux-hero-numero" style="font-size:clamp(1.5em, 4vw, 2.1em);">Tu prioridad de hoy</div>
+    <div class="ux-hero-frase" id="coach-texto">
+        {% if mensaje_coach %}{{ mensaje_coach }}{% elif coach_pendiente %}<span class="skeleton" style="display:inline-block; width:min(520px,90%); height:2.6em; border-radius:8px;">&nbsp;</span>{% else %}<b>{{ misiones[0].titulo }}</b> — {{ misiones[0].descripcion }}{% endif %}
+    </div>
 </div>
 {% if coach_pendiente %}
 <script>
 // El mensaje lo redacta la IA (tarda unos segundos): se pide aparte para no frenar la carga de la página.
-// Si no llega, el panel se oculta — las misiones de abajo se ven igual.
-fetch('/api/logros/coach').then(r => r.json()).then(d => {
-    const panel = document.getElementById('panel-coach');
-    if (d && d.mensaje) document.getElementById('coach-texto').textContent = d.mensaje;
-    else panel.remove();
-}).catch(() => { const p = document.getElementById('panel-coach'); if (p) p.remove(); });
+// Si no llega, se muestra la primera misión tal cual — el resto de la pantalla no depende de esto.
+(function () {
+    const el = document.getElementById('coach-texto');
+    const respaldo = {{ ('<b>' ~ (misiones[0].titulo|e) ~ '</b> — ' ~ (misiones[0].descripcion|e))|tojson }};
+    fetch('/api/logros/coach').then(r => r.json()).then(d => {
+        if (d && d.mensaje) el.textContent = d.mensaje; else el.innerHTML = respaldo;
+    }).catch(() => { el.innerHTML = respaldo; });
+})();
 </script>
 {% endif %}
-{% endif %}
 
-{% if recien_resueltas > 0 %}
-<div class="alert alert-success" style="text-align:center; font-size:1.05em;">
-    <svg class="icon" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"><use href="#icon-check"/></svg>¡Resolviste {{ recien_resueltas }} misi{{ "ón" if recien_resueltas == 1 else "ones" }} desde la última vez! Buen trabajo.
-</div>
-{% endif %}
-
-{% if mensaje_todo_bien %}
-<div class="panel" style="text-align:center; padding:50px 26px;">
-    <div class="hero-number acento-primario" style="font-size:1.8em;">Todo en orden</div>
-    <div class="text-muted" style="margin-top:10px;">{{ mensaje_todo_bien }}</div>
-</div>
-{% else %}
-
-<div class="stat-strip stat-strip-kpi">
-    <div class="stat-chip kpi-card accent-danger">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-alert"/></svg></span><span class="stat-chip-label">Urgentes</span></div>
-        <div class="stat-chip-value">{{ conteo_por_prioridad.urgente }}</div>
-    </div>
-    <div class="stat-chip kpi-card accent-warning">
-        <div class="kpi-card-top"><span class="kpi-card-icon" style="background:var(--semantic-warning-bg); color:var(--semantic-warning);"><svg class="icon"><use href="#icon-flame"/></svg></span><span class="stat-chip-label">Importantes</span></div>
-        <div class="stat-chip-value">{{ conteo_por_prioridad.importante }}</div>
-    </div>
-    <div class="stat-chip kpi-card accent-primary">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-trophy"/></svg></span><span class="stat-chip-label">Opcionales</span></div>
-        <div class="stat-chip-value">{{ conteo_por_prioridad.opcional }}</div>
-    </div>
-</div>
-
-<div id="lista-misiones">
+<!-- ── 2. LAS MISIONES, CON SU BOTÓN ──────────────────────────────────── -->
+<div class="ux-lista-acciones">
     {% for m in misiones %}
-    <div class="mision-card mision-{{ m.prioridad }}">
-        <div class="mision-icono">{{ m.icono }}</div>
-        <div class="mision-cuerpo">
-            <div class="mision-titulo">
-                {{ m.titulo }}
-                <span class="badge {% if m.prioridad == 'urgente' %}badge-danger{% elif m.prioridad == 'importante' %}badge-warning{% else %}badge-neutral{% endif %}">{{ m.prioridad }}</span>
-            </div>
-            <div class="mision-descripcion">{{ m.descripcion }}</div>
+    <div class="ux-item-accion ux-{{ 'danger' if m.prioridad == 'urgente' else ('warn' if m.prioridad == 'importante' else 'accion') }}">
+        <div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-{{ ICONOS.get(m.categoria, 'bolt') }}"/></svg></div>
+        <div class="ux-item-accion-cuerpo">
+            <div class="ux-item-accion-titulo">{{ m.titulo }} <span class="ux-pill {{ 'ux-danger' if m.prioridad == 'urgente' else ('ux-warn' if m.prioridad == 'importante' else 'ux-accion ux-pill-suave') }}" style="margin-left:6px;">{{ m.prioridad }}</span></div>
+            <div class="ux-item-accion-detalle">{{ m.descripcion }}</div>
         </div>
         {% if m.link %}
-        <a href="{{ m.link }}" class="btn btn-secondary mision-boton">{{ m.link_texto }} →</a>
+        <a href="{{ m.link }}" class="btn {{ 'btn-urgente' if m.prioridad == 'urgente' else ('btn-alerta' if m.prioridad == 'importante' else 'btn-primary') }}">{{ m.link_texto }} →</a>
         {% endif %}
     </div>
     {% endfor %}
 </div>
 {% endif %}
 
+<!-- ── 3. LO YA LOGRADO ────────────────────────────────────────────────── -->
 {% if logros_resueltos %}
+<div class="ux-seccion ux-gold">Logros conseguidos <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ logros_resueltos|length }}</span></div>
 <div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title"><svg class="icon" style="color:var(--success);"><use href="#icon-check"/></svg> Logros conseguidos</div>
     {% for l in logros_resueltos %}
-    <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft); font-size:0.88em;">
-        <span class="text-muted" style="text-decoration:line-through;">{{ l.titulo }}</span>
-        <span class="text-success">Resuelto {{ l.fecha_resuelta }}</span>
+    <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border-soft); font-size:0.9em;">
+        <span><svg class="icon" style="width:15px;height:15px;vertical-align:middle;margin-right:8px;color:var(--accent-gold);"><use href="#icon-trophy"/></svg><b>{{ l.titulo }}</b></span>
+        <span class="ux-pill ux-ok ux-pill-suave">Resuelto {{ l.fecha_resuelta }}</span>
     </div>
     {% endfor %}
     {% if logros_resueltos|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ logros_resueltos|length - 5 }} más...</button>
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver {{ logros_resueltos|length - 5 }} más</button>
     {% endif %}
 </div>
 {% endif %}

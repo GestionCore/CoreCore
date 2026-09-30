@@ -1,116 +1,153 @@
 {% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
 {% block title %}Promociones · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
         <h1 class="page-title">Promociones</h1>
-        <div class="page-subtitle">Tus descuentos, campañas de Mercado Libre y ofertas relámpago</div>
+        <div class="page-subtitle">Qué conviene empujar con un descuento, y <strong>si tus promociones anteriores funcionaron</strong></div>
     </div>
 </div>
 
 {% if promociones_por_vencer %}
-<div class="alert alert-warning">
-    <svg class="icon" style="width:14px;height:14px;vertical-align:middle;margin-right:5px;"><use href="#icon-calendar"/></svg>
-    <strong>{{ promociones_por_vencer|length }} promoci{{ "ón" if promociones_por_vencer|length == 1 else "ones" }} por vencer pronto:</strong>
-    {% for p in promociones_por_vencer %}{{ p.titulo }} (hasta {{ p.fecha_fin_planeada }}){% if not loop.last %}, {% endif %}{% endfor %}
-</div>
+{{ banner("warn", "calendar", "<b>" ~ promociones_por_vencer|length ~ " promoci" ~ ("ón" if promociones_por_vencer|length == 1 else "ones") ~ " por vencer pronto</b>", promociones_por_vencer|map(attribute='titulo')|join(', ')|truncate(140)) }}
 {% endif %}
 
-<div class="panel">
-    <div class="panel-title">Crear un descuento propio</div>
-    <form action="/promociones/crear_descuento" method="POST" class="filter-row" id="form-crear-descuento">
-        <div class="field-group" style="flex:2; min-width:220px;">
-            <label class="field-label">Publicación</label>
-            <select name="id_meli" id="select-promo-item" required onchange="actualizarSimuladorPromo()">
-                {% for p in catalogo %}
-                <option value="{{ p.id }}" data-precio="{{ p.precio }}" data-costo="{{ p.precio_costo or 0 }}">{{ p.titulo }} — ${{ '%.2f'|format(p.precio) }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="field-group">
-            <label class="field-label">Precio con descuento ($)</label>
-            <input type="number" step="0.01" name="deal_price" id="input-deal-price" required oninput="actualizarSimuladorPromo()">
-        </div>
-        <div class="rango-fechas" id="rango-promo-nueva">
-            <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-promo-nueva')">Vigencia del descuento...</button>
-            <input type="hidden" name="fecha_desde" required><input type="hidden" name="fecha_hasta" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Crear descuento</button>
-    </form>
-    <div id="simulador-impacto-promo" style="display:none; margin-top:16px; padding:14px 16px; background:rgba(255,255,255,0.03); border-radius:10px;"></div>
+<div class="ux-kpis">
+    {{ kpi("Con descuento activo", con_descuento|length, "ok" if con_descuento else "neutral", "tag", "publicaciones con precio rebajado") }}
+    {{ kpi("Candidatas a promocionar", (sugerencias_promocion|length) if sugerencias_promocion else 0, "warn" if sugerencias_promocion else "neutral", "bolt", "stock alto y venta lenta") }}
+    {{ kpi("Campañas de MeLi", campanias|length, "info", "percent", "activas o con invitación pendiente") }}
+    {% if ofertas_relampago %}{{ kpi("Ofertas relámpago", ofertas_relampago|length, "accion", "flame", "disponibles para sumarte") }}{% endif %}
 </div>
-<script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-promo-nueva'));</script>
 
+<!-- ── 1. QUÉ PROMOCIONAR: la jugada con más plata en juego ─────────────────── -->
 {% if sugerencias_promocion %}
-<div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title"><svg class="icon"><use href="#icon-tag"/></svg> Candidatas a promocionar (stock alto, venta lenta)</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">
-        Tienen plata inmovilizada en stock que casi no se mueve — son las que más sentido tienen para empujar con un descuento.
-    </div>
+<div class="ux-acciones-titulo">Conviene promocionar <span class="ux-contador">{{ sugerencias_promocion|length }}</span></div>
+<div class="text-muted" style="font-size:0.88em; margin:-6px 0 12px;">Tienen plata parada en stock que casi no se mueve — son las que más sentido tiene empujar con un descuento.</div>
+<div class="ux-lista-acciones" data-mostrar-mas-scope>
     {% for s in sugerencias_promocion %}
-    <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border-soft); gap:12px; flex-wrap:wrap;">
-        <div>
-            <strong>{{ s.titulo }}</strong>
-            <div class="text-muted" style="font-size:0.8em;">{{ s.stock_total }} u. en stock · {{ s.unidades_14d }} vendidas en 14 días</div>
+    <div class="ux-item-accion ux-warn {% if loop.index > 4 %}oculto-mostrar-mas{% endif %}">
+        <div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-tag"/></svg></div>
+        <div class="ux-item-accion-cuerpo">
+            <div class="ux-item-accion-titulo">{{ s.titulo }}</div>
+            <div class="ux-item-accion-detalle"><b>{{ s.capital_inmovilizado|plata }}</b> inmovilizados · {{ s.stock_total }} u. en stock · solo {{ s.unidades_14d }} vendidas en 14 días</div>
         </div>
-        <div class="flex-gap" style="align-items:center;">
-            <span class="badge badge-warning">${{ "%.0f"|format(s.capital_inmovilizado) }} inmovilizados</span>
-            <button type="button" class="btn btn-secondary" onclick="precargarPromoDesde('{{ s.id_meli }}')">Promocionar</button>
-        </div>
+        <button type="button" class="btn btn-alerta" data-promocionar="{{ s.id_meli }}">Promocionar</button>
     </div>
     {% endfor %}
-    {% if sugerencias_promocion|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ sugerencias_promocion|length - 5 }} más...</button>
+    {% if sugerencias_promocion|length > 4 %}
+    <button type="button" class="btn btn-secondary btn-block" onclick="mostrarMasGenerico(this)">Ver las {{ sugerencias_promocion|length - 4 }} restantes</button>
     {% endif %}
 </div>
 {% endif %}
 
-<div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">Publicaciones con descuento activo ({{ con_descuento|length }})</div>
-    <table class="data-table only-desktop">
+<!-- ── 2. CREAR UN DESCUENTO: con el resultado en vivo ──────────────────── -->
+<div class="panel" id="form-crear-descuento-panel">
+    <div class="panel-title"><svg class="icon"><use href="#icon-plus"/></svg> Crear un descuento propio</div>
+    <form action="/promociones/crear_descuento" method="POST" class="filter-row" id="form-crear-descuento">
+        <div class="field-group" style="flex:2; min-width:240px;">
+            <label class="field-label" for="select-promo-item">Qué publicación</label>
+            <select name="id_meli" id="select-promo-item" required>
+                {% for p in catalogo %}
+                <option value="{{ p.id }}" data-precio="{{ p.precio }}" data-costo="{{ p.precio_costo or 0 }}">{{ p.titulo }} — {{ p.precio|plata }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="field-group" style="max-width:190px;">
+            <label class="field-label" for="input-deal-price">Precio con descuento ($)</label>
+            <input type="number" step="0.01" name="deal_price" id="input-deal-price" inputmode="decimal" required>
+        </div>
+        <div class="field-group">
+            <label class="field-label">Hasta cuándo</label>
+            <div class="rango-fechas" id="rango-promo-nueva">
+                <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-promo-nueva')">Vigencia del descuento…</button>
+                <input type="hidden" name="fecha_desde" required><input type="hidden" name="fecha_hasta" required>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg">Crear descuento</button>
+    </form>
+    <div id="simulador-impacto-promo" style="display:none; margin-top:16px;"></div>
+</div>
+<script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-promo-nueva'));</script>
+
+<!-- ── 3. LO QUE YA TENÉS ──────────────────────────────────────────────── -->
+<div class="ux-seccion ux-ok">Publicaciones con descuento activo <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ con_descuento|length }}</span></div>
+<div class="panel" style="padding:0; overflow:hidden;" data-mostrar-mas-scope>
+    {% if con_descuento %}
+    <div style="overflow-x:auto; padding:6px 12px 12px;">
+    <table class="data-table">
         <thead><tr><th>Publicación</th><th class="num">Precio original</th><th class="num">Precio actual</th><th class="num">Descuento</th><th></th></tr></thead>
         <tbody>
             {% for p in con_descuento %}
-            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
-                <td style="font-family: var(--font-ui);">{{ p.titulo }}</td>
+            <tr class="{% if loop.index > 6 %}oculto-mostrar-mas{% endif %}">
+                <td class="ux-col-titulo"><b>{{ p.titulo }}</b></td>
                 <td class="num text-muted" style="text-decoration:line-through;">${{ p.precio_original_formateado }}</td>
-                <td class="num">${{ p.precio_formateado }}</td>
-                <td class="num"><span class="badge badge-success">-{{ p.descuento_pct }}%</span></td>
+                <td class="num"><b>${{ p.precio_formateado }}</b></td>
+                <td class="num"><span class="ux-pill ux-ok">-{{ p.descuento_pct }}%</span></td>
                 <td>
                     <form action="/promociones/eliminar_descuento/{{ p.id }}" method="POST" onsubmit="confirmarAccion('¿Quitar el descuento de esta publicación?', this, 'Quitar descuento'); return false;">
-                        <button type="submit" class="btn btn-danger">Quitar</button>
+                        <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Quitar</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
-            {% if not con_descuento %}
-            <tr><td colspan="5" class="alert-empty">No tenés publicaciones con descuento activo ahora mismo.</td></tr>
-            {% endif %}
         </tbody>
     </table>
-    {% if con_descuento|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ con_descuento|length - 5 }} más...</button>
+    </div>
+    {% if con_descuento|length > 6 %}<div style="padding:0 16px 16px;"><button type="button" class="btn btn-secondary btn-block" onclick="mostrarMasGenerico(this)">Ver {{ con_descuento|length - 6 }} más</button></div>{% endif %}
+    {% else %}
+    <div style="padding:20px;">{{ vacio("No tenés publicaciones con descuento ahora", "Creá uno arriba o elegí una de las que conviene promocionar.", "tag", "info") }}</div>
     {% endif %}
 </div>
 
+{% if impacto_promociones %}
+<div class="ux-seccion ux-accion">¿Funcionaron tus promociones?</div>
+<div class="text-muted" style="font-size:0.88em; margin:-6px 0 12px;">Comparamos cuánto vendías <b>por día antes</b> de cada promoción contra <b>durante</b> la promoción.</div>
+<div class="panel" style="padding:0; overflow:hidden;" data-mostrar-mas-scope>
+    <div style="overflow-x:auto; padding:6px 12px 12px;">
+    <table class="data-table">
+        <thead><tr><th>Publicación</th><th>Período</th><th class="num">Antes (u/día)</th><th class="num">Durante (u/día)</th><th class="num">Resultado</th><th></th></tr></thead>
+        <tbody>
+            {% for imp in impacto_promociones %}
+            <tr class="{% if imp.variacion_pct is not none and imp.variacion_pct < -10 %}ux-fila-danger{% elif imp.variacion_pct is not none and imp.variacion_pct > 10 %}ux-fila-ok{% endif %} {% if loop.index > 6 %}oculto-mostrar-mas{% endif %}">
+                <td class="ux-col-titulo"><b>{{ imp.titulo }}</b></td>
+                <td class="text-muted">{{ imp.fecha_inicio }}{% if imp.fecha_fin %} → {{ imp.fecha_fin }}{% endif %}</td>
+                <td class="num">{{ imp.promedio_previo }}</td>
+                <td class="num">{{ imp.promedio_durante }}</td>
+                <td class="num">
+                    {% if imp.variacion_pct is not none %}
+                    <span class="ux-pill {{ 'ux-ok' if imp.variacion_pct > 10 else ('ux-danger' if imp.variacion_pct < -10 else 'ux-neutral ux-pill-suave') }}">{{ '▲ +' if imp.variacion_pct >= 0 else '▼ ' }}{{ imp.variacion_pct|string|replace('.', ',') }}%</span>
+                    {% else %}<span class="text-muted" style="font-size:0.85em;">Sin base previa</span>{% endif %}
+                </td>
+                <td>{% if imp.activo %}<span class="ux-pill ux-ok ux-pill-suave">Activa</span>{% else %}<span class="ux-pill ux-neutral ux-pill-suave">Finalizada</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% if impacto_promociones|length > 6 %}<div style="padding:0 16px 16px;"><button type="button" class="btn btn-secondary btn-block" onclick="mostrarMasGenerico(this)">Ver {{ impacto_promociones|length - 6 }} más</button></div>{% endif %}
+</div>
+{% endif %}
+
 {% if ofertas_relampago %}
-<div class="panel">
-    <div class="panel-title">Ofertas relámpago disponibles ({{ ofertas_relampago|length }})</div>
-    <table class="data-table only-desktop">
+<div class="ux-seccion ux-gold">Ofertas relámpago disponibles</div>
+<div class="panel" style="padding:0; overflow:hidden;">
+    <div style="overflow-x:auto; padding:6px 12px 12px;">
+    <table class="data-table">
         <thead><tr><th>Publicación</th><th class="num">Precio normal</th><th class="num">Precio sugerido</th><th>Estado</th><th></th></tr></thead>
         <tbody>
             {% for o in ofertas_relampago %}
             <tr>
-                <td style="font-family: var(--font-ui);">{{ o.id }}</td>
-                <td class="num">${{ '%.2f'|format(o.original_price or 0) }}</td>
-                <td class="num">${{ '%.2f'|format(o.price or 0) }}</td>
-                <td><span class="badge badge-neutral">{{ o.status }}</span></td>
+                <td><b>{{ o.id }}</b></td>
+                <td class="num">{{ (o.original_price or 0)|plata }}</td>
+                <td class="num"><b>{{ (o.price or 0)|plata }}</b></td>
+                <td><span class="ux-pill ux-neutral ux-pill-suave">{{ o.status }}</span></td>
                 <td>
                     {% if o.status == 'candidate' %}
                     <form action="/promociones/participar_relampago" method="POST" class="flex-gap" style="align-items:center;">
                         <input type="hidden" name="id_meli" value="{{ o.id }}">
-                        <input type="number" step="0.01" name="deal_price" placeholder="Precio oferta" required style="max-width:120px;">
-                        <input type="number" name="stock" placeholder="Stock" required style="max-width:80px;">
+                        <input type="number" step="0.01" name="deal_price" placeholder="Precio oferta" required style="max-width:130px;">
+                        <input type="number" name="stock" placeholder="Stock" required style="max-width:90px;">
                         <button type="submit" class="btn btn-primary">Participar</button>
                     </form>
                     {% endif %}
@@ -119,100 +156,72 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endif %}
 
-<div class="panel">
-    <div class="panel-title">Campañas de Mercado Libre ({{ campanias|length }})</div>
-    <table class="data-table only-desktop">
-        <thead><tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Vigencia</th>{% if hay_cofinanciamiento %}<th>Cofinanciamiento</th>{% endif %}</tr></thead>
-        <tbody>
-            {% for c in campanias %}
-            <tr>
-                <td style="font-family: var(--font-ui);">{{ c.nombre }}</td>
-                <td><span class="badge badge-neutral">{{ c.tipo_texto }}</span></td>
-                <td><span class="badge {{ c.estado_clase }}">{{ c.estado_texto }}</span></td>
-                <td class="text-muted">{% if c.vigencia_desde %}{{ c.vigencia_desde }} — {{ c.vigencia_hasta or 'sin fecha de cierre' }}{% else %}—{% endif %}</td>
-                {% if hay_cofinanciamiento %}
-                <td class="num">{% if c.meli_percent is not none %}MeLi {{ c.meli_percent }}% / Vos {{ c.seller_percent }}%{% else %}—{% endif %}</td>
-                {% endif %}
-            </tr>
-            {% endfor %}
-            {% if not campanias %}
-            <tr><td colspan="{{ 5 if hay_cofinanciamiento else 4 }}" class="alert-empty">No hay campañas activas o invitaciones pendientes ahora mismo.</td></tr>
-            {% endif %}
-        </tbody>
-    </table>
-    <div class="page-subtitle" style="margin-top:10px;">
-        Podés sumarte a una campaña cofinanciada eligiendo tu nivel de descuento directamente desde tu panel de Mercado Libre.
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-percent"/></svg> Campañas de Mercado Libre <span class="ux-detalle-nota">{{ campanias|length }} activas o con invitación</span></summary>
+    <div class="ux-detalle-cuerpo">
+        {% if campanias %}
+        <table class="data-table">
+            <thead><tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Vigencia</th>{% if hay_cofinanciamiento %}<th>Cofinanciamiento</th>{% endif %}</tr></thead>
+            <tbody>
+                {% for c in campanias %}
+                <tr>
+                    <td><b>{{ c.nombre }}</b></td>
+                    <td><span class="ux-pill ux-neutral ux-pill-suave">{{ c.tipo_texto }}</span></td>
+                    <td><span class="badge {{ c.estado_clase }}">{{ c.estado_texto }}</span></td>
+                    <td class="text-muted">{% if c.vigencia_desde %}{{ c.vigencia_desde }} — {{ c.vigencia_hasta or 'sin fecha de cierre' }}{% else %}—{% endif %}</td>
+                    {% if hay_cofinanciamiento %}<td class="num">{% if c.meli_percent is not none %}MeLi {{ c.meli_percent }}% / Vos {{ c.seller_percent }}%{% else %}—{% endif %}</td>{% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-muted">No hay campañas activas o invitaciones pendientes ahora mismo.</div>
+        {% endif %}
+        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Para sumarte a una campaña cofinanciada, elegí tu nivel de descuento desde tu panel de Mercado Libre.</div>
     </div>
-</div>
-
-{% if impacto_promociones %}
-<div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title"><svg class="icon"><use href="#icon-chart"/></svg> Impacto real de tus promociones</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">
-        Comparamos tu ritmo de venta de ANTES de cada promoción contra lo que vendió DURANTE, para medir el impacto real en unidades vendidas.
-    </div>
-    <table class="data-table">
-        <thead><tr><th>Publicación</th><th>Período</th><th class="num">Antes (u/día)</th><th class="num">Durante (u/día)</th><th class="num">Variación</th><th></th></tr></thead>
-        <tbody>
-            {% for imp in impacto_promociones %}
-            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
-                <td>{{ imp.titulo }}</td>
-                <td class="text-muted">{{ imp.fecha_inicio }}{% if imp.fecha_fin %} → {{ imp.fecha_fin }}{% endif %}</td>
-                <td class="num">{{ imp.promedio_previo }}</td>
-                <td class="num">{{ imp.promedio_durante }}</td>
-                <td class="num">
-                    {% if imp.variacion_pct is not none %}
-                        <span class="{% if imp.variacion_pct > 10 %}text-success{% elif imp.variacion_pct < -10 %}text-danger{% else %}text-muted{% endif %}">
-                            {{ '+' if imp.variacion_pct >= 0 else '' }}{{ imp.variacion_pct }}%
-                        </span>
-                    {% else %}
-                        <span class="text-muted">Sin base previa</span>
-                    {% endif %}
-                </td>
-                <td>{% if imp.activo %}<span class="badge badge-success">Activa</span>{% else %}<span class="badge badge-neutral">Finalizada</span>{% endif %}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% if impacto_promociones|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ impacto_promociones|length - 5 }} más...</button>
-    {% endif %}
-</div>
-{% endif %}
+</details>
 
 <script>
+    const $sel = document.getElementById('select-promo-item');
+    const $deal = document.getElementById('input-deal-price');
+    let _pedidoSim = 0, _timerSim = null;
+
+    // Resultado en vivo: cuánto queda por unidad al precio con descuento, en un color que dice si conviene
     async function actualizarSimuladorPromo() {
-        const select = document.getElementById('select-promo-item');
-        const opcion = select.selectedOptions[0];
-        const precioDeal = parseFloat(document.getElementById('input-deal-price').value);
+        const opcion = $sel.selectedOptions[0];
+        const precioDeal = parseFloat($deal.value);
         const cont = document.getElementById('simulador-impacto-promo');
         if (!opcion || !precioDeal || precioDeal <= 0) { cont.style.display = 'none'; return; }
-
-        const costo = parseFloat(opcion.dataset.costo) || 0;
+        const costo = parseFloat(opcion.dataset.costo) || 0, precioActual = parseFloat(opcion.dataset.precio) || 0;
+        const descuento = precioActual > 0 ? (1 - precioDeal / precioActual) * 100 : null;
+        const mi = ++_pedidoSim;
         cont.style.display = 'block';
-        cont.innerHTML = '<div class="skeleton" style="height:40px;border-radius:8px;"></div>';
+        cont.innerHTML = '<div class="skeleton" style="height:70px; width:100%; border-radius:12px;"></div>';
         try {
-            const resp = await fetch(`/api/simular_costo?precio=${precioDeal}&costo=${costo}&id_meli=${encodeURIComponent(opcion.value)}`);
-            const data = await resp.json();
-            if (data.error) { cont.innerHTML = `<span class="text-danger">${data.error}</span>`; return; }
-            const color = data.ganancia_neta >= 0 ? 'text-success' : 'text-danger';
-            cont.innerHTML = `
-                <div style="font-size:0.85em; color:var(--text-secondary); margin-bottom:6px;">Con este precio de descuento:</div>
-                <div class="flex-gap" style="justify-content:space-between;">
-                    <span>Margen neto por unidad</span>
-                    <strong class="${color}">$${data.ganancia_neta.toLocaleString('es-AR', {minimumFractionDigits:2})} (${data.margen_pct}%)</strong>
-                </div>
-            `;
-        } catch (e) { cont.innerHTML = '<span class="text-danger">No se pudo calcular.</span>'; }
+            const d = await (await fetch(`/api/simular_costo?precio=${precioDeal}&costo=${costo}&id_meli=${encodeURIComponent(opcion.value)}`)).json();
+            if (mi !== _pedidoSim) return;
+            if (d.error) { cont.innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No se pudo calcular</b>', detalle: d.error }); return; }
+            const tono = d.ganancia_neta < 0 ? 'danger' : (d.margen_pct < 15 ? 'warn' : 'ok');
+            const frase = d.ganancia_neta < 0
+                ? `<b>Vendés a pérdida:</b> perdés ${UX.plata(Math.abs(d.ganancia_neta), 0)} por unidad a este precio`
+                : `Con este precio te quedan <b>${UX.plata(d.ganancia_neta, 0)} por unidad</b> (${UX.pct(d.margen_pct, 1)})${d.margen_pct < 15 ? ' — <b>margen justo</b>' : ''}`;
+            cont.innerHTML = UX.banner({ tono, icono: tono === 'ok' ? 'check' : 'alert', tituloHtml: frase,
+                detalle: (descuento !== null ? `Es un ${UX.pct(descuento, 0)} menos que el precio actual (${UX.plata(precioActual)}). ` : '') + (costo === 0 ? 'Sin costo de fabricación cargado, el margen real es menor.' : '') });
+        } catch (e) { if (mi === _pedidoSim) cont.innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No se pudo calcular ahora</b>', detalle: 'Probá de nuevo.' }); }
     }
+    const programarSim = () => { clearTimeout(_timerSim); _timerSim = setTimeout(actualizarSimuladorPromo, 400); };
+    $sel.addEventListener('change', programarSim);
+    $deal.addEventListener('input', programarSim);
 
-    function precargarPromoDesde(idMeli) {
-        document.getElementById('select-promo-item').value = idMeli;
-        document.getElementById('form-crear-descuento').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        actualizarSimuladorPromo();
-    }
+    document.querySelectorAll('[data-promocionar]').forEach(b => b.addEventListener('click', () => {
+        $sel.value = b.dataset.promocionar;
+        document.getElementById('form-crear-descuento-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        $deal.focus();
+        programarSim();
+    }));
 </script>
 {% endblock %}

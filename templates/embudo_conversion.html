@@ -1,15 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Embudo de Conversión · CoreLux{% endblock %}
+{% from "_ux.html" import banner, kpi, vacio %}
+{% block title %}Embudo de conversión · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Embudo de Conversión</h1>
-        <div class="page-subtitle">Visitas → Preguntas → Ventas de los últimos 30 días — ordenado por lo que más conviene arreglar primero</div>
+        <h1 class="page-title">Embudo de conversión</h1>
+        <div class="page-subtitle">Visitas → preguntas → ventas de los últimos 30 días — <strong>ordenado por lo que más conviene arreglar primero</strong></div>
     </div>
 </div>
 
 {% if not embudo %}
-<div class="panel"><div class="alert-empty">No hay publicaciones activas para analizar.</div></div>
+{{ vacio("No hay publicaciones activas para analizar", "Cuando tengas publicaciones activas con visitas, ves acá cuáles convierten y cuáles no.", "eye", "info") }}
 {% else %}
 
 {% set total_visitas = embudo|sum(attribute='visitas') %}
@@ -17,97 +18,129 @@
 {% set total_ventas = embudo|sum(attribute='vendidas') %}
 {% set a_revisar = embudo|selectattr('diagnostico', 'equalto', 'revisar_ficha')|list %}
 {% set poca_visibilidad = embudo|selectattr('diagnostico', 'equalto', 'poca_visibilidad')|list %}
+{% set conversion_global = (total_ventas / total_visitas * 100) if total_visitas > 0 else 0 %}
 
-{% set pct_preg = ((total_preguntas / total_visitas) if total_visitas > 0 else 0) %}
-{% set pct_vnt = ((total_ventas / total_visitas) if total_visitas > 0 else 0) %}
-{% set max_w = 560 %}
-{% set cx = 300 %}
-{% set sh = 64 %}
-{% set gap = 10 %}
-{% set w1 = max_w %}
-{% set w2 = [pct_preg * max_w, 28]|max %}
-{% set w3 = [pct_vnt * max_w, 18]|max %}
-{% set y2 = sh + gap %}
-{% set y3 = (sh + gap) * 2 %}
+<!-- ── 1. QUÉ ARREGLAR PRIMERO ──────────────────────────────────────────── -->
+{% if a_revisar or poca_visibilidad %}
+<div class="ux-acciones-titulo">Qué arreglar primero <span class="ux-contador">{{ a_revisar|length + poca_visibilidad|length }}</span></div>
+<div class="ux-lista-acciones">
+    {% for e in (a_revisar|sort(attribute='visitas', reverse=True))[:4] %}
+    <div class="ux-item-accion ux-danger">
+        <div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-alert"/></svg></div>
+        <div class="ux-item-accion-cuerpo">
+            <div class="ux-item-accion-titulo">{{ e.titulo }}</div>
+            <div class="ux-item-accion-detalle"><b>{{ e.visitas }} visitas</b> y solo {{ e.vendidas }} venta{{ 's' if e.vendidas != 1 }} — la ven pero no compran. Suele ser <b>fotos, precio o confianza</b>.</div>
+        </div>
+        <button type="button" class="btn btn-urgente" data-drawer="{{ e.id_meli }}">Revisar ficha</button>
+    </div>
+    {% endfor %}
+    {% for e in (poca_visibilidad|sort(attribute='vendidas', reverse=True))[:3] %}
+    <div class="ux-item-accion ux-warn">
+        <div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-eye"/></svg></div>
+        <div class="ux-item-accion-cuerpo">
+            <div class="ux-item-accion-titulo">{{ e.titulo }}</div>
+            <div class="ux-item-accion-detalle">Convierte bien, pero <b>la ve poca gente</b> ({{ e.visitas }} visitas). Ayuda mejorar el título para búsquedas o sumar publicidad.</div>
+        </div>
+        <button type="button" class="btn btn-alerta" data-drawer="{{ e.id_meli }}">Mejorar</button>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+{{ banner("ok", "check", "<b>Tus publicaciones convierten bien</b> — ninguna necesita atención urgente", "Seguí mirando acá cuando cambies precios, fotos o títulos.") }}
+{% endif %}
 
-<div class="panel" style="margin-bottom:24px;">
-    <div class="panel-title">Funnel de Conversión — últimos 30 días</div>
-    <svg viewBox="0 0 600 {{ sh * 3 + gap * 2 + 10 }}" style="width:100%; max-width:600px; display:block; margin:10px auto 0; overflow:visible;" aria-label="Funnel de conversión">
-        <!-- Visitas -->
-        <polygon points="{{ cx - w1/2 }},0 {{ cx + w1/2 }},0 {{ cx + w2/2 }},{{ sh }} {{ cx - w2/2 }},{{ sh }}"
-            fill="var(--accent-cyan)" fill-opacity="0.22" stroke="var(--accent-cyan)" stroke-opacity="0.6" stroke-width="1.5" stroke-linejoin="round"/>
-        <text x="{{ cx }}" y="{{ sh/2 + 6 }}" text-anchor="middle" fill="var(--accent-cyan)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_visitas | int }} visitas</text>
-        <!-- Conector + pct -->
-        <line x1="{{ cx }}" y1="{{ sh }}" x2="{{ cx }}" y2="{{ y2 }}" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3,3"/>
-        <text x="{{ cx }}" y="{{ sh + gap/2 + 4 }}" text-anchor="middle" fill="var(--text-faint)" font-size="10">{{ "%.1f"|format(pct_preg * 100) }}%</text>
-        <!-- Preguntas -->
-        <polygon points="{{ cx - w2/2 }},{{ y2 }} {{ cx + w2/2 }},{{ y2 }} {{ cx + w3/2 }},{{ y2 + sh }} {{ cx - w3/2 }},{{ y2 + sh }}"
-            fill="var(--accent-primary)" fill-opacity="0.2" stroke="var(--accent-primary)" stroke-opacity="0.55" stroke-width="1.5" stroke-linejoin="round"/>
-        <text x="{{ cx }}" y="{{ y2 + sh/2 + 6 }}" text-anchor="middle" fill="var(--accent-primary)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_preguntas | int }} preguntas</text>
-        <!-- Conector + pct -->
-        <line x1="{{ cx }}" y1="{{ y2 + sh }}" x2="{{ cx }}" y2="{{ y3 }}" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-dasharray="3,3"/>
-        <text x="{{ cx }}" y="{{ y2 + sh + gap/2 + 4 }}" text-anchor="middle" fill="var(--text-faint)" font-size="10">{{ "%.1f"|format(pct_vnt * 100) }}%</text>
-        <!-- Ventas -->
-        <polygon points="{{ cx - w3/2 }},{{ y3 }} {{ cx + w3/2 }},{{ y3 }} {{ cx + w3/2 - 6 }},{{ y3 + sh }} {{ cx - w3/2 + 6 }},{{ y3 + sh }}"
-            fill="var(--success)" fill-opacity="0.22" stroke="var(--success)" stroke-opacity="0.6" stroke-width="1.5" stroke-linejoin="round"/>
-        <text x="{{ cx }}" y="{{ y3 + sh/2 + 6 }}" text-anchor="middle" fill="var(--success)" font-size="13" font-weight="700" font-family="var(--font-data)">{{ total_ventas | int }} ventas</text>
-    </svg>
+<div class="ux-kpis">
+    {{ kpi("Visitas (30 d)", total_visitas|numero, "info", "eye", "a todas tus publicaciones") }}
+    {{ kpi("Preguntas (30 d)", total_preguntas|numero, "accion", "chat", (total_preguntas / total_visitas * 100)|pct ~ " de las visitas" if total_visitas else "") }}
+    {{ kpi("Ventas (30 d)", total_ventas|numero, "ok", "box", "unidades vendidas") }}
+    {{ kpi("Conversión global", conversion_global|pct(2), "ok" if conversion_global >= 1.5 else ("warn" if conversion_global >= 0.5 else "danger"), "percent", "ventas sobre visitas") }}
+    {{ kpi("Para revisar ficha", a_revisar|length, "danger" if a_revisar else "ok", "alert", "visitas sin ventas") }}
 </div>
 
-<div class="stat-strip stat-strip-kpi">
-    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-eye"/></svg></span><span class="stat-chip-label">Visitas totales (30d)</span></div><div class="stat-chip-value">{{ total_visitas }}</div></div>
-    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-chat"/></svg></span><span class="stat-chip-label">Preguntas (30d)</span></div><div class="stat-chip-value">{{ total_preguntas }}</div></div>
-    <div class="stat-chip kpi-card accent-success"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-box"/></svg></span><span class="stat-chip-label">Ventas totales (30d)</span></div><div class="stat-chip-value">{{ total_ventas }}</div></div>
-    <div class="stat-chip kpi-card accent-danger"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-alert"/></svg></span><span class="stat-chip-label">Para revisar ficha</span></div><div class="stat-chip-value">{{ a_revisar|length }}</div></div>
-</div>
+<!-- ── 2. EL EMBUDO ─────────────────────────────────────────────────────── -->
+{% set max_w = 560 %}{% set cx = 300 %}{% set sh = 64 %}{% set gap = 10 %}
+{% set pct_preg = (total_preguntas / total_visitas) if total_visitas > 0 else 0 %}
+{% set pct_vnt = (total_ventas / total_visitas) if total_visitas > 0 else 0 %}
+{% set w1 = max_w %}{% set w2 = [pct_preg * max_w, 28]|max %}{% set w3 = [pct_vnt * max_w, 18]|max %}
+{% set y2 = sh + gap %}{% set y3 = (sh + gap) * 2 %}
+<details class="ux-detalle" open>
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-eye"/></svg> Tu embudo de los últimos 30 días</summary>
+    <div class="ux-detalle-cuerpo">
+        <svg viewBox="0 0 600 {{ sh * 3 + gap * 2 + 10 }}" style="width:100%; max-width:600px; display:block; margin:6px auto 0; overflow:visible;" role="img" aria-label="Embudo: {{ total_visitas|int }} visitas, {{ total_preguntas|int }} preguntas, {{ total_ventas|int }} ventas">
+            <polygon points="{{ cx - w1/2 }},0 {{ cx + w1/2 }},0 {{ cx + w2/2 }},{{ sh }} {{ cx - w2/2 }},{{ sh }}" fill="var(--accent-cyan)" fill-opacity="0.3" stroke="var(--accent-cyan)" stroke-opacity="0.8" stroke-width="1.5" stroke-linejoin="round"/>
+            <text x="{{ cx }}" y="{{ sh/2 + 6 }}" text-anchor="middle" fill="var(--accent-cyan)" font-size="14" font-weight="800" font-family="var(--font-data)">{{ total_visitas|int }} visitas</text>
+            <text x="{{ cx }}" y="{{ sh + gap/2 + 4 }}" text-anchor="middle" fill="var(--text-secondary)" font-size="10" font-weight="700">{{ "%.1f"|format(pct_preg * 100) }}% preguntan</text>
+            <polygon points="{{ cx - w2/2 }},{{ y2 }} {{ cx + w2/2 }},{{ y2 }} {{ cx + w3/2 }},{{ y2 + sh }} {{ cx - w3/2 }},{{ y2 + sh }}" fill="var(--accent-primary)" fill-opacity="0.3" stroke="var(--accent-primary)" stroke-opacity="0.8" stroke-width="1.5" stroke-linejoin="round"/>
+            <text x="{{ cx }}" y="{{ y2 + sh/2 + 6 }}" text-anchor="middle" fill="var(--accent-primary)" font-size="14" font-weight="800" font-family="var(--font-data)">{{ total_preguntas|int }} preguntas</text>
+            <text x="{{ cx }}" y="{{ y2 + sh + gap/2 + 4 }}" text-anchor="middle" fill="var(--text-secondary)" font-size="10" font-weight="700">{{ "%.1f"|format(pct_vnt * 100) }}% compran</text>
+            <polygon points="{{ cx - w3/2 }},{{ y3 }} {{ cx + w3/2 }},{{ y3 }} {{ cx + w3/2 - 6 }},{{ y3 + sh }} {{ cx - w3/2 + 6 }},{{ y3 + sh }}" fill="var(--success)" fill-opacity="0.3" stroke="var(--success)" stroke-opacity="0.8" stroke-width="1.5" stroke-linejoin="round"/>
+            <text x="{{ cx }}" y="{{ y3 + sh/2 + 6 }}" text-anchor="middle" fill="var(--success)" font-size="14" font-weight="800" font-family="var(--font-data)">{{ total_ventas|int }} ventas</text>
+        </svg>
+    </div>
+</details>
 
+<!-- ── 3. DETALLE POR PUBLICACIÓN ──────────────────────────────────────── -->
+<div class="ux-seccion ux-accion">Detalle por publicación</div>
 <div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">
-        <span>Detalle por publicación</span>
-        <div class="flex-gap" style="font-size:0.85em;">
-            <span class="text-muted" style="align-self:center;">Ordenar por:</span>
-            <button type="button" class="btn btn-secondary embudo-orden-btn active" data-orden="visitas" onclick="ordenarEmbudo('visitas', this)" style="padding:6px 12px; font-size:0.9em;">Visitas</button>
-            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="preguntas" onclick="ordenarEmbudo('preguntas', this)" style="padding:6px 12px; font-size:0.9em;">Preguntas</button>
-            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="vendidas" onclick="ordenarEmbudo('vendidas', this)" style="padding:6px 12px; font-size:0.9em;">Ventas</button>
-            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="tasa_conversion" onclick="ordenarEmbudo('tasa_conversion', this)" style="padding:6px 12px; font-size:0.9em;">Conversión</button>
+    <div class="flex-gap" style="font-size:0.85em; margin-bottom:14px;">
+        <span class="text-muted">Ordenar por:</span>
+        <div class="ux-periodo-botones">
+            <button type="button" class="btn btn-secondary embudo-orden-btn active" data-orden="visitas" onclick="ordenarEmbudo('visitas', this)">Visitas</button>
+            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="preguntas" onclick="ordenarEmbudo('preguntas', this)">Preguntas</button>
+            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="vendidas" onclick="ordenarEmbudo('vendidas', this)">Ventas</button>
+            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="tasa_conversion" onclick="ordenarEmbudo('tasa_conversion', this)">Conversión</button>
         </div>
     </div>
     <div id="embudo-lista">
     {% for e in embudo %}
-    <div class="embudo-fila {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}"
-         data-visitas="{{ e.visitas }}" data-preguntas="{{ e.preguntas }}" data-vendidas="{{ e.vendidas }}" data-tasa="{{ e.tasa_conversion or 0 }}">
-        <div class="embudo-titulo" onclick="abrirDrawer('{{ e.id_meli }}')" style="cursor:pointer;">
-            {% if e.thumbnail %}<img src="{{ e.thumbnail }}" class="thumb-sm">{% endif %}
+    <div class="embudo-fila {% if loop.index > 6 %}oculto-mostrar-mas{% endif %}" data-visitas="{{ e.visitas }}" data-preguntas="{{ e.preguntas }}" data-vendidas="{{ e.vendidas }}" data-tasa="{{ e.tasa_conversion or 0 }}">
+        <div class="embudo-titulo" data-drawer="{{ e.id_meli }}" style="cursor:pointer;">
+            {% if e.thumbnail %}<img src="{{ e.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}
             <strong>{{ e.titulo }}</strong>
-            {% if e.diagnostico == 'revisar_ficha' %}<span class="badge badge-danger">Revisar ficha</span>
-            {% elif e.diagnostico == 'poca_visibilidad' %}<span class="badge badge-warning">Poca visibilidad</span>
-            {% elif e.diagnostico == 'funciona_bien' %}<span class="badge badge-success">Funciona bien</span>
-            {% else %}<span class="badge badge-neutral">Sin visitas todavía</span>{% endif %}
-            <span class="text-muted" style="margin-left:auto; font-size:0.82em; white-space:nowrap;">${{ "%.0f"|format(e.precio) }} · Stock: {{ e.stock_total }}</span>
+            {% if e.diagnostico == 'revisar_ficha' %}<span class="ux-pill ux-danger">Revisar ficha</span>
+            {% elif e.diagnostico == 'poca_visibilidad' %}<span class="ux-pill ux-warn">Poca visibilidad</span>
+            {% elif e.diagnostico == 'funciona_bien' %}<span class="ux-pill ux-ok">Funciona bien</span>
+            {% else %}<span class="ux-pill ux-neutral ux-pill-suave">Sin visitas todavía</span>{% endif %}
+            <span class="text-muted" style="margin-left:auto; font-size:0.82em; white-space:nowrap;">{{ e.precio|plata }} · stock {{ e.stock_total }}</span>
         </div>
         <div class="embudo-barras">
             <div class="embudo-etapa">
-                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-eye"/></svg>{{ e.visitas }} visitas</span>
-                <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ '100' if e.visitas > 0 else '0' }}" style="width:0%; background:var(--accent-denim);"></div></div>
+                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-eye"/></svg><b>{{ e.visitas }}</b> visitas</span>
+                <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ '100' if e.visitas > 0 else '0' }}" style="width:0%; background:var(--accent-cyan);"></div></div>
             </div>
             <div class="embudo-etapa">
-                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;color:var(--accent-primary);"><use href="#icon-info"/></svg>{{ e.preguntas }} preguntas</span>
-                <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ ((e.preguntas / e.visitas * 100) if e.visitas > 0 else 0)|round(1) }}" style="width:0%; background:var(--accent-gold);"></div></div>
+                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;color:var(--accent-primary);"><use href="#icon-chat"/></svg><b>{{ e.preguntas }}</b> preguntas</span>
+                <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ ((e.preguntas / e.visitas * 100) if e.visitas > 0 else 0)|round(1) }}" style="width:0%; background:var(--accent-primary);"></div></div>
             </div>
             <div class="embudo-etapa">
-                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-box"/></svg>{{ e.vendidas }} ventas {% if e.tasa_conversion is not none %}({{ e.tasa_conversion }}%){% endif %}</span>
+                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-box"/></svg><b>{{ e.vendidas }}</b> ventas {% if e.tasa_conversion is not none %}({{ e.tasa_conversion|pct(2) }}){% endif %}</span>
                 <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ (e.tasa_conversion or 0)|round(1) }}" style="width:0%; background:var(--success);"></div></div>
             </div>
         </div>
     </div>
     {% endfor %}
     </div>
-    {% if embudo|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" id="embudo-btn-mostrar-mas" onclick="mostrarMasGenerico(this)">Mostrar {{ embudo|length - 5 }} más...</button>
+    {% if embudo|length > 6 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" id="embudo-btn-mostrar-mas" onclick="mostrarMasGenerico(this)">Ver las {{ embudo|length - 6 }} publicaciones restantes</button>
     {% endif %}
 </div>
 
+{% if zombies %}
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--text-faint);"><use href="#icon-alert"/></svg> Publicaciones "zombie": sin visitas ni ventas en 60 días <span class="ux-pill ux-neutral ux-pill-suave">{{ zombies|length }}</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="page-subtitle" style="margin-bottom:12px;">Ocupan lugar en tu catálogo sin traerte resultados. Vale la pena <b>revisarlas o pausarlas</b>. Tocá una para abrir su ficha.</div>
+        <div class="flex-gap">
+            {% for z in zombies %}
+            <button type="button" class="ux-pill ux-neutral ux-pill-suave" style="cursor:pointer; border:0; padding:8px 14px; font-size:0.85em;" data-drawer="{{ z.id_meli }}">{{ z.titulo }}</button>
+            {% endfor %}
+        </div>
+    </div>
+</details>
+{% endif %}
+
 <script>
+    document.addEventListener('click', (ev) => { const b = ev.target.closest('[data-drawer]'); if (b) abrirDrawer(b.dataset.drawer); });
     document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(() => requestAnimationFrame(() => {
             document.querySelectorAll('.embudo-barra[data-w]').forEach(el => { el.style.width = el.dataset.w + '%'; });
@@ -122,41 +155,12 @@
         _embudoOrdenAsc = yaActivo ? !_embudoOrdenAsc : false;
         document.querySelectorAll('.embudo-orden-btn').forEach(b => b.classList.remove('active'));
         boton.classList.add('active');
-
         const clave = campo === 'tasa_conversion' ? 'tasa' : campo;
-        filas.sort((a, b) => {
-            const va = parseFloat(a.dataset[clave]) || 0;
-            const vb = parseFloat(b.dataset[clave]) || 0;
-            return _embudoOrdenAsc ? va - vb : vb - va;
-        });
-        filas.forEach((f, i) => {
-            f.classList.toggle('oculto-mostrar-mas', i >= 5);
-            cont.appendChild(f);
-        });
+        filas.sort((a, b) => { const va = parseFloat(a.dataset[clave]) || 0, vb = parseFloat(b.dataset[clave]) || 0; return _embudoOrdenAsc ? va - vb : vb - va; });
+        filas.forEach((f, i) => { f.classList.toggle('oculto-mostrar-mas', i >= 6); cont.appendChild(f); });
         const btnMas = document.getElementById('embudo-btn-mostrar-mas');
-        if (btnMas) btnMas.style.display = filas.length > 5 ? '' : 'none';
+        if (btnMas) btnMas.style.display = filas.length > 6 ? '' : 'none';
     }
 </script>
-
-{% if zombies %}
-<div class="panel">
-    <div class="panel-title"><svg class="icon" style="color:var(--text-faint);"><use href="#icon-alert"/></svg> Publicaciones "Zombie" — cero visitas y cero ventas en 60 días ({{ zombies|length }})</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">
-        Sin visitas ni ventas en 60 días — ocupan lugar en tu catálogo sin traerte resultados. Vale la pena revisarlas o pausarlas. Tocá una para abrirla en el Drawer.
-    </div>
-    <div class="flex-gap">
-        {% for z in zombies %}
-        <button type="button" class="badge badge-neutral" style="cursor:pointer; font-size:0.9em; padding:8px 14px; border:none;" onclick="abrirDrawer('{{ z.id_meli }}')">
-            {{ z.titulo }}
-        </button>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-<div class="page-subtitle">
-    <svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg><strong>Revisar ficha</strong>: tiene visitas pero casi no convierte — el problema suele ser fotos, precio o confianza, no visibilidad.
-    <strong>Poca visibilidad</strong>: la ficha funciona pero la ve poca gente — ahí ayuda mejorar título/SEO o sumar publicidad.
-</div>
 {% endif %}
 {% endblock %}
