@@ -1807,6 +1807,7 @@ def facturacion_vista():
     facturado_bruto = 0.0
     ganancia_bruta_real = 0.0
     ganancia_neta_final = 0.0
+    gastos_periodo = 0.0
     barra_segmentos = None
     waterfall_facturacion = None
 
@@ -1885,6 +1886,9 @@ def facturacion_vista():
         ganancia_bruta_formateada=formatear_moneda(ganancia_bruta_real),
         ganancia_neta_formateada=formatear_moneda(ganancia_neta_final),
         ganancia_neta_negativa=ganancia_neta_final < 0,
+        rs={"facturado": facturado_bruto, "cargos": total_cargos, "gastos": gastos_periodo, "ganancia_bruta": ganancia_bruta_real,
+            "ganancia_neta": ganancia_neta_final, "pendiente": pendiente, "percepciones": percepciones_total,
+            "pagos_cobrados": pagos_cobrados, "adeudado": total_adeudado},
         barra_segmentos=barra_segmentos, waterfall_facturacion=waterfall_facturacion, active_nav="facturacion"
     )
 
@@ -1905,7 +1909,16 @@ def costos_vista():
     fecha_hasta = request.args.get("fecha_hasta") or datetime.now().strftime("%Y-%m-%d")
     fecha_desde = request.args.get("fecha_desde") or datetime.now().replace(day=1).strftime("%Y-%m-%d")
     gastos, stats, productos = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta, g.cuenta_id)
-    return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, active_nav="costos")
+    # Los talles de un mismo modelo se cargan juntos. Primero los modelos activos con talles sin costo (lo urgente), después el resto.
+    grupos = {}
+    for p in productos:
+        grupos.setdefault(p["modelo"], []).append(p)
+    modelos = sorted(
+        ({"modelo": m, "talles": it, "activo": any(x["estado"] == "active" for x in it),
+          "sin_costo": sum(1 for x in it if x["estado"] == "active" and not x["precio_costo"])} for m, it in grupos.items()),
+        key=lambda gr: (not gr["activo"], -gr["sin_costo"], gr["modelo"])
+    )
+    return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, modelos=modelos, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, active_nav="costos")
 
 
 @app.route("/ventas_manuales")
@@ -1985,10 +1998,14 @@ def guardar_costos_masivo():
         cursor = conexion.cursor()
         for id_meli, nuevo_costo in costos_dict.items():
             try:
-                cursor.execute("UPDATE productos_padre SET precio_costo = %s WHERE id_meli = %s", (float(nuevo_costo), id_meli))
-                actualizados += cursor.rowcount
+                costo = float(nuevo_costo)
             except (ValueError, TypeError):
                 continue
+            # Un costo negativo o "nan"/"inf" no tiene sentido y ensuciaría todos los márgenes
+            if not (0 <= costo < 1e12):
+                continue
+            cursor.execute("UPDATE productos_padre SET precio_costo = %s WHERE id_meli = %s", (costo, id_meli))
+            actualizados += cursor.rowcount
     return jsonify({"ok": True, "actualizados": actualizados})
 
 

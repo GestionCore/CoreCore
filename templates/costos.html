@@ -1,323 +1,244 @@
 {% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
 {% block title %}Costos · CoreLux{% endblock %}
 {% block content %}
+{# Solo cuentan las publicaciones activas: una pausada sin costo no infla ninguna ganancia hoy #}
+{% set activos = productos|selectattr('estado', 'equalto', 'active')|list %}
+{% set sin_costo = activos|selectattr('precio_costo', 'equalto', 0.0)|list %}
+{% set con_costo = activos|length - sin_costo|length %}
+{% set con_perdida = activos|selectattr('ganancia_negativa')|list %}
+
 <div class="page-header">
     <div>
-        <h1 class="page-title">Costos del negocio</h1>
-        <div class="page-subtitle">Período: {{ fecha_desde }} al {{ fecha_hasta }}</div>
+        <h1 class="page-title">Costos</h1>
+        <div class="page-subtitle">Lo que te cuesta fabricar y mantener el negocio — <strong>sin esto, la ganancia real no es real</strong></div>
     </div>
-    <button type="button" class="btn btn-denim" onclick="abrirCalculadoraCostos()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-coin"/></svg> Calculadora de Costos MeLi</button>
+    <a class="btn btn-secondary" href="/calculadora"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-calculator"/></svg> Calculadora de comisiones</a>
 </div>
 
+<!-- ── 1. ESTADO: ¿tengo cargado lo que necesita la ganancia real? ───────── -->
+{% if activos %}
+{% if sin_costo %}
+{{ banner("warn", "alert", "<b>Falta el costo de fabricación de " ~ sin_costo|length ~ " de tus " ~ activos|length ~ " publicaciones activas</b>", "Mientras falte, tu ganancia neta real es más alta que la verdadera. Cargá el costo de un talle y copialo a los demás del modelo.", "Cargar costos", "#costos-fabricacion", "btn-alerta") }}
+{% elif con_perdida %}
+{{ banner("danger", "alert", "<b>" ~ con_perdida|length ~ " publicación(es) venden por debajo de su costo</b> con los precios actuales", "Revisá el precio o el costo de las que aparecen en rojo abajo.", "Ver cuáles", "#costos-fabricacion", "btn-urgente") }}
+{% else %}
+{{ banner("ok", "check", "<b>Todas tus publicaciones tienen costo cargado</b> y ninguna vende a pérdida", "Tu ganancia neta real se calcula con datos completos.") }}
+{% endif %}
+{% endif %}
+
+<div class="ux-kpis">
+    {{ kpi("Publicaciones con costo", con_costo ~ " de " ~ activos|length, "ok" if not sin_costo else "warn", "check", "activas con costo de fabricación cargado") }}
+    {{ kpi("Venden a pérdida", con_perdida|length, "danger" if con_perdida else "ok", "alert", "precio menor que todos los costos") }}
+    {{ kpi("Gastos fijos", "$" ~ stats.fijos.split(',')[0], "accion", "wallet", "alquiler, sueldos, abonos…") }}
+    {{ kpi("Gastos variables", "$" ~ stats.variables.split(',')[0], "info", "receipt", "bolsas, embalaje, etc.") }}
+    {{ kpi("Gastos del período", "$" ~ stats.total.split(',')[0], "neutral", "coin", "fijos + variables · " ~ fecha_desde ~ " al " ~ fecha_hasta) }}
+</div>
+
+<!-- ── 2. COSTO DE FABRICACIÓN POR MODELO ───────────────────────────────── -->
+<div class="ux-seccion ux-warn" id="costos-fabricacion">Costo de fabricación por modelo
+    {% if sin_costo %}<span class="ux-pill ux-warn">{{ sin_costo|length }} sin costo</span>{% endif %}
+</div>
+<div class="text-muted" style="font-size:0.88em; margin:-6px 0 14px;">Escribí lo que te cuesta cada unidad. Abajo de cada talle ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>
+
+{% if not productos %}
+{{ vacio("Todavía no hay publicaciones sincronizadas", "Sincronizá para traer tu catálogo y poder cargarles el costo.", "refresh", "accion") }}
+{% else %}
+<div id="lista-costos-productos">
+    {% for gr in modelos %}
+    {% set modelo = gr.modelo %}{% set items = gr.talles %}
+    {% set sin_c = items|selectattr('precio_costo', 'equalto', 0.0)|list %}
+    <div class="ux-modelo-costo panel" data-modelo="{{ modelo }}" style="padding:0; overflow:hidden;">
+        <div class="ux-modelo-cabecera">
+            {% if items[0].thumbnail %}<img src="{{ items[0].thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:800;">{{ modelo }}</div>
+                <div class="text-muted" style="font-size:0.8em;">{{ items|length }} talle{{ 's' if items|length != 1 }}{% if sin_c %} · <b style="color:var(--semantic-warning);">{{ sin_c|length }} sin costo</b>{% else %} · <b style="color:var(--success);">con costo cargado</b>{% endif %}</div>
+            </div>
+            <div class="ux-copiar-costo">
+                <label class="field-label" style="margin:0;">Mismo costo para todos los talles</label>
+                <span class="flex-gap" style="gap:6px;">
+                    <input type="number" step="0.01" min="0" inputmode="decimal" placeholder="$ por unidad" class="input-costo-modelo" aria-label="Costo de todos los talles de {{ modelo }}">
+                    <button type="button" class="btn btn-secondary btn-copiar-costo">Aplicar a todos</button>
+                </span>
+            </div>
+        </div>
+        <div class="ux-filas-costo">
+            {% for p in items %}
+            <div class="ux-fila-costo" data-precio="{{ p.precio }}" data-comision="{{ p.comision if p.comision is not none else '' }}" data-envio="{{ p.envio }}">
+                <div class="ux-fila-costo-talle"><span class="ux-pill ux-neutral ux-pill-suave"><b>{{ p.talle }}</b></span>{% if p.estado != 'active' %} <span class="ux-pill ux-warn ux-pill-suave">Pausada</span>{% endif %}</div>
+                <div class="ux-fila-costo-precio text-muted">Precio <b style="color:var(--text-primary);">{{ ('$' ~ p.precio_formateado.split(',')[0]) if p.precio_formateado else '—' }}</b></div>
+                <div class="ux-fila-costo-input">
+                    <input type="number" step="0.01" min="0" inputmode="decimal" class="input-costo-producto" data-id-meli="{{ p.id }}" data-original="{{ p.precio_costo }}" value="{{ p.precio_costo if p.precio_costo else '' }}" placeholder="0" aria-label="Costo de fabricación, talle {{ p.talle }}">
+                </div>
+                <div class="ux-fila-costo-ganancia" data-ganancia></div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="ux-barra-accion" id="barra-costos" style="display:none;" role="status">
+    <div class="ux-barra-accion-texto"><b id="texto-cambios-costos">0 costos</b> sin guardar</div>
+    <div class="flex-gap">
+        <button type="button" class="btn btn-secondary" onclick="descartarCostos()">Descartar</button>
+        <button type="button" class="btn btn-primary btn-lg" id="btn-guardar-costos-masivo" onclick="guardarCostosMasivo()"><svg class="icon"><use href="#icon-check"/></svg><span id="btn-guardar-texto">Guardar costos</span></button>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── 3. GASTOS DEL NEGOCIO ───────────────────────────────────────────── -->
+<div class="ux-seccion ux-info">Gastos del negocio</div>
+
+<form action="/costos" method="GET" class="ux-periodo no-imprimir">
+    <div class="ux-periodo-botones">
+        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(7, this)">7 días</button>
+        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(14, this)">14 días</button>
+        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(30, this)">30 días</button>
+    </div>
+    <div class="rango-fechas" id="rango-costos" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
+        <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-costos')"></button>
+        <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
+    </div>
+    <button type="submit" class="btn btn-primary">Ver período</button>
+</form>
+
 <div class="panel">
-    <div class="panel-title"><svg class="icon"><use href="#icon-chat"/></svg> Cargar un gasto por chat</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">Describilo con tus palabras — por ejemplo "el alquiler sale 150 mil por mes desde julio". Nunca se guarda nada sin que lo confirmes vos.</div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-chat"/></svg> Contame un gasto y lo cargo por vos</div>
+    <div class="page-subtitle" style="margin-bottom:12px;">Por ejemplo: <em>"el alquiler sale 150 mil por mes desde julio"</em>. <b>Nunca se guarda nada sin que lo confirmes.</b></div>
     <div id="costos-chat-mensajes" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px; max-height:280px; overflow-y:auto;"></div>
     <div id="costos-chat-propuesta" style="display:none;"></div>
     <form id="costos-chat-form" onsubmit="return enviarMensajeCostosChat(event)" class="filter-row" style="margin:0;">
-        <input type="text" id="costos-chat-input" class="field-input" placeholder="Escribí acá el gasto..." style="flex:1;" autocomplete="off">
-        <button type="submit" class="btn btn-denim">Enviar</button>
+        <input type="text" id="costos-chat-input" class="field-input" placeholder="Escribí el gasto con tus palabras…" style="flex:1;" autocomplete="off">
+        <button type="submit" class="btn btn-primary">Enviar</button>
     </form>
 </div>
 
-<div class="calc-overlay" id="calc-overlay" onclick="if(event.target===this) cerrarCalculadoraCostos()">
-    <div class="calc-panel" id="calc-panel">
-        <div class="calc-header">
-            <h2 style="margin:0; font-family:var(--font-display);"><svg class="icon" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;color:var(--accent-primary);"><use href="#icon-coin"/></svg>Calculadora de Costos Real</h2>
-            <span style="cursor:pointer;" onclick="cerrarCalculadoraCostos()"><svg class="icon" style="width:16px;height:16px;"><use href="#icon-x"/></svg></span>
-        </div>
-        <div class="calc-body">
-            <div class="page-subtitle" style="margin-bottom:16px;">
-                Calculá al instante cuánto te queda con el precio que quieras probar, con los datos actuales de Mercado Libre.
-            </div>
-            <div class="field-group" style="margin-bottom:14px;">
-                <label class="field-label">Categoría (de tu propio catálogo)</label>
-                <select id="calc-categoria"><option value="">Cargando categorías...</option></select>
-            </div>
-            <div class="field-group" style="margin-bottom:14px;">
-                <label class="field-label">Precio de venta ($)</label>
-                <input type="number" step="0.01" id="calc-precio" oninput="calcularCostoReal()">
-            </div>
-            <div class="field-group" style="margin-bottom:14px;">
-                <label class="field-label">Tipo de publicación</label>
-                <select id="calc-listing-type" onchange="calcularCostoReal()">
-                    <option value="gold_special">Clásica</option>
-                    <option value="gold_pro">Premium</option>
-                </select>
-            </div>
-            <label class="flex-gap" style="align-items:center; cursor:pointer; margin-bottom:20px;">
-                <input type="checkbox" id="calc-cuotas" onchange="calcularCostoReal()"> Voy a ofrecer cuotas sin interés
-            </label>
-            <div id="calc-resultado"></div>
-        </div>
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-plus"/></svg> Cargar un gasto a mano</summary>
+    <div class="ux-detalle-cuerpo">
+        <form action="/agregar_gasto" method="POST" class="filter-row">
+            <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
+            <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
+            <div class="field-group" style="flex:2; min-width:200px;"><label class="field-label">Concepto</label><input type="text" name="concepto" placeholder="Ej: Bolsas de envío" required></div>
+            <div class="field-group"><label class="field-label">Tipo</label><select name="categoria"><option value="variable">Variable (cambia mes a mes)</option><option value="fijo">Fijo (siempre igual)</option></select></div>
+            <div class="field-group" style="max-width:150px;"><label class="field-label">Monto ($)</label><input type="number" step="0.01" name="monto" min="0.01" required></div>
+            <div class="field-group"><label class="field-label">Fecha</label><input type="date" name="fecha" value="{{ fecha_hasta }}" required></div>
+            <button type="submit" class="btn btn-primary">Agregar gasto</button>
+        </form>
     </div>
-</div>
+</details>
 
-<div class="panel">
-    <div class="panel-title">Ver otro período</div>
-    <form action="/costos" method="GET" class="filter-row">
-        <div class="rango-fechas" id="rango-costos" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
-            <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-costos')"></button>
-            <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
-        </div>
-        <button type="submit" class="btn btn-secondary">Ver este período</button>
-        <div style="display:flex; gap:6px;">
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(7, this)">7 días</button>
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(14, this)">14 días</button>
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(30, this)">30 días</button>
-        </div>
-    </form>
-</div>
-
-<div class="stat-strip stat-strip-kpi">
-    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-wallet"/></svg></span><span class="stat-chip-label">Gastos fijos</span></div><div class="stat-chip-value">${{ stats.fijos }}</div></div>
-    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="stat-chip-label">Gastos variables</span></div><div class="stat-chip-value">${{ stats.variables }}</div></div>
-    <div class="stat-chip kpi-card accent-danger"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-alert"/></svg></span><span class="stat-chip-label">Total del período</span></div><div class="stat-chip-value">${{ stats.total }}</div></div>
-</div>
-
-<div class="panel">
-    <div class="panel-title">Registrar un gasto</div>
-    <form action="/agregar_gasto" method="POST" class="filter-row">
-        <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
-        <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
-        <div class="field-group" style="flex: 2; min-width: 200px;"><label class="field-label">Concepto</label><input type="text" name="concepto" placeholder="Ej: Bolsas de envío" required></div>
-        <div class="field-group"><label class="field-label">Categoría</label><select name="categoria"><option value="variable">Variable</option><option value="fijo">Fijo</option></select></div>
-        <div class="field-group" style="max-width: 140px;"><label class="field-label">Monto ($)</label><input type="number" step="0.01" name="monto" min="0.01" required></div>
-        <div class="field-group"><label class="field-label">Fecha</label><input type="date" name="fecha" value="{{ fecha_hasta }}" required></div>
-        <button type="submit" class="btn btn-primary">Agregar</button>
-    </form>
-</div>
-
-<div class="panel">
-    <div class="panel-title">Gastos del período ({{ gastos|length }})</div>
+<div class="panel" style="padding:0; overflow:hidden;">
+    <div class="panel-title" style="padding:18px 22px 0;">Gastos del período <span class="text-muted" style="font-weight:600; font-size:0.85em;">{{ gastos|length }}</span></div>
+    {% if gastos %}
+    <div style="overflow-x:auto; padding:0 12px 12px;">
     <table class="data-table">
-        <thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th class="num">Monto</th><th></th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th class="num">Monto</th><th></th></tr></thead>
         <tbody>
             {% for g in gastos %}
             <tr>
                 <td class="text-muted">{{ g.fecha }}</td>
-                <td>{{ g.concepto }}</td>
-                <td><span class="badge {% if g.categoria == 'fijo' %}badge-neutral{% else %}badge-warning{% endif %}">{{ g.categoria|capitalize }}</span></td>
-                <td class="num">${{ g.monto_formateado }}</td>
+                <td><b>{{ g.concepto }}</b>{% if g.recurrente %} <span class="ux-pill ux-info ux-pill-suave" title="Se repite todos los meses: {{ g.monto_mensual_formateado }} por mes">Recurrente</span>{% endif %}</td>
+                <td><span class="ux-pill {{ 'ux-accion ux-pill-suave' if g.categoria == 'fijo' else 'ux-warn ux-pill-suave' }}">{{ g.categoria|capitalize }}</span></td>
+                <td class="num"><b>${{ g.monto_formateado }}</b></td>
                 <td>
                     <form action="/eliminar_gasto/{{ g.id }}" method="POST" onsubmit="confirmarAccion('¿Eliminar este gasto?', this, 'Eliminar'); return false;" style="display:inline;">
                         <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
                         <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
-                        <button type="submit" class="btn btn-danger">Borrar</button>
+                        <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Borrar</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
-            {% if not gastos %}<tr><td colspan="5" class="alert-empty">No hay gastos registrados en este período.</td></tr>{% endif %}
         </tbody>
     </table>
-</div>
-
-<div class="panel">
-    <div class="panel-title">
-        <span>Costo de fabricación y rentabilidad por publicación ({{ productos|length }})</span>
-        <button type="button" class="btn btn-denim" id="btn-guardar-costos-masivo" onclick="guardarCostosMasivo()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-check"/></svg>Guardar todos los cambios</button>
     </div>
-    {% set con_perdida = productos|selectattr('ganancia_negativa')|list %}
-    {% if con_perdida %}
-    <div class="alert alert-danger" style="margin-bottom:18px;">
-        <svg class="icon" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"><use href="#icon-alert"/></svg>
-        {{ con_perdida|length }} de {{ productos|length }} publicaciones están vendiendo por debajo del costo este período.
-    </div>
-    {% endif %}
-    <div id="lista-costos-productos">
-        {% for p in productos[:5] %}
-        <div class="costo-item">
-            <div class="costo-item-header">
-                {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm">{% endif %}
-                <div class="costo-item-titulo">{{ p.titulo }}</div>
-                <div class="field-group" style="max-width:130px;">
-                    <label class="field-label">Costo fabricación</label>
-                    <input type="number" step="0.01" class="input-costo-producto" data-id-meli="{{ p.id }}" value="{{ p.precio_costo }}">
-                </div>
-            </div>
-            {% if p.segmentos_pct %}
-            <div class="unit-economics-bar">
-                <div class="ue-segmento ue-costo" data-w="{{ p.segmentos_pct.costo }}" style="width:0%;" title="Costo de fabricación: ${{ p.precio_costo_formateado }}"></div>
-                <div class="ue-segmento ue-envio" data-w="{{ p.segmentos_pct.envio }}" style="width:0%;" title="Envío promedio: ${{ p.envio_formateado or '0' }}"></div>
-                <div class="ue-segmento ue-comision" data-w="{{ p.segmentos_pct.comision }}" style="width:0%;" title="Comisión MeLi: ${{ p.comision_formateada }}"></div>
-                <div class="ue-segmento ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}" data-w="{{ p.segmentos_pct.ganancia }}" style="width:0%;" title="Ganancia neta: ${{ p.ganancia_neta_formateada }}"></div>
-            </div>
-            <div class="unit-economics-leyenda">
-                <span><i class="ue-dot ue-costo"></i>Costo</span>
-                <span><i class="ue-dot ue-envio"></i>Envío</span>
-                <span><i class="ue-dot ue-comision"></i>Comisión</span>
-                <span class="{% if p.ganancia_negativa %}text-danger{% else %}text-success{% endif %}" style="margin-left:auto; font-weight:700;">
-                    <i class="ue-dot ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}"></i>
-                    Ganancia neta: ${{ p.ganancia_neta_formateada }} de ${{ p.precio_formateado }}
-                </span>
-            </div>
-            {% endif %}
-        </div>
-        {% endfor %}
-        {% if not productos %}<div class="alert-empty">Todavía no hay publicaciones sincronizadas para cargarles costo.</div>{% endif %}
-    </div>
-    {% if productos|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" id="btn-mostrar-mas-costos" onclick="mostrarMasCostos()">Mostrar {{ productos|length - 5 }} más...</button>
+    {% else %}
+    <div style="padding:20px;">{{ vacio("No hay gastos en este período", "Cargá el alquiler, los sueldos o las bolsas de envío para que la ganancia real los descuente.", "wallet", "info") }}</div>
     {% endif %}
 </div>
-
-<template id="template-costos-ocultos">
-    {% for p in productos[5:] %}
-    <div class="costo-item">
-        <div class="costo-item-header">
-            {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm">{% endif %}
-            <div class="costo-item-titulo">{{ p.titulo }}</div>
-            <div class="field-group" style="max-width:130px;">
-                <label class="field-label">Costo fabricación</label>
-                <input type="number" step="0.01" class="input-costo-producto" data-id-meli="{{ p.id }}" value="{{ p.precio_costo }}">
-            </div>
-        </div>
-        {% if p.segmentos_pct %}
-        <div class="unit-economics-bar">
-            <div class="ue-segmento ue-costo" data-w="{{ p.segmentos_pct.costo }}" style="width:0%;" title="Costo de fabricación: ${{ p.precio_costo_formateado }}"></div>
-            <div class="ue-segmento ue-envio" data-w="{{ p.segmentos_pct.envio }}" style="width:0%;" title="Envío promedio: ${{ p.envio_formateado or '0' }}"></div>
-            <div class="ue-segmento ue-comision" data-w="{{ p.segmentos_pct.comision }}" style="width:0%;" title="Comisión MeLi: ${{ p.comision_formateada }}"></div>
-            <div class="ue-segmento ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}" data-w="{{ p.segmentos_pct.ganancia }}" style="width:0%;" title="Ganancia neta: ${{ p.ganancia_neta_formateada }}"></div>
-        </div>
-        <div class="unit-economics-leyenda">
-            <span><i class="ue-dot ue-costo"></i>Costo</span>
-            <span><i class="ue-dot ue-envio"></i>Envío</span>
-            <span><i class="ue-dot ue-comision"></i>Comisión</span>
-            <span class="{% if p.ganancia_negativa %}text-danger{% else %}text-success{% endif %}" style="margin-left:auto; font-weight:700;">
-                <i class="ue-dot ue-ganancia {% if p.ganancia_negativa %}ue-ganancia-negativa{% endif %}"></i>
-                Ganancia neta: ${{ p.ganancia_neta_formateada }} de ${{ p.precio_formateado }}
-            </span>
-        </div>
-        {% endif %}
-    </div>
-    {% endfor %}
-</template>
 
 <script>
-    function animarBarrasCosto(raiz) {
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-            raiz.querySelectorAll('.ue-segmento[data-w]').forEach(el => { el.style.width = el.dataset.w + '%'; });
-        }));
-    }
-    document.addEventListener('DOMContentLoaded', () => {
-        RangoFechas.inicializar('rango-costos');
-        animarBarrasCosto(document.getElementById('lista-costos-productos'));
-    });
-
-    function mostrarMasCostos() {
-        const plantilla = document.getElementById('template-costos-ocultos');
-        const contenedor = document.getElementById('lista-costos-productos');
-        const clon = plantilla.content.cloneNode(true);
-        contenedor.appendChild(clon);
-        document.getElementById('btn-mostrar-mas-costos').remove();
-        animarBarrasCosto(contenedor);
+    // ── Ganancia por unidad en vivo: precio − comisión − envío − costo ────────
+    function pintarGanancia(fila) {
+        const precio = parseFloat(fila.dataset.precio), comision = parseFloat(fila.dataset.comision), envio = parseFloat(fila.dataset.envio) || 0;
+        const costo = parseFloat(fila.querySelector('.input-costo-producto').value) || 0;
+        const cont = fila.querySelector('[data-ganancia]');
+        if (!precio || isNaN(comision)) { cont.innerHTML = '<span class="text-muted" style="font-size:0.8em;">Sin datos de comisión todavía</span>'; return; }
+        const ganancia = precio - comision - envio - costo;
+        const margen = ganancia / precio * 100;
+        const tono = costo === 0 ? 'warn' : (ganancia < 0 ? 'danger' : (margen < 15 ? 'warn' : 'ok'));
+        const texto = costo === 0 ? 'Cargá el costo para ver tu ganancia'
+            : (ganancia < 0 ? `Perdés ${UX.plata(Math.abs(ganancia))} por unidad` : `Ganás ${UX.plata(ganancia)} por unidad (${UX.pct(margen, 0)})`);
+        cont.innerHTML = `<span class="ux-pill ux-${tono} ux-pill-suave">${texto}</span>`;
+        fila.classList.toggle('ux-fila-costo-perdida', costo > 0 && ganancia < 0);
     }
 
-    let categoriasCalculadora = null;
-
-    async function abrirCalculadoraCostos() {
-        document.getElementById('calc-overlay').classList.add('open');
-        if (!categoriasCalculadora) {
-            const resp = await fetch('/api/calculadora_categorias');
-            categoriasCalculadora = await resp.json();
-            const select = document.getElementById('calc-categoria');
-            if (!categoriasCalculadora.length) {
-                select.innerHTML = '<option value="">No se encontraron categorías</option>';
-            } else {
-                select.innerHTML = categoriasCalculadora.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-                calcularCostoReal();
-            }
-        }
+    function cambiosCostos() {
+        return [...document.querySelectorAll('.input-costo-producto')].filter(i => (parseFloat(i.value) || 0) !== (parseFloat(i.dataset.original) || 0));
     }
 
-    function cerrarCalculadoraCostos() {
-        document.getElementById('calc-overlay').classList.remove('open');
+    function refrescarBarraCostos() {
+        const n = cambiosCostos().length;
+        const barra = document.getElementById('barra-costos');
+        if (!barra) return;
+        barra.style.display = n ? '' : 'none';
+        document.getElementById('texto-cambios-costos').textContent = n + (n === 1 ? ' costo' : ' costos');
+        document.getElementById('btn-guardar-texto').textContent = n === 1 ? 'Guardar 1 costo' : 'Guardar ' + n + ' costos';
     }
 
-    async function calcularCostoReal() {
-        const precio = parseFloat(document.getElementById('calc-precio').value);
-        const categoryId = document.getElementById('calc-categoria').value;
-        const listingType = document.getElementById('calc-listing-type').value;
-        const ofreceCuotas = document.getElementById('calc-cuotas').checked;
-        const cont = document.getElementById('calc-resultado');
-
-        if (!precio || precio <= 0 || !categoryId) { cont.innerHTML = ''; return; }
-        cont.innerHTML = '<div class="text-muted">Consultando a MeLi en vivo...</div>';
-
-        try {
-            const resp = await fetch(`/api/calculadora_costos?precio=${precio}&category_id=${categoryId}&listing_type_id=${listingType}&ofrece_cuotas=${ofreceCuotas}`);
-            const d = await resp.json();
-            if (d.error) { cont.innerHTML = `<span class="text-danger">${d.error}</span>`; return; }
-
-            let filasHtml = `
-                <div class="flex-gap" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft);">
-                    <span>Comisión (${d.pct_comision_base !== null && d.pct_comision_base !== undefined ? d.pct_comision_base + '%' : ''})</span>
-                    <strong class="text-danger">-$${d.comision_total.toLocaleString('es-AR', {minimumFractionDigits:2})}</strong>
-                </div>
-            `;
-            if (d.pct_cuotas) {
-                filasHtml += `
-                <div class="flex-gap" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft); font-size:0.85em; color:var(--text-secondary);">
-                    <span>&nbsp;&nbsp;↳ de la cual, costo de cuotas sin interés</span>
-                    <span>${d.pct_cuotas}%</span>
-                </div>`;
-            }
-            if (d.cargo_fijo > 0) {
-                filasHtml += `
-                <div class="flex-gap" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft);">
-                    <span>Cargo fijo (precio bajo)</span><strong class="text-danger">-$${d.cargo_fijo.toLocaleString('es-AR')}</strong>
-                </div>`;
-            }
-            if (d.costo_envio !== null) {
-                filasHtml += `
-                <div class="flex-gap" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-soft);">
-                    <span>Envío${d.envio_obligatorio_gratis ? ' (obligatorio a tu cargo por el precio)' : ''}</span>
-                    <strong class="text-danger">-$${d.costo_envio.toLocaleString('es-AR', {minimumFractionDigits:2})}</strong>
-                </div>`;
-            } else {
-                filasHtml += `
-                <div class="text-muted" style="font-size:0.82em; padding:8px 0;">No pudimos determinar el costo exacto de envío para este precio desde acá — confirmalo en tu panel de MeLi antes de decidir.</div>`;
-            }
-            filasHtml += `
-                <div class="flex-gap" style="justify-content:space-between; padding-top:14px; margin-top:6px; border-top:2px solid var(--glass-border);">
-                    <span style="font-weight:700;">Te queda de este precio</span>
-                    <span class="hero-number acento-primario" style="font-size:1.4em;">$${d.recibis.toLocaleString('es-AR', {minimumFractionDigits:2})}</span>
-                </div>
-                <div class="text-muted" style="font-size:0.78em; margin-top:6px;">Antes de restar el costo de fabricación del producto.</div>
-            `;
-            cont.innerHTML = filasHtml;
-        } catch (e) { cont.innerHTML = '<span class="text-danger">No pudimos calcularlo ahora — probá de nuevo en un momento.</span>'; }
+    function alCambiarCosto(input) {
+        if (input.value !== '' && parseFloat(input.value) < 0) input.value = 0;
+        input.classList.toggle('ux-campo-cambiado', (parseFloat(input.value) || 0) !== (parseFloat(input.dataset.original) || 0));
+        pintarGanancia(input.closest('.ux-fila-costo'));
+        refrescarBarraCostos();
     }
+
+    document.querySelectorAll('.input-costo-producto').forEach(i => i.addEventListener('input', () => alCambiarCosto(i)));
+    document.querySelectorAll('.ux-fila-costo').forEach(pintarGanancia);
+
+    // "Mismo costo para todos los talles del modelo"
+    document.querySelectorAll('.btn-copiar-costo').forEach(btn => btn.addEventListener('click', () => {
+        const modelo = btn.closest('.ux-modelo-costo');
+        const valor = modelo.querySelector('.input-costo-modelo').value;
+        if (valor === '' || parseFloat(valor) < 0) { mostrarToast('Escribí primero el costo por unidad', 'error'); return; }
+        modelo.querySelectorAll('.input-costo-producto').forEach(i => { i.value = valor; alCambiarCosto(i); });
+    }));
+
+    function descartarCostos() {
+        document.querySelectorAll('.input-costo-producto').forEach(i => { i.value = parseFloat(i.dataset.original) ? i.dataset.original : ''; alCambiarCosto(i); });
+    }
+
+    let _costosGuardando = false;
 
     async function guardarCostosMasivo() {
-        const inputsCosto = document.querySelectorAll('.input-costo-producto');
         const cambios = {};
-        inputsCosto.forEach(inp => { cambios[inp.dataset.idMeli] = parseFloat(inp.value) || 0; });
+        cambiosCostos().forEach(i => { cambios[i.dataset.idMeli] = parseFloat(i.value) || 0; });
+        if (!Object.keys(cambios).length) return;
 
         const boton = document.getElementById('btn-guardar-costos-masivo');
         const htmlOriginal = boton.innerHTML;
         boton.disabled = true;
-        boton.innerHTML = '<svg class="icon spin-anim" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg>Guardando...';
-
+        boton.innerHTML = '<svg class="icon spin-anim"><use href="#icon-refresh"/></svg>Guardando…';
         try {
-            const respCostos = await fetch('/guardar_costos_masivo', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ costos: cambios })
-            });
-            const dataCostos = await respCostos.json();
-            if (dataCostos.ok) {
-                const n = dataCostos.actualizados;
-                mostrarToast(`${n} costo${n === 1 ? '' : 's'} guardado${n === 1 ? '' : 's'}`, 'success');
+            const d = await (await fetch('/guardar_costos_masivo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ costos: cambios }) })).json();
+            if (d.ok) {
+                mostrarToast(`✓ ${d.actualizados} costo${d.actualizados === 1 ? '' : 's'} guardado${d.actualizados === 1 ? '' : 's'} — tu ganancia real ya los descuenta`, 'success');
+                setTimeout(() => window.location.reload(), 900);   // recarga: el estado de arriba y los KPIs se recalculan con datos reales
             } else {
                 mostrarToast('No se pudo guardar. Probá de nuevo.', 'error');
+                boton.disabled = false; boton.innerHTML = htmlOriginal; _costosGuardando = false;
             }
         } catch (e) {
             mostrarToast('No se pudo guardar. Probá de nuevo.', 'error');
-        } finally {
-            boton.disabled = false;
-            boton.innerHTML = htmlOriginal;
+            boton.disabled = false; boton.innerHTML = htmlOriginal; _costosGuardando = false;
         }
     }
+
+    window.addEventListener('beforeunload', (e) => { if (!_costosGuardando && cambiosCostos().length) { e.preventDefault(); e.returnValue = ''; } });
+    document.getElementById('btn-guardar-costos-masivo')?.addEventListener('click', () => { _costosGuardando = true; }, true);
+    document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-costos'));
 </script>
 {% endblock %}

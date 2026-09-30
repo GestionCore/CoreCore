@@ -1,221 +1,231 @@
 {% extends "base.html" %}
-{% block title %}Calculadora de MeLi · CoreLux{% endblock %}
+{% block title %}Calculadora · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-calculator"/></svg>Calculadora de Comisiones</h1>
-        <div class="page-subtitle">Desglose real de lo que recibís por cada venta — comisión, cuotas y envío incluidos</div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-calculator"/></svg>Calculadora de comisiones</h1>
+        <div class="page-subtitle">Poné un precio y mirá <strong>cuánto te queda de verdad</strong> — comisión real de MeLi, envío y cuotas incluidos. Se calcula solo, mientras escribís.</div>
     </div>
 </div>
 
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+<div class="ux-calc">
+    <!-- ── Datos ────────────────────────────────────────────────────────── -->
+    <div class="panel" style="margin:0;">
+        <div class="panel-title">1 · Qué vas a vender</div>
 
-<div class="panel">
-    <div class="panel-title">Datos de la venta</div>
-
-    <div class="field-group" style="margin-bottom:14px;">
-        <label class="field-label">Precio de venta ($)</label>
-        <input type="number" id="calc-precio" min="1" step="1" placeholder="ej: 25000" style="font-size:1.2em;">
-    </div>
-
-    <div class="field-group" style="margin-bottom:14px;">
-        <label class="field-label">Categoría</label>
-        <div style="display:flex; gap:8px; margin-bottom:6px;">
-            <input type="text" id="calc-categoria-buscar" placeholder="Buscar categoría de MeLi..." style="flex:1;" oninput="buscarCategoria()">
+        <div class="field-group" style="margin-bottom:16px;">
+            <label class="field-label" for="calc-precio"><b>Precio de venta ($)</b></label>
+            <input type="number" id="calc-precio" min="1" step="1" inputmode="numeric" placeholder="25000" class="ux-input-grande" autofocus>
         </div>
-        <select id="calc-categoria" size="1">
-            <option value="">Cargando tus categorías...</option>
-        </select>
-        <div id="calc-cat-resultados" style="display:none; border:1px solid var(--glass-border); border-radius:var(--radius-sm); max-height:180px; overflow-y:auto; margin-top:4px; background:var(--glass-bg-alt);"></div>
-        <div class="text-muted" style="font-size:0.78em; margin-top:4px;">Seleccioná de tus categorías activas o buscá cualquier categoría de MeLi Argentina.</div>
+
+        <div class="field-group" style="margin-bottom:16px;">
+            <label class="field-label" for="calc-categoria-buscar"><b>Categoría de Mercado Libre</b></label>
+            <input type="text" id="calc-categoria-buscar" placeholder="Buscá: campera, zapatillas, termo…" autocomplete="off" aria-controls="calc-cat-resultados">
+            <div id="calc-cat-resultados" class="ux-lista-opciones" style="display:none;" role="listbox"></div>
+            <div id="calc-cat-elegida" style="margin-top:8px;"></div>
+            <div id="calc-mis-categorias" class="flex-gap" style="margin-top:8px; gap:6px;"></div>
+        </div>
+
+        <div class="field-group" style="margin-bottom:16px;">
+            <label class="field-label"><b>Tipo de publicación</b></label>
+            <div class="ux-periodo-botones">
+                <button type="button" class="btn btn-secondary active" data-listing="gold_special">Clásica</button>
+                <button type="button" class="btn btn-secondary" data-listing="gold_pro">Premium</button>
+            </div>
+        </div>
+
+        <div class="filter-row" style="margin-bottom:0;">
+            <div class="field-group" style="flex:1; min-width:150px;">
+                <label class="field-label" for="calc-costo"><b>Costo de fabricación</b> <span class="text-muted" style="font-weight:400;">(opcional)</span></label>
+                <input type="number" id="calc-costo" min="0" step="1" inputmode="numeric" placeholder="8000">
+            </div>
+            <div class="field-group" style="flex:1; min-width:150px;">
+                <label class="field-label" for="calc-envio"><b>Costo de envío</b> <span class="text-muted" style="font-weight:400;">(si lo sabés)</span></label>
+                <input type="number" id="calc-envio" min="0" step="1" inputmode="numeric" placeholder="3500">
+            </div>
+        </div>
+        <div class="text-muted" style="font-size:0.78em; margin-top:10px;">Con el costo de fabricación ves tu ganancia neta real. El envío depende del peso y tamaño del producto: si MeLi no lo informa desde acá, cargalo vos.</div>
     </div>
 
-    <div class="field-group" style="margin-bottom:18px;">
-        <label class="field-label">Costo de fabricación ($) <span class="text-muted" style="font-weight:400;">(opcional)</span></label>
-        <input type="number" id="calc-costo" min="0" step="1" placeholder="ej: 8000">
-        <div class="text-muted" style="font-size:0.78em; margin-top:4px;">Para calcular la ganancia neta real.</div>
-    </div>
-
-    <button type="button" class="btn btn-primary btn-block" id="calc-btn" onclick="calcular()">
-        <svg class="icon" style="margin-right:6px;vertical-align:middle;"><use href="#icon-chart"/></svg>Calcular
-    </button>
-</div>
-
-<div class="panel" id="panel-resultado" style="display:none;">
-    <div class="panel-title">Desglose de la venta</div>
-    <div id="resultado-contenido"></div>
-</div>
-
-<div class="panel" id="panel-cuotas" style="display:none; grid-column: 1 / -1;">
-    <div class="panel-title">Comparativa: sin cuotas vs. con cuotas</div>
-    <div class="stat-strip" id="cuotas-chips"></div>
-    <div class="text-muted" style="font-size:0.78em; margin-top:12px;">
-        <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
-        Cuando ofrecés cuotas sin interés, MeLi te descuenta el costo financiero — el comprador paga el precio lleno, vos recibís menos.
+    <!-- ── Resultado ────────────────────────────────────────────────────── -->
+    <div id="calc-resultado">
+        <div class="ux-vacio">
+            <div class="ux-vacio-icono"><svg class="icon"><use href="#icon-calculator"/></svg></div>
+            <div class="ux-vacio-titulo">Completá el precio y la categoría</div>
+            <div class="ux-vacio-texto">El resultado aparece acá apenas tengas los dos datos.</div>
+        </div>
     </div>
 </div>
 
-</div>
+<div id="calc-cuotas"></div>
 
 <script>
-// Cuotas sin interés en MeLi Argentina — costo financiero que absorbe el vendedor
-// Fuente: tabla oficial Mercado Pago (actualizar si MELI cambia las tasas)
+// Costo financiero de las cuotas sin interés que absorbe el vendedor. Valores orientativos de la tabla de
+// Mercado Pago: pueden cambiar, por eso el bloque de cuotas se rotula "estimado".
 const CUOTAS_FINANCIACION = [
-    { cuotas: 1,  label: "Pago en 1 cuota",       pct: 0.0    },
-    { cuotas: 3,  label: "3 cuotas sin interés",   pct: 0.0799 },
-    { cuotas: 6,  label: "6 cuotas sin interés",   pct: 0.1199 },
-    { cuotas: 12, label: "12 cuotas sin interés",  pct: 0.2299 },
-    { cuotas: 18, label: "18 cuotas sin interés",  pct: 0.2999 },
-    { cuotas: 24, label: "24 cuotas sin interés",  pct: 0.3699 },
+    { cuotas: 1,  label: 'Contado / 1 cuota',      pct: 0 },
+    { cuotas: 3,  label: '3 cuotas sin interés',   pct: 0.0799 },
+    { cuotas: 6,  label: '6 cuotas sin interés',   pct: 0.1199 },
+    { cuotas: 12, label: '12 cuotas sin interés',  pct: 0.2299 },
+    { cuotas: 18, label: '18 cuotas sin interés',  pct: 0.2999 },
+    { cuotas: 24, label: '24 cuotas sin interés',  pct: 0.3699 },
 ];
 
-let _categorias = [];
-let _buscarTimer = null;
+const $ = id => document.getElementById(id);
+let categoriaElegida = null;      // { id, nombre }
+let tipoPublicacion = 'gold_special';
+let temporizador = null, pedido = 0;
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const sel = document.getElementById('calc-categoria');
-    try {
-        const resp = await fetch('/api/calculadora_categorias');
-        _categorias = await resp.json();
-        if (_categorias.error || !_categorias.length) {
-            sel.innerHTML = '<option value="">Sin categorías activas — usá el buscador</option>';
-            return;
-        }
-        sel.innerHTML = '<option value="">— Seleccioná de tus categorías activas —</option>' +
-            _categorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-    } catch(e) {
-        sel.innerHTML = '<option value="">Error cargando categorías</option>';
-    }
+// ── Categoría: búsqueda + atajos a las del propio catálogo ──────────────────────────────
+function elegirCategoria(id, nombre) {
+    categoriaElegida = { id, nombre };
+    $('calc-cat-resultados').style.display = 'none';
+    $('calc-categoria-buscar').value = '';
+    $('calc-cat-elegida').innerHTML = `<span class="ux-pill ux-accion">${UX.icono('check')}${UX.esc(nombre)}</span>
+        <button type="button" class="btn btn-secondary" style="padding:3px 10px; font-size:0.78em; margin-left:6px;" id="calc-cambiar-cat">Cambiar</button>`;
+    $('calc-cambiar-cat').addEventListener('click', () => { categoriaElegida = null; $('calc-cat-elegida').innerHTML = ''; $('calc-categoria-buscar').focus(); programarCalculo(); });
+    programarCalculo();
+}
+
+function opcionCategoria(c) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'ux-opcion'; b.setAttribute('role', 'option');
+    b.innerHTML = `<b>${UX.esc(c.nombre)}</b><span>${UX.esc(c.id)}</span>`;
+    b.addEventListener('click', () => elegirCategoria(c.id, c.nombre));
+    return b;
+}
+
+let buscarTimer = null;
+$('calc-categoria-buscar').addEventListener('input', () => {
+    clearTimeout(buscarTimer);
+    const q = $('calc-categoria-buscar').value.trim();
+    const caja = $('calc-cat-resultados');
+    if (q.length < 3) { caja.style.display = 'none'; return; }
+    buscarTimer = setTimeout(async () => {
+        caja.style.display = '';
+        caja.innerHTML = '<div class="ux-opcion-msg">Buscando…</div>';
+        try {
+            const data = await (await fetch(`/api/calculadora_buscar_categoria?q=${encodeURIComponent(q)}`)).json();
+            caja.innerHTML = '';
+            if (!data.length) { caja.innerHTML = '<div class="ux-opcion-msg">No encontramos esa categoría — probá con otra palabra</div>'; return; }
+            data.forEach(c => caja.appendChild(opcionCategoria(c)));
+        } catch (e) { caja.innerHTML = '<div class="ux-opcion-msg">No se pudo buscar ahora — probá de nuevo</div>'; }
+    }, 320);
 });
 
-function buscarCategoria() {
-    clearTimeout(_buscarTimer);
-    const q = document.getElementById('calc-categoria-buscar').value.trim();
-    const box = document.getElementById('calc-cat-resultados');
-    if (q.length < 3) { box.style.display = 'none'; return; }
-    _buscarTimer = setTimeout(async () => {
-        box.innerHTML = '<div style="padding:8px 12px; color:var(--text-secondary); font-size:0.85em;">Buscando...</div>';
-        box.style.display = '';
-        try {
-            const r = await fetch(`/api/calculadora_buscar_categoria?q=${encodeURIComponent(q)}`);
-            const data = await r.json();
-            if (!data.length) { box.innerHTML = '<div style="padding:8px 12px; color:var(--text-secondary); font-size:0.85em;">Sin resultados</div>'; return; }
-            box.innerHTML = data.map(c => `
-                <div onclick="seleccionarCategoria('${c.id}', '${c.nombre.replace(/'/g, "&#39;")}')"
-                     style="padding:9px 14px; cursor:pointer; font-size:0.88em; border-bottom:1px solid var(--glass-border);"
-                     onmouseenter="this.style.background='rgba(255,255,255,0.06)'" onmouseleave="this.style.background=''">
-                    <strong>${c.nombre}</strong><span style="color:var(--text-faint); margin-left:8px; font-size:0.8em;">${c.id}</span>
-                </div>`).join('');
-        } catch { box.innerHTML = '<div style="padding:8px 12px; color:var(--danger); font-size:0.85em;">Error buscando</div>'; }
-    }, 350);
-}
+(async function cargarMisCategorias() {
+    try {
+        const cats = await (await fetch('/api/calculadora_categorias')).json();
+        if (!Array.isArray(cats) || !cats.length) return;
+        const cont = $('calc-mis-categorias');
+        cont.innerHTML = '<span class="text-muted" style="font-size:0.78em;">Tus categorías:</span>';
+        cats.slice(0, 6).forEach(c => {
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'ux-pill ux-neutral ux-pill-suave'; b.style.cursor = 'pointer'; b.style.border = '0';
+            b.textContent = c.nombre;
+            b.addEventListener('click', () => elegirCategoria(c.id, c.nombre));
+            cont.appendChild(b);
+        });
+        if (cats.length === 1) elegirCategoria(cats[0].id, cats[0].nombre);   // una sola categoría: ya queda elegida
+    } catch (e) { /* sin atajos: queda el buscador */ }
+})();
 
-function seleccionarCategoria(id, nombre) {
-    const sel = document.getElementById('calc-categoria');
-    // Si ya existe esa opción, seleccionarla; si no, crearla
-    let opt = sel.querySelector(`option[value="${id}"]`);
-    if (!opt) { opt = new Option(nombre, id); sel.add(opt); }
-    sel.value = id;
-    document.getElementById('calc-categoria-buscar').value = nombre;
-    document.getElementById('calc-cat-resultados').style.display = 'none';
-}
+document.querySelectorAll('[data-listing]').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-listing]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    tipoPublicacion = btn.dataset.listing;
+    programarCalculo();
+}));
+['calc-precio', 'calc-costo', 'calc-envio'].forEach(id => $(id).addEventListener('input', programarCalculo));
+
+// ── Cálculo en vivo ────────────────────────────────────────────────────────────────────
+function programarCalculo() { clearTimeout(temporizador); temporizador = setTimeout(calcular, 450); }
 
 async function calcular() {
-    const precio = parseFloat(document.getElementById('calc-precio').value);
-    const categoria = document.getElementById('calc-categoria').value;
-    const costo = parseFloat(document.getElementById('calc-costo').value) || 0;
-    const btn = document.getElementById('calc-btn');
-
-    if (!precio || precio <= 0) { mostrarToast('Ingresá un precio válido', 'error'); return; }
-    if (!categoria) { mostrarToast('Seleccioná o buscá una categoría', 'error'); return; }
-
-    btn.disabled = true;
-    btn.innerHTML = '<svg class="icon spin-anim" style="margin-right:6px;vertical-align:middle;"><use href="#icon-refresh"/></svg>Calculando...';
-
+    const precio = parseFloat($('calc-precio').value);
+    if (!precio || precio <= 0 || !categoriaElegida) { $('calc-cuotas').innerHTML = ''; return; }
+    const miPedido = ++pedido;
+    $('calc-resultado').style.opacity = '0.55';
     try {
-        const base = await fetch(`/api/calculadora_costos?precio=${precio}&category_id=${encodeURIComponent(categoria)}&listing_type_id=gold_special&ofrece_cuotas=false`).then(r => r.json());
-        if (base.error) { mostrarToast(base.error, 'error'); return; }
-        mostrarResultado(base, costo);
-        mostrarComparativaCuotas(base, costo);
-    } catch(e) {
-        mostrarToast('No pudimos calcularlo — probá de nuevo.', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<svg class="icon" style="margin-right:6px;vertical-align:middle;"><use href="#icon-chart"/></svg>Calcular';
+        const d = await (await fetch(`/api/calculadora_costos?precio=${precio}&category_id=${encodeURIComponent(categoriaElegida.id)}&listing_type_id=${tipoPublicacion}&ofrece_cuotas=false`)).json();
+        if (miPedido !== pedido) return;   // llegó tarde: ya hay un cálculo más nuevo
+        $('calc-resultado').style.opacity = '';
+        if (d.error) { $('calc-resultado').innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No pudimos calcular la comisión</b>', detalle: d.error }); $('calc-cuotas').innerHTML = ''; return; }
+        pintarResultado(d);
+    } catch (e) {
+        if (miPedido !== pedido) return;
+        $('calc-resultado').style.opacity = '';
+        $('calc-resultado').innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No pudimos calcularlo ahora</b>', detalle: 'Probá de nuevo en un momento.' });
     }
 }
 
-function fmt(n) { return n !== null && n !== undefined ? '$' + Math.round(n).toLocaleString('es-AR') : '—'; }
-function pct(n) { return n !== null && n !== undefined ? (n * 100).toFixed(1) + '%' : '—'; }
+function pintarResultado(d) {
+    const costo = parseFloat($('calc-costo').value) || 0;
+    const envioManual = parseFloat($('calc-envio').value);
+    const envio = d.costo_envio !== null && d.costo_envio !== undefined ? d.costo_envio : (isNaN(envioManual) ? null : envioManual);
+    const recibis = d.precio - d.comision_total - (envio || 0);
+    const neto = recibis - costo;
+    const base = d.precio;
 
-function mostrarResultado(d, costo) {
-    const gananciaNetaReal = costo > 0 ? (d.recibis - costo) : null;
-    const pctGanancia = (costo > 0 && d.precio > 0) ? ((gananciaNetaReal / d.precio) * 100).toFixed(1) : null;
+    // Con costo cargado el color dice si conviene (mismos umbrales que el resto de la app); sin costo es informativo
+    const margen = costo > 0 ? neto / base * 100 : null;
+    const tono = margen === null ? 'info' : (neto < 0 ? 'danger' : (margen < 15 ? 'warn' : 'ok'));
+    const titulo = margen === null ? 'Te queda de este precio' : 'Tu ganancia neta real';
+    const numero = margen === null ? recibis : neto;
 
-    mostrarPanelConAnimacion(document.getElementById('panel-resultado'));
-    document.getElementById('resultado-contenido').innerHTML = `
-        <div class="stat-strip" style="margin-bottom:16px;">
-            <div class="stat-chip accent-primary">
-                <div class="stat-chip-label">Precio de venta</div>
-                <div class="stat-chip-value">${fmt(d.precio)}</div>
+    const partes = [
+        { n: 'Comisión de MeLi', v: d.comision_total, c: 'var(--danger)' },
+        { n: 'Envío', v: envio || 0, c: 'var(--accent-cyan)' },
+        { n: 'Costo de fabricación', v: costo, c: 'var(--accent-primary)' },
+    ].filter(p => p.v > 0);
+    const gananciaPositiva = Math.max(neto, 0);
+    const total = Math.max(base, partes.reduce((a, p) => a + p.v, 0));
+
+    const avisos = [];
+    if (envio === null) avisos.push(UX.banner({ tono: 'info', icono: 'truck', tituloHtml: '<b>No incluye el envío</b> — MeLi no lo informa para este producto desde acá', detalle: 'Si ofrecés envío gratis, cargalo arriba para ver el resultado completo.' }));
+    else if (d.envio_obligatorio_gratis) avisos.push(UX.banner({ tono: 'warn', icono: 'truck', tituloHtml: '<b>Por este precio el envío es gratis</b> y lo pagás vos', detalle: '' }));
+
+    $('calc-resultado').innerHTML = `
+        <div class="ux-hero ux-${tono}" style="margin:0 0 14px;">
+            <div class="ux-hero-etiqueta">${titulo}</div>
+            <div class="ux-hero-numero">${UX.plata(numero)}</div>
+            <div class="ux-hero-frase">${margen === null
+                ? `De <b>${UX.plata(base)}</b> te llegan <b>${UX.pct(recibis / base * 100, 1)}</b>. <span class="text-muted">Cargá tu costo de fabricación para ver la ganancia neta.</span>`
+                : (neto < 0 ? `<b>Perdés ${UX.plata(Math.abs(neto))}</b> por cada venta a este precio.` : `Es el <b>${UX.pct(margen, 1)}</b> del precio${margen < 15 ? ' — <b>margen justo</b>' : ''}.`)}</div>
+            <div class="ux-reparto" role="img" aria-label="Reparto del precio de venta">
+                ${partes.map(p => `<span style="width:${p.v / total * 100}%; background:${p.c};" title="${UX.esc(p.n)}"></span>`).join('')}
+                ${gananciaPositiva > 0 ? `<span style="width:${gananciaPositiva / total * 100}%; background:var(--success);" title="Te queda"></span>` : ''}
             </div>
-            <div class="stat-chip" style="border-color:var(--danger); background:var(--danger-bg);">
-                <div class="stat-chip-label" style="color:var(--danger);">Comisión MeLi</div>
-                <div class="stat-chip-value text-danger">${fmt(d.comision_total)}</div>
-                <div class="stat-chip-desc">${pct(d.pct_comision_base)} base${d.cargo_fijo ? ' + $' + Math.round(d.cargo_fijo) + ' fijo' : ''}</div>
-            </div>
-            <div class="stat-chip" style="${d.costo_envio ? 'border-color:var(--accent-cyan); background:rgba(56,189,248,0.06);' : ''}">
-                <div class="stat-chip-label" style="${d.costo_envio ? 'color:var(--accent-cyan);' : ''}">Costo de envío</div>
-                <div class="stat-chip-value" style="${d.costo_envio ? 'color:var(--accent-cyan);' : ''}">${d.costo_envio !== null ? fmt(d.costo_envio) : '—'}</div>
-                <div class="stat-chip-desc">${d.envio_obligatorio_gratis ? 'Obligatorio gratis' : (d.costo_envio === null ? 'Consultar' : 'A cargo tuyo')}</div>
-            </div>
-            <div class="stat-chip accent-success">
-                <div class="stat-chip-label">Lo que recibís</div>
-                <div class="stat-chip-value">${fmt(d.recibis)}</div>
-                <div class="stat-chip-desc">${d.precio > 0 ? ((d.recibis / d.precio) * 100).toFixed(1) + '% del precio' : ''}</div>
+            <div class="ux-reparto-leyenda">
+                <div class="ux-reparto-item"><i style="background:var(--danger);"></i><span>Comisión (${d.pct_comision_base !== null && d.pct_comision_base !== undefined ? UX.pct(d.pct_comision_base, 1) : '—'}${d.cargo_fijo ? ' + fijo' : ''})</span><b>${UX.plata(d.comision_total)}</b><em>${UX.pct(d.comision_total / base * 100, 1)}</em></div>
+                ${envio !== null ? `<div class="ux-reparto-item"><i style="background:var(--accent-cyan);"></i><span>Envío</span><b>${UX.plata(envio)}</b><em>${UX.pct(envio / base * 100, 1)}</em></div>` : ''}
+                ${costo > 0 ? `<div class="ux-reparto-item"><i style="background:var(--accent-primary);"></i><span>Fabricación</span><b>${UX.plata(costo)}</b><em>${UX.pct(costo / base * 100, 1)}</em></div>` : ''}
+                <div class="ux-reparto-item ux-reparto-ganancia"><i style="background:var(--success);"></i><span>${margen === null ? 'Te llega' : 'Te queda'}</span><b>${UX.plata(margen === null ? recibis : neto)}</b><em>${UX.pct((margen === null ? recibis : neto) / base * 100, 1)}</em></div>
             </div>
         </div>
-        ${costo > 0 ? `
-        <div style="background:rgba(255,255,255,0.04); border-radius:var(--radius-sm); padding:14px;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                <span class="field-label">Lo que recibís de MeLi</span><span>${fmt(d.recibis)}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                <span class="field-label">− Costo de fabricación</span><span class="text-danger">−${fmt(costo)}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; border-top:1px solid var(--glass-border); padding-top:8px; margin-top:4px;">
-                <span class="field-label" style="font-size:1em;">Ganancia neta real</span>
-                <span class="${gananciaNetaReal >= 0 ? 'text-success' : 'text-danger'}" style="font-size:1.1em; font-weight:700;">${fmt(gananciaNetaReal)} <span style="font-size:0.8em; font-weight:400;">(${pctGanancia}%)</span></span>
-            </div>
-        </div>
-        ` : ''}
-    `;
+        ${avisos.join('')}`;
+
+    pintarCuotas(d, envio, costo);
 }
 
-function mostrarComparativaCuotas(base, costo) {
-    mostrarPanelConAnimacion(document.getElementById('panel-cuotas'));
-    // comision base sin cuotas
-    const comisionBase = base.comision_total;
-    const recibisBase = base.recibis;
-
-    document.getElementById('cuotas-chips').innerHTML = CUOTAS_FINANCIACION.map(c => {
-        const costoFinanciamiento = c.pct > 0 ? base.precio * c.pct : 0;
-        const comisionTotal = comisionBase + costoFinanciamiento;
-        const recibis = base.precio - comisionTotal - (base.costo_envio || 0);
-        const diferencia = recibis - recibisBase;
-        const gananciaConCosto = costo > 0 ? recibis - costo : null;
-        return `
-            <div class="stat-chip ${c.cuotas === 1 ? 'accent-success' : diferencia < -base.precio * 0.15 ? '' : ''}"
-                 style="${c.cuotas === 1 ? '' : 'border-color:var(--semantic-warning); background:var(--semantic-warning-bg);'}">
-                <div class="stat-chip-label">${c.label}</div>
-                <div class="stat-chip-value" style="${c.cuotas === 1 ? '' : 'color:var(--semantic-warning);'}">${fmt(recibis)}</div>
-                <div class="stat-chip-desc">
-                    Comisión: ${fmt(comisionTotal)}${c.pct > 0 ? ` (+${(c.pct*100).toFixed(1)}% financ.)` : ''}
-                    ${costo > 0 ? ` · Neto: <strong>${fmt(gananciaConCosto)}</strong>` : ''}
-                    ${c.cuotas > 1 ? `<br><span style="color:var(--danger)">Perdés ${fmt(Math.abs(diferencia))} vs contado</span>` : ''}
-                </div>
-            </div>`;
-    }).join('');
+// "¿Y si ofrezco cuotas sin interés?": cuánto más te cuesta cada opción
+function pintarCuotas(d, envio, costo) {
+    const recibisContado = d.precio - d.comision_total - (envio || 0);
+    $('calc-cuotas').innerHTML = `
+        <div class="ux-seccion ux-warn">¿Y si ofrecés cuotas sin interés? <span class="text-muted" style="font-weight:600; font-size:0.78em;">estimado</span></div>
+        <div class="ux-kpis">
+            ${CUOTAS_FINANCIACION.map(c => {
+                const costoFin = d.precio * c.pct;
+                const recibis = recibisContado - costoFin;
+                const neto = recibis - costo;
+                const tono = c.cuotas === 1 ? 'ok' : (costo > 0 && neto < 0 ? 'danger' : 'warn');
+                return UX.kpi({
+                    tono, icono: 'credit-card', etiqueta: c.label, valor: UX.plata(costo > 0 ? neto : recibis),
+                    subHtml: c.cuotas === 1 ? (costo > 0 ? 'ganancia neta al contado' : 'lo que te llega al contado') : `${costo > 0 ? 'ganancia neta' : 'te llega'} · <b>perdés ${UX.plata(costoFin)}</b> vs. contado`
+                });
+            }).join('')}
+        </div>
+        <div class="text-muted" style="font-size:0.8em; margin-top:-10px;">Con cuotas sin interés el comprador paga el precio lleno y Mercado Libre te descuenta el costo financiero. Los porcentajes son orientativos y pueden cambiar.</div>`;
 }
 </script>
 {% endblock %}

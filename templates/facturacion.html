@@ -1,85 +1,98 @@
 {% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
 {% block title %}Facturación · CoreLux{% endblock %}
 {% block content %}
+{% set hay_datos = rs.facturado > 0 or rs.cargos != 0 %}
+{% set tono = 'danger' if rs.ganancia_neta < 0 else 'ok' %}
+
 <div class="page-header">
     <div>
         <h1 class="page-title">Facturación de Mercado Libre</h1>
-        <div class="page-subtitle">Lo que Mercado Libre te cobra en este período — el dato oficial, tal cual te lo factura MeLi</div>
+        <div class="page-subtitle">Lo que MeLi te cobra en cada período — <strong>el dato oficial</strong>, tal cual te lo factura</div>
     </div>
 </div>
 
-<div class="panel">
-    <div class="panel-title">Elegir período</div>
-    {% if periodos %}
-    <form action="/facturacion" method="GET" class="filter-row">
-        <div class="field-group" style="min-width:220px;">
-            <label class="field-label">Período de facturación de MeLi</label>
-            <select name="key" onchange="this.form.submit()">
-                {% for p in periodos %}
-                <option value="{{ p.key }}" {% if p.key == key_seleccionada %}selected{% endif %}>{{ p.date_from }} a {{ p.date_to }}{% if p.en_curso %} (en curso){% endif %}</option>
-                {% endfor %}
-            </select>
-        </div>
-    </form>
-    {% else %}
-    <div class="alert-empty">No pudimos traer tus períodos de facturación de Mercado Libre en este momento. Probá recargar en un rato.</div>
+<!-- Período de facturación: lo primero, todo depende de esto -->
+{% if periodos %}
+<form action="/facturacion" method="GET" class="ux-periodo no-imprimir">
+    <label class="field-label" for="select-periodo" style="margin:0;"><b>Período de facturación</b></label>
+    <select id="select-periodo" name="key" onchange="this.form.submit()" style="max-width:340px;">
+        {% for p in periodos %}
+        <option value="{{ p.key }}" {% if p.key == key_seleccionada %}selected{% endif %}>{{ p.date_from }} a {{ p.date_to }}{% if p.en_curso %} (en curso){% endif %}</option>
+        {% endfor %}
+    </select>
+</form>
+{% else %}
+{{ banner("warn", "alert", "<b>No pudimos traer tus períodos de facturación</b> de Mercado Libre ahora mismo", "Probá recargar en un rato.") }}
+{% endif %}
+
+{% if hay_datos %}
+<!-- ── 1. CUÁNTO ME QUEDÓ ───────────────────────────────────────────────── -->
+<div class="ux-hero ux-{{ tono }}">
+    <div class="ux-hero-etiqueta">Lo que te queda después de MeLi y tus gastos</div>
+    <div class="ux-hero-numero">{{ rs.ganancia_neta|plata }}</div>
+    <div class="ux-hero-frase">
+        {% if rs.facturado > 0 %}
+        De <b>{{ rs.facturado|plata }}</b> facturados, Mercado Libre te cobró <b>{{ rs.cargos|plata }}</b> ({{ (rs.cargos / rs.facturado * 100)|pct }})
+        {% if rs.gastos %} y tus gastos operativos fueron <b>{{ rs.gastos|plata }}</b>{% endif %} — {% if rs.ganancia_neta < 0 %}<b>el período cerró en pérdida</b>{% else %}<b>te quedaron {{ rs.ganancia_neta|plata }}</b> antes del costo de fabricación{% endif %}.
+        {% else %}Todavía no hay ventas registradas en este período.{% endif %}
+    </div>
+    <div class="ux-hero-nota">Facturado bruto − cargos de MeLi − gastos operativos del período. <b>No descuenta el costo de fabricación:</b> la ganancia neta real completa está en <a href="/metricas"><b>Ganancia Real →</b></a></div>
+</div>
+
+{% if rs.pendiente > 0 %}
+{{ banner("warn", "alert", "<b>Tenés " ~ (rs.pendiente|plata) ~ " de cargos pendientes de pago</b> a Mercado Libre", "Con las percepciones, el total adeudado aproximado es " ~ (rs.adeudado|plata) ~ ".") }}
+{% endif %}
+
+<!-- ── 2. NÚMEROS ─────────────────────────────────────────────────────── -->
+<div class="ux-kpis">
+    {{ kpi("Facturado bruto", rs.facturado|plata, "accion", "receipt", "ventas del período") }}
+    {{ kpi("Cargos de MeLi", rs.cargos|plata, "danger", "percent", "comisiones, envíos, publicidad…") }}
+    {{ kpi("Ganancia bruta real", rs.ganancia_bruta|plata, "ok" if rs.ganancia_bruta >= 0 else "danger", "coin", "facturado − cargos de MeLi") }}
+    {{ kpi("Pagos cobrados", rs.pagos_cobrados|plata, "info", "credit-card", "descontados en la operación") }}
+    {{ kpi("Pendiente de pago", rs.pendiente|plata, "warn" if rs.pendiente > 0 else "ok", "alert", "cargos aún sin abonar") }}
+    {{ kpi("Percepciones (aprox.)", rs.percepciones|plata, "neutral", "file-text", "impuestos retenidos") }}
+</div>
+
+<!-- ── 3. A DÓNDE SE FUE LA PLATA ────────────────────────────────────────── -->
+{% if waterfall_facturacion %}
+<div class="ux-seccion ux-accion">Cómo se reparte tu facturación</div>
+<div class="panel" id="waterfall-facturacion">
+    {% for f in waterfall_facturacion if f.pct_ancho > 0 or f.es_total_inicial or f.es_total_final %}
+    {% set tono_fila = 'accion' if f.es_total_inicial else ('danger' if f.es_negativo else ('ok' if f.es_total_final else ('info' if 'Env' in f.label else ('warn' if 'Publi' in f.label else ('neutral' if 'Otros' in f.label else 'danger'))))) %}
+    <div class="ux-fila-reparto {% if f.es_total_final %}ux-fila-reparto-total{% endif %}">
+        <span class="ux-fila-reparto-label">{{ f.label }}</span>
+        <div class="ux-barra ux-{{ tono_fila }}" style="flex:1;"><span data-w="{{ f.pct_ancho }}" style="width:0%;"></span></div>
+        <span class="ux-fila-reparto-monto" style="color:var(--{{ 'success' if f.es_total_final and not f.es_negativo else ('danger' if f.es_negativo or f.monto_formateado.startswith('-') else 'text-primary') }});">{{ f.monto_formateado }}</span>
+    </div>
+    {% endfor %}
+    {% if waterfall_facturacion|selectattr('label', 'equalto', 'Otros cargos de MeLi (sin categorizar)')|list %}
+    <div class="text-muted" style="font-size:0.78em; margin-top:12px;">Mercado Libre no detalla por categoría los cargos de este resumen, así que quedan juntos en "otros cargos". El desglose fino está en tu panel de Facturación de MeLi.</div>
     {% endif %}
 </div>
-
-<div class="panel" style="text-align:center; padding:32px 26px;">
-    <div class="stat-chip-label" style="margin-bottom:6px;">Ganancia neta final del período</div>
-    <div class="hero-number {{ 'acento-danger' if ganancia_neta_negativa else 'acento-primario' }}">${{ ganancia_neta_formateada }}</div>
-    <div class="text-muted" style="font-size:0.82em; margin-top:4px;">Facturado bruto menos cargos de MeLi y gastos operativos del período</div>
-</div>
-
-<div class="stat-strip stat-strip-kpi">
-    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="stat-chip-label">Facturado bruto (ventas)</span></div><div class="stat-chip-value">${{ facturado_bruto_formateado }}</div></div>
-    <div class="stat-chip kpi-card accent-gold"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Ganancia bruta real</span></div><div class="stat-chip-value">${{ ganancia_bruta_formateada }}</div><div class="stat-chip-desc">Facturado - Cargos de MeLi</div></div>
-</div>
-
-{% if waterfall_facturacion %}
-<div class="panel">
-    <div class="panel-title">Cómo se reparte tu facturación</div>
-    <div class="page-subtitle" style="margin-bottom:10px;">De lo bruto a lo que realmente te queda, paso a paso.</div>
-    <div id="waterfall-facturacion">
-        {% for f in waterfall_facturacion %}
-        <div class="waterfall-fila {% if f.es_total_inicial %}total-inicial{% endif %} {% if f.es_total_final %}total-final{% endif %} {% if f.es_negativo %}negativo{% endif %}">
-            <span class="waterfall-fila-label">{{ f.label }}</span>
-            <div class="waterfall-fila-barra-fondo"><div class="waterfall-fila-barra" data-w="{{ f.pct_ancho }}" style="width:0%;"></div></div>
-            <span class="waterfall-fila-monto">{{ f.monto_formateado }}</span>
-        </div>
-        {% endfor %}
-    </div>
-</div>
 <script>
-    document.querySelectorAll('#waterfall-facturacion .waterfall-fila-barra').forEach(b => { b.style.width = Math.min(100, b.dataset.w || 0) + '%'; });
+    document.querySelectorAll('#waterfall-facturacion .ux-barra span').forEach(b => { requestAnimationFrame(() => { b.style.width = Math.min(100, b.dataset.w || 0) + '%'; }); });
 </script>
 {% endif %}
 
-<div class="stat-strip">
-    <div class="stat-chip accent-denim"><div class="stat-chip-label">Total de cargos</div><div class="stat-chip-value">${{ total_cargos_formateado }}</div></div>
-    <div class="stat-chip accent-success"><div class="stat-chip-label">Pagos cobrados en la operación</div><div class="stat-chip-value">${{ pagos_cobrados_formateado }}</div></div>
-    <div class="stat-chip accent-warning"><div class="stat-chip-label">Cargos pendientes de pago</div><div class="stat-chip-value">${{ pendiente_formateado }}</div></div>
-</div>
-
-<div class="panel">
-    <div class="panel-title">Cargos del período ({{ cargos|length }})</div>
-    <table class="data-table">
-        <thead><tr><th>Concepto</th><th class="num">Monto</th></tr></thead>
-        <tbody>
-            {% for c in cargos %}
-            <tr><td>{{ c.label }}</td><td class="num {% if c.monto < 0 %}text-success{% else %}text-danger{% endif %}">{% if c.monto < 0 %}-{% endif %}${{ c.monto_formateado.lstrip('-') }}</td></tr>
-            {% endfor %}
-            {% if not cargos %}<tr><td colspan="2" class="alert-empty">No hay cargos para este período todavía.</td></tr>{% endif %}
-        </tbody>
-    </table>
-</div>
-
-<div class="panel">
-    <div class="panel-title">Percepciones aproximadas</div>
-    <div class="stat-strip" style="margin-bottom:0;">
-        <div class="stat-chip accent-denim"><div class="stat-chip-label">Total percepciones</div><div class="stat-chip-value">${{ percepciones_formateado }}</div></div>
-        <div class="stat-chip accent-danger"><div class="stat-chip-label">Total adeudado aproximado</div><div class="stat-chip-value">${{ total_adeudado_formateado }}</div></div>
+<!-- ── 4. DETALLE ─────────────────────────────────────────────────────── -->
+<details class="ux-detalle" open>
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Cargos del período <span class="ux-detalle-nota">{{ cargos|length }} conceptos · total {{ rs.cargos|plata }}</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <table class="data-table">
+            <thead><tr><th>Concepto</th><th class="num">Monto</th></tr></thead>
+            <tbody>
+                {% for c in cargos %}
+                <tr><td>{{ c.label }}</td><td class="num {% if c.monto < 0 %}text-success{% else %}text-danger{% endif %}"><b>{{ c.monto|plata }}</b></td></tr>
+                {% endfor %}
+                {% if not cargos %}<tr><td colspan="2" class="text-muted">No hay cargos para este período todavía.</td></tr>{% endif %}
+            </tbody>
+        </table>
+        <div class="text-muted" style="font-size:0.78em; margin-top:10px;">Los montos en verde son bonificaciones o anulaciones a tu favor.</div>
     </div>
-</div>
+</details>
+
+{% elif periodos %}
+{{ vacio("Todavía no hay datos de facturación en este período", "Elegí otro período arriba o sincronizá para traer lo último de Mercado Libre.", "receipt", "info") }}
+{% endif %}
 {% endblock %}

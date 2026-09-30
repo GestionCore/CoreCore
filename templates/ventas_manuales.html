@@ -1,94 +1,112 @@
 {% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
 {% block title %}Ventas fuera de MeLi · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Ventas por fuera de Mercado Libre</h1>
-        <div class="page-subtitle">Mostrador, canal directo, Instagram — entran a Ganancia Real y al Dashboard igual que una venta de MeLi.</div>
+        <h1 class="page-title">Ventas fuera de Mercado Libre</h1>
+        <div class="page-subtitle">Mostrador, Instagram, canal directo — <strong>entran a Ganancia Real y al Dashboard</strong> igual que una venta de MeLi</div>
     </div>
 </div>
 
 {% if error %}
-<div class="panel" style="border-color: var(--danger);">
-    <span class="text-danger">{{ error }}</span>
-</div>
+{{ banner("danger", "alert", "<b>No se pudo registrar la venta:</b> " ~ error|e, "Revisá los datos y probá de nuevo.") }}
 {% endif %}
 
+<!-- ── 1. REGISTRAR: el formulario es lo principal de esta pantalla ───────── -->
 <div class="panel">
-    <div class="panel-title">Registrar una venta</div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-plus"/></svg> Registrar una venta</div>
     {% if not catalogo %}
-    <div class="alert-empty">No hay ninguna publicación activa en tu catálogo todavía — sincronizá primero desde "Sincronizar Todo".</div>
+    {{ vacio("Todavía no hay publicaciones para vender", "Sincronizá desde \"Sincronizar Todo\" para traer tu catálogo.", "refresh", "accion") }}
     {% else %}
-    <form action="/ventas_manuales/agregar" method="POST" class="filter-row">
-        <div class="field-group" style="flex: 2; min-width: 260px;">
-            <label class="field-label">Producto / talle</label>
-            <select name="id_variante" id="select-variante-manual" onchange="precargarPrecioSugerido()" required>
-                {% for c in catalogo %}
-                <option value="{{ c.id_variante }}" data-precio="{{ c.precio_sugerido }}">{{ c.etiqueta }}</option>
-                {% endfor %}
-            </select>
+    <form action="/ventas_manuales/agregar" method="POST" id="form-venta-manual">
+        <div class="filter-row">
+            <div class="field-group" style="flex:2; min-width:260px;">
+                <label class="field-label" for="select-variante-manual">Qué vendiste</label>
+                <select name="id_variante" id="select-variante-manual" required>
+                    {% for c in catalogo %}
+                    <option value="{{ c.id_variante }}" data-precio="{{ c.precio_sugerido }}">{{ c.etiqueta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field-group" style="max-width:120px;">
+                <label class="field-label" for="input-cantidad-manual">Cantidad</label>
+                <input type="number" name="cantidad" id="input-cantidad-manual" min="1" value="1" inputmode="numeric" required>
+            </div>
+            <div class="field-group" style="max-width:190px;">
+                <label class="field-label" for="input-precio-manual">Precio por unidad ($)</label>
+                <input type="number" step="0.01" name="precio_venta" id="input-precio-manual" min="0.01" inputmode="decimal" required>
+            </div>
+            <div class="field-group"><label class="field-label" for="input-fecha-manual">Fecha</label><input type="date" name="fecha_venta" id="input-fecha-manual" value="{{ hoy }}" max="{{ hoy }}" required></div>
+            <div class="field-group" style="flex:1; min-width:160px;"><label class="field-label" for="input-cliente-manual">Cliente (opcional)</label><input type="text" name="comprador_nombre" id="input-cliente-manual" placeholder="Ej: Marcela"></div>
         </div>
-        <div class="field-group" style="max-width: 110px;">
-            <label class="field-label">Cantidad</label>
-            <input type="number" name="cantidad" min="1" value="1" required>
+        <div class="flex-gap" style="margin-top:16px; justify-content:space-between;">
+            <div style="font-size:1.05em;">Total de la venta: <b id="total-venta-manual" style="font-family:var(--font-data); font-size:1.3em; color:var(--success);">$0</b></div>
+            <button type="submit" class="btn btn-primary btn-lg"><svg class="icon"><use href="#icon-check"/></svg>Registrar venta</button>
         </div>
-        <div class="field-group" style="max-width: 150px;">
-            <label class="field-label">Precio de venta ($, por unidad)</label>
-            <input type="number" step="0.01" name="precio_venta" id="input-precio-manual" min="0.01" required>
-        </div>
-        <div class="field-group"><label class="field-label">Fecha</label><input type="date" name="fecha_venta" value="{{ hoy }}" max="{{ hoy }}" required></div>
-        <div class="field-group" style="flex: 1; min-width: 160px;"><label class="field-label">Cliente (opcional)</label><input type="text" name="comprador_nombre" placeholder="Ej: Marcela"></div>
-        <button type="submit" class="btn btn-primary">Registrar venta</button>
     </form>
-    <div class="page-subtitle" style="margin-top:10px;">No tiene comisión ni costo de envío de MeLi (quedan en $0), y descuenta del stock propio de esa variante al guardar.</div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:12px;">No lleva comisión ni envío de MeLi (quedan en $0) y <b>descuenta del stock propio</b> de ese talle al guardar.</div>
     {% endif %}
 </div>
 
+<!-- ── 2. LO YA REGISTRADO ───────────────────────────────────────────────── -->
 {% if ventas %}
-<div class="stat-strip stat-strip-kpi">
-    <div class="stat-chip kpi-card accent-primary">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Total vendido fuera de MeLi</span></div>
-        <div class="stat-chip-value">${{ "{:,.0f}".format(ventas | sum(attribute='total')).replace(",", ".") }}</div>
-        <div class="stat-chip-desc">de las últimas {{ ventas|length }} ventas</div>
-    </div>
-    <div class="stat-chip kpi-card accent-success">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-box"/></svg></span><span class="stat-chip-label">Unidades</span></div>
-        <div class="stat-chip-value">{{ ventas | sum(attribute='cantidad') }}</div>
-    </div>
+<div class="ux-kpis">
+    {{ kpi("Total vendido fuera de MeLi", "$" ~ ("{:,.0f}".format(ventas | sum(attribute='total')).replace(",", ".")), "ok", "coin", "de las últimas " ~ ventas|length ~ " ventas") }}
+    {{ kpi("Unidades", ventas | sum(attribute='cantidad'), "info", "box", "vendidas por estos canales") }}
 </div>
 {% endif %}
-<div class="panel">
-    <div class="panel-title">Últimas ventas manuales ({{ ventas|length }})</div>
+
+<div class="panel" style="padding:0; overflow:hidden;">
+    <div class="panel-title" style="padding:18px 22px 0;">Últimas ventas fuera de MeLi <span class="text-muted" style="font-weight:600; font-size:0.85em;">{{ ventas|length }}</span></div>
+    {% if ventas %}
+    <div style="overflow-x:auto; padding:0 12px 12px;">
     <table class="data-table">
-        <thead><tr><th>Fecha</th><th>Producto</th><th>Cliente</th><th class="num">Cantidad</th><th class="num">Total</th><th></th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Producto</th><th>Cliente</th><th class="num">Cant.</th><th class="num">Total</th><th></th></tr></thead>
         <tbody>
             {% for v in ventas %}
             <tr>
                 <td class="text-muted">{{ v.fecha }}</td>
-                <td>{{ v.titulo }}</td>
-                <td>{{ v.comprador_nombre }}</td>
+                <td class="ux-col-titulo"><b>{{ v.titulo }}</b></td>
+                <td>{{ v.comprador_nombre or '—' }}</td>
                 <td class="num">{{ v.cantidad }}</td>
-                <td class="num">${{ v.precio_formateado }}</td>
+                <td class="num"><b>${{ v.precio_formateado }}</b></td>
                 <td>
                     <form action="/ventas_manuales/eliminar/{{ v.id }}" method="POST" onsubmit="confirmarAccion('¿Eliminar esta venta?', this, 'Eliminar', 'El stock descontado se devuelve automáticamente.'); return false;" style="display:inline;">
-                        <button type="submit" class="btn btn-danger">Borrar</button>
+                        <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Borrar</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
-            {% if not ventas %}<tr><td colspan="6" class="alert-empty">Todavía no registraste ninguna venta manual.</td></tr>{% endif %}
         </tbody>
     </table>
+    </div>
+    {% else %}
+    <div style="padding:20px;">{{ vacio("Todavía no registraste ninguna venta por fuera de MeLi", "Cuando vendas en mostrador o por Instagram, cargala arriba: así tu ganancia real incluye todo.", "coin", "info") }}</div>
+    {% endif %}
 </div>
 
 <script>
+    const $sel = document.getElementById('select-variante-manual');
+    const $precio = document.getElementById('input-precio-manual');
+    const $cant = document.getElementById('input-cantidad-manual');
+    let precioEditadoAMano = false;
+
     function precargarPrecioSugerido() {
-        const select = document.getElementById('select-variante-manual');
-        const opcion = select.options[select.selectedIndex];
-        const precio = opcion ? opcion.dataset.precio : null;
-        const input = document.getElementById('input-precio-manual');
-        if (precio && !input.value) input.value = precio;
+        const opcion = $sel.options[$sel.selectedIndex];
+        if (opcion && opcion.dataset.precio && !precioEditadoAMano) $precio.value = opcion.dataset.precio;
+        actualizarTotal();
     }
-    document.addEventListener('DOMContentLoaded', precargarPrecioSugerido);
+    function actualizarTotal() {
+        const total = (parseFloat($precio.value) || 0) * (parseInt($cant.value, 10) || 0);
+        document.getElementById('total-venta-manual').textContent = UX.plata(total);
+    }
+    if ($sel) {
+        // Al cambiar de producto se vuelve a sugerir su precio, salvo que el usuario ya haya escrito uno a mano
+        $sel.addEventListener('change', () => { precioEditadoAMano = false; precargarPrecioSugerido(); });
+        $precio.addEventListener('input', () => { precioEditadoAMano = true; actualizarTotal(); });
+        $cant.addEventListener('input', actualizarTotal);
+        document.addEventListener('DOMContentLoaded', precargarPrecioSugerido);
+    }
 </script>
 {% endblock %}

@@ -1,56 +1,56 @@
 {% extends "base.html" %}
-{% block title %}Reporte Fiscal · CoreLux{% endblock %}
+{% from "_ux.html" import banner, kpi %}
+{% block title %}Reporte fiscal · CoreLux{% endblock %}
 {% block content %}
+{% set tono = 'danger' if totales.ganancia_estimada < 0 else 'ok' %}
+{% set con_ventas = meses|selectattr('facturacion', 'gt', 0)|list %}
+{% set max_ganancia = (con_ventas|map(attribute='ganancia_estimada')|map('abs')|max) if con_ventas else 1 %}
+{% set mejor = (con_ventas|sort(attribute='ganancia_estimada')|last) if con_ventas else none %}
+
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-file-text"/></svg>Reporte Fiscal</h1>
-        <div class="page-subtitle">Resumen mensual para tu contador — facturación, cargos y ganancia estimada</div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-file-text"/></svg>Reporte fiscal</h1>
+        <div class="page-subtitle">Resumen mensual para tu contador — facturación, cargos y ganancia estimada del año</div>
     </div>
-    <div class="filter-row" style="margin:0;">
-        <form action="/reporte_fiscal" method="GET" style="display:flex; gap:8px; align-items:center;">
-            <label class="field-label" style="margin-bottom:0;">Año</label>
-            <select name="anio" onchange="this.form.submit()" class="btn btn-secondary" style="padding:8px 12px;">
-                {% for a in anios_disponibles %}
-                <option value="{{ a }}" {% if a == anio_seleccionado %}selected{% endif %}>{{ a }}</option>
-                {% endfor %}
-            </select>
-        </form>
-        <a href="/reporte_fiscal/exportar?anio={{ anio_seleccionado }}" class="btn btn-secondary">
-            <svg class="icon" style="width:14px;height:14px;margin-right:5px;vertical-align:middle;"><use href="#icon-download"/></svg>Exportar Excel
-        </a>
-    </div>
+    <a href="/reporte_fiscal/exportar?anio={{ anio_seleccionado }}" class="btn btn-primary btn-lg no-imprimir">
+        <svg class="icon"><use href="#icon-download"/></svg>Descargar Excel {{ anio_seleccionado }}
+    </a>
 </div>
 
-<div class="alert alert-info">
-    <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-info"/></svg>
-    Los montos de <strong>Ganancia Neta Estimada</strong> no incluyen Publicidad (ese desglose está en la pantalla de Publicidad), y el costo de fabricación es el que tenés cargado hoy por producto.<br>
-    Antes de presentar algo a AFIP, siempre conviene confirmar los números con tu contador.
+<form action="/reporte_fiscal" method="GET" class="ux-periodo no-imprimir">
+    <label class="field-label" for="select-anio" style="margin:0;"><b>Año</b></label>
+    <select id="select-anio" name="anio" onchange="this.form.submit()" style="max-width:140px;">
+        {% for a in anios_disponibles %}
+        <option value="{{ a }}" {% if a == anio_seleccionado %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+    </select>
+</form>
+
+<!-- ── 1. EL AÑO EN UN NÚMERO ───────────────────────────────────────────── -->
+<div class="ux-hero ux-{{ tono }}">
+    <div class="ux-hero-etiqueta">Ganancia estimada {{ anio_seleccionado }}</div>
+    <div class="ux-hero-numero">{{ totales.ganancia_estimada|plata }}</div>
+    <div class="ux-hero-frase">
+        De <b>{{ totales.facturacion|plata }}</b> facturados en <b>{{ totales.ordenes }}</b> órdenes
+        {% if mejor %}— tu mejor mes fue <b>{{ mejor.nombre }}</b> con {{ mejor.ganancia_estimada|plata }}{% endif %}.
+    </div>
+    <div class="ux-hero-nota">Estimación sin publicidad y con el costo de fabricación que tenés cargado hoy por producto.</div>
 </div>
 
-<div class="stat-strip stat-strip-kpi" style="margin-bottom:20px;">
-    <div class="stat-chip kpi-card accent-primary">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="stat-chip-label">Facturación anual</span></div>
-        <div class="stat-chip-value">${{ totales.facturacion_f }}</div>
-        <div class="stat-chip-desc">{{ totales.ordenes }} órdenes</div>
-    </div>
-    <div class="stat-chip kpi-card accent-danger">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-percent"/></svg></span><span class="stat-chip-label">Total cargos MeLi</span></div>
-        <div class="stat-chip-value text-danger">${{ totales.cargos_totales_f }}</div>
-        <div class="stat-chip-desc">Comisiones + envíos</div>
-    </div>
-    <div class="stat-chip kpi-card" style="border-color:var(--semantic-warning);">
-        <div class="kpi-card-top"><span class="kpi-card-icon" style="background:var(--semantic-warning-bg); color:var(--semantic-warning);"><svg class="icon"><use href="#icon-wallet"/></svg></span><span class="stat-chip-label">Gastos operativos</span></div>
-        <div class="stat-chip-value" style="color:var(--semantic-warning);">${{ totales.gastos_f }}</div>
-    </div>
-    <div class="stat-chip kpi-card {% if totales.ganancia_estimada >= 0 %}accent-success{% endif %}" {% if totales.ganancia_estimada < 0 %}style="border-color:var(--danger);"{% endif %}>
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Ganancia estimada anual</span></div>
-        <div class="stat-chip-value {% if totales.ganancia_estimada >= 0 %}text-success{% else %}text-danger{% endif %}">${{ totales.ganancia_f }}</div>
-        <div class="stat-chip-desc">Sin Ads</div>
-    </div>
+{{ banner("info", "info", "<b>Antes de presentar algo a AFIP,</b> confirmá estos números con tu contador", "Es una herramienta de seguimiento, no reemplaza la declaración jurada. Para tu categoría de Monotributo usá la pantalla Monotributo.", "Ir a Monotributo", "/monotributo", "btn-secondary") }}
+
+<!-- ── 2. NÚMEROS ─────────────────────────────────────────────────────── -->
+<div class="ux-kpis">
+    {{ kpi("Facturación anual", totales.facturacion|plata, "accion", "receipt", totales.ordenes ~ " órdenes · " ~ totales.unidades ~ " unidades") }}
+    {{ kpi("Cargos de MeLi", totales.cargos_totales|plata, "danger", "percent", "comisiones + envíos") }}
+    {{ kpi("Gastos operativos", totales.gastos|plata, "warn", "wallet", "alquiler, sueldos, bolsas…") }}
+    {{ kpi("Costo de fabricación (est.)", totales.costo_fabricacion|plata, "neutral", "box", "según el costo cargado hoy") }}
 </div>
 
-<div class="panel" style="overflow-x:auto;">
-    <div class="panel-title">Desglose mensual {{ anio_seleccionado }}</div>
+<!-- ── 3. MES A MES ─────────────────────────────────────────────────────── -->
+<div class="ux-seccion ux-accion">Desglose mensual {{ anio_seleccionado }}</div>
+<div class="panel" style="padding:0; overflow:hidden;">
+    <div style="overflow-x:auto; padding:6px 12px 12px;">
     <table class="data-table">
         <thead>
             <tr>
@@ -60,48 +60,47 @@
                 <th class="num">Facturación</th>
                 <th class="num">Comisiones</th>
                 <th class="num">Envíos</th>
-                <th class="num">Gastos Op.</th>
-                <th class="num">Costo Fab. (est.)</th>
-                <th class="num">Ganancia Neta (est.)</th>
+                <th class="num">Gastos op.</th>
+                <th class="num">Costo fab. (est.)</th>
+                <th>Ganancia neta (est.)</th>
             </tr>
         </thead>
         <tbody>
             {% for m in meses %}
-            <tr {% if m.facturacion == 0 %}style="opacity:0.45;"{% endif %}>
-                <td><strong>{{ m.nombre }}</strong></td>
+            <tr {% if m.facturacion == 0 %}style="opacity:0.4;"{% endif %} class="{% if mejor and m.nombre == mejor.nombre %}ux-fila-ok{% elif m.ganancia_estimada < 0 and m.facturacion > 0 %}ux-fila-danger{% endif %}">
+                <td><b>{{ m.nombre }}</b>{% if mejor and m.nombre == mejor.nombre %} <span class="ux-pill ux-gold">Mejor mes</span>{% endif %}</td>
                 <td class="num">{{ m.ordenes }}</td>
                 <td class="num">{{ m.unidades }}</td>
-                <td class="num text-success">${{ m.facturacion_f }}</td>
-                <td class="num text-danger">${{ m.comisiones_f }}</td>
-                <td class="num text-danger">${{ m.envios_f }}</td>
-                <td class="num" style="color:var(--semantic-warning);">${{ m.gastos_f }}</td>
-                <td class="num text-muted">${{ m.costo_fab_f }}</td>
-                <td class="num {% if m.ganancia_estimada >= 0 %}text-success{% else %}text-danger{% endif %}">
-                    <strong>${{ m.ganancia_f }}</strong>
+                <td class="num"><b>{{ m.facturacion|plata }}</b></td>
+                <td class="num text-danger">{{ m.comisiones|plata }}</td>
+                <td class="num text-danger">{{ m.envios|plata }}</td>
+                <td class="num" style="color:var(--semantic-warning);">{{ m.gastos|plata }}</td>
+                <td class="num text-muted">{{ m.costo_fabricacion|plata }}</td>
+                <td style="min-width:200px;">
+                    {% if m.facturacion > 0 %}
+                    <div class="flex-gap" style="gap:8px; flex-wrap:nowrap;">
+                        <div class="ux-barra {{ 'ux-ok' if m.ganancia_estimada >= 0 else 'ux-danger' }}" style="flex:1; min-width:70px;"><span style="width:{{ ((m.ganancia_estimada|abs) / max_ganancia * 100)|round(0) }}%;"></span></div>
+                        <b class="{{ 'text-success' if m.ganancia_estimada >= 0 else 'text-danger' }}" style="white-space:nowrap;">{{ m.ganancia_estimada|plata }}</b>
+                    </div>
+                    {% else %}—{% endif %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
         <tfoot>
-            <tr style="font-weight:700; border-top:2px solid var(--glass-border);">
-                <td>Total</td>
+            <tr style="font-weight:800; border-top:2px solid var(--glass-border);">
+                <td>Total {{ anio_seleccionado }}</td>
                 <td class="num">{{ totales.ordenes }}</td>
                 <td class="num">{{ totales.unidades }}</td>
-                <td class="num text-success">${{ totales.facturacion_f }}</td>
-                <td class="num text-danger">${{ totales.comisiones_f }}</td>
-                <td class="num text-danger">${{ totales.envios_f }}</td>
-                <td class="num" style="color:var(--semantic-warning);">${{ totales.gastos_f }}</td>
-                <td class="num text-muted">${{ totales.costo_fab_f }}</td>
-                <td class="num {% if totales.ganancia_estimada >= 0 %}text-success{% else %}text-danger{% endif %}">
-                    <strong>${{ totales.ganancia_f }}</strong>
-                </td>
+                <td class="num">{{ totales.facturacion|plata }}</td>
+                <td class="num text-danger">{{ totales.comisiones|plata }}</td>
+                <td class="num text-danger">{{ totales.envios|plata }}</td>
+                <td class="num" style="color:var(--semantic-warning);">{{ totales.gastos|plata }}</td>
+                <td class="num text-muted">{{ totales.costo_fabricacion|plata }}</td>
+                <td class="{{ 'text-success' if totales.ganancia_estimada >= 0 else 'text-danger' }}" style="font-size:1.05em;">{{ totales.ganancia_estimada|plata }}</td>
             </tr>
         </tfoot>
     </table>
-</div>
-
-<div class="page-subtitle" style="margin-top:8px;">
-    <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
-    Esta pantalla no reemplaza la declaración jurada — es una herramienta de seguimiento para que vos y tu contador puedan estimar tu categoría y cuota de Monotributo. Para el cálculo oficial de Monotributo, usá la pantalla <a href="/monotributo" style="color:var(--accent-primary);">Monotributo</a>.
+    </div>
 </div>
 {% endblock %}

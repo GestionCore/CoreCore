@@ -1,66 +1,69 @@
 {% extends "base.html" %}
-{% block title %}Historial de Precios · CoreLux{% endblock %}
+{% from "_ux.html" import banner, kpi, vacio %}
+{% block title %}Historial de precios · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Historial de Precios vs Ventas</h1>
-        <div class="page-subtitle">Compara las unidades vendidas 7 días antes y 7 días después de cada cambio de precio</div>
+        <h1 class="page-title">Historial de precios</h1>
+        <div class="page-subtitle">¿Subir o bajar un precio funcionó? Comparamos las <strong>unidades vendidas 7 días antes y 7 días después</strong> de cada cambio</div>
     </div>
 </div>
 
 {% if not cambios %}
-<div class="panel"><div class="alert-empty">Todavía no se registró ningún cambio de precio — se empieza a guardar automáticamente a partir de ahora, sea cual sea el modo en que cambies un precio.</div></div>
+{{ vacio("Todavía no se registró ningún cambio de precio", "Desde ahora se guarda automáticamente cada cambio, sea cual sea la forma en que lo hagas. Cuando haya algunos, acá ves si te convino.", "tag", "info") }}
 {% else %}
 {% set validos = cambios | rejectattr('variacion_pct', 'none') | list %}
 {% set subas = cambios | selectattr('direccion', 'equalto', 'subió') | rejectattr('variacion_pct', 'none') | list %}
 {% set subas_ok = subas | selectattr('variacion_pct', 'ge', 0) | list %}
 {% set variacion_prom = ((validos | map(attribute='variacion_pct') | sum) / validos|length) | round(1) if validos else none %}
-<div class="stat-strip stat-strip-kpi">
-    <div class="stat-chip kpi-card accent-primary">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-trend"/></svg></span><span class="stat-chip-label">Cambios registrados</span></div>
-        <div class="stat-chip-value">{{ cambios|length }}</div>
-    </div>
+
+{% if variacion_prom is not none %}
+{% set vp = (variacion_prom|abs|string|replace('.', ',')) %}
+{% if variacion_prom >= 0 %}
+{{ banner("ok", "trend", "Tras un cambio de precio, tus ventas <b>subieron " ~ vp ~ "% en promedio</b> — los cambios te vienen funcionando", "Promedio de " ~ validos|length ~ " cambios con datos comparables.") }}
+{% else %}
+{{ banner("warn", "alert", "Tras un cambio de precio, tus ventas <b>bajaron " ~ vp ~ "% en promedio</b> — revisá los cambios marcados en rojo", "Promedio de " ~ validos|length ~ " cambios con datos comparables.") }}
+{% endif %}
+{% endif %}
+
+<div class="ux-kpis">
+    {{ kpi("Cambios registrados", cambios|length, "accion", "trend") }}
     {% if subas %}
-    <div class="stat-chip kpi-card accent-success">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-chart"/></svg></span><span class="stat-chip-label">Subas que aumentaron ventas</span></div>
-        <div class="stat-chip-value">{{ ((subas_ok|length / subas|length) * 100) | round(0) | int }}%</div>
-        <div class="stat-chip-desc">de {{ subas|length }} suba{{ '' if subas|length == 1 else 's' }} con datos comparables</div>
-    </div>
+    {{ kpi("Subas que no bajaron las ventas", ((subas_ok|length / subas|length) * 100) | round(0) | int ~ "%", "ok", "chart", "de " ~ subas|length ~ " suba" ~ ('' if subas|length == 1 else 's') ~ " con datos comparables") }}
     {% endif %}
     {% if variacion_prom is not none %}
-    <div class="stat-chip kpi-card {% if variacion_prom >= 0 %}accent-success{% else %}accent-danger{% endif %}">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-percent"/></svg></span><span class="stat-chip-label">Variación promedio en ventas</span></div>
-        <div class="stat-chip-value">{{ '+' if variacion_prom >= 0 else '' }}{{ variacion_prom }}%</div>
-        <div class="stat-chip-desc">tras un cambio de precio</div>
-    </div>
+    {{ kpi("Variación promedio en ventas", ('+' if variacion_prom >= 0 else '') ~ (variacion_prom|string|replace('.', ',')) ~ "%", "ok" if variacion_prom >= 0 else "danger", "percent", "tras un cambio de precio") }}
     {% endif %}
 </div>
-<div class="panel" data-mostrar-mas-scope>
+
+<div class="panel" style="padding:0; overflow:hidden;" data-mostrar-mas-scope>
+    <div style="overflow-x:auto; padding:6px 12px 12px;">
     <table class="data-table">
-        <thead><tr><th>Publicación</th><th>Cambio</th><th>Fecha</th><th class="num">Vendidas antes (7d)</th><th class="num">Vendidas después (7d)</th><th class="num">Variación</th></tr></thead>
+        <thead><tr><th>Publicación</th><th>Cambio de precio</th><th>Fecha</th><th class="num">Antes (7 d)</th><th class="num">Después (7 d)</th><th class="num">Resultado</th></tr></thead>
         <tbody>
             {% for c in cambios %}
-            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
-                <td>{{ c.titulo }}</td>
-                <td>
-                    ${{ '%.2f'|format(c.precio_anterior) }} → ${{ '%.2f'|format(c.precio_nuevo) }}
-                    <span class="badge {% if c.direccion == 'subió' %}badge-warning{% else %}badge-success{% endif %}">{{ c.direccion }}</span>
+            <tr class="{% if c.variacion_pct is not none and c.variacion_pct < 0 %}ux-fila-danger{% elif c.variacion_pct is not none %}ux-fila-ok{% endif %} {% if loop.index > 8 %}oculto-mostrar-mas{% endif %}">
+                <td class="ux-col-titulo"><b>{{ c.titulo }}</b></td>
+                <td style="white-space:nowrap;">
+                    {{ c.precio_anterior|plata }} → <b>{{ c.precio_nuevo|plata }}</b>
+                    <span class="ux-pill {{ 'ux-warn' if c.direccion == 'subió' else 'ux-ok' }}">{{ c.direccion }}</span>
                 </td>
                 <td class="text-muted">{{ c.fecha_cambio }}</td>
-                <td class="num">{{ c.unidades_antes }}</td>
-                <td class="num">{{ c.unidades_despues }}</td>
+                <td class="num">{{ c.unidades_antes }} u.</td>
+                <td class="num">{{ c.unidades_despues }} u.</td>
                 <td class="num">
-                    {% if c.datos_incompletos %}<span class="text-muted">Sin ventas previas para comparar</span>
+                    {% if c.datos_incompletos %}<span class="text-muted" style="font-size:0.85em;">Sin ventas previas para comparar</span>
                     {% elif c.variacion_pct is not none %}
-                        <span class="{% if c.variacion_pct >= 0 %}text-success{% else %}text-danger{% endif %}">{{ '+' if c.variacion_pct >= 0 else '' }}{{ c.variacion_pct }}%</span>
-                    {% else %}-{% endif %}
+                    <span class="ux-pill {{ 'ux-ok' if c.variacion_pct >= 0 else 'ux-danger' }}">{{ '▲ +' if c.variacion_pct >= 0 else '▼ ' }}{{ c.variacion_pct|string|replace('.', ',') }}%</span>
+                    {% else %}—{% endif %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    {% if cambios|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ cambios|length - 5 }} más...</button>
+    </div>
+    {% if cambios|length > 8 %}
+    <div style="padding:0 16px 16px;"><button type="button" class="btn btn-secondary btn-block" onclick="mostrarMasGenerico(this)">Ver los {{ cambios|length - 8 }} cambios restantes</button></div>
     {% endif %}
 </div>
 {% endif %}

@@ -259,3 +259,48 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-pregunta-texto { font-size: 1.12em; font-weight: 800; line-height: 1.4; margin-bottom: 4px; color: var(--text-primary); }
 .ux-pregunta textarea { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--font-ui); font-size: 0.95em; }
 @media (max-width: 640px) { .ux-pregunta .btn-lg { width: 100%; } }
+
+/* ---------- Filas de reparto: etiqueta · barra coloreada · monto (cascada de la facturación) ---------- */
+.ux-fila-reparto { display: flex; align-items: center; gap: 14px; padding: 11px 2px; border-bottom: 1px solid var(--border-soft); }
+.ux-fila-reparto:last-child { border-bottom: 0; }
+.ux-fila-reparto-label { width: 210px; flex-shrink: 0; font-size: 0.9em; font-weight: 600; color: var(--text-secondary); }
+.ux-fila-reparto-monto { width: 150px; flex-shrink: 0; text-align: right; font-family: var(--font-data); font-weight: 800; font-variant-numeric: tabular-nums; }
+.ux-fila-reparto .ux-barra { height: 12px; }
+.ux-fila-reparto-total { margin-top: 6px; padding-top: 16px; border-top: 2px solid var(--glass-border); }
+.ux-fila-reparto-total .ux-fila-reparto-label { color: var(--text-primary); font-weight: 800; }
+.ux-fila-reparto-total .ux-fila-reparto-monto { font-size: 1.2em; }
+@media (max-width: 640px) {
+    .ux-fila-reparto { flex-wrap: wrap; gap: 6px 10px; }
+    .ux-fila-reparto-label { width: auto; flex: 1; }
+    .ux-fila-reparto-monto { width: auto; }
+    .ux-fila-reparto .ux-barra { flex-basis: 100%; order: 3; }
+}
+
+/* ---------- Costos: un bloque por modelo, una fila por talle ---------- */
+.ux-modelo-costo { margin-bottom: 16px; }
+.ux-modelo-cabecera { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02); }
+.ux-copiar-costo { display: flex; flex-direction: column; gap: 4px; }
+.ux-copiar-costo input { width: 150px; }
+.ux-filas-costo { padding: 4px 20px 10px; }
+.ux-fila-costo { display: grid; grid-template-columns: 110px 150px 140px 1fr; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+.ux-fila-costo:last-child { border-bottom: 0; }
+.ux-fila-costo-input input { width: 130px; text-align: right; font-weight: 800; }
+.ux-fila-costo-perdida { background: color-mix(in srgb, var(--danger) 7%, transparent); box-shadow: inset 4px 0 0 var(--danger); margin: 0 -20px; padding-left: 20px; padding-right: 20px; }
+@media (max-width: 720px) {
+    .ux-fila-costo { grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+    .ux-fila-costo-ganancia { grid-column: 1 / -1; }
+    .ux-fila-costo-input input { width: 100%; }
+    .ux-copiar-costo { width: 100%; }
+    .ux-copiar-costo input { flex: 1; width: auto; }
+}
+
+/* ---------- Calculadora: datos a la izquierda, resultado a la derecha (se apilan en celular) ---------- */
+.ux-calc { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 20px; align-items: start; margin-bottom: 8px; }
+.ux-calc > .panel { position: sticky; top: calc(var(--topnav-height, 98px) + 56px); }
+.ux-input-grande { font-size: 1.5em !important; font-weight: 800; padding: 14px 16px !important; }
+.ux-lista-opciones { margin-top: 4px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); max-height: 220px; overflow-y: auto; background: var(--glass-bg-alt); box-shadow: var(--shadow-elevated); }
+.ux-opcion { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--border-soft); background: transparent; color: var(--text-primary); font-family: var(--font-ui); font-size: 0.88em; text-align: left; cursor: pointer; }
+.ux-opcion:hover, .ux-opcion:focus-visible { background: color-mix(in srgb, var(--accent-primary) 14%, transparent); }
+.ux-opcion span { color: var(--text-faint); font-size: 0.82em; }
+.ux-opcion-msg { padding: 10px 14px; color: var(--text-secondary); font-size: 0.85em; }
+@media (max-width: 900px) { .ux-calc { grid-template-columns: 1fr; } .ux-calc > .panel { position: static; } }

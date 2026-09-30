@@ -7,10 +7,11 @@ gasto recurrente de $150.000/mes cuenta como $150.000 * 14/30, no el
 mes entero ni $0. Esto se decidió así a propósito en vez de contar el
 mes completo siempre, para que el número tenga sentido en períodos
 cortos como "últimos 7 días"."""
+import re
 from datetime import datetime, timedelta
 from psycopg.rows import dict_row
 import db
-from utils import formatear_moneda
+from utils import formatear_moneda, limpiar_titulo_modelo
 
 DIAS_MES_REFERENCIA = 30  # para prorratear "monto mensual" a días
 
@@ -19,6 +20,14 @@ def _dias_de_solapamiento(fecha_inicio_gasto, fecha_fin_gasto, fecha_desde_perio
     inicio = max(fecha_inicio_gasto, fecha_desde_periodo)
     fin = min(fecha_fin_gasto or fecha_hasta_periodo, fecha_hasta_periodo)
     return max((fin - inicio).days + 1, 0)
+
+
+_RE_TALLE = re.compile(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', re.IGNORECASE)
+
+
+def _talle_de_titulo(titulo):
+    m = _RE_TALLE.search(titulo or "")
+    return m.group(0).upper() if m else "Único"
 
 
 def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
@@ -100,6 +109,11 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
             "ganancia_neta_formateada": formatear_moneda(ganancia_neta) if ganancia_neta is not None else None,
             "ganancia_negativa": ganancia_neta is not None and ganancia_neta < 0,
             "segmentos_pct": segmentos_pct,
+            # Crudos + agrupación por modelo: la pantalla recalcula la ganancia en vivo al tipear un costo
+            # y deja cargar el mismo costo a todos los talles de un modelo de una vez.
+            "precio": precio_p, "comision": comision_est, "envio": envio_prom,
+            "modelo": limpiar_titulo_modelo(fila["titulo"]) or (fila["titulo"] or "Sin nombre"),
+            "talle": _talle_de_titulo(fila["titulo"]),
         })
 
     stats_gastos = {

@@ -1,82 +1,103 @@
 {% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, delta %}
 {% block title %}Monotributo · CoreLux{% endblock %}
 {% block content %}
+{% set declarada = categoria_declarada %}
+{% set uso = (facturacion_12m / tope_categoria_declarada * 100) if tope_categoria_declarada else None %}
+{# Cuánto del techo de la categoría declarada ya se usó: <60% holgado · 60-85% atención · 85-100% cerca del techo · >100% se pasó #}
+{% set tono = 'neutral' if uso is none else ('danger' if uso > 100 else ('warn' if uso >= 85 else ('info' if uso >= 60 else 'ok'))) %}
+
 <div class="page-header">
     <div>
-        <div class="page-title">Categoría de Monotributo</div>
-        <div class="page-subtitle">Escalas vigentes desde {{ vigente_desde }} — actividad "venta de cosas muebles". Esto avisa y sugiere; la decisión final siempre conviene confirmarla con tu contador.</div>
+        <h1 class="page-title">Monotributo</h1>
+        <div class="page-subtitle">Tu facturación de los últimos 12 meses contra el techo de tu categoría — escalas vigentes desde <strong>{{ vigente_desde }}</strong>, actividad "venta de cosas muebles"</div>
     </div>
 </div>
 
-{% if not categoria_declarada %}
-<div class="alert alert-info">
-    Todavía no declaraste en qué categoría estás inscripto — elegila abajo para que podamos comparar contra tu facturación real.
-</div>
+<!-- ── 1. QUÉ TENÉS QUE SABER ───────────────────────────────────────────── -->
+{% if not declarada %}
+{{ banner("info", "info", "<b>Declará tu categoría</b> para compararla con lo que facturás", "La app no puede saber en qué categoría te inscribiste ante AFIP: elegila abajo y el resto se calcula solo.", "Elegir mi categoría", "#declarar-categoria") }}
+{% endif %}
+{% for a in alertas %}
+{{ banner("danger" if a.tipo == 'urgente' else ("ok" if a.tipo == 'oportunidad' else "warn"), "check" if a.tipo == 'oportunidad' else "alert", a.texto|e) }}
+{% endfor %}
+{% if declarada and not alertas %}
+{{ banner("ok", "check", "<b>Estás dentro de tu categoría</b> — nada para hacer por ahora", "Usaste el " ~ (uso|pct(0)) ~ " del techo de la Categoría " ~ declarada ~ ".") }}
 {% endif %}
 
-{% for a in alertas %}
-<div class="alert {% if a.tipo == 'urgente' %}alert-danger{% elif a.tipo == 'oportunidad' %}alert-success{% else %}alert-warning{% endif %}">
-    {{ a.texto }}
+<!-- ── 2. CUÁNTO DEL TECHO USASTE ───────────────────────────────────────── -->
+<div class="ux-hero ux-{{ tono }}">
+    <div class="ux-hero-etiqueta">{% if declarada %}Techo usado · Categoría {{ declarada }}{% else %}Tu facturación real te ubica en{% endif %}</div>
+    {% if declarada %}
+    <div class="ux-hero-numero">{{ uso|pct(0) }}</div>
+    <div class="ux-barra" style="height:16px; margin-top:6px;"><span style="width:{{ [uso, 100]|min }}%;"></span></div>
+    <div class="ux-hero-frase" style="margin-top:14px;">
+        Facturaste <b>{{ facturacion_12m|plata }}</b> en los últimos 12 meses; el techo de tu categoría es <b>{{ tope_categoria_declarada|plata }}</b>
+        {% if uso <= 100 %} — te quedan <b>{{ (tope_categoria_declarada - facturacion_12m)|plata }}</b>{% else %} — <b>te pasaste por {{ (facturacion_12m - tope_categoria_declarada)|plata }}</b>{% endif %}.
+    </div>
+    {% else %}
+    <div class="ux-hero-numero">{{ ("Categoría " ~ categoria_real) if categoria_real else "Fuera de escala" }}</div>
+    <div class="ux-hero-frase">Con <b>{{ facturacion_12m|plata }}</b> facturados en los últimos 12 meses.</div>
+    {% endif %}
 </div>
-{% endfor %}
 
-<div class="stat-strip stat-strip-kpi">
-    <div class="stat-chip kpi-card">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="stat-chip-label">Facturación últimos 12 meses</span></div>
-        <div class="stat-chip-value">${{ "%.2f"|format(facturacion_12m)|replace(",", "@")|replace(".", ",")|replace("@", ".") }}</div>
-    </div>
-    <div class="stat-chip kpi-card accent-gold">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-file-text"/></svg></span><span class="stat-chip-label">Categoría según tu facturación real</span></div>
-        <div class="stat-chip-value">{{ categoria_real or "Fuera de escala" }}</div>
-    </div>
-    {% if categoria_declarada %}
-    <div class="stat-chip">
-        <div class="stat-chip-label">Categoría declarada</div>
-        <div class="stat-chip-value">{{ categoria_declarada }}</div>
-    </div>
-    <div class="stat-chip">
-        <div class="stat-chip-label">Cuota mensual de tu categoría</div>
-        <div class="stat-chip-value">${{ "%.2f"|format(cuota_mensual_declarada)|replace(",", "@")|replace(".", ",")|replace("@", ".") }}</div>
-    </div>
+<!-- ── 3. NÚMEROS ─────────────────────────────────────────────────────── -->
+<div class="ux-kpis">
+    {{ kpi("Facturación · 12 meses", facturacion_12m|plata, "accion", "receipt", "ventas de los últimos 365 días") }}
+    {{ kpi("Categoría según tu facturación", categoria_real or "Fuera de escala", "gold", "file-text", "la que te corresponde hoy") }}
+    {% if declarada %}
+    {{ kpi("Categoría declarada", declarada, "info", "check", "la que informaste ante AFIP") }}
+    {{ kpi("Cuota mensual", cuota_mensual_declarada|plata, "neutral", "wallet", "de tu categoría declarada") }}
     {% endif %}
     {% if variacion_pct_propia is not none %}
-    <div class="stat-chip">
-        <div class="stat-chip-label">Tu propia tendencia (3m vs 3m)</div>
-        <div class="stat-chip-value {% if variacion_pct_propia < 0 %}text-danger{% else %}text-success{% endif %}">{{ variacion_pct_propia }}%</div>
-    </div>
+    {{ kpi("Tu tendencia (3 meses vs. 3 anteriores)", (('+' if variacion_pct_propia >= 0 else '') ~ (variacion_pct_propia|pct)), "ok" if variacion_pct_propia >= 0 else "danger", "trend", "ritmo de venta propio, no una predicción") }}
+    {% endif %}
+    {% if meses_para_cruzar is not none %}
+    {{ kpi("Al ritmo actual superás el techo en", meses_para_cruzar|string|replace('.', ',') ~ " meses", "warn" if meses_para_cruzar <= 6 else "info", "calendar", "proyección con tu propio crecimiento") }}
     {% endif %}
 </div>
 
-<div class="panel">
-    <div class="panel-title">Declarar tu categoría actual</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">La app no puede saber esto sola — decinos en qué categoría te inscribiste ante AFIP para poder comparar.</div>
-    <form action="{{ url_for('monotributo_declarar') }}" method="POST" class="filter-row">
-        <div class="field-group">
-            <label class="field-label">Categoría declarada</label>
-            <select name="categoria_monotributo" class="field-input">
-                <option value="">Sin declarar</option>
-                {% for e in escalas %}
-                <option value="{{ e.categoria }}" {% if e.categoria == categoria_declarada %}selected{% endif %}>{{ e.categoria }} — hasta ${{ "%.0f"|format(e.tope_anual) }}/año</option>
-                {% endfor %}
-            </select>
-        </div>
-        <button type="submit" class="btn btn-denim" style="align-self:flex-end;">Guardar</button>
-    </form>
-</div>
-
-<div class="panel">
-    <div class="panel-title">Tabla de escalas vigente</div>
+<!-- ── 4. ESCALAS ───────────────────────────────────────────────────────── -->
+<div class="ux-seccion ux-accion">Tabla de escalas vigente</div>
+<div class="panel" style="padding:0; overflow:hidden;">
+    <div style="overflow-x:auto; padding:6px 12px 12px;">
     <table class="data-table">
         <thead><tr><th>Categoría</th><th class="num">Tope anual</th><th class="num">Cuota mensual</th></tr></thead>
         <tbody>
             {% for e in escalas %}
-            <tr {% if e.categoria == categoria_real %}class="row-alert"{% endif %}>
-                <td><strong>{{ e.categoria }}</strong> {% if e.categoria == categoria_real %}<span class="badge badge-success">Tu facturación real</span>{% endif %} {% if e.categoria == categoria_declarada %}<span class="badge badge-neutral">Declarada</span>{% endif %}</td>
-                <td class="num">${{ "%.2f"|format(e.tope_anual) }}</td>
-                <td class="num">${{ "%.2f"|format(e.cuota_mensual) }}</td>
+            <tr class="{% if e.categoria == categoria_real %}ux-fila-ok{% endif %}">
+                <td><b>{{ e.categoria }}</b>
+                    {% if e.categoria == categoria_real %}<span class="ux-pill ux-ok">Tu facturación real</span>{% endif %}
+                    {% if e.categoria == declarada %}<span class="ux-pill ux-info ux-pill-suave">Declarada</span>{% endif %}
+                </td>
+                <td class="num">{{ e.tope_anual|plata }}</td>
+                <td class="num">{{ e.cuota_mensual|plata }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
+</div>
+
+<!-- ── 5. DECLARAR LA CATEGORÍA ─────────────────────────────────────────── -->
+<div class="panel" id="declarar-categoria">
+    <div class="panel-title">{% if declarada %}Cambiar mi categoría declarada{% else %}Declarar mi categoría{% endif %}</div>
+    <form action="{{ url_for('monotributo_declarar') }}" method="POST" class="filter-row">
+        <div class="field-group" style="min-width:280px;">
+            <label class="field-label" for="categoria-monotributo">En qué categoría estás inscripto ante AFIP</label>
+            <select id="categoria-monotributo" name="categoria_monotributo" class="field-input">
+                <option value="">Sin declarar</option>
+                {% for e in escalas %}
+                <option value="{{ e.categoria }}" {% if e.categoria == declarada %}selected{% endif %}>Categoría {{ e.categoria }} — hasta {{ e.tope_anual|plata }} por año</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" style="align-self:flex-end;">Guardar categoría</button>
+    </form>
+</div>
+
+<div class="text-muted" style="font-size:0.82em; margin-top:-6px;">
+    <svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
+    Esta pantalla <b>avisa y sugiere</b> con tus datos de ventas: cualquier cambio de categoría conviene confirmarlo con tu contador.
 </div>
 {% endblock %}
