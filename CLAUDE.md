@@ -143,10 +143,12 @@ scopeado por cuenta_id antes de confiar en él.
 ## Lo que NO existe todavía (no asumas que sí)
 - Puente de WhatsApp (Baileys) — comentado en `iniciar_corelux.bat`
 - Auditoría automática de devoluciones/cancelaciones más allá de lo
-  que ya cubre `ventas_sync.py`
+  que ya cubre `ventas_sync.py` (el mapeo de motivo de reclamo sigue
+  sin terminar de ajustar, ver `cosas.txt`)
 - Cobro por Mercado Pago
-- Rediseño del Dashboard (gráficos, más variedad — hoy son cuadros de
-  resumen chicos nomás)
+- El Dashboard ya tiene tarjetas KPI (Design System v2), pero sigue
+  siendo mayormente cuadros de resumen — más variedad real de
+  gráficos (no solo el de tendencia de ventas) sigue sin hacerse
 - La visión de largo plazo (inteligencia competitiva cruzando
   Amazon/Alibaba/otros mercados de Latam, predicción de tendencias,
   eventualmente otros marketplaces como Tiendanube/Shopify y redes
@@ -167,27 +169,84 @@ scopeado por cuenta_id antes de confiar en él.
 - Para cualquier cosa con implicancia fiscal/legal (como Monotributo):
   avisar y sugerir, nunca decir "hacé esto" con total seguridad —
   siempre sugerir confirmar con un contador.
-- La identidad visual (estética Tron/vaporwave) es intocable — mejorar
-  el código sí, cambiar el look no.
+- ⚠️ **ACTUALIZADO 2026-09-30 — la identidad visual YA NO es Tron/vaporwave.**
+  El usuario confirmó explícitamente el cambio de dirección (commit
+  `3212a1b`, "Design System v2"): fondo grafito plano, tarjetas de
+  borde casi invisible (referencia estructural Escalafy), violeta
+  (`--accent-primary`, hoy `#8b5cf6`) como identidad Y color de acción
+  (botones primarios, estados activos de nav), dorado (`--accent-brand`,
+  ahora alias del mismo token) reservado solo para logo/badges "más
+  usado"/momentos de ganancia puntual — nunca botones ni estados
+  activos. El canvas de partículas (`particulas.js`) se dejó de
+  incluir. Lo que SIGUE intocable es la regla en sí — no cambiar el
+  look sin confirmación explícita del usuario, sea cual sea el look
+  vigente en ese momento — no asumas que "Tron" es la referencia actual.
 - Entregar solo los archivos que cambiaron, respetando la carpeta real
   del proyecto (no volver a comprimir todo el proyecto entero cada vez).
 
+## Deploy — Fly.io, no Railway (cambiado 2026-09-29)
+- Producción real: **Fly.io**, app `corecore`, región `gru` (São Paulo)
+  — mismo `fly.toml` en la raíz. Railway se descartó porque no tiene
+  ninguna región en Sudamérica (las 4 disponibles son California,
+  Virginia, Amsterdam, Singapur) — la distancia física a Supabase
+  (también São Paulo) causaba ~4s de latencia real en endpoints
+  simples, confirmado con logs de producción, no especulado.
+- Dominio propio: `corelux.app` (comprado en Cloudflare, DNS ahí
+  también, proxied). `MELI_REDIRECT_URI` productivo:
+  `https://corelux.app/callback`.
+- `Dockerfile` + `.dockerignore` en la raíz — deploy es `fly deploy`,
+  no gunicorn+systemd+nginx a mano (los archivos de `deploy/` para esa
+  ruta vieja siguen en el repo por si hace falta, pero no son el
+  camino real hoy).
+- Auto-deploy en el proveedor (Railway) se había dejado apagado a
+  propósito para forzar correr migraciones de Supabase antes de cada
+  deploy — confirmar si Fly.io tiene el mismo criterio configurado o
+  si los deploys ahí son manuales/vía CLI.
+
+## Historial de sesiones en paralelo (2026-09-30)
+Mientras una sesión trabajaba en la nube (sin acceso a Postgres real
+ni al navegador logueado del usuario), otra corrió en la PC local del
+usuario sobre la MISMA carpeta, generando ~38 commits de divergencia
+real (bugs de producción, Design System v2, multi-cuenta Elite,
+migración a Fly.io) sin verse entre sí. Se reconcilió con un merge de
+git real (no se descartó nada a ciegas): se guardó el trabajo local
+sin commitear en la rama `respaldo-local-pre-sync` antes de tocar
+nada, y en los 20 archivos con conflicto (todos templates + CSS del
+Design System v2) ganó siempre la versión más nueva porque en cada
+caso era una evolución estricta de la versión local, nunca contenido
+único perdido. **Moraleja para la próxima vez que haya sesiones en
+paralelo**: si vas a pasar a otra sesión (nube ↔ local), pusheá y
+avisá ANTES de que la otra arranque a divergir mucho, o al menos
+dejalo documentado en este archivo apenas pase.
+
+## `cosas.txt` — bugs reportados por el usuario usando la app real
+Archivo en la raíz (no es código, son notas del usuario navegando la
+app real como usuario nuevo). Es la fuente de verdad de bugs
+reportados — antes de decir "no hay más bugs conocidos", leelo. Al
+2026-09-30, de sus 16 ítems originales, 11 ya se arreglaron (repartidos
+en 3 commits "fix: batch de bugs reportados..."). Quedan pendientes o
+sin confirmar en vivo: el resumen de números de hoy en Stock, un campo
+para cargar el costo de entrega Flex por zona (feature, no bug), el
+motivo real de reclamos (falta ver logs de un sync real para terminar
+de mapear los `reason_id` de MeLi), si los períodos de Facturación
+(9 al 8 del mes siguiente) están realmente mal o es el ciclo real de
+MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
+
 ## Datos de entorno
-- Dominio estático de ngrok: `twister-casket-routing.ngrok-free.dev`
-  (app de Mercado Libre Developers separada de la personal del usuario)
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de
   transacción — el puerto importa para que RLS sea confiable),
-  `DATABASE_URL_ADMIN`, `MELI_CLIENT_ID/SECRET/REDIRECT_URI`,
+  `DATABASE_URL_ADMIN`, `MELI_CLIENT_ID/SECRET/REDIRECT_URI`
+  (`REDIRECT_URI` productivo: `https://corelux.app/callback`),
   `FLASK_SECRET_KEY`, `TOKEN_ENCRYPTION_KEY`, `IA_API_KEY`/`IA_BASE_URL`/`IA_MODEL`
   (opcional, para el coach de Logros y Costos por chat — cualquier
   proveedor compatible con Chat Completions de OpenAI sirve; en uso
   actual: DeepSeek, `https://api.deepseek.com`, `deepseek-flash`.
   Antes se llamaban `OPENROUTER_*` porque se empezó con OpenRouter,
   se renombraron 2026-09 al cambiar de proveedor)
-- `FLASK_DEBUG` SIEMPRE en `false` si la app está expuesta por ngrok —
-  con debug activo, un error muestra una consola de Python interactiva
-  a cualquiera que la vea.
-- Verificá que el esquema de Supabase tenga aplicadas todas las
-  migraciones (`ALTER TABLE`) de sesiones anteriores — el archivo
-  `schema/01_schema_multitenant.sql` puede no reflejar 1:1 lo que ya
-  está corrido en la base real si alguna quedó pendiente.
+- `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
+  públicamente (ngrok, Fly.io) — con debug activo, un error muestra
+  una consola de Python interactiva a cualquiera que la vea.
+- Migraciones corridas hasta `0015_competidores_thumbnail.sql` — 
+  verificá `migrate.py --status` contra Supabase real antes de asumir
+  cuál es la última aplicada, el número más alto en `migrations/` no
+  siempre coincide con lo corrido de verdad.
