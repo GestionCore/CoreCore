@@ -210,7 +210,7 @@ function ejecutarSincronizarTodo() {
     const textoOriginal = btn.innerHTML;
     const _spin = '<svg class="icon spin-anim" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg>';
     btn.disabled = true;
-    btn.innerHTML = _spin + ' Sincronizando...';
+    btn.innerHTML = _spin + '<span class="btn-sync-texto">Sincronizando...</span>';
     fetch('/sincronizar_todo')
         .then(r => r.json())
         .then(data => {
