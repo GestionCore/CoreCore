@@ -82,6 +82,11 @@ def calcular_desglose_real(access_token, precio, category_id, listing_type_id, o
         if resp.status_code != 200:
             return {"error": f"No se pudo consultar la comisión real: {resp.status_code} - {resp.text[:200]}"}
         opciones = resp.json()
+        # Con listing_type_id en la consulta MeLi devuelve UN objeto (no una
+        # lista de opciones, como cuando no se lo pasa) — sin este
+        # normalizado el cálculo siempre caía en el error de abajo.
+        if isinstance(opciones, dict):
+            opciones = [opciones]
         if not isinstance(opciones, list) or not opciones:
             return {"error": "MeLi no devolvió opciones de comisión para estos parámetros."}
 
