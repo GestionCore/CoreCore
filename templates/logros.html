@@ -8,11 +8,22 @@
     </div>
 </div>
 
-{% if mensaje_coach %}
-<div class="panel" style="border-left:3px solid var(--accent-primary);">
+{% if mensaje_coach or coach_pendiente %}
+<div class="panel" id="panel-coach" style="border-left:3px solid var(--accent-primary);">
     <div class="panel-title"><svg class="icon"><use href="#icon-bolt"/></svg> Prioridad de hoy</div>
-    <div style="line-height:1.6;">{{ mensaje_coach }}</div>
+    <div style="line-height:1.6;" id="coach-texto">{% if mensaje_coach %}{{ mensaje_coach }}{% else %}<div class="skeleton" style="height:44px; width:100%; border-radius:8px;"></div>{% endif %}</div>
 </div>
+{% if coach_pendiente %}
+<script>
+// El mensaje lo redacta la IA (tarda unos segundos): se pide aparte para no frenar la carga de la página.
+// Si no llega, el panel se oculta — las misiones de abajo se ven igual.
+fetch('/api/logros/coach').then(r => r.json()).then(d => {
+    const panel = document.getElementById('panel-coach');
+    if (d && d.mensaje) document.getElementById('coach-texto').textContent = d.mensaje;
+    else panel.remove();
+}).catch(() => { const p = document.getElementById('panel-coach'); if (p) p.remove(); });
+</script>
+{% endif %}
 {% endif %}
 
 {% if recien_resueltas > 0 %}

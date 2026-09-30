@@ -1307,10 +1307,23 @@ def logros_vista():
 
     return render_template(
         "logros.html", misiones=resultado["misiones"], mensaje_todo_bien=resultado["mensaje_todo_bien"],
-        mensaje_coach=resultado.get("mensaje_coach"), conteo_por_prioridad=conteo_por_prioridad,
+        mensaje_coach=resultado.get("mensaje_coach"), coach_pendiente=resultado.get("coach_pendiente", False),
+        conteo_por_prioridad=conteo_por_prioridad,
         logros_resueltos=resultado.get("logros_resueltos", []), recien_resueltas=resultado.get("recien_resueltas", 0),
         active_nav="logros"
     )
+
+
+@app.route("/api/logros/coach")
+@login_requerido
+def api_logros_coach():
+    """Mensaje del coach de IA, pedido aparte para que Logros cargue al instante (la IA tarda segundos)."""
+    import db
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        misiones_base = logros_mod._detectar_misiones_base(cursor, g.cuenta_id)
+    # La llamada a la IA va DESPUÉS de soltar la conexión del pool
+    return jsonify({"mensaje": logros_mod.generar_y_cachear_mensaje_coach(g.cuenta_id, misiones_base)})
 
 
 @app.route("/embudo_conversion")

@@ -7,6 +7,9 @@ Nota: la publicación "zombie" (que depende de embudo_conversion.py,
 todavía no portado) queda afuera por ahora — se agrega cuando portemos
 ese módulo, sin romper nada mientras tanto.
 """
+import hashlib
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 import analisis_stock
 import embudo_conversion
@@ -215,7 +218,7 @@ def generar_mensaje_coach(misiones):
         return None
     resumen_misiones = "\n".join(f"- [{m['prioridad']}] {m['titulo']}" for m in misiones[:5])
     contexto = f"""
-    Sos un coach de e-commerce para un vendedor de indumentaria en Mercado Libre. Estas son las misiones
+    Sos un coach de e-commerce para un vendedor de Mercado Libre. Estas son las misiones
     detectadas en su cuenta ahora mismo, ordenadas por prioridad:
     {resumen_misiones}
 
@@ -229,8 +232,55 @@ def generar_mensaje_coach(misiones):
     return resultado if ok else None
 
 
+# El mensaje del coach es una llamada a la IA (segundos y plata). Antes se
+# generaba en CADA carga de Logros y del Dashboard — hasta 9 s de espera por
+# página. Ahora se cachea por cuenta: mientras las misiones prioritarias no
+# cambien, se reutiliza el mismo mensaje (un caché por cuenta_id, no global:
+# el texto habla de los datos de esa cuenta). Se calcula sobre las misiones de
+# base de datos (sin las que consultan a MeLi) para que la página y el endpoint
+# asíncrono lleguen a la misma firma.
+_cache_coach = {}   # cuenta_id -> {"firma": str, "mensaje": str, "ts": float}
+_LOCK_COACH = threading.Lock()
+TTL_COACH_SEGUNDOS = 6 * 3600
+
+
+def _top_misiones_coach(misiones_base):
+    return sorted(misiones_base, key=lambda m: PRIORIDAD_ORDEN.get(m["prioridad"], 3))[:5]
+
+
+def _firma_coach(top):
+    return hashlib.sha1("|".join(f"{m['prioridad']}:{m['titulo']}" for m in top).encode("utf-8")).hexdigest()
+
+
+def mensaje_coach_en_cache(cuenta_id, misiones_base):
+    """El mensaje ya generado si sigue vigente para estas misiones, sin llamar a la IA."""
+    top = _top_misiones_coach(misiones_base)
+    if not top:
+        return None
+    with _LOCK_COACH:
+        hit = _cache_coach.get(cuenta_id)
+    if hit and hit["firma"] == _firma_coach(top) and time.time() - hit["ts"] < TTL_COACH_SEGUNDOS:
+        return hit["mensaje"]
+    return None
+
+
+def generar_y_cachear_mensaje_coach(cuenta_id, misiones_base):
+    top = _top_misiones_coach(misiones_base)
+    if not top:
+        return None
+    cacheado = mensaje_coach_en_cache(cuenta_id, misiones_base)
+    if cacheado:
+        return cacheado
+    mensaje = generar_mensaje_coach(top)
+    if mensaje:
+        with _LOCK_COACH:
+            _cache_coach[cuenta_id] = {"firma": _firma_coach(top), "mensaje": mensaje, "ts": time.time()}
+    return mensaje
+
+
 def obtener_logros(cursor, cuenta_id, headers=None):
     misiones = _detectar_misiones_base(cursor, cuenta_id)
+    misiones_base = list(misiones)
 
     if headers:
         try:
@@ -256,9 +306,12 @@ def obtener_logros(cursor, cuenta_id, headers=None):
             "mensaje_coach": None, "logros_resueltos": logros_resueltos, "recien_resueltas": len(recien_resueltas)
         }
 
-    mensaje_coach = generar_mensaje_coach(misiones)
+    # Sin llamar a la IA acá: si hay un mensaje vigente se muestra al instante;
+    # si no, la página lo pide aparte (/api/logros/coach) sin frenar la carga.
+    mensaje_coach = mensaje_coach_en_cache(cuenta_id, misiones_base)
     return {
         "misiones": misiones, "mensaje_todo_bien": None, "mensaje_coach": mensaje_coach,
+        "coach_pendiente": mensaje_coach is None and bool(misiones_base),
         "logros_resueltos": logros_resueltos, "recien_resueltas": len(recien_resueltas)
     }
 
