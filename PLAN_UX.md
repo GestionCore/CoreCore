@@ -6,7 +6,7 @@ Objetivo: que cada pantalla se entienda **en 5 segundos** — cómo voy, qué te
 
 - [x] Fase 0 — cimientos (`static/css/ux.css`, `static/js/ux.js`, `templates/_ux.html`, filtros `|plata |pct |numero`)
 - [x] Fase 1 — Dashboard · Ganancia Real (piloto, pendiente de aprobación del look)
-- [ ] Fase 2 — Stock · Despacho · Preguntas · Stock masivo
+- [x] Fase 2 — Stock · Despacho · Preguntas · Stock masivo
 - [ ] Fase 3 — Facturación · Costos · Monotributo · Reporte fiscal · Calculadora · Ventas fuera de MeLi · Historial de precios
 - [ ] Fase 4 — Promociones · Publicidad · Reputación · Embudo · Logros · Tendencias · Competencia
 - [ ] Fase 5 — Landing · Onboarding · Planes · Suscripción · Referidos · Conectar · Sincronizando · errores

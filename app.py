@@ -2278,6 +2278,11 @@ def actualizar_stock_multiple():
     from urllib.parse import urlencode
     volver_a = request.form.get("volver_a") or "/stock_masivo"
     campos_stock = {k[len("stock_"):]: v for k, v in request.form.items() if k.startswith("stock_")}
+    # Solo se tocan las publicaciones cuyo valor CAMBIÓ respecto del que mostraba la pantalla (orig_<id>).
+    # Antes se mandaban TODAS a Mercado Libre: el stock local puede estar unos minutos atrasado (una venta
+    # reciente), así que reenviar lo que no se tocó podía pisar el stock real de MeLi con un número viejo.
+    originales = {k[len("orig_"):]: v for k, v in request.form.items() if k.startswith("orig_")}
+    campos_stock = {k: v for k, v in campos_stock.items() if originales.get(k) != v}
     if not campos_stock:
         return redirect(f"{volver_a}?{urlencode({'msg': 'No había ningún cambio para aplicar.', 'tipo': 'info'})}")
 
@@ -2847,7 +2852,8 @@ def api_preguntas_lista():
         if estado != "todos":
             sql += " AND p.estado = %s"
             params.append(estado)
-        sql += " ORDER BY p.creado_en DESC LIMIT 200"
+        # Las pendientes, de la más vieja a la más nueva: la que lleva más tiempo esperando es la más urgente
+        sql += " ORDER BY p.creado_en " + ("ASC" if estado == "pendiente" else "DESC") + " LIMIT 200"
         cursor.execute(sql, params)
         filas = cursor.fetchall()
     preguntas = []
@@ -2860,6 +2866,7 @@ def api_preguntas_lista():
             "respuesta_sugerida": f[4] or "",
             "estado": f[5],
             "fecha": f[6].strftime("%Y-%m-%d %H:%M") if f[6] and hasattr(f[6], "strftime") else str(f[6] or ""),
+            "creado_en_iso": f[6].isoformat() if f[6] and hasattr(f[6], "isoformat") else None,
             "titulo_item": f[7] or f[2] or "—",
         })
     return jsonify(preguntas)

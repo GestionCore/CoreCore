@@ -1,71 +1,111 @@
 {% extends "base.html" %}
-{% block title %}Gestión de Stock Masiva · CoreLux{% endblock %}
+{% from "_ux.html" import banner, vacio %}
+{% block title %}Stock masivo · CoreLux{% endblock %}
 {% block content %}
+{# FULL = el stock lo maneja Mercado Libre: no se puede editar desde acá #}
+{% set editables = [] %}
+{% for m in modelos %}{% for v in m.variantes %}{% if v.full == 0 %}{% set _ = editables.append(v) %}{% endif %}{% endfor %}{% endfor %}
+
 <div class="page-header">
     <div>
-        <h1 class="page-title">Gestión de Stock Masiva</h1>
+        <h1 class="page-title">Stock masivo</h1>
         <div class="page-subtitle">
-            {% if modelos %}Editá el depósito de {{ modelos|length }} modelo{% if modelos|length != 1 %}s{% endif %} a la vez{% else %}Editá el depósito de varias publicaciones a la vez, agrupadas por modelo{% endif %}
+            {% if modelos %}Cambiá el depósito de varios talles a la vez — <strong>solo se envía a Mercado Libre lo que cambies</strong>{% else %}Cambiá el depósito de varias publicaciones a la vez, agrupadas por modelo{% endif %}
         </div>
     </div>
 </div>
 
 {% if not modelos %}
-<div class="panel"><div class="alert-empty">Todavía no hay publicaciones sincronizadas para mostrar acá. Probá "Sincronizar Todo" en la barra de arriba.</div></div>
+{{ vacio("Todavía no hay publicaciones sincronizadas", "Tocá \"Sincronizar Todo\" en la barra de arriba para traer tu catálogo.", "refresh", "accion") }}
 {% else %}
-<div class="panel">
-    <div class="field-group">
-        <label class="field-label">Buscar (modelo, color o talle — ej: "celeste l")</label>
-        <input type="text" id="input-buscador-masivo" placeholder="Buscar..." onkeyup="filtrarAcordeon()">
+
+{% if not editables %}
+{{ banner("info", "truck", "<b>Todas tus publicaciones están en FULL</b> — el stock lo gestiona Mercado Libre", "Desde acá solo se edita el depósito propio: las unidades en bodegas de MeLi se ven pero no se pueden cambiar.") }}
+{% endif %}
+
+<div class="ux-periodo" style="margin-bottom:16px;">
+    <div class="field-group" style="flex:1; min-width:220px;">
+        <input type="text" id="input-buscador-masivo" placeholder="Buscar modelo, color o talle — ej: celeste l" aria-label="Buscar" onkeyup="filtrarAcordeon()">
+    </div>
+    <div class="ux-periodo-botones">
+        <button type="button" class="btn btn-secondary" id="btn-solo-editables" onclick="alternarSoloEditables()" {% if not editables %}disabled{% endif %}>Solo los que puedo editar <span class="ux-pill ux-accion" style="padding:1px 8px;">{{ editables|length }}</span></button>
     </div>
 </div>
 
-<form action="/actualizar_stock_multiple" method="POST">
+<form action="/actualizar_stock_multiple" method="POST" id="form-stock-masivo">
     <input type="hidden" name="volver_a" value="/stock_masivo">
     <div id="acordeon-modelos">
-        <div id="acordeon-sin-resultados" class="alert-empty" style="display:none;">No encontramos ningún modelo con ese talle o color.</div>
+        <div id="acordeon-sin-resultados" style="display:none;">{{ vacio("No encontramos ningún modelo con eso", "Probá con otro talle, color o nombre.", "search", "info") }}</div>
         {% for m in modelos %}
-        <div class="panel acordeon-item abierto" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}">
-            <div class="acordeon-header" onclick="toggleAcordeon(this)">
+        {% set hay_editable = m.variantes|rejectattr('full')|list|length > 0 %}
+        <div class="panel acordeon-item {% if hay_editable %}abierto{% endif %}" data-editable="{{ 1 if hay_editable else 0 }}" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}" style="padding:0; overflow:hidden;">
+            <div class="acordeon-header" onclick="toggleAcordeon(this)" style="padding:16px 20px;">
                 <div class="row-flex">
-                    {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="">{% endif %}
+                    {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}
                     <div>
                         <strong>{{ m.titulo }}</strong>
-                        <div class="text-muted" style="font-size:0.8em;">Depósito: {{ m.propio }}u · FULL: {{ m.full }}u · {{ m.variantes|length }} talle(s)</div>
+                        <div class="text-muted" style="font-size:0.8em;">
+                            <b>{{ m.propio }}</b> u. en tu depósito · <b>{{ m.full }}</b> u. en FULL · {{ m.variantes|length }} talle{{ 's' if m.variantes|length != 1 }}
+                        </div>
                     </div>
                 </div>
-                <span class="acordeon-chevron">▾</span>
+                <span class="flex-gap">
+                    <span class="ux-pill ux-accion ux-pill-suave" data-cambios-modelo style="display:none;"></span>
+                    {% if not hay_editable %}<span class="ux-pill ux-info ux-pill-suave">Solo FULL</span>{% endif %}
+                    <span class="acordeon-chevron">▾</span>
+                </span>
             </div>
-            <div class="acordeon-body" style="display:block;">
+            <div class="acordeon-body" style="display:{{ 'block' if hay_editable else 'none' }}; padding:0 20px 16px;">
+                <div style="overflow-x:auto;">
                 <table class="data-table">
-                    <thead><tr><th>Talle</th><th>Estado</th><th class="num">Depósito</th><th class="num">FULL</th></tr></thead>
+                    <thead><tr><th>Talle</th><th>Estado</th><th class="num">Depósito propio</th><th class="num">FULL</th></tr></thead>
                     <tbody>
                         {% for v in m.variantes %}
                         <tr>
-                            <td>{{ v.talle }} <span class="text-muted" style="font-size:0.78em;">· {{ v.id_meli }}</span></td>
+                            <td><b>{{ v.talle }}</b> <span class="text-muted" style="font-size:0.78em;">· {{ v.id_meli }}</span></td>
                             <td>
-                                {% if v.pausada_por_stock %}<span class="badge badge-neutral">Pausada por stock (0u)</span>
-                                {% elif v.estado == 'active' %}<span class="badge badge-success">Activa</span>
-                                {% elif v.estado == 'paused' %}<span class="badge badge-warning">Pausada</span>
-                                {% else %}<span class="badge badge-neutral">Inactiva</span>{% endif %}
+                                {% if v.pausada_por_stock %}<span class="ux-pill ux-neutral ux-pill-suave">Pausada por stock (0 u.)</span>
+                                {% elif v.estado == 'active' %}<span class="ux-pill ux-ok">Activa</span>
+                                {% elif v.estado == 'paused' %}<span class="ux-pill ux-warn">Pausada</span>
+                                {% else %}<span class="ux-pill ux-neutral ux-pill-suave">Inactiva</span>{% endif %}
                             </td>
                             <td class="num">
-                                <input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" min="0" style="max-width:90px; margin-left:auto;">
+                                {% if v.full > 0 %}
+                                <span class="ux-pill ux-info ux-pill-suave" title="Esta publicación sale por FULL: el stock lo gestiona Mercado Libre, no se puede editar acá">Gestionado por FULL</span>
+                                {% else %}
+                                <span class="ux-stepper">
+                                    <button type="button" class="btn btn-secondary" aria-label="Restar una unidad" onclick="paso(this, -1)">−</button>
+                                    <input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" data-original="{{ v.propio }}" min="0" inputmode="numeric" aria-label="Unidades en depósito, talle {{ v.talle }}" oninput="alCambiar(this)">
+                                    <button type="button" class="btn btn-secondary" aria-label="Sumar una unidad" onclick="paso(this, 1)">+</button>
+                                </span>
+                                <input type="hidden" name="orig_{{ v.id_meli }}" value="{{ v.propio }}">
+                                {% endif %}
                             </td>
-                            <td class="num"><span title="El stock de FULL se gestiona desde Mercado Libre, no se puede editar acá">{{ v.full }} u.</span></td>
+                            <td class="num"><b>{{ v.full }} u.</b></td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
         {% endfor %}
     </div>
-    <button type="submit" class="btn btn-primary">Aplicar cambios a Mercado Libre</button>
+
+    <!-- Barra de acción fija: aparece apenas hay algo para guardar -->
+    <div class="ux-barra-accion" id="barra-cambios" style="display:none;" role="status">
+        <div class="ux-barra-accion-texto"><b id="texto-cambios">0 cambios</b> sin aplicar <span class="text-muted">— todavía no se envió nada a Mercado Libre</span></div>
+        <div class="flex-gap">
+            <button type="button" class="btn btn-secondary" onclick="descartarCambios()">Descartar</button>
+            <button type="button" class="btn btn-primary btn-lg" onclick="confirmarAplicar()"><svg class="icon"><use href="#icon-check"/></svg><span id="btn-aplicar-texto">Aplicar cambios</span></button>
+        </div>
+    </div>
 </form>
 {% endif %}
 
 <script>
+    let soloEditables = false;
+
     function toggleAcordeon(header) {
         const item = header.closest('.acordeon-item');
         const body = header.nextElementSibling;
@@ -73,16 +113,78 @@
         body.style.display = abierto ? 'none' : 'block';
         item.classList.toggle('abierto', !abierto);
     }
+
     function filtrarAcordeon() {
         const q = document.getElementById('input-buscador-masivo').value;
         let visibles = 0;
         document.querySelectorAll('.acordeon-item').forEach(item => {
-            const coincide = coincideBusqueda(item.dataset.buscar, q);
+            const coincide = coincideBusqueda(item.dataset.buscar, q) && (!soloEditables || item.dataset.editable === '1');
             item.style.display = coincide ? '' : 'none';
             if (coincide) visibles++;
         });
         const vacio = document.getElementById('acordeon-sin-resultados');
         if (vacio) vacio.style.display = visibles === 0 ? '' : 'none';
     }
+
+    function alternarSoloEditables() {
+        soloEditables = !soloEditables;
+        document.getElementById('btn-solo-editables').classList.toggle('active', soloEditables);
+        filtrarAcordeon();
+    }
+
+    // ── Seguimiento de cambios ───────────────────────────────────────────────
+    function cambiosPendientes() {
+        return [...document.querySelectorAll('#form-stock-masivo input[data-original]')].filter(i => i.value !== i.dataset.original);
+    }
+
+    function alCambiar(input) {
+        const cambio = input.value !== input.dataset.original;
+        input.classList.toggle('ux-campo-cambiado', cambio);
+        if (input.value !== '' && Number(input.value) < 0) input.value = 0;
+        refrescarBarra();
+    }
+
+    function paso(boton, delta) {
+        const input = boton.parentElement.querySelector('input');
+        input.value = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
+        alCambiar(input);
+    }
+
+    function refrescarBarra() {
+        const cambios = cambiosPendientes();
+        const n = cambios.length;
+        document.getElementById('barra-cambios').style.display = n ? '' : 'none';
+        document.getElementById('texto-cambios').textContent = n + (n === 1 ? ' cambio' : ' cambios');
+        document.getElementById('btn-aplicar-texto').textContent = n === 1 ? 'Aplicar 1 cambio' : 'Aplicar ' + n + ' cambios';
+        // contador por modelo, en el encabezado del acordeón
+        document.querySelectorAll('.acordeon-item').forEach(item => {
+            const c = item.querySelectorAll('input[data-original]').length
+                ? [...item.querySelectorAll('input[data-original]')].filter(i => i.value !== i.dataset.original).length : 0;
+            const pill = item.querySelector('[data-cambios-modelo]');
+            pill.style.display = c ? '' : 'none';
+            pill.textContent = c + (c === 1 ? ' cambio' : ' cambios');
+        });
+    }
+
+    function descartarCambios() {
+        document.querySelectorAll('#form-stock-masivo input[data-original]').forEach(i => { i.value = i.dataset.original; i.classList.remove('ux-campo-cambiado'); });
+        refrescarBarra();
+    }
+
+    // Toca el stock real en Mercado Libre: confirmación explícita, con el resumen de qué se va a cambiar.
+    function confirmarAplicar() {
+        const cambios = cambiosPendientes();
+        if (!cambios.length) return;
+        const resumen = cambios.slice(0, 5).map(i => {
+            const fila = i.closest('tr'), modelo = i.closest('.acordeon-item').dataset.modeloTitulo;
+            return `${modelo.length > 38 ? modelo.slice(0, 38) + '…' : modelo} · ${fila.querySelector('b').textContent}: ${i.dataset.original} → ${i.value}`;
+        }).join('\n') + (cambios.length > 5 ? `\n…y ${cambios.length - 5} más` : '');
+        confirmarAccion(`¿Aplicar ${cambios.length} cambio${cambios.length > 1 ? 's' : ''} de stock en Mercado Libre?`, document.getElementById('form-stock-masivo'), 'Aplicar cambios', resumen);
+    }
+
+    // Avisa antes de irse con cambios sin aplicar — salvo cuando el envío lo confirmó el usuario.
+    let _enviando = false;
+    document.getElementById('modal-confirmar-ok')?.addEventListener('click', () => { _enviando = true; }, true);
+    window.addEventListener('beforeunload', (e) => { if (!_enviando && cambiosPendientes().length) { e.preventDefault(); e.returnValue = ''; } });
 </script>
 {% endblock %}

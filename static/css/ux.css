@@ -9,7 +9,7 @@
    Se carga después de style.css y se apoya en sus tokens (tema oscuro
    y claro incluidos).
    ============================================================ */
-:where(.ux-banner, .ux-hero, .ux-kpi, .ux-pill, .ux-item-accion) { --ux-c: var(--accent-primary); }
+:where(.ux-banner, .ux-hero, .ux-kpi, .ux-pill, .ux-item-accion, .ux-pregunta) { --ux-c: var(--accent-primary); }
 .ux-ok      { --ux-c: var(--success); }
 .ux-danger  { --ux-c: var(--danger); }
 .ux-warn    { --ux-c: var(--semantic-warning); }
@@ -193,3 +193,69 @@ tr.ux-fila-ok td:first-child { box-shadow: inset 4px 0 0 var(--success); }
 
 /* Columna de nombre en tablas anchas: sin esto el título se partía palabra por palabra */
 .data-table td.ux-col-titulo { min-width: 240px; }
+
+/* ---------- Tabla que en celular se vuelve una lista de tarjetas (td con data-label) ---------- */
+@media (max-width: 720px) {
+    .ux-tabla-cards, .ux-tabla-cards tbody { display: block; width: 100%; }
+    .ux-tabla-cards thead { display: none; }
+    .ux-tabla-cards tr { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; padding: 14px 16px; border-bottom: 1px solid var(--glass-border); }
+    .ux-tabla-cards td { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 0; border: 0; text-align: left; min-width: 0; }
+    .ux-tabla-cards td[data-label]::before { content: attr(data-label); color: var(--text-secondary); font-size: 0.68em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ux-tabla-cards td.col-titulo, .ux-tabla-cards td:last-child { grid-column: 1 / -1; }
+    .ux-tabla-cards td.col-titulo { padding-bottom: 10px; }
+    .ux-tabla-cards td:last-child { padding-top: 10px; }
+    .ux-tabla-cards td:last-child .btn { width: 100%; }
+    .ux-tabla-cards tr.ux-fila-danger td:first-child { box-shadow: none; }
+    .ux-tabla-cards tr.ux-fila-danger { border-left: 4px solid var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+}
+.ux-tabla-cards td.num, .ux-tabla-cards td[data-label] { white-space: nowrap; }
+@media (max-width: 720px) { .ux-tabla-cards td.col-precio { grid-column: 1 / -1; white-space: normal; } }
+
+/* ---------- Barra de acción fija (pantallas de edición): aparece cuando hay cambios sin guardar ---------- */
+.ux-barra-accion {
+    position: sticky; bottom: 14px; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+    margin-top: 18px; padding: 14px 18px; border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--accent-primary) 16%, var(--glass-bg-alt)); border: 1px solid color-mix(in srgb, var(--accent-primary) 55%, transparent);
+    box-shadow: var(--shadow-elevated), 0 0 34px -10px var(--accent-primary-glow); backdrop-filter: blur(10px);
+}
+.ux-barra-accion-texto { font-size: 0.95em; }
+.ux-barra-accion-texto b { color: var(--text-primary); font-size: 1.05em; }
+
+/* ---------- Campo numérico con - / + (se usa bien con el pulgar) ---------- */
+.ux-stepper { display: inline-flex; align-items: center; gap: 6px; }
+.ux-stepper .btn { padding: 0; width: 38px; height: 38px; font-size: 1.2em; font-weight: 800; }
+.ux-stepper input { width: 74px; text-align: center; padding: 8px 6px; font-weight: 800; }
+.ux-campo-cambiado { border-color: var(--accent-primary) !important; background: color-mix(in srgb, var(--accent-primary) 16%, transparent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 25%, transparent); }
+
+/* El subtítulo del modal de confirmación respeta los saltos de línea (lista de cambios) */
+#modal-confirmar-sub { white-space: pre-line; }
+
+/* ---------- Despacho: tarjetas grandes; pendiente = naranja, listo = verde ---------- */
+.despacho-item {
+    padding: 16px 20px; border-left: 5px solid var(--semantic-warning);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--semantic-warning) 9%, var(--glass-bg)), var(--glass-bg) 55%);
+}
+.despacho-item.despachado { border-left-color: var(--success); background: color-mix(in srgb, var(--success) 9%, var(--glass-bg)); }
+.despacho-item.despachado .despacho-info { opacity: 0.6; }
+.despacho-item.despachado .despacho-info strong { text-decoration: line-through; }
+.despacho-check { width: 54px; height: 54px; min-width: 54px; padding: 0; background: transparent; font-size: 1.7em; font-family: inherit; flex-shrink: 0; }
+.despacho-item:not(.despachado) .despacho-check { border-color: var(--semantic-warning); }
+.despacho-item.despachado .despacho-check { background: var(--success); color: #07130b; }
+body.modo-despacho-limpio .ux-periodo, body.modo-despacho-limpio .ux-banner, body.modo-despacho-limpio .ux-hero-nota { display: none !important; }
+body.modo-despacho-limpio .ux-hero { padding: 18px 20px; }
+body.modo-despacho-limpio .despacho-check { width: 64px; height: 64px; min-width: 64px; }
+
+/* ---------- Preguntas de compradores: una tarjeta por pregunta, con la respuesta ahí mismo ---------- */
+.ux-pregunta {
+    padding: 18px 20px; margin-bottom: 14px; border-radius: var(--radius-md);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--ux-c) 9%, var(--glass-bg)), var(--glass-bg) 50%);
+    border: 1px solid color-mix(in srgb, var(--ux-c) 28%, var(--glass-border)); border-left: 5px solid var(--ux-c);
+    transition: opacity 0.28s, transform 0.28s;
+}
+.ux-pregunta-sale { opacity: 0; transform: translateX(24px); }
+.ux-pregunta-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.ux-pregunta-item { font-size: 0.82em; color: var(--text-secondary); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+a.ux-pregunta-item:hover { color: var(--accent-primary); }
+.ux-pregunta-texto { font-size: 1.12em; font-weight: 800; line-height: 1.4; margin-bottom: 4px; color: var(--text-primary); }
+.ux-pregunta textarea { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--font-ui); font-size: 0.95em; }
+@media (max-width: 640px) { .ux-pregunta .btn-lg { width: 100%; } }
