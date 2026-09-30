@@ -147,12 +147,12 @@ def _detectar_misiones_base(cursor, cuenta_id):
     try:
         movimiento = tendencias_mod.detectar_movimiento_categoria_principal(cursor, cuenta_id)
         if movimiento:
-            direccion = "subió" if movimiento["subio"] else "cayó"
+            direccion = "creció" if movimiento["subio"] else "se redujo"
             misiones.append({
                 "id": "tendencia_categoria", "categoria": "tendencias", "icono": "📈" if movimiento["subio"] else "📉",
                 "prioridad": "importante" if abs(movimiento["variacion_pct"]) >= 25 else "opcional",
-                "titulo": f"La demanda en {movimiento['categoria']} {direccion} {abs(movimiento['variacion_pct'])}%",
-                "descripcion": f"Comparado con tu último relevamiento — {'puede ser buen momento para stockear más' if movimiento['subio'] else 'vale la pena revisar si conviene ajustar precio o diversificar'}.",
+                "titulo": f"La competencia en {movimiento['categoria']} {direccion} {abs(movimiento['variacion_pct'])}%",
+                "descripcion": f"Cantidad de publicaciones activas, comparada con el relevamiento anterior — {'hay más vendedores peleando la misma vitrina: revisá precio y cómo te diferenciás' if movimiento['subio'] else 'hay menos oferta: puede ser buen momento para ganar visibilidad'}.",
                 "link": "/tendencias", "link_texto": "Ver Tendencias"
             })
     except Exception as e:

@@ -13,6 +13,7 @@ el esquema multi-tenant), y el "INSERT OR IGNORE" de SQLite se
 resuelve con "ON CONFLICT DO NOTHING" en Postgres.
 """
 import re
+import threading
 import meli_http
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
@@ -78,146 +79,541 @@ def obtener_categoria_principal(access_token, cuenta_id, cursor, site_id="MLA"):
         return None, None
 
 
-def _armar_veredicto(presion_demanda, concentracion_top3_pct):
+_categoria_especifica_cache = {}   # cuenta_id -> (timestamp, (id, nombre))
+TTL_CATEGORIA_ESPECIFICA_SEGUNDOS = 6 * 3600
+
+
+def obtener_categoria_especifica(access_token, cuenta_id, cursor):
     """
-    Traduce los números crudos a un veredicto en texto plano — "¿vale
-    la pena meterse acá?". Los umbrales son heurísticas declaradas
-    (no una ciencia exacta): mejor ser honesto con eso que fingir una
-    precisión que la muestra no tiene.
+    La categoría hoja más frecuente entre las publicaciones activas de la
+    cuenta (ej: "Camperas y Tapados" en vez del rubro raíz "Ropa y
+    Accesorios"). El rubro raíz sirve para el radar de MeLi, pero como
+    referencia de competencia es tan amplio que no dice nada útil.
+    Cacheada por cuenta_id (cada cuenta vende lo suyo).
     """
-    if presion_demanda >= 5:
-        demanda_texto, demanda_nivel = "Alta demanda por publicación", "alta"
-    elif presion_demanda >= 1:
-        demanda_texto, demanda_nivel = "Demanda moderada", "media"
-    else:
-        demanda_texto, demanda_nivel = "Demanda baja o muy repartida", "baja"
+    ahora = datetime.now().timestamp()
+    hit = _categoria_especifica_cache.get(cuenta_id)
+    if hit and ahora - hit[0] < TTL_CATEGORIA_ESPECIFICA_SEGUNDOS:
+        return hit[1]
 
-    if concentracion_top3_pct is not None and concentracion_top3_pct >= 50:
-        saturacion_texto, saturacion_nivel = "Concentrado en pocos vendedores — más difícil de romper salvo que ofrezcas algo distinto", "alta"
-    elif concentracion_top3_pct is not None and concentracion_top3_pct >= 25:
-        saturacion_texto, saturacion_nivel = "Medianamente repartido entre varios vendedores", "media"
-    else:
-        saturacion_texto, saturacion_nivel = "Fragmentado — hay lugar para entrar sin pelear contra 2-3 gigantes", "baja"
+    cursor.execute("SELECT id_meli FROM productos_padre WHERE estado = 'active' ORDER BY id_meli LIMIT 20")
+    ids = [f[0] for f in cursor.fetchall()]
+    if not ids:
+        return None, None
 
-    if demanda_nivel == "alta" and saturacion_nivel == "baja":
-        resumen = "Buena señal: se vende bien y no está copado de competidores grandes."
-    elif demanda_nivel == "alta" and saturacion_nivel == "alta":
-        resumen = "Se vende, pero pocos vendedores se llevan la mayoría — entrar requiere diferenciarte, no solo bajar precio."
-    elif demanda_nivel == "baja" and saturacion_nivel == "baja":
-        resumen = "Poca pelea, pero también poca demanda comprobada — nicho chico, no necesariamente malo."
-    else:
-        resumen = "Mercado mixto — conviene mirar precio, marcas y tu propio margen antes de decidir."
+    headers = {"Authorization": f"Bearer {access_token}"}
+    estado, data = _get_json("https://api.mercadolibre.com/items", headers, {"ids": ",".join(ids), "attributes": "id,category_id"})
+    if estado != 200 or not isinstance(data, list):
+        return None, None
+    conteo = {}
+    for fila in data:
+        cid = (fila.get("body") or {}).get("category_id") if fila.get("code") == 200 else None
+        if cid:
+            conteo[cid] = conteo.get(cid, 0) + 1
+    if not conteo:
+        return None, None
+    # desempate estable por id: si dos categorías empatan no puede cambiar de una carga a la otra
+    category_id = sorted(conteo.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
 
+    _, c = _get_json(f"https://api.mercadolibre.com/categories/{category_id}", headers)
+    resultado = (category_id, (c or {}).get("name"))
+    if resultado[1]:
+        _categoria_especifica_cache[cuenta_id] = (ahora, resultado)
+    return resultado
+
+
+NOTA_LIMITE_DATOS = (
+    "Mercado Libre dejó de publicar por API las ventas y visitas de otros vendedores, así que este análisis "
+    "mide competencia y precios (la oferta pública en catálogo) — no la demanda real de un producto ajeno, "
+    "que no se puede ver desde afuera. Para tus propios productos, tus ventas reales están en Ganancia Real."
+)
+
+_TIPOS_PUBLICACION = {
+    "gold_pro": "Premium", "gold_premium": "Premium", "gold_special": "Clásica",
+    "gold": "Oro", "silver": "Plata", "bronze": "Bronce", "free": "Gratuita",
+}
+_MEDALLAS_VENDEDOR = {"platinum": "MercadoLíder Platinum", "gold": "MercadoLíder Gold", "silver": "MercadoLíder"}
+_NIVELES_REPUTACION = {"5_green": "Verde", "4_light_green": "Verde claro", "3_yellow": "Amarillo", "2_orange": "Naranja", "1_red": "Rojo"}
+
+
+def _get_json(url, headers=None, params=None, timeout=10):
+    """(status, json|None) — nunca levanta: un tropiezo de red o un 403 puntual no tumba el análisis entero."""
+    try:
+        resp = meli_http.get(url, headers=headers or {}, params=params, timeout=timeout)
+    except Exception as e:
+        print(f"[Tendencias] ⚠️ Error de conexión con {url}: {e}")
+        return None, None
+    if resp.status_code != 200:
+        return resp.status_code, None
+    try:
+        return 200, resp.json()
+    except ValueError:
+        return 200, None
+
+
+def _percentil(ordenados, p):
+    if not ordenados:
+        return None
+    if len(ordenados) == 1:
+        return ordenados[0]
+    k = (len(ordenados) - 1) * p
+    piso = int(k)
+    techo = min(piso + 1, len(ordenados) - 1)
+    return ordenados[piso] + (ordenados[techo] - ordenados[piso]) * (k - piso)
+
+
+def _histograma_precios(precios, bandas=5):
+    """5 bandas entre el percentil 5 y el 95 — un par de publicaciones carísimas (o regaladas) estiraban el eje y dejaban todo apilado en la primera banda."""
+    if not precios:
+        return []
+    ordenados = sorted(precios)
+    p_min, p_max = ordenados[0], ordenados[-1]
+    if p_max == p_min:
+        return [{"desde": round(p_min), "hasta": round(p_max), "cantidad": len(precios)}]
+    lo, hi = _percentil(ordenados, 0.05), _percentil(ordenados, 0.95)
+    if hi <= lo:
+        lo, hi = p_min, p_max
+    ancho = (hi - lo) / bandas
+    cuentas = [0] * bandas
+    for p in precios:
+        idx = int((p - lo) / ancho) if ancho else 0
+        cuentas[max(0, min(bandas - 1, idx))] += 1
+    resultado = []
+    for i in range(bandas):
+        desde = p_min if i == 0 else lo + ancho * i
+        hasta = p_max if i == bandas - 1 else lo + ancho * (i + 1)
+        resultado.append({"desde": round(desde), "hasta": round(hasta), "cantidad": cuentas[i]})
+    return resultado
+
+
+def _info_categoria(headers, category_id):
+    """Nombre, camino, total de publicaciones y tamaño relativo frente a sus categorías hermanas (mismo padre)."""
+    _, c = _get_json(f"https://api.mercadolibre.com/categories/{category_id}", headers)
+    if not c:
+        return None
+    path = c.get("path_from_root") or []
+    info = {
+        "id": c.get("id"), "nombre": c.get("name"), "camino": [p.get("name") for p in path],
+        "total": c.get("total_items_in_this_category"), "hermanas": None, "share_rubro_pct": None,
+    }
+    if len(path) >= 2 and info["total"] is not None:
+        _, padre = _get_json(f"https://api.mercadolibre.com/categories/{path[-2]['id']}", headers)
+        if padre:
+            hijos = padre.get("children_categories") or []
+            # El total de la propia categoría y el que MeLi lista en su padre difieren (~15%):
+            # se usa el del padre, que es el mismo que se ve al navegar el árbol y con el que
+            # se comparan las hermanas — así el ranking y los números en pantalla coinciden.
+            propio = next((h.get("total_items_in_this_category") for h in hijos if h.get("id") == info["id"]), None)
+            if propio is not None:
+                info["total"] = propio
+            hijas = [h.get("total_items_in_this_category") or 0 for h in hijos]
+            if hijas:
+                info["hermanas"] = {
+                    "posicion": sum(1 for t in hijas if t > info["total"]) + 1,
+                    "de": len(hijas), "rubro_nombre": padre.get("name"),
+                }
+                total_padre = padre.get("total_items_in_this_category")
+                if total_padre:
+                    info["share_rubro_pct"] = round(info["total"] / total_padre * 100, 1)
+    return info
+
+
+_STOP_TOKENS = {"de", "para", "con", "el", "la", "los", "las", "un", "una", "y", "en", "por", "del", "al", "a"}
+_cache_caminos_categoria = {}
+
+
+def _normalizar(texto):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFKD", (texto or "").lower()) if not unicodedata.combining(c))
+
+
+def _tokens_relevantes(consulta):
+    """Palabras que tiene que tener el nombre de un producto para considerarlo parte de la búsqueda (singularizadas a lo bruto: camperas -> campera)."""
+    tokens = []
+    for palabra in re.findall(r"[a-z0-9]+", _normalizar(consulta)):
+        if palabra in _STOP_TOKENS:
+            continue
+        tokens.append(re.sub(r"(es|s)$", "", palabra) if len(palabra) > 4 else palabra)
+    return tokens
+
+
+def _candidatas_crudas(headers, consulta, site_id):
+    _, data = _get_json(f"https://api.mercadolibre.com/sites/{site_id}/domain_discovery/search", headers, {"q": consulta, "limit": 4})
+    return data if isinstance(data, list) else []
+
+
+def _ids_camino(headers, category_id):
+    """IDs de la categoría y todos sus ancestros — sirve para saber si una publicación cuelga (aunque sea de muy abajo) de la categoría analizada. Dato global de MeLi, cacheable sin scope por cuenta."""
+    if category_id in _cache_caminos_categoria:
+        return _cache_caminos_categoria[category_id]
+    _, c = _get_json(f"https://api.mercadolibre.com/categories/{category_id}", headers)
+    ids = {p.get("id") for p in (c or {}).get("path_from_root") or []} | {category_id} if c else {category_id}
+    _cache_caminos_categoria[category_id] = ids
+    return ids
+
+
+def _detallar_candidatas(headers, crudas):
+    """Cada categoría candidata de un término, con su cantidad real de publicaciones."""
+    def _detalle(item):
+        cid = item.get("category_id")
+        _, c = _get_json(f"https://api.mercadolibre.com/categories/{cid}", headers)
+        if not c:
+            return {"id": cid, "nombre": item.get("category_name"), "camino": [], "total": None}
+        return {
+            "id": cid, "nombre": c.get("name"),
+            "camino": [p.get("name") for p in (c.get("path_from_root") or [])],
+            "total": c.get("total_items_in_this_category"),
+        }
+
+    con_id = [d for d in crudas if d.get("category_id")]
+    if not con_id:
+        return []
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        return list(pool.map(_detalle, con_id))
+
+
+def _buscar_catalogo(headers, consulta, site_id, paginas):
+    """(productos, error_estado) — varias páginas en paralelo: el filtro por dominio descarta buena parte de cada página."""
+    def _pagina(offset):
+        return _get_json(
+            "https://api.mercadolibre.com/products/search", headers,
+            {"q": consulta, "site_id": site_id, "status": "active", "limit": 50, "offset": offset}
+        )
+    with ThreadPoolExecutor(max_workers=min(paginas, 3)) as pool:
+        resultados = list(pool.map(_pagina, [50 * i for i in range(paginas)]))
+    primera_estado, primera = resultados[0]
+    if primera is None:
+        return None, primera_estado
+    productos = []
+    for _, data in resultados:
+        productos.extend((data or {}).get("results") or [])
+    return productos, None
+
+
+def _publicaciones_de_producto(headers, product_id):
+    st, data = _get_json(f"https://api.mercadolibre.com/products/{product_id}/items", headers, {"limit": 50})
+    return (data or {}).get("results") or [] if st == 200 else []
+
+
+def _perfil_vendedor(headers, seller_id):
+    _, u = _get_json(f"https://api.mercadolibre.com/users/{seller_id}", headers)
+    if not u:
+        return {"id": seller_id, "nickname": f"Vendedor {seller_id}"}
+    rep = u.get("seller_reputation") or {}
     return {
-        "demanda_texto": demanda_texto, "demanda_nivel": demanda_nivel,
-        "saturacion_texto": saturacion_texto, "saturacion_nivel": saturacion_nivel,
-        "resumen": resumen,
-        "nota": "Estimado sobre una muestra de hasta 50 publicaciones — no es el dataset completo del mercado.",
+        "id": seller_id, "nickname": u.get("nickname") or f"Vendedor {seller_id}",
+        "nivel": _NIVELES_REPUTACION.get(rep.get("level_id")),
+        "medalla": _MEDALLAS_VENDEDOR.get(rep.get("power_seller_status")),
+        "ventas_historicas": (rep.get("transactions") or {}).get("total"),
+        "permalink": (u.get("permalink") or "").replace("http://", "https://") or None,
     }
 
 
-def explorar_demanda(access_token, termino=None, category_id=None, site_id="MLA", limite=50):
+def _pct(parte, total):
+    return round(parte / total * 100, 1) if total else 0.0
+
+
+def _armar_veredicto_mercado(total_categoria, hermanas, muestra_n, concentracion_top3_pct, iqr_relativo):
     """
-    Buscador/explorador de demanda real — reemplaza la dependencia del
-    endpoint /trends, que MeLi viene devolviendo 404 "Not found public
-    trends" (un límite de la API, no un bug de acá: ni con category_id
-    devuelve datos para muchas cuentas/categorías).
+    Traduce los números a texto plano — "¿cómo está la pelea acá?". Los
+    umbrales son heurísticas declaradas, no una ciencia exacta: mejor
+    ser honesto con eso que fingir una precisión que la muestra no
+    tiene. No habla de "demanda" a propósito: esa cifra ya no se puede
+    medir desde afuera (ver NOTA_LIMITE_DATOS).
+    """
+    contexto = None
+    if hermanas and hermanas.get("de", 0) >= 3:
+        contexto = f"{hermanas['posicion']}ª más poblada de {hermanas['de']} categorías de {hermanas['rubro_nombre']}"
+    if total_categoria is not None:
+        total_txt = f"{total_categoria:,}".replace(",", ".")
+        if total_categoria >= 100000:
+            comp_nivel, comp_texto = "alta", f"Categoría muy poblada — {total_txt} publicaciones activas"
+        elif total_categoria >= 10000:
+            comp_nivel, comp_texto = "media", f"Competencia media — {total_txt} publicaciones activas"
+        else:
+            comp_nivel, comp_texto = "baja", f"Categoría acotada — {total_txt} publicaciones activas"
+    else:
+        comp_nivel, comp_texto = None, "Tamaño de la categoría sin datos"
 
-    En vez de eso, usa /sites/{site}/search — el buscador público de
-    MeLi, estable y sin permisos especiales — para armar una foto real
-    de demanda: cuánta competencia hay, cuánto se está vendiendo
-    (sold_quantity de los resultados, como proxy de demanda), en qué
-    rango de precio, cuán concentrado está entre pocos vendedores, y
-    un veredicto en texto plano.
+    if muestra_n >= 15 and concentracion_top3_pct is not None:
+        if concentracion_top3_pct >= 40:
+            conc_nivel, conc_texto = "alta", "Concentrado: pocos vendedores dominan las publicaciones en catálogo"
+        elif concentracion_top3_pct >= 20:
+            conc_nivel, conc_texto = "media", "Medianamente repartido entre varios vendedores"
+        else:
+            conc_nivel, conc_texto = "baja", "Fragmentado: hay lugar para entrar sin pelear contra 2-3 gigantes"
+    else:
+        conc_nivel, conc_texto = None, "Muestra chica: no alcanza para medir concentración de vendedores"
 
-    Acepta termino (búsqueda libre) O category_id (para navegar
-    cualquier rama de MeLi y evaluar un nicho nuevo, no solo lo que ya
-    vendés) — al menos uno de los dos es obligatorio.
+    if muestra_n >= 8 and iqr_relativo is not None:
+        if iqr_relativo >= 0.6:
+            precio_nivel, precio_texto = "amplio", "Rango de precios amplio: hay lugar para posicionarte arriba o abajo"
+        elif iqr_relativo >= 0.3:
+            precio_nivel, precio_texto = "medio", "Precios moderadamente dispersos"
+        else:
+            precio_nivel, precio_texto = "estrecho", "Precios muy parejos: se compite fino, por detalles y servicio"
+    else:
+        precio_nivel, precio_texto = None, None
+
+    if comp_nivel == "alta" and conc_nivel == "alta":
+        resumen = "Categoría grande y concentrada: pocos vendedores se llevan buena parte de la vitrina — entrar requiere un diferencial claro, no solo precio."
+    elif comp_nivel == "alta" and conc_nivel in ("baja", "media"):
+        resumen = "Categoría grande y repartida entre muchos vendedores: hay lugar, pero se gana con precio, envío y reputación."
+    elif comp_nivel == "alta":
+        resumen = "Categoría muy poblada: hay mucha competencia y se gana con precio, envío y reputación."
+        if muestra_n:
+            resumen += " La muestra de catálogo no alcanza para medir cuán concentrada está."
+    elif comp_nivel == "baja":
+        resumen = "Categoría chica: menos pelea, pero también menos volumen potencial — validá que haya ventas antes de invertir stock."
+    else:
+        resumen = "Mercado intermedio — mirá precio, envío y tu propio margen antes de decidir."
+
+    return {
+        "competencia_nivel": comp_nivel, "competencia_texto": comp_texto, "competencia_contexto": contexto,
+        "concentracion_nivel": conc_nivel, "concentracion_texto": conc_texto,
+        "precio_nivel": precio_nivel, "precio_texto": precio_texto,
+        "resumen": resumen,
+    }
+
+
+def _armar_insights(pct_full, pct_envio_gratis, pct_oficial, pct_descuento, descuento_prom, mezcla):
+    def n(x):  # número con coma decimal, como se lee en Argentina
+        return f"{x:g}".replace(".", ",")
+
+    insights = []
+    if pct_full >= 40:
+        insights.append(f"El {n(pct_full)}% de la muestra despacha con FULL — la entrega rápida es la norma acá; sin FULL competís en desventaja.")
+    if pct_envio_gratis >= 60:
+        insights.append(f"El {n(pct_envio_gratis)}% ofrece envío gratis — conviene absorberlo en tu precio en vez de cobrarlo aparte.")
+    if pct_descuento >= 30 and descuento_prom:
+        insights.append(f"El {n(pct_descuento)}% publica con descuento (promedio {n(descuento_prom)}%) — el precio de lista suele inflarse para poder mostrar la rebaja.")
+    if pct_oficial >= 20:
+        insights.append(f"El {n(pct_oficial)}% son tiendas oficiales de marca — competís también contra marcas con respaldo propio.")
+    if mezcla and mezcla[0]["tipo"] == "Premium" and mezcla[0]["pct"] >= 50:
+        insights.append(f"La mayoría ({n(mezcla[0]['pct'])}%) usa publicación Premium — es lo que ofrece cuotas sin interés al comprador.")
+    return insights[:4]
+
+
+def explorar_mercado(access_token, termino=None, category_id=None, site_id="MLA", liviano=False):
+    """
+    Análisis de mercado sobre lo que MeLi todavía deja ver por API.
+
+    /sites/{site}/search (que usaba la versión anterior de esto) quedó
+    bloqueado para apps de terceros con un 403 de PolicyAgent, sin aviso
+    y para todos — no es un error de configuración de acá (otros
+    desarrolladores reportan lo mismo). Y el detalle de publicaciones
+    AJENAS (`/items`) también devuelve 403, así que ventas y visitas de
+    la competencia ya no existen desde afuera.
+
+    Lo que sí anda, y con lo que se arma esto: la búsqueda de catálogo
+    (/products/search), las publicaciones de cada producto de catálogo
+    (/products/{id}/items: precio, vendedor, envío, tipo), las
+    categorías (/categories: cantidad total de publicaciones) y el
+    perfil público de los vendedores (/users). La muestra son las
+    publicaciones atadas a productos de catálogo — no todo el mercado —
+    y se declara así en pantalla.
+
+    Acepta termino (búsqueda libre) O category_id (navegar cualquier
+    rama de MeLi) — al menos uno es obligatorio. `liviano=True` saltea
+    lo decorativo (perfiles de vendedores, categorías candidatas) para
+    los snapshots diarios.
     """
     termino = (termino or "").strip()
     if not termino and not category_id:
         return None
-
     headers = {"Authorization": f"Bearer {access_token}"} if access_token else {}
-    params = {"limit": limite}
+
+    candidatas, categoria = [], None
     if category_id:
-        params["category"] = category_id
-    if termino:
-        params["q"] = termino
-    try:
-        resp = meli_http.get(
-            f"https://api.mercadolibre.com/sites/{site_id}/search",
-            headers=headers, params=params, timeout=10
-        )
-        if resp.status_code != 200:
-            return {"termino": termino, "error": f"MeLi devolvió {resp.status_code} — probá con otro término o categoría."}
-    except Exception as e:
-        return {"termino": termino, "error": f"Error de conexión: {e}"}
+        categoria = _info_categoria(headers, category_id)
+        consulta = termino or (categoria or {}).get("nombre")
+        if not consulta:
+            return {"termino": termino, "error": "No se pudo identificar esa categoría en Mercado Libre — probá con otra."}
+        # "Camperas, Tapados y Trenchs" como búsqueda literal arrastra ruido — el nombre corto rinde mejor
+        consulta_catalogo = termino or consulta.split(",")[0].strip()
+        objetivos = {category_id}
+    else:
+        consulta = consulta_catalogo = termino
+        crudas = _candidatas_crudas(headers, termino, site_id)
+        objetivos = {d.get("category_id") for d in crudas[:2] if d.get("category_id")}
+        if crudas:
+            category_id = crudas[0].get("category_id")
+            if liviano:
+                # Para el snapshot alcanza con el total de la categoría principal
+                _, c = _get_json(f"https://api.mercadolibre.com/categories/{category_id}", headers)
+                if c:
+                    categoria = {"id": c.get("id"), "nombre": c.get("name"), "camino": [], "total": c.get("total_items_in_this_category"), "hermanas": None, "share_rubro_pct": None}
+            else:
+                candidatas = _detallar_candidatas(headers, crudas)
+                categoria = _info_categoria(headers, category_id)
 
-    data = resp.json()
-    resultados = data.get("results", []) or []
-    if not resultados:
-        return {"termino": termino, "error": "No se encontraron publicaciones para esta búsqueda."}
+    revisados, estado = _buscar_catalogo(headers, consulta_catalogo, site_id, 2 if liviano else 4)
+    if revisados is None:
+        if estado is None:
+            return {"termino": termino, "error": "No se pudo conectar con Mercado Libre — probá de nuevo en un momento."}
+        return {"termino": termino, "error": f"MeLi devolvió {estado} al buscar productos — probá con otro término."}
 
-    precios = [r.get("price") for r in resultados if r.get("price")]
-    ventas_muestra_lista = [r.get("sold_quantity") or 0 for r in resultados]
-    ventas_totales_muestra = sum(ventas_muestra_lista)
-    total_publicaciones = (data.get("paging", {}) or {}).get("total", len(resultados))
+    # /products/search matchea cada palabra en CUALQUIER rubro ("campera de jean
+    # hombre" traía relojes, perfumes y libros por "hombre"): se descartan los
+    # productos cuyo nombre no tiene todas las palabras de la búsqueda.
+    tokens = _tokens_relevantes(consulta_catalogo)
+    productos = [p for p in revisados if all(t in _normalizar(p.get("name")) for t in tokens)] if tokens else revisados
+    if not productos and not categoria:
+        return {"termino": termino, "error": "No encontramos productos en el catálogo de MeLi para esa búsqueda — probá con un término más general."}
 
-    ventas_por_vendedor = {}
-    for r in resultados:
-        vendedor = (r.get("seller") or {}).get("nickname") or str((r.get("seller") or {}).get("id") or "Desconocido")
-        ventas_por_vendedor[vendedor] = ventas_por_vendedor.get(vendedor, 0) + (r.get("sold_quantity") or 0)
-    ranking_vendedores = sorted(ventas_por_vendedor.items(), key=lambda x: -x[1])[:5]
+    tope_productos = 20 if liviano else 40
+    analizados = productos[:tope_productos]
+    paralelo = 3 if liviano else 5   # MeLi devuelve 429 si se lo aprieta de más
+    if analizados:
+        with ThreadPoolExecutor(max_workers=paralelo) as pool:
+            listas = list(pool.map(lambda p: _publicaciones_de_producto(headers, p["id"]), analizados))
+    else:
+        listas = []
 
-    concentracion_top3_pct = None
-    if ventas_totales_muestra > 0:
-        top3 = sum(v for _, v in sorted(ventas_por_vendedor.items(), key=lambda x: -x[1])[:3])
-        concentracion_top3_pct = round((top3 / ventas_totales_muestra) * 100, 1)
-
-    presion_demanda = round(ventas_totales_muestra / total_publicaciones, 2) if total_publicaciones else 0.0
-
-    marcas_distintas = None
-    for filtro in (data.get("available_filters") or []):
-        if filtro.get("id") == "BRAND":
-            marcas_distintas = len(filtro.get("values") or [])
-            break
-
-    distribucion_precios = []
-    if precios:
-        p_min, p_max = min(precios), max(precios)
-        if p_max > p_min:
-            ancho = (p_max - p_min) / 5
-            for i in range(5):
-                desde = p_min + ancho * i
-                hasta = p_min + ancho * (i + 1)
-                cantidad = sum(1 for p in precios if desde <= p <= hasta) if i == 4 else sum(1 for p in precios if desde <= p < hasta)
-                distribucion_precios.append({"desde": round(desde), "hasta": round(hasta), "cantidad": cantidad})
+    # Segundo filtro, más fino: la categoría real de cada publicación tiene que
+    # colgar de la categoría analizada (si no, se cuela "Buzo Short Medias
+    # Arquero" en una búsqueda de medias). Si el filtro deja la muestra vacía
+    # se conserva todo, avisando — mejor eso que mostrar un mercado vacío.
+    aviso_categorias = False
+    if objetivos and any(listas):
+        categorias_pub = {i.get("category_id") for lista in listas for i in lista if i.get("category_id")}
+        with ThreadPoolExecutor(max_workers=paralelo) as pool:
+            caminos = dict(zip(categorias_pub, pool.map(lambda c: _ids_camino(headers, c), categorias_pub)))
+        listas_filtradas = [[i for i in lista if caminos.get(i.get("category_id")) and (caminos[i["category_id"]] & objetivos)] for lista in listas]
+        if any(listas_filtradas):
+            listas = listas_filtradas
         else:
-            distribucion_precios.append({"desde": round(p_min), "hasta": round(p_max), "cantidad": len(precios)})
+            aviso_categorias = True
 
-    top_publicaciones = sorted(resultados, key=lambda r: -(r.get("sold_quantity") or 0))[:10]
+    publicaciones, referencia = [], []
+    for prod, lista in zip(analizados, listas):
+        if not lista:
+            continue
+        precios_prod = [i["price"] for i in lista if i.get("price")]
+        referencia.append({
+            "id": prod.get("id"), "nombre": prod.get("name"),
+            "thumbnail": ((prod.get("pictures") or [{}])[0].get("url") or "").replace("http://", "https://") or None,
+            "publicaciones": len(lista), "vendedores": len({i.get("seller_id") for i in lista}),
+            "precio_min": min(precios_prod) if precios_prod else None,
+            "precio_max": max(precios_prod) if precios_prod else None,
+        })
+        publicaciones.extend(lista)
 
+    n = len(publicaciones)
+    precios = sorted(i["price"] for i in publicaciones if i.get("price"))
+    por_vendedor = {}
+    for i in publicaciones:
+        if i.get("seller_id"):
+            por_vendedor[i["seller_id"]] = por_vendedor.get(i["seller_id"], 0) + 1
+    ranking = sorted(por_vendedor.items(), key=lambda kv: -kv[1])
+
+    concentracion_top3_pct = _pct(sum(c for _, c in ranking[:3]), n) if n >= 15 else None
+
+    con_envio_gratis = sum(1 for i in publicaciones if (i.get("shipping") or {}).get("free_shipping"))
+    con_full = sum(1 for i in publicaciones if (i.get("shipping") or {}).get("logistic_type") == "fulfillment")
+    con_oficial = sum(1 for i in publicaciones if i.get("official_store_id"))
+    descuentos = [
+        (1 - i["price"] / i["original_price"]) * 100 for i in publicaciones
+        if i.get("price") and i.get("original_price") and i["original_price"] > i["price"]
+    ]
+    tipos = {}
+    for i in publicaciones:
+        etiqueta = _TIPOS_PUBLICACION.get(i.get("listing_type_id"), i.get("listing_type_id") or "Otra")
+        tipos[etiqueta] = tipos.get(etiqueta, 0) + 1
+    mezcla_tipos = [{"tipo": t, "pct": _pct(c, n)} for t, c in sorted(tipos.items(), key=lambda kv: -kv[1])[:4]]
+
+    marcas = {}
+    for prod in productos:
+        for atributo in (prod.get("attributes") or []):
+            if atributo.get("id") == "BRAND" and atributo.get("value_name"):
+                marcas[atributo["value_name"]] = marcas.get(atributo["value_name"], 0) + 1
+    top_marcas = [{"nombre": m, "cantidad": c} for m, c in sorted(marcas.items(), key=lambda kv: -kv[1])[:8]]
+
+    top_vendedores = []
+    if not liviano and ranking:
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            perfiles = list(pool.map(lambda kv: _perfil_vendedor(headers, kv[0]), ranking[:5]))
+        for perfil, (_, cantidad) in zip(perfiles, ranking[:5]):
+            perfil["publicaciones_muestra"] = cantidad
+            top_vendedores.append(perfil)
+
+    mediana = _percentil(precios, 0.5)
+    iqr_relativo = None
+    if len(precios) >= 8 and mediana:
+        iqr_relativo = (_percentil(precios, 0.75) - _percentil(precios, 0.25)) / mediana
+
+    pct_full, pct_envio, pct_oficial = _pct(con_full, n), _pct(con_envio_gratis, n), _pct(con_oficial, n)
+    pct_descuento = _pct(len(descuentos), n)
+    descuento_prom = round(sum(descuentos) / len(descuentos), 1) if descuentos else None
+
+    avisos = []
+    if aviso_categorias:
+        avisos.append("Casi no hay publicaciones de catálogo dentro de esa categoría exacta, así que se incluyeron las de categorías cercanas.")
+    if n == 0:
+        avisos.append("Mercado Libre casi no tiene productos de catálogo para esto (pasa mucho con indumentaria, que se publica sin ficha de catálogo), así que el detalle de precios y competidores no se puede calcular. Abajo ves los datos de la categoría, que sí están completos.")
+    elif n < 8:
+        avisos.append(f"Solo {n} {'publicación' if n == 1 else 'publicaciones'} de catálogo para esta búsqueda: es muy poco para sacar conclusiones sobre precios o competidores.")
+
+    total_categoria = (categoria or {}).get("total")
     return {
         "termino": termino, "category_id": category_id,
-        "total_publicaciones": total_publicaciones,
-        "ventas_totales_muestra": ventas_totales_muestra,
-        "precio_minimo": min(precios) if precios else None,
+        "categoria": categoria, "categorias_candidatas": candidatas,
+        "productos_catalogo": len(productos), "productos_revisados": len(revisados), "muestra_publicaciones": n,
+        "total_publicaciones": total_categoria if total_categoria is not None else len(productos),
+        "total_publicaciones_origen": "categoria" if total_categoria is not None else "catalogo",
+        "precio_minimo": precios[0] if precios else None,
+        "precio_mediano": round(mediana, 2) if mediana is not None else None,
         "precio_promedio": round(sum(precios) / len(precios), 2) if precios else None,
-        "precio_maximo": max(precios) if precios else None,
-        "vendedores_distintos": len(ventas_por_vendedor),
-        "concentracion_top3_pct": concentracion_top3_pct,
-        "presion_demanda": presion_demanda,
-        "marcas_distintas": marcas_distintas,
-        "distribucion_precios": distribucion_precios,
-        "veredicto": _armar_veredicto(presion_demanda, concentracion_top3_pct),
-        "top_publicaciones": [
-            {"titulo": r.get("title"), "precio": r.get("price"), "vendidas": r.get("sold_quantity") or 0,
-             "permalink": r.get("permalink"), "thumbnail": (r.get("thumbnail") or "").replace("http://", "https://")}
-            for r in top_publicaciones
-        ],
-        "ranking_vendedores": [{"nombre": n, "vendidas": v} for n, v in ranking_vendedores],
+        "precio_maximo": precios[-1] if precios else None,
+        "distribucion_precios": _histograma_precios(precios),
+        "vendedores_distintos": len(por_vendedor), "concentracion_top3_pct": concentracion_top3_pct,
+        "pct_envio_gratis": pct_envio, "pct_full": pct_full, "pct_tienda_oficial": pct_oficial,
+        "pct_con_descuento": pct_descuento, "descuento_promedio_pct": descuento_prom,
+        "mezcla_tipos": mezcla_tipos,
+        "marcas": top_marcas, "marcas_distintas": len(marcas) or None,
+        "top_vendedores": top_vendedores,
+        "productos_referencia": sorted(referencia, key=lambda r: -r["publicaciones"])[:8],
+        "insights": _armar_insights(pct_full, pct_envio, pct_oficial, pct_descuento, descuento_prom, mezcla_tipos) if n >= 8 else [],
+        "avisos": avisos,
+        "veredicto": _armar_veredicto_mercado(total_categoria, (categoria or {}).get("hermanas"), n, concentracion_top3_pct, iqr_relativo),
+        "nota_limite": NOTA_LIMITE_DATOS,
     }
+
+
+_cache_resumen_categoria = {}
+TTL_RESUMEN_CATEGORIA_SEGUNDOS = 3600
+_LOCK_RESUMEN_CATEGORIA = threading.Lock()
+
+
+def resumen_categoria(access_token, category_id):
+    """
+    Versión liviana de explorar_mercado para el panel "Tu categoría" de
+    la página: solo datos de categoría (2-3 llamadas, sin recorrer el
+    catálogo). Se cachea una hora POR category_id — son datos públicos
+    de MeLi, idénticos para cualquier cuenta, así que compartir el caché
+    no cruza información entre cuentas (a diferencia de los cachés por
+    cuenta que ya dieron problemas en otros módulos).
+    """
+    if not category_id:
+        return None
+    ahora = datetime.now().timestamp()
+    with _LOCK_RESUMEN_CATEGORIA:
+        hit = _cache_resumen_categoria.get(category_id)
+        if hit and ahora - hit[0] < TTL_RESUMEN_CATEGORIA_SEGUNDOS:
+            return hit[1]
+    headers = {"Authorization": f"Bearer {access_token}"} if access_token else {}
+    categoria = _info_categoria(headers, category_id)
+    if not categoria:
+        return None
+    resultado = {
+        "category_id": category_id, "categoria": categoria,
+        "total_publicaciones": categoria.get("total"),
+        "veredicto": _armar_veredicto_mercado(categoria.get("total"), categoria.get("hermanas"), 0, None, None),
+        "nota_limite": NOTA_LIMITE_DATOS,
+    }
+    with _LOCK_RESUMEN_CATEGORIA:
+        _cache_resumen_categoria[category_id] = (ahora, resultado)
+    return resultado
 
 
 def estimar_margen_categoria(access_token, category_id, precio_referencia, costo_fabricacion=None):
@@ -253,16 +649,21 @@ _cache_categorias_raiz = {}
 TTL_CATEGORIAS_RAIZ_SEGUNDOS = 24 * 3600  # las ~30 categorías raíz de MeLi casi no cambian
 
 
-def obtener_categorias_raiz(site_id="MLA"):
-    """Categorías de primer nivel de MeLi — punto de partida para navegar ramas de cualquier rubro, no solo el propio."""
+def obtener_categorias_raiz(access_token, site_id="MLA"):
+    """
+    Categorías de primer nivel de MeLi — punto de partida para navegar ramas de cualquier rubro, no solo el propio.
+    Necesita token: /sites/{site}/categories sin autenticar devuelve 403 (PolicyAgent) desde que MeLi cerró sus endpoints públicos.
+    """
     import time
     ahora = time.time()
     cacheado = _cache_categorias_raiz.get(site_id)
     if cacheado and (ahora - cacheado["timestamp"]) < TTL_CATEGORIAS_RAIZ_SEGUNDOS:
         return cacheado["data"]
     try:
-        resp = meli_http.get(f"https://api.mercadolibre.com/sites/{site_id}/categories", timeout=8)
+        headers = {"Authorization": f"Bearer {access_token}"} if access_token else {}
+        resp = meli_http.get(f"https://api.mercadolibre.com/sites/{site_id}/categories", headers=headers, timeout=8)
         if resp.status_code != 200:
+            print(f"[Tendencias] ⚠️ Categorías raíz: MeLi devolvió {resp.status_code}")
             return cacheado["data"] if cacheado else []
         resultado = [{"id": c["id"], "nombre": c["name"]} for c in resp.json()]
         _cache_categorias_raiz[site_id] = {"data": resultado, "timestamp": ahora}
@@ -272,10 +673,11 @@ def obtener_categorias_raiz(site_id="MLA"):
         return cacheado["data"] if cacheado else []
 
 
-def obtener_rama_categoria(category_id):
+def obtener_rama_categoria(category_id, access_token=None):
     """Subcategorías + camino (breadcrumb) de una categoría — para ir bajando ramas dentro de un rubro."""
     try:
-        resp = meli_http.get(f"https://api.mercadolibre.com/categories/{category_id}", timeout=8)
+        headers = {"Authorization": f"Bearer {access_token}"} if access_token else {}
+        resp = meli_http.get(f"https://api.mercadolibre.com/categories/{category_id}", headers=headers, timeout=8)
         if resp.status_code != 200:
             return None
         data = resp.json()
@@ -325,31 +727,30 @@ def eliminar_seguimiento(cursor, cuenta_id, seguimiento_id):
 def asegurar_seguimiento_categoria_principal(cursor, cuenta_id, category_id, category_nombre):
     if not category_id:
         return
+    # Si la categoría foco cambió (ej: pasó del rubro raíz a la categoría
+    # específica), el seguimiento automático viejo sale: su historial era de
+    # otra categoría y mezclarlo con el nuevo mentiría en el gráfico.
+    cursor.execute(
+        "DELETE FROM tendencias_seguimiento WHERE cuenta_id = %s AND automatico = true AND tipo = 'categoria' AND valor <> %s",
+        (cuenta_id, category_id)
+    )
     agregar_seguimiento(cursor, cuenta_id, "categoria", category_id, category_nombre or category_id, automatico=True)
 
 
 def _tomar_snapshot(access_token, seguimiento, site_id="MLA"):
-    """Una sola consulta a MeLi — devuelve los números del día para un seguimiento, sin tocar la base."""
-    headers = {"Authorization": f"Bearer {access_token}"} if access_token else {}
-    params = {"limit": 50}
-    if seguimiento["tipo"] == "categoria":
-        params["category"] = seguimiento["valor"]
-    else:
-        params["q"] = seguimiento["valor"]
+    """Los números del día para un seguimiento, sin tocar la base. Sin ventas: MeLi ya no las expone de terceros, así que lo que se acumula es la EVOLUCIÓN DE LA OFERTA (publicaciones, precio, vendedores)."""
     try:
-        resp = meli_http.get(f"https://api.mercadolibre.com/sites/{site_id}/search", headers=headers, params=params, timeout=10)
-        if resp.status_code != 200:
+        if seguimiento["tipo"] == "categoria":
+            r = explorar_mercado(access_token, category_id=seguimiento["valor"], site_id=site_id, liviano=True)
+        else:
+            r = explorar_mercado(access_token, termino=seguimiento["valor"], site_id=site_id, liviano=True)
+        if not r or r.get("error"):
             return None
-        data = resp.json()
-        resultados = data.get("results", []) or []
-        precios = [r.get("price") for r in resultados if r.get("price")]
-        ventas = sum(r.get("sold_quantity") or 0 for r in resultados)
-        vendedores = {(r.get("seller") or {}).get("id") for r in resultados if (r.get("seller") or {}).get("id")}
-        total_pub = (data.get("paging", {}) or {}).get("total", len(resultados))
         return {
-            "total_publicaciones": total_pub, "ventas_muestra": ventas,
-            "precio_promedio": round(sum(precios) / len(precios), 2) if precios else None,
-            "vendedores_distintos": len(vendedores),
+            "total_publicaciones": r.get("total_publicaciones"),
+            "ventas_muestra": None,
+            "precio_promedio": r.get("precio_mediano"),
+            "vendedores_distintos": r.get("vendedores_distintos"),
         }
     except Exception as e:
         print(f"[Tendencias] ⚠️ Error tomando snapshot de '{seguimiento.get('etiqueta')}': {e}")
@@ -375,7 +776,7 @@ def relevar_snapshots_tendencias(access_token, cursor, cuenta_id, site_id="MLA")
     # de escribir, así una cuenta que sigue muchos términos/categorías no
     # bloquea el hilo del fallback de APScheduler (sin Redis) esperando
     # una request a la vez (mismo patrón que ads.py/despacho.py).
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    with ThreadPoolExecutor(max_workers=2) as pool:
         snapshots = list(pool.map(lambda s: _tomar_snapshot(access_token, s, site_id), seguimientos))
 
     for s, datos in zip(seguimientos, snapshots):
@@ -415,8 +816,8 @@ def listar_seguimientos_con_historial(cursor, cuenta_id, dias=60):
             for f, p, v, pp in historial
         ]
         tendencia_pct = None
-        if len(serie) >= 2 and serie[0]["ventas"]:
-            tendencia_pct = round(((serie[-1]["ventas"] - serie[0]["ventas"]) / serie[0]["ventas"]) * 100, 1)
+        if len(serie) >= 2 and serie[0]["publicaciones"]:
+            tendencia_pct = round(((serie[-1]["publicaciones"] - serie[0]["publicaciones"]) / serie[0]["publicaciones"]) * 100, 1)
         resultado.append({
             "id": sid, "tipo": tipo, "valor": valor, "etiqueta": etiqueta, "automatico": automatico,
             "serie": serie, "tendencia_pct": tendencia_pct, "tiene_historial_suficiente": len(serie) >= 2,
@@ -436,17 +837,17 @@ def detectar_movimiento_categoria_principal(cursor, cuenta_id, umbral_pct=15):
     seguimiento_id, etiqueta = fila
 
     cursor.execute("""
-        SELECT fecha, ventas_muestra FROM tendencias_snapshots
-        WHERE seguimiento_id = %s ORDER BY fecha DESC LIMIT 2
+        SELECT fecha, total_publicaciones FROM tendencias_snapshots
+        WHERE seguimiento_id = %s AND total_publicaciones IS NOT NULL ORDER BY fecha DESC LIMIT 2
     """, (seguimiento_id,))
     filas = cursor.fetchall()
     if len(filas) < 2:
         return None
 
-    (_, ventas_ultima), (_, ventas_anterior) = filas
-    if not ventas_anterior:
+    (_, publicaciones_ultima), (_, publicaciones_anterior) = filas
+    if not publicaciones_anterior:
         return None
-    variacion = ((ventas_ultima - ventas_anterior) / ventas_anterior) * 100
+    variacion = ((publicaciones_ultima - publicaciones_anterior) / publicaciones_anterior) * 100
     if abs(variacion) < umbral_pct:
         return None
     return {"categoria": etiqueta, "variacion_pct": round(variacion, 1), "subio": variacion > 0}

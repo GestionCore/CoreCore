@@ -1157,12 +1157,12 @@ def tendencias_vista():
             # automático — así el resumen de arriba y la alerta de Logros
             # tienen algo para comparar apenas empiecen a acumularse
             # snapshots (el primer día no hay historial todavía, es honesto).
-            tendencias_mod.asegurar_seguimiento_categoria_principal(cursor, g.cuenta_id, category_id, categoria_nombre)
+            categoria_foco_id, categoria_foco_nombre = tendencias_mod.obtener_categoria_especifica(access_token, g.cuenta_id, cursor)
+            categoria_foco_id = categoria_foco_id or category_id
+            categoria_foco_nombre = categoria_foco_nombre or categoria_nombre
+            tendencias_mod.asegurar_seguimiento_categoria_principal(cursor, g.cuenta_id, categoria_foco_id, categoria_foco_nombre)
             seguimientos = tendencias_mod.listar_seguimientos_con_historial(cursor, g.cuenta_id)
 
-            analisis_categoria_principal = None
-            if category_id:
-                analisis_categoria_principal = tendencias_mod.explorar_demanda(access_token, category_id=category_id)
     except Exception as e:
         # Esta ruta encadena ~10 pasos (categoría, tendencias de MeLi,
         # cruces con catálogo/competencia, seguimiento histórico) — con
@@ -1171,6 +1171,10 @@ def tendencias_vista():
         # entera con un 500 crudo. Mejor avisar y dejar reintentar.
         print(f"[Tendencias] ❌ Error armando la página: {e}")
         return "No pudimos armar la página de Tendencias ahora mismo. Probá recargar en un rato — si sigue pasando, avisanos.", 502
+
+    # Fuera del `with`: son llamadas a MeLi (lentas) y no tocan la base — no hay
+    # por qué mantener una conexión del pool ocupada mientras se resuelven.
+    resumen_categoria_principal = tendencias_mod.resumen_categoria(access_token, categoria_foco_id) if categoria_foco_id else None
 
     for t in relevantes:
         opo = terminos_oportunidad.get(t.get("keyword"))
@@ -1184,8 +1188,8 @@ def tendencias_vista():
         "tendencias.html", relevantes=relevantes, resto=resto, canibalismo=canibalismo,
         seo_scores=seo_scores, coincide_con_competencia=coincide_con_competencia,
         calendario_estacional=calendario_estacional, categoria_nombre=categoria_nombre,
-        category_id_principal=category_id, seguimientos=seguimientos,
-        analisis_categoria_principal=analisis_categoria_principal, active_nav="tendencias"
+        category_id_principal=category_id, categoria_foco_nombre=categoria_foco_nombre, seguimientos=seguimientos,
+        resumen_categoria_principal=resumen_categoria_principal, active_nav="tendencias"
     )
 
 
@@ -1199,15 +1203,19 @@ def api_tendencias_explorar_demanda():
     try:
         access_token = token_manager.asegurar_token_valido(g.cuenta_id)
     except token_manager.CuentaDesconectada:
-        access_token = None  # /sites/{id}/search es publico, no hace falta token
-    resultado = tendencias_mod.explorar_demanda(access_token, termino=termino, category_id=category_id)
+        return jsonify({"error": "Tu cuenta de Mercado Libre está desconectada — reconectala para usar el explorador."})
+    resultado = tendencias_mod.explorar_mercado(access_token, termino=termino, category_id=category_id)
     return jsonify(resultado)
 
 
 @app.route("/api/tendencias/categorias_raiz")
 @login_requerido
 def api_tendencias_categorias_raiz():
-    return jsonify(tendencias_mod.obtener_categorias_raiz())
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return jsonify([])
+    return jsonify(tendencias_mod.obtener_categorias_raiz(access_token))
 
 
 @app.route("/api/tendencias/subcategorias")
@@ -1216,7 +1224,11 @@ def api_tendencias_subcategorias():
     category_id = request.args.get("category_id", "").strip()
     if not category_id:
         return jsonify({"error": "Falta la categoría."}), 400
-    rama = tendencias_mod.obtener_rama_categoria(category_id)
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        access_token = None
+    rama = tendencias_mod.obtener_rama_categoria(category_id, access_token)
     if not rama:
         return jsonify({"error": "No se pudo consultar esa categoría."}), 502
     return jsonify(rama)
@@ -2058,7 +2070,7 @@ def api_calculadora_buscar_categoria():
         access_token = token_manager.asegurar_token_valido(g.cuenta_id)
         headers = {"Authorization": f"Bearer {access_token}"}
     except token_manager.CuentaDesconectada:
-        headers = {}
+        access_token, headers = None, {}
     try:
         # Búsqueda por dominio/keyword (devuelve las categorías con mejor score semántico)
         # OJO: este endpoint de MeLi rechaza con 400 cualquier "limit" fuera
@@ -2082,20 +2094,6 @@ def api_calculadora_buscar_categoria():
                     nombre = item.get("domain_name") or item.get("category_name") or cat_id
                     resultados.append({"id": cat_id, "nombre": nombre})
         if not resultados:
-            # Fallback: search predictor (devuelve sugerencias de búsqueda con categoría asociada)
-            resp2 = meli_http.get(
-                "https://api.mercadolibre.com/sites/MLA/search",
-                headers=headers,
-                params={"q": q, "limit": 1},
-            )
-            if resp2.status_code == 200:
-                cat_info = resp2.json().get("available_filters", [])
-                for f in cat_info:
-                    if f.get("id") == "category":
-                        for v in (f.get("values") or [])[:8]:
-                            if v.get("id"):
-                                resultados.append({"id": v["id"], "nombre": v.get("name", v["id"])})
-        if not resultados:
             # Último fallback, sin depender de ningún endpoint "inteligente"
             # de MeLi (domain_discovery/search predictor pueden no devolver
             # nada para un término genérico de una sola palabra, tipo
@@ -2105,7 +2103,7 @@ def api_calculadora_buscar_categoria():
             # cubre exactamente ese caso ("ropa" → "Ropa y Accesorios").
             q_lower = q.lower()
             palabras_q = set(q_lower.split())
-            for c in tendencias_mod.obtener_categorias_raiz():
+            for c in tendencias_mod.obtener_categorias_raiz(access_token):
                 nombre_lower = c["nombre"].lower()
                 if q_lower in nombre_lower or palabras_q & set(nombre_lower.split()):
                     resultados.append({"id": c["id"], "nombre": c["nombre"]})
