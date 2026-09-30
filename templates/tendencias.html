@@ -266,7 +266,7 @@
         if (!s.tiene_historial_suficiente) return;
         const canvas = document.getElementById('chart-seg-' + s.id);
         if (!canvas) return;
-        const colorLinea = s.tendencia_pct >= 0 ? (root.getPropertyValue('--success').trim() || '#29e6b0') : (root.getPropertyValue('--danger').trim() || '#ff4d7d');
+        const colorLinea = s.tendencia_pct >= 0 ? (root.getPropertyValue('--success').trim() || '#22c55e') : (root.getPropertyValue('--danger').trim() || '#f43f5e');
         new Chart(canvas, {
             type: 'line',
             data: {
