@@ -1733,6 +1733,7 @@ def facturacion_vista():
     ganancia_bruta_real = 0.0
     ganancia_neta_final = 0.0
     barra_segmentos = None
+    waterfall_facturacion = None
 
     if periodo_actual:
         fecha_desde_periodo = periodo_actual.get("period", {}).get("date_from")
@@ -1765,6 +1766,18 @@ def facturacion_vista():
                     "publicidad": round((pct_publicidad / facturado_bruto) * 100, 1),
                     "neto": round((pct_neto / facturado_bruto) * 100, 1)
                 }
+                # Mismos montos de arriba, pero en $ y en formato de "cascada"
+                # fila por fila (label + barra + monto) — más fácil de leer
+                # de un vistazo que el % dentro de una barra apilada sola.
+                _max_waterfall = max(facturado_bruto, 1)
+                waterfall_facturacion = [
+                    {"label": "Facturado bruto", "monto_formateado": "$" + formatear_moneda(facturado_bruto), "pct_ancho": 100, "es_total_inicial": True},
+                    {"label": "Comisión MeLi", "monto_formateado": "-$" + formatear_moneda(pct_comision), "pct_ancho": round(pct_comision / _max_waterfall * 100, 1)},
+                    {"label": "Envíos", "monto_formateado": "-$" + formatear_moneda(pct_envios), "pct_ancho": round(pct_envios / _max_waterfall * 100, 1)},
+                    {"label": "Publicidad", "monto_formateado": "-$" + formatear_moneda(pct_publicidad), "pct_ancho": round(pct_publicidad / _max_waterfall * 100, 1)},
+                    {"label": "Gastos operativos", "monto_formateado": "-$" + formatear_moneda(gastos_periodo), "pct_ancho": round(gastos_periodo / _max_waterfall * 100, 1)},
+                    {"label": "Ganancia neta final", "monto_formateado": ("-$" if ganancia_neta_final < 0 else "$") + formatear_moneda(abs(ganancia_neta_final)), "pct_ancho": round(abs(ganancia_neta_final) / _max_waterfall * 100, 1), "es_total_final": True, "es_negativo": ganancia_neta_final < 0},
+                ]
 
     periodos_vista = [
         {"key": p.get("key"), "date_from": p.get("period", {}).get("date_from"),
@@ -1781,7 +1794,7 @@ def facturacion_vista():
         ganancia_bruta_formateada=formatear_moneda(ganancia_bruta_real),
         ganancia_neta_formateada=formatear_moneda(ganancia_neta_final),
         ganancia_neta_negativa=ganancia_neta_final < 0,
-        barra_segmentos=barra_segmentos, active_nav="facturacion"
+        barra_segmentos=barra_segmentos, waterfall_facturacion=waterfall_facturacion, active_nav="facturacion"
     )
 
 

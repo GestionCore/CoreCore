@@ -32,36 +32,34 @@
     <div class="text-muted" style="font-size:0.82em; margin-top:4px;">Facturado bruto menos cargos de MeLi y gastos operativos del período</div>
 </div>
 
-<div class="stat-strip">
-    <div class="stat-chip accent-denim"><div class="stat-chip-label">Facturado bruto (ventas)</div><div class="stat-chip-value">${{ facturado_bruto_formateado }}</div></div>
-    <div class="stat-chip accent-gold"><div class="stat-chip-label">Ganancia bruta real</div><div class="stat-chip-value">${{ ganancia_bruta_formateada }}</div><div class="stat-chip-desc">Facturado - Cargos de MeLi</div></div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="stat-chip-label">Facturado bruto (ventas)</span></div><div class="stat-chip-value">${{ facturado_bruto_formateado }}</div></div>
+    <div class="stat-chip kpi-card accent-gold"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Ganancia bruta real</span></div><div class="stat-chip-value">${{ ganancia_bruta_formateada }}</div><div class="stat-chip-desc">Facturado - Cargos de MeLi</div></div>
 </div>
 
-{% if barra_segmentos %}
+{% if waterfall_facturacion %}
 <div class="panel">
     <div class="panel-title">Cómo se reparte tu facturación</div>
-    <div class="unit-economics-bar" style="height:22px;">
-        <div class="ue-segmento" data-w="{{ barra_segmentos.comision }}" style="background:var(--danger);" title="Comisión {{ barra_segmentos.comision }}%"></div>
-        <div class="ue-segmento" data-w="{{ barra_segmentos.envios }}" style="background:var(--accent-cyan);" title="Envíos {{ barra_segmentos.envios }}%"></div>
-        <div class="ue-segmento" data-w="{{ barra_segmentos.publicidad }}" style="background:var(--accent-gold);" title="Publicidad {{ barra_segmentos.publicidad }}%"></div>
-        <div class="ue-segmento" data-w="{{ barra_segmentos.neto }}" style="background:var(--success);" title="Neto {{ barra_segmentos.neto }}%"></div>
-    </div>
-    <div class="unit-economics-leyenda">
-        <span><i class="ue-dot" style="background:var(--danger);"></i>Comisión {{ barra_segmentos.comision }}%</span>
-        <span><i class="ue-dot" style="background:var(--accent-cyan);"></i>Envíos {{ barra_segmentos.envios }}%</span>
-        <span><i class="ue-dot" style="background:var(--accent-gold);"></i>Publicidad {{ barra_segmentos.publicidad }}%</span>
-        <span><i class="ue-dot" style="background:var(--success);"></i>Neto en mano {{ barra_segmentos.neto }}%</span>
+    <div class="page-subtitle" style="margin-bottom:10px;">De lo bruto a lo que realmente te queda, paso a paso.</div>
+    <div id="waterfall-facturacion">
+        {% for f in waterfall_facturacion %}
+        <div class="waterfall-fila {% if f.es_total_inicial %}total-inicial{% endif %} {% if f.es_total_final %}total-final{% endif %} {% if f.es_negativo %}negativo{% endif %}">
+            <span class="waterfall-fila-label">{{ f.label }}</span>
+            <div class="waterfall-fila-barra-fondo"><div class="waterfall-fila-barra" data-w="{{ f.pct_ancho }}" style="width:0%;"></div></div>
+            <span class="waterfall-fila-monto">{{ f.monto_formateado }}</span>
+        </div>
+        {% endfor %}
     </div>
 </div>
 <script>
-    document.querySelectorAll('.ue-segmento').forEach(b => { b.style.width = (b.dataset.w || 0) + '%'; });
+    document.querySelectorAll('#waterfall-facturacion .waterfall-fila-barra').forEach(b => { b.style.width = Math.min(100, b.dataset.w || 0) + '%'; });
 </script>
 {% endif %}
 
 <div class="stat-strip">
     <div class="stat-chip accent-denim"><div class="stat-chip-label">Total de cargos</div><div class="stat-chip-value">${{ total_cargos_formateado }}</div></div>
     <div class="stat-chip accent-success"><div class="stat-chip-label">Pagos cobrados en la operación</div><div class="stat-chip-value">${{ pagos_cobrados_formateado }}</div></div>
-    <div class="stat-chip accent-gold"><div class="stat-chip-label">Cargos pendientes de pago</div><div class="stat-chip-value">${{ pendiente_formateado }}</div></div>
+    <div class="stat-chip accent-warning"><div class="stat-chip-label">Cargos pendientes de pago</div><div class="stat-chip-value">${{ pendiente_formateado }}</div></div>
 </div>
 
 <div class="panel">

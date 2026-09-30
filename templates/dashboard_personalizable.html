@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-brand);"><use href="#icon-home"/></svg>Dashboard</h1>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-home"/></svg>Dashboard</h1>
         <div class="page-subtitle">Tu resumen del día — personalizalo a gusto</div>
     </div>
     <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-settings"/></svg> Personalizar</button>
@@ -11,9 +11,22 @@
 
 <!-- ── Hero: Ganancia Neta Real de HOY vs. tu promedio diario (14 días) ──── -->
 <div class="panel panel-hero-ganancia" id="hero-ganancia-dia">
-    <div class="stat-chip-label">Ganancia Neta Real — Hoy</div>
+    <div class="stat-chip-label">Ganancia Neta Real — Hoy<span class="badge-en-vivo">En vivo</span></div>
     <div class="hero-number" id="hero-ganancia-valor" style="font-size:2.6em;"><span class="skeleton">$0</span></div>
     <div class="text-muted" style="font-size:0.82em; margin-top:2px;">Después de comisiones, envíos, publicidad y costo de fabricación — la fórmula completa, no una aproximación.</div>
+
+    <div class="comparador-real">
+        <div class="comparador-caja comparador-caja-oficial">
+            <div class="comparador-caja-eyebrow">Lo que factura tu cuenta hoy</div>
+            <div class="comparador-caja-valor skeleton" id="comparador-facturado">$0</div>
+            <div class="comparador-caja-nota">El número que ves en MeLi, sin descontar nada todavía</div>
+        </div>
+        <div class="comparador-caja comparador-caja-real">
+            <div class="comparador-caja-eyebrow">Lo que te queda de verdad</div>
+            <div class="comparador-caja-valor skeleton" id="comparador-ganancia">$0</div>
+            <div class="comparador-caja-nota">Después de MeLi, envíos, publicidad y fabricación</div>
+        </div>
+    </div>
 
     <div class="hero-ganancia-compara">
         <div class="hero-ganancia-fila">
@@ -60,28 +73,24 @@
 </div>
 
 <!-- ── Hero del día: las 4 métricas que importan siempre ─────────────────── -->
-<div class="stat-strip" id="hero-metricas-dia">
-    <div class="stat-chip accent-gold" id="hero-facturado">
-        <svg class="stat-chip-icon"><use href="#icon-coin"/></svg>
-        <div class="stat-chip-label">Facturado Hoy</div>
+<div class="stat-strip stat-strip-kpi" id="hero-metricas-dia">
+    <div class="stat-chip kpi-card accent-gold" id="hero-facturado">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Facturado Hoy</span></div>
         <div class="stat-chip-value skeleton" style="min-width:100px;">—</div>
         <div class="stat-chip-desc" id="hero-facturado-sub">—</div>
     </div>
-    <div class="stat-chip accent-primary" id="hero-ordenes">
-        <svg class="stat-chip-icon" style="color:var(--accent-primary);"><use href="#icon-box"/></svg>
-        <div class="stat-chip-label">Ventas Hoy</div>
+    <div class="stat-chip kpi-card accent-primary" id="hero-ordenes">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-box"/></svg></span><span class="stat-chip-label">Ventas Hoy</span></div>
         <div class="stat-chip-value skeleton" style="min-width:60px;">—</div>
         <div class="stat-chip-desc" id="hero-ordenes-sub">—</div>
     </div>
-    <div class="stat-chip accent-success" id="hero-mes">
-        <svg class="stat-chip-icon" style="color:var(--success);"><use href="#icon-chart"/></svg>
-        <div class="stat-chip-label">Facturado Últimos 14 días</div>
+    <div class="stat-chip kpi-card accent-success" id="hero-mes">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-chart"/></svg></span><span class="stat-chip-label">Facturado Últimos 14 días</span></div>
         <div class="stat-chip-value skeleton" style="min-width:100px;">—</div>
         <div class="stat-chip-desc" id="hero-mes-sub">—</div>
     </div>
-    <div class="stat-chip" id="hero-salud">
-        <svg class="stat-chip-icon" style="color:var(--accent-cyan);"><use href="#icon-star"/></svg>
-        <div class="stat-chip-label">Salud de Cuenta</div>
+    <div class="stat-chip kpi-card" id="hero-salud">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-star"/></svg></span><span class="stat-chip-label">Salud de Cuenta</span></div>
         <div class="stat-chip-value skeleton" style="min-width:60px;">—</div>
         <div class="stat-chip-desc" id="hero-salud-sub">—</div>
     </div>
@@ -130,7 +139,7 @@
 <div class="panel panel-colapsable {% if mono.alertas %}abierto{% endif %}" id="panel-monotributo" role="button" tabindex="0" aria-expanded="{{ 'true' if mono.alertas else 'false' }}" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
     <div class="panel-title">
         <span>
-            <svg class="icon" style="width:16px;height:16px;margin-right:6px;vertical-align:middle;color:var(--accent-gold);"><use href="#icon-file-text"/></svg>
+            <svg class="icon" style="width:16px;height:16px;margin-right:6px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-file-text"/></svg>
             Monotributo
             {% if mono.categoria_real and mono.categoria_declarada and mono.categoria_real != mono.categoria_declarada %}
             <span class="badge badge-warning" style="margin-left:8px;">Revisar categoría</span>
@@ -322,8 +331,8 @@
                     const canvas = document.getElementById(canvasId);
                     if (!canvas || !window.Chart) return;
                     const rootStyle = getComputedStyle(document.documentElement);
-                    const colorPrimario = rootStyle.getPropertyValue('--accent-primary').trim() || '#b06bff';
-                    const colorCian = rootStyle.getPropertyValue('--accent-cyan').trim() || '#2ee6ff';
+                    const colorPrimario = rootStyle.getPropertyValue('--accent-primary').trim() || '#8b5cf6';
+                    const colorCian = rootStyle.getPropertyValue('--accent-cyan').trim() || '#38bdf8';
                     new Chart(canvas, {
                         type: 'line',
                         data: {
@@ -333,8 +342,8 @@
                                 borderColor: colorPrimario,
                                 backgroundColor: (ctx) => {
                                     const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 120);
-                                    g.addColorStop(0, 'rgba(176, 107, 255, 0.35)');
-                                    g.addColorStop(1, 'rgba(176, 107, 255, 0)');
+                                    g.addColorStop(0, 'rgba(139, 92, 246, 0.35)');
+                                    g.addColorStop(1, 'rgba(139, 92, 246, 0)');
                                     return g;
                                 },
                                 borderWidth: 2,
@@ -474,18 +483,14 @@
                 w.innerHTML = `
                     <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
                         <div class="stat-chip-label">Últimas Ventas</div>
-                        <div style="margin-top:12px;">
-                            <table class="data-table" style="font-size:0.82em;">
-                                <tbody>
-                                ${d.map(v => `
-                                <tr>
-                                    <td style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">${v.nombre}</td>
-                                    <td class="text-muted num" style="white-space:nowrap;">×${v.cantidad}</td>
-                                    <td class="num" style="font-weight:600; white-space:nowrap;">${v.precio_f}</td>
-                                    <td class="text-muted num" style="white-space:nowrap;">${v.fecha}</td>
-                                </tr>`).join('')}
-                                </tbody>
-                            </table>
+                        <div style="margin-top:6px;">
+                            ${d.map(v => `
+                            <div class="mini-list-row">
+                                <span class="mini-list-qty">×${v.cantidad}</span>
+                                <span class="mini-list-titulo">${v.nombre}</span>
+                                <span class="mini-list-precio">${v.precio_f}</span>
+                                <span class="mini-list-fecha">${v.fecha}</span>
+                            </div>`).join('')}
                         </div>
                     </a>`;
             });
@@ -523,11 +528,19 @@
         } catch (e) { console.error(e); }
     }
 
-    function _heroSetValor(chipId, valor, desc) {
+    function _heroSetValor(chipId, valor, desc, tendenciaPct) {
         const chip = document.getElementById(chipId);
         if (!chip) return;
         const val = chip.querySelector('.stat-chip-value');
-        if (val) { val.classList.remove('skeleton'); val.textContent = valor; }
+        if (val) {
+            val.classList.remove('skeleton');
+            if (tendenciaPct !== null && tendenciaPct !== undefined) {
+                const sube = tendenciaPct >= 0;
+                val.innerHTML = `${valor} <span class="kpi-tendencia ${sube ? 'up' : 'down'}" style="font-size:0.5em;">${sube ? '▲' : '▼'} ${Math.abs(tendenciaPct)}%</span>`;
+            } else {
+                val.textContent = valor;
+            }
+        }
         const sub = chip.querySelector('.stat-chip-desc');
         if (sub) sub.textContent = desc || '';
     }
@@ -543,12 +556,9 @@
 
         if (resumen.status === 'fulfilled' && resumen.value) {
             const d = resumen.value;
-            let txt = `$${d.facturado_formateado}`;
-            if (d.variacion_pct !== null && d.variacion_pct !== undefined) {
-                const flecha = d.variacion_pct >= 0 ? '▲' : '▼';
-                txt += ` ${flecha} ${Math.abs(d.variacion_pct)}%`;
-            }
-            _heroSetValor('hero-facturado', txt, `${d.ordenes || 0} ventas · top: ${d.modelo_top || '—'}`);
+            _heroSetValor('hero-facturado', `$${d.facturado_formateado}`, `${d.ordenes || 0} ventas · top: ${d.modelo_top || '—'}`, d.variacion_pct);
+            const elComp = document.getElementById('comparador-facturado');
+            if (elComp) { elComp.classList.remove('skeleton'); elComp.textContent = `$${d.facturado_formateado}`; }
         }
 
         if (hoy.status === 'fulfilled' && hoy.value) {
@@ -592,6 +602,13 @@
             const signo = negativo ? '-' : '';
             animarNumeroHasta(heroGanancia, Math.abs(d.hoy.ganancia), v => signo + '$' + formatearNumeroAR(v, false));
 
+            const elCompGanancia = document.getElementById('comparador-ganancia');
+            if (elCompGanancia) {
+                elCompGanancia.classList.remove('skeleton');
+                elCompGanancia.textContent = signo + '$' + formatearNumeroAR(Math.abs(d.hoy.ganancia), false);
+                elCompGanancia.style.color = negativo ? 'var(--danger)' : 'var(--accent-primary)';
+            }
+
             // Barras comparativas: el mayor de los dos valores absolutos marca el 100%.
             const maxAbs = Math.max(Math.abs(d.hoy.ganancia), Math.abs(d.promedio_diario_14d.ganancia), 1);
             const barraHoy = document.getElementById('barra-hoy');
@@ -618,7 +635,7 @@
             const elMargen = document.getElementById('pl-margen');
             elMargen.textContent = p.margen_f; elMargen.classList.remove('skeleton');
             elMargen.style.color = p.margen_negativo ? 'var(--danger)' : 'var(--success)';
-            document.getElementById('pl-tile-margen').style.borderColor = p.margen_negativo ? 'var(--danger)' : 'var(--accent-brand)';
+            document.getElementById('pl-tile-margen').style.borderColor = p.margen_negativo ? 'var(--danger)' : 'var(--accent-primary)';
 
             const filas = [
                 { label: 'Comisión MeLi', valor: p.comision, valor_f: p.comision_f },

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-brand);"><use href="#icon-file-text"/></svg>Reporte Fiscal</h1>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-file-text"/></svg>Reporte Fiscal</h1>
         <div class="page-subtitle">Resumen mensual para tu contador — facturación, cargos y ganancia estimada</div>
     </div>
     <div class="filter-row" style="margin:0;">
@@ -27,23 +27,23 @@
     Antes de presentar algo a AFIP, siempre conviene confirmar los números con tu contador.
 </div>
 
-<div class="stat-strip" style="margin-bottom:20px;">
-    <div class="stat-chip accent-primary">
-        <div class="stat-chip-label">Facturación anual</div>
+<div class="stat-strip stat-strip-kpi" style="margin-bottom:20px;">
+    <div class="stat-chip kpi-card accent-primary">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="stat-chip-label">Facturación anual</span></div>
         <div class="stat-chip-value">${{ totales.facturacion_f }}</div>
         <div class="stat-chip-desc">{{ totales.ordenes }} órdenes</div>
     </div>
-    <div class="stat-chip" style="border-color:var(--danger);">
-        <div class="stat-chip-label">Total cargos MeLi</div>
+    <div class="stat-chip kpi-card accent-danger">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-percent"/></svg></span><span class="stat-chip-label">Total cargos MeLi</span></div>
         <div class="stat-chip-value text-danger">${{ totales.cargos_totales_f }}</div>
         <div class="stat-chip-desc">Comisiones + envíos</div>
     </div>
-    <div class="stat-chip" style="border-color:var(--semantic-warning);">
-        <div class="stat-chip-label">Gastos operativos</div>
+    <div class="stat-chip kpi-card" style="border-color:var(--semantic-warning);">
+        <div class="kpi-card-top"><span class="kpi-card-icon" style="background:var(--semantic-warning-bg); color:var(--semantic-warning);"><svg class="icon"><use href="#icon-wallet"/></svg></span><span class="stat-chip-label">Gastos operativos</span></div>
         <div class="stat-chip-value" style="color:var(--semantic-warning);">${{ totales.gastos_f }}</div>
     </div>
-    <div class="stat-chip {% if totales.ganancia_estimada >= 0 %}accent-success{% endif %}" {% if totales.ganancia_estimada < 0 %}style="border-color:var(--danger);"{% endif %}>
-        <div class="stat-chip-label">Ganancia estimada anual</div>
+    <div class="stat-chip kpi-card {% if totales.ganancia_estimada >= 0 %}accent-success{% endif %}" {% if totales.ganancia_estimada < 0 %}style="border-color:var(--danger);"{% endif %}>
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Ganancia estimada anual</span></div>
         <div class="stat-chip-value {% if totales.ganancia_estimada >= 0 %}text-success{% else %}text-danger{% endif %}">${{ totales.ganancia_f }}</div>
         <div class="stat-chip-desc">Sin Ads</div>
     </div>
@@ -102,6 +102,6 @@
 
 <div class="page-subtitle" style="margin-top:8px;">
     <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
-    Esta pantalla no reemplaza la declaración jurada — es una herramienta de seguimiento para que vos y tu contador puedan estimar tu categoría y cuota de Monotributo. Para el cálculo oficial de Monotributo, usá la pantalla <a href="/monotributo" style="color:var(--accent-brand);">Monotributo</a>.
+    Esta pantalla no reemplaza la declaración jurada — es una herramienta de seguimiento para que vos y tu contador puedan estimar tu categoría y cuota de Monotributo. Para el cálculo oficial de Monotributo, usá la pantalla <a href="/monotributo" style="color:var(--accent-primary);">Monotributo</a>.
 </div>
 {% endblock %}

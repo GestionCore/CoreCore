@@ -221,14 +221,16 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         # vacía (bloqueada por el bug de RLS sin política).
         info_variantes = {r["id_variante"]: (r["talle"], r["color"]) for r in cursor.fetchall()}
 
-        cursor.execute("SELECT id_meli, precio_costo FROM productos_padre")
+        cursor.execute("SELECT id_meli, precio_costo, thumbnail FROM productos_padre")
         # dict(cursor.fetchall()) tampoco sirve con dict_row: cada fila ya es
         # un dict de 2 claves ("id_meli", "precio_costo"), y dict() sobre una
         # lista de esos termina interpretando cada fila como el PAR
         # (clave, valor) = (nombres de columna) en vez de (id_meli, costo) —
         # no tira error, pero arma costos_por_item con basura, corrompiendo
         # el costo de fabricación de Ganancia Neta Real en silencio.
-        costos_por_item = {r["id_meli"]: r["precio_costo"] for r in cursor.fetchall()}
+        filas_productos = cursor.fetchall()
+        costos_por_item = {r["id_meli"]: r["precio_costo"] for r in filas_productos}
+        thumbnails_por_item = {r["id_meli"]: r["thumbnail"] for r in filas_productos}
 
         cursor.execute("""
             SELECT tipo, motivo, estado, id_orden, fecha, COALESCE(monto_retenido, 0.0) AS monto_retenido
@@ -310,7 +312,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         })
 
         if id_meli not in consolidado_dict:
-            consolidado_dict[id_meli] = {"titulo": titulo, "unidades": 0, "facturado": 0.0, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": costo_ads_total_item}
+            consolidado_dict[id_meli] = {"titulo": titulo, "thumbnail": thumbnails_por_item.get(id_meli), "unidades": 0, "facturado": 0.0, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": costo_ads_total_item}
         consolidado_dict[id_meli]["unidades"] += cantidad
         consolidado_dict[id_meli]["facturado"] += ingreso_bruto_operacion
         consolidado_dict[id_meli]["costo_fab"] += costo_fabricacion_total
@@ -327,7 +329,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         c_fab_u = cp["costo_fab"] / u if u > 0 else 0.0
         neto_u = p_prom - c_com_u - c_env_u - c_ads_u - c_fab_u
         lista_consolidados.append({
-            "titulo": cp["titulo"], "unidades": u, "facturado_raw": cp["facturado"],
+            "titulo": cp["titulo"], "thumbnail": cp["thumbnail"], "unidades": u, "facturado_raw": cp["facturado"],
             "precio_promedio": formatear_moneda(p_prom), "total_facturado": formatear_moneda(cp["facturado"]),
             "cargo_u": formatear_moneda(c_com_u), "envio_u": formatear_moneda(c_env_u), "ads_u": formatear_moneda(c_ads_u),
             "costo_u": formatear_moneda(c_fab_u), "neto_u": formatear_moneda(neto_u), "neto_total": formatear_moneda(neto_u * u),

@@ -23,7 +23,7 @@
 <div class="calc-overlay" id="calc-overlay" onclick="if(event.target===this) cerrarCalculadoraCostos()">
     <div class="calc-panel" id="calc-panel">
         <div class="calc-header">
-            <h2 style="margin:0; font-family:var(--font-display);"><svg class="icon" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;color:var(--accent-brand);"><use href="#icon-coin"/></svg>Calculadora de Costos Real</h2>
+            <h2 style="margin:0; font-family:var(--font-display);"><svg class="icon" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;color:var(--accent-primary);"><use href="#icon-coin"/></svg>Calculadora de Costos Real</h2>
             <span style="cursor:pointer;" onclick="cerrarCalculadoraCostos()"><svg class="icon" style="width:16px;height:16px;"><use href="#icon-x"/></svg></span>
         </div>
         <div class="calc-body">
@@ -69,10 +69,10 @@
     </form>
 </div>
 
-<div class="stat-strip">
-    <div class="stat-chip accent-denim"><div class="stat-chip-label">Gastos fijos</div><div class="stat-chip-value">${{ stats.fijos }}</div></div>
-    <div class="stat-chip accent-gold"><div class="stat-chip-label">Gastos variables</div><div class="stat-chip-value">${{ stats.variables }}</div></div>
-    <div class="stat-chip accent-danger"><div class="stat-chip-label">Total del período</div><div class="stat-chip-value">${{ stats.total }}</div></div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-wallet"/></svg></span><span class="stat-chip-label">Gastos fijos</span></div><div class="stat-chip-value">${{ stats.fijos }}</div></div>
+    <div class="stat-chip kpi-card accent-primary"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="stat-chip-label">Gastos variables</span></div><div class="stat-chip-value">${{ stats.variables }}</div></div>
+    <div class="stat-chip kpi-card accent-danger"><div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-alert"/></svg></span><span class="stat-chip-label">Total del período</span></div><div class="stat-chip-value">${{ stats.total }}</div></div>
 </div>
 
 <div class="panel">

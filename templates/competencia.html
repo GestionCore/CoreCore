@@ -31,6 +31,7 @@
 <div class="panel">
     <div class="panel-title">
         <span class="row-flex" style="gap:10px;">
+            {% if r.thumbnail %}<img src="{{ r.thumbnail }}" alt="" class="thumb-sm" style="width:32px;height:32px;">{% endif %}
             {{ r.alias }}
             {% if r.sparkline_puntos %}
             <svg viewBox="0 0 70 24" class="sparkline" title="Precio en los últimos días">

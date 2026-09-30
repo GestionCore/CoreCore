@@ -1,53 +1,68 @@
 :root {
-    /* Base: negro con un dejo de azul oscuro profundo, no negro puro —
-       da esa sensación de "espacio digital" en vez de plano. */
-    --bg-base: #05060f;
-    --bg-surface: #0a0b1a;
-    --bg-deep-blue: #0d1130;
-    --glass-bg: rgba(13, 15, 38, 0.68);
-    --glass-bg-alt: rgba(18, 21, 48, 0.75);
-    --glass-border: rgba(168, 130, 255, 0.16);
-    --border-soft: rgba(255, 255, 255, 0.07);
+    /* ============================================================
+       CoreLux — Design System v2 ("SaaS de alta gama, identidad propia")
+       Referencia estructural: Escalafy (grafito plano, tarjetas sólidas,
+       números protagonistas). Paleta: NO se copia su rosa/magenta —
+       CoreLux sigue siendo violeta + dorado, pero con la misma disciplina:
+       fondo plano sin degradé ni ruido, tarjetas grafito con borde
+       casi invisible, y el color con un solo trabajo cada uno (ver abajo).
+       ============================================================ */
 
-    --text-primary: #f7f7ff;
-    --text-secondary: #9494b8;
-    --text-faint: #56567a;
+    /* ---------- Fondo: negro grafito plano, sin degradé azulado ---------- */
+    --bg-base: #0a0a0c;
+    --bg-surface: #0e0e12;
+    --bg-deep-blue: #0a0a0c; /* alias legacy — ya no hay degradé, mismo valor que bg-base */
 
-    /* Violeta neón + cian como segundo neón (guiño directo a Tron) — el
-       combo violeta/cian sobre negro-azulado es la base del look
-       futurista/vaporwave. El amarillo queda reservado para momentos
-       puntuales (ganancia, alertas de valor), nunca de fondo. */
-    --accent-primary: #b06bff;
-    --accent-primary-dim: #8b3ffc;
-    --accent-primary-glow: rgba(176, 107, 255, 0.55);
-    --accent-cyan: #2ee6ff;
-    --accent-cyan-glow: rgba(46, 230, 255, 0.5);
-    --accent-gold: #ffd93d;
-    --accent-gold-dim: #e6ac00;
-    --accent-gold-glow: rgba(255, 217, 61, 0.45);
+    /* ---------- Tarjetas: grafito sólido, borde ultra-fino y neutro ----------
+       Antes eran "glass" translúcido (alpha 0.68/0.75 + blur 14px) con
+       borde violeta brillante — leía como un panel de nave espacial.
+       Ahora son superficies sólidas y quietas; el contraste lo da la
+       jerarquía tipográfica, no el brillo del borde. */
+    --glass-bg: #131318;
+    --glass-bg-alt: #17171d;
+    --glass-border: #232329;
+    --border-soft: rgba(255, 255, 255, 0.06);
+
+    --text-primary: #ffffff;
+    --text-secondary: #94a3b8;
+    --text-faint: #5b6472;
+
+    /* ---------- Violeta: identidad + TODA acción (CTAs, estados activos,
+       loaders, líneas de tendencia). Es el color que más se ve. ---------- */
+    --accent-primary: #8b5cf6;
+    --accent-primary-dim: #7c3aed;
+    --accent-primary-glow: rgba(139, 92, 246, 0.35);
+    --accent-cyan: #38bdf8;              /* uso puntual en gráficos (una serie más, no identidad) */
+    --accent-cyan-glow: rgba(56, 189, 248, 0.25);
     --accent-denim: var(--accent-primary); /* compat: nombre viejo, mismo valor */
 
-    /* ---------- Identidad de marca (logo, racha, watermark) ----------
-       Separado de --accent-gold para que "brand" y "advertencia" no
-       compartan el mismo token — antes ambos usaban el mismo dorado. */
-    --accent-brand: #f5a623;
-    --accent-brand-dim: #d9860f;
-    --accent-brand-glow: rgba(245, 166, 35, 0.45);
+    /* ---------- Dorado: acento premium, con precisión ----------
+       Logo, badges de estatus (VIP / MercadoLíder), hitos y logros
+       destacados. NUNCA botones de uso común, nunca advertencias/errores
+       — para eso está --semantic-warning y --danger. accent-brand queda
+       como alias del mismo dorado (ya no hace falta separarlo: la regla
+       ahora es "dorado = marca/premium", punto). */
+    --accent-gold: #f2c94c;
+    --accent-gold-dim: #d4a017;
+    --accent-gold-glow: rgba(242, 201, 76, 0.30);
+    --accent-brand: var(--accent-gold);
+    --accent-brand-dim: var(--accent-gold-dim);
+    --accent-brand-glow: var(--accent-gold-glow);
 
-    /* ---------- Semántica de estado — cada color tiene un solo rol ---------- */
-    --success: #29e6b0;
-    --success-bg: rgba(41, 230, 176, 0.12);
-    --danger: #ff4d7d;
-    --danger-bg: rgba(255, 77, 125, 0.12);
-    --warning: #ffd93d;         /* compat: alias legacy → mismo que accent-gold */
-    --warning-bg: rgba(255, 217, 61, 0.12);
-    --semantic-warning: #e8822e;        /* naranja: alertas y advertencias */
-    --semantic-warning-bg: rgba(232, 130, 46, 0.13);
+    /* ---------- Semántica financiera — cada color un solo rol ---------- */
+    --success: #22c55e;                 /* ganancia neta, cobros, números positivos */
+    --success-bg: rgba(34, 197, 94, 0.12);
+    --danger: #f43f5e;                  /* reclamos, quiebre de stock, pérdida */
+    --danger-bg: rgba(244, 63, 94, 0.12);
+    --warning: #f2c94c;                 /* compat: alias legacy */
+    --warning-bg: rgba(242, 201, 76, 0.10);
+    --semantic-warning: #f0a13b;         /* naranja: alertas y advertencias reales */
+    --semantic-warning-bg: rgba(240, 161, 59, 0.13);
     --semantic-achieve: #a78bfa;        /* violeta pastel: logros, badges, hitos */
     --semantic-achieve-bg: rgba(167, 139, 250, 0.13);
-    --semantic-info: #00e5c4;           /* verde-cian: información contextual */
-    --semantic-info-bg: rgba(0, 229, 196, 0.11);
-    --semantic-danger-glow: rgba(255, 77, 125, 0.4);
+    --semantic-info: #38bdf8;           /* información contextual */
+    --semantic-info-bg: rgba(56, 189, 248, 0.11);
+    --semantic-danger-glow: rgba(244, 63, 94, 0.35);
 
     --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-display: 'Source Serif Pro', 'Source Serif 4', Georgia, serif;
@@ -59,7 +74,7 @@
     --text-sm:  0.82em;   /* texto secundario, subtítulos chicos */
     --text-base: 0.90em;  /* texto de cuerpo, celdas de tabla */
     --text-md:  1.05em;   /* títulos de panel, UI mediano */
-    --text-lg:  1.40em;   /* cifras grandes en chips */
+    --text-lg:  1.55em;   /* cifras grandes en chips — antes 1.40em, KPI ejecutivo pide más presencia */
     --text-xl:  1.85em;   /* page-title */
     --text-hero: 2.60em;  /* hero number: la cifra más importante */
 
@@ -67,12 +82,15 @@
     --radius-md: 14px;
     --radius-lg: 20px;
     --radius-pill: 999px;
-    --shadow-card: 0 4px 28px -4px rgba(0, 0, 0, 0.6);
-    --shadow-elevated: 0 18px 44px -8px rgba(0, 0, 0, 0.7);
-    --shadow-glow-primary: 0 0 34px -2px var(--accent-primary-glow);
-    --shadow-glow-cyan: 0 0 34px -2px var(--accent-cyan-glow);
-    --shadow-glow-gold: 0 0 34px -2px var(--accent-gold-glow);
-    --shadow-glow-brand: 0 0 34px -2px var(--accent-brand-glow);
+    /* Sombras neutras (negro puro), no teñidas de violeta — el brillo de
+       color queda reservado a :hover, como un acento puntual, no como
+       aura permanente de cada tarjeta. */
+    --shadow-card: 0 2px 10px -2px rgba(0, 0, 0, 0.5);
+    --shadow-elevated: 0 14px 34px -10px rgba(0, 0, 0, 0.6);
+    --shadow-glow-primary: 0 0 22px -4px var(--accent-primary-glow);
+    --shadow-glow-cyan: 0 0 22px -4px var(--accent-cyan-glow);
+    --shadow-glow-gold: 0 0 22px -4px var(--accent-gold-glow);
+    --shadow-glow-brand: 0 0 22px -4px var(--accent-brand-glow);
 
     /* ---------- Sistema de transiciones (un solo idioma para todo) ---------- */
     --transition-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -106,9 +124,9 @@
     --accent-gold-dim: #92400e;
     --accent-gold-glow: rgba(180, 83, 9, 0.18);
 
-    --accent-brand: #b45309;
-    --accent-brand-dim: #92400e;
-    --accent-brand-glow: rgba(180, 83, 9, 0.20);
+    --accent-brand: var(--accent-gold);
+    --accent-brand-dim: var(--accent-gold-dim);
+    --accent-brand-glow: var(--accent-gold-glow);
     --success: #059669;
     --success-bg: rgba(5, 150, 105, 0.10);
     --danger: #dc2626;
@@ -149,12 +167,11 @@ html { color-scheme: dark; }
 body {
     margin: 0;
     background-color: var(--bg-base);
-    background-image:
-        radial-gradient(circle at 12% -8%, rgba(176, 107, 255, 0.16) 0%, transparent 42%),
-        radial-gradient(circle at 100% 8%, rgba(46, 230, 255, 0.10) 0%, transparent 40%),
-        radial-gradient(circle at 50% 100%, rgba(139, 63, 252, 0.10) 0%, transparent 50%),
-        linear-gradient(180deg, var(--bg-base) 0%, var(--bg-deep-blue) 140%),
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    /* Un único glow violeta, muy tenue, arriba a la izquierda — misma idea
+       que la referencia (Escalafy tiene un glow apenas visible detrás del
+       hero), nada de degradé azulado ni textura de ruido tapando la
+       lectura. El resto de la pantalla es negro grafito plano. */
+    background-image: radial-gradient(circle at 15% -10%, rgba(139, 92, 246, 0.07) 0%, transparent 45%);
     background-attachment: fixed;
     color: var(--text-primary);
     font-family: var(--font-ui);
@@ -192,13 +209,13 @@ a { color: inherit; text-decoration: none; }
 .stat-chip.accent-success .stat-chip-icon, .stat-chip.accent-success .stat-chip-value { color: var(--success); }
 .stat-chip.accent-danger .stat-chip-icon, .stat-chip.accent-danger .stat-chip-value { color: var(--danger); }
 .stat-chip.accent-warning .stat-chip-icon, .stat-chip.accent-warning .stat-chip-value { color: var(--semantic-warning); }
-.stat-chip.accent-warning { border-color: rgba(232, 130, 46, 0.3); }
+.stat-chip.accent-warning { border-color: rgba(240, 161, 59, 0.3); }
 /* Las tarjetas SIN variante de acento (conteos neutros, "total histórico",
    etc.) siguen con .stat-chip-value en blanco por default — a propósito:
    no todo dato necesita un color, solo el que sí importa resaltar. */
 .stat-chip.accent-gold:hover { border-color: rgba(251, 191, 36, 0.4); box-shadow: var(--shadow-glow-gold); }
-.stat-chip.accent-denim:hover, .stat-chip.accent-primary:hover { border-color: rgba(176, 107, 255, 0.4); box-shadow: var(--shadow-glow-primary); }
-.stat-chip.accent-warning:hover { border-color: rgba(232, 130, 46, 0.5); box-shadow: 0 0 32px -4px rgba(232, 130, 46, 0.35); }
+.stat-chip.accent-denim:hover, .stat-chip.accent-primary:hover { border-color: rgba(139, 92, 246, 0.4); box-shadow: var(--shadow-glow-primary); }
+.stat-chip.accent-warning:hover { border-color: rgba(240, 161, 59, 0.5); box-shadow: 0 0 32px -4px rgba(240, 161, 59, 0.35); }
 .stat-chip.accent-success:hover { border-color: rgba(34, 211, 165, 0.4); box-shadow: 0 0 32px -4px rgba(34, 211, 165, 0.35); }
 .stat-chip.accent-danger:hover { border-color: rgba(245, 72, 107, 0.4); box-shadow: 0 0 32px -4px rgba(245, 72, 107, 0.35); }
 
@@ -256,7 +273,7 @@ a { color: inherit; text-decoration: none; }
     transition: border-color 0.2s, box-shadow 0.2s; min-width: 260px; justify-content: flex-start;
     justify-self: center;
 }
-.buscador-central:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(176,107,255,0.2); }
+.buscador-central:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(139,92,246,0.2); }
 .buscador-central kbd { margin-left: auto; background: rgba(255,255,255,0.08); border-radius: 4px; padding: 2px 6px; font-family: var(--font-data); font-size: 0.85em; }
 @media (max-width: 900px) { .buscador-central span { display: none; } .buscador-central { min-width: auto; } }
 /* Entre ~900 y ~1300px el ancho mínimo combinado de logo + buscador +
@@ -278,7 +295,7 @@ a { color: inherit; text-decoration: none; }
 .topnav-link { display: inline-flex; align-items: center; padding: 8px 10px; border-radius: var(--radius-sm); color: var(--text-secondary); font-weight: 500; font-size: 0.88em; transition: background var(--transition-fast), color var(--transition-fast); white-space: nowrap; }
 .topnav-link .icon { margin-right: 6px; width: 15px; height: 15px; }
 .topnav-link:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
-.topnav-link.active { background: rgba(255,255,255,0.06); color: var(--accent-brand); }
+.topnav-link.active { background: rgba(255,255,255,0.06); color: var(--accent-primary); }
 .btn-sync-todo { padding: 8px 14px; font-size: 0.85em; flex-shrink: 0; }
 
 /* Layout & Panels */
@@ -289,8 +306,10 @@ a { color: inherit; text-decoration: none; }
 .page-subtitle { color: var(--text-secondary); font-size: 0.9em; }
 
 .panel {
+    /* Tarjeta sólida (grafito plano), no glass translúcido — --glass-bg
+       ya es un color opaco, así que el blur de acá no aportaba nada
+       visible salvo costo de renderizado. */
     background: var(--glass-bg); border: 1px solid var(--glass-border);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     border-radius: var(--radius-md); padding: 26px; margin-bottom: 24px;
     box-shadow: var(--shadow-card); overflow-x: auto;
     transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
@@ -307,10 +326,10 @@ a { color: inherit; text-decoration: none; }
 .panel:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-elevated), 0 0 24px -8px var(--accent-primary-glow);
-    border-color: rgba(176, 107, 255, 0.4);
+    border-color: rgba(139, 92, 246, 0.4);
 }
 .panel-title { font-size: var(--text-md); font-weight: 700; margin: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.panel-title .icon { color: var(--accent-brand); }
+.panel-title .icon { color: var(--accent-primary); }
 
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .anim-entrada-js { animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -336,12 +355,101 @@ a { color: inherit; text-decoration: none; }
     animation: fadeInUp 0.4s ease backwards;
     transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
 }
-.stat-chip:hover { transform: translateY(-3px); box-shadow: var(--shadow-elevated); border-color: rgba(176, 107, 255, 0.35); }
+.stat-chip:hover { transform: translateY(-3px); box-shadow: var(--shadow-elevated); border-color: rgba(139, 92, 246, 0.35); }
 .stat-chip:nth-child(1) { animation-delay: 0.02s; } .stat-chip:nth-child(2) { animation-delay: 0.07s; }
 .stat-chip:nth-child(3) { animation-delay: 0.12s; } .stat-chip:nth-child(4) { animation-delay: 0.17s; }
 .stat-chip:nth-child(5) { animation-delay: 0.22s; } .stat-chip:nth-child(6) { animation-delay: 0.27s; }
 .stat-chip-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 7px; font-weight: 600; }
 .stat-chip-value { font-family: var(--font-data); font-size: var(--text-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ---------- Filas de lista limpias (reemplazo de tablas toscas en
+   widgets angostos: Últimas Ventas, etc.) — fila espaciada, badge
+   redondeado para la cantidad, sin bordes de celda. ---------- */
+.mini-list-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 4px; border-bottom: 1px solid var(--border-soft);
+}
+.mini-list-row:last-child { border-bottom: none; }
+.mini-list-qty {
+    flex-shrink: 0; min-width: 26px; height: 22px; padding: 0 7px;
+    border-radius: var(--radius-pill); background: rgba(139, 92, 246, 0.12); color: var(--accent-primary);
+    font-size: 0.74em; font-weight: 700; font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; justify-content: center;
+}
+.mini-list-titulo { flex: 1; min-width: 0; font-size: 0.86em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-list-precio { flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 0.88em; }
+.mini-list-fecha { flex-shrink: 0; color: var(--text-faint); font-size: 0.76em; min-width: 64px; text-align: right; }
+
+/* ---------- KPI ejecutivo (hero del Dashboard) ----------
+   Ícono chico en chip redondeado (no el ícono suelto de 22px de antes)
+   + la cifra bien grande y en negrita, como corresponde al número que
+   más se mira en toda la pantalla. */
+.kpi-card { padding: 20px 22px; }
+.kpi-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.kpi-card-icon {
+    width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(139, 92, 246, 0.12); color: var(--accent-primary);
+}
+.kpi-card-icon .icon { width: 16px; height: 16px; }
+.kpi-card.accent-gold .kpi-card-icon { background: var(--accent-gold-glow); color: var(--accent-gold); }
+.kpi-card.accent-success .kpi-card-icon { background: var(--success-bg); color: var(--success); }
+.kpi-card.accent-danger .kpi-card-icon { background: var(--danger-bg); color: var(--danger); }
+.kpi-card .stat-chip-label { margin-bottom: 0; }
+.kpi-card .stat-chip-value { font-size: 30px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; }
+.kpi-card .stat-chip-desc { margin-top: 8px; }
+/* Flecha de tendencia vs. período anterior — verde/rojo según signo,
+   nunca mezclado con el color base de la tarjeta. */
+.kpi-tendencia { font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi-tendencia.up { color: var(--success); }
+.kpi-tendencia.down { color: var(--danger); }
+
+/* ---------- Badge "En vivo" — señal de frescura en datos de HOY ---------- */
+.badge-en-vivo {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-left: 8px; padding: 2px 9px; border-radius: var(--radius-pill);
+    background: var(--success-bg); color: var(--success);
+    font-size: 0.68em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    vertical-align: middle;
+}
+.badge-en-vivo::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--success); box-shadow: 0 0 6px var(--success);
+    animation: pulse 1.8s infinite;
+}
+
+/* ---------- Comparador "lo que ves en MeLi" vs "lo que te queda de
+   verdad" — el mensaje central de CoreLux, hecho visual. Caja izquierda
+   apagada (el número que MeLi te resalta), caja derecha con borde vivo
+   (el número real, después de todos los costos). ---------- */
+.comparador-real { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+@media (max-width: 640px) { .comparador-real { grid-template-columns: 1fr; } }
+.comparador-caja { border-radius: var(--radius-md); padding: 16px 18px; }
+.comparador-caja-oficial { background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); }
+.comparador-caja-real { background: rgba(139, 92, 246, 0.06); border: 1px solid rgba(139, 92, 246, 0.35); }
+.comparador-caja-eyebrow { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; margin-bottom: 8px; }
+.comparador-caja-valor { font-family: var(--font-data); font-size: 1.5em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.comparador-caja-oficial .comparador-caja-valor { color: var(--text-secondary); }
+.comparador-caja-real .comparador-caja-valor { color: var(--accent-primary); }
+.comparador-caja-nota { font-size: 0.76em; color: var(--text-faint); margin-top: 4px; }
+
+/* ---------- Waterfall de costos: fila por fila (label + barra + monto)
+   en vez de una sola barra apilada — se lee de un vistazo cuánto pesa
+   cada concepto y a dónde llega la plata al final. ---------- */
+.waterfall-fila { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.waterfall-fila-label { flex: 0 0 150px; font-size: 0.85em; color: var(--text-secondary); }
+.waterfall-fila-barra-fondo { flex: 1; height: 8px; border-radius: 99px; background: rgba(255,255,255,0.05); overflow: hidden; }
+.waterfall-fila-barra { height: 100%; border-radius: 99px; background: var(--danger); transition: width 0.6s cubic-bezier(0.16,1,0.3,1); }
+.waterfall-fila-monto { flex: 0 0 120px; text-align: right; font-family: var(--font-data); font-weight: 600; font-size: 0.88em; font-variant-numeric: tabular-nums; color: var(--danger); }
+.waterfall-fila.total-inicial .waterfall-fila-barra { background: var(--text-secondary); }
+.waterfall-fila.total-inicial .waterfall-fila-monto { color: var(--text-primary); font-weight: 700; }
+.waterfall-fila.total-final { border-top: 1px solid var(--border-soft); margin-top: 4px; padding-top: 14px; }
+.waterfall-fila.total-final .waterfall-fila-label { font-weight: 700; color: var(--text-primary); }
+.waterfall-fila.total-final .waterfall-fila-barra { background: var(--success); }
+.waterfall-fila.total-final .waterfall-fila-monto { color: var(--success); font-weight: 800; font-size: 1.05em; }
+.waterfall-fila.total-final.negativo .waterfall-fila-barra { background: var(--danger); }
+.waterfall-fila.total-final.negativo .waterfall-fila-monto { color: var(--danger); }
+@media (max-width: 560px) { .waterfall-fila-label { flex-basis: 100px; } .waterfall-fila-monto { flex-basis: 90px; } }
 
 /* ---------- Hero Numbers: la cifra que más importa en cada pantalla ---------- */
 .hero-number {
@@ -368,7 +476,7 @@ a { color: inherit; text-decoration: none; }
 }
 .hero-number.acento-success {
     background: none; -webkit-text-fill-color: var(--success); color: var(--success);
-    filter: drop-shadow(0 0 18px rgba(41, 230, 176, 0.4));
+    filter: drop-shadow(0 0 18px rgba(34, 197, 94, 0.4));
 }
 .hero-number.acento-warning {
     background: none; -webkit-text-fill-color: var(--semantic-warning); color: var(--semantic-warning);
@@ -406,6 +514,11 @@ tr.row-alert { background: rgba(239, 68, 68, 0.05); }
 
 /* Buttons & Inputs */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 0.9em; font-weight: 600; cursor: pointer; transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast); border: 1px solid transparent; font-family: var(--font-ui); position: relative; overflow: hidden; }
+/* Varios formularios ponen btn.disabled = true por JS mientras guardan
+   (para evitar doble-click) pero sin esto se veía IDÉNTICO a un botón
+   habilitado — mismo color, mismo cursor de mano — nada le avisaba al
+   usuario que ya estaba procesando el click. */
+.btn:disabled, .btn.disabled { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
 
 /* ---------- Efecto ripple al hacer click (JS crea el span, esto lo anima) ---------- */
 .btn-ripple {
@@ -415,21 +528,52 @@ tr.row-alert { background: rgba(239, 68, 68, 0.05); }
 }
 @keyframes expandirRipple { to { transform: scale(2.6); opacity: 0; } }
 .btn:active { transform: scale(0.96); }
-.btn-primary { background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim)); color: #14100a; box-shadow: 0 2px 14px -2px var(--accent-gold-glow); }
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-gold-glow); }
+/* El violeta es el color de ACCIÓN (identidad + CTA), así que .btn-primary
+   y .btn-denim son ahora el mismo botón — antes .btn-primary era dorado,
+   dejando el dorado (que se reserva para detalles premium: logo, badges
+   VIP, hitos) haciendo de botón de uso diario en 15 pantallas distintas. */
+.btn-primary, .btn-denim { background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); color: #fff; box-shadow: 0 2px 14px -2px var(--accent-primary-glow); }
+.btn-primary:hover, .btn-denim:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-primary-glow); }
 .btn-secondary { background: rgba(255,255,255,0.05); border-color: var(--glass-border); color: var(--text-primary); }
-.btn-secondary:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(176, 107, 255, 0.25); }
-.btn-denim { background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); color: #fff; box-shadow: 0 2px 14px -2px var(--accent-primary-glow); }
-.btn-denim:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-primary-glow); }
-.btn-danger { background: var(--danger-bg); border-color: rgba(245, 72, 107, 0.4); color: var(--danger); }
-.btn-danger:hover { box-shadow: 0 0 0 1px rgba(245, 72, 107, 0.3); }
+.btn-secondary:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.25); }
+/* Botón dorado — reservado para los pocos casos realmente "premium"
+   (upgrade a Plan Elite, etc.), no el botón de acción por default. */
+.btn-gold { background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim)); color: #14100a; box-shadow: 0 2px 14px -2px var(--accent-gold-glow); }
+.btn-gold:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-gold-glow); }
+.btn-danger { background: var(--danger-bg); border-color: rgba(244, 63, 94, 0.4); color: var(--danger); }
+.btn-danger:hover { box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.3); }
 .btn-block { width: 100%; }
 
 label.field-label { display: block; font-size: 0.78em; color: var(--text-secondary); margin-bottom: 5px; font-weight: 500; }
-input[type="text"], input[type="number"], input[type="date"], select {
+/* textarea faltaba acá — sin esto quedaba con el estilo por defecto del
+   navegador (fondo blanco, letra negra), un textarea de otra era en
+   medio de una pantalla oscura. Encontrado en Preguntas (el cuadro de
+   respuesta a compradores), donde más se nota porque es de uso diario. */
+input[type="text"], input[type="number"], input[type="date"], select, textarea {
     background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: var(--text-primary);
     padding: 10px 13px; border-radius: var(--radius-sm); font-family: var(--font-data); font-size: 0.9em; width: 100%; transition: border-color 0.2s;
 }
+textarea { line-height: 1.5; }
+/* El ícono de calendario de input[type=date] es del navegador (Chromium
+   lo pinta en gris oscuro/negro por default) — sobre nuestro fondo
+   oscuro quedaba casi invisible, imposible de encontrar con el ojo.
+   invert lo pasa a un gris claro legible; no es Firefox-compatible
+   (ese motor no soporta este pseudo-elemento), pero ahí el navegador ya
+   respeta color-scheme:dark solo, así que no hace falta el parche. */
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.75); cursor: pointer; }
+/* La flecha nativa del <select> es del navegador/SO — no del sistema de
+   íconos de la app, así que desentonaba (un triángulo gris genérico al
+   lado de tarjetas pulidas). appearance:none la saca y la reemplaza por
+   un chevron propio como background-image — sigue siendo un <select>
+   nativo de verdad (funciona con teclado/lector de pantalla), solo
+   cambia cómo se ve. */
+select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    padding-right: 34px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 11px center; background-size: 15px;
+}
+select:hover { border-color: rgba(139, 92, 246, 0.35); }
 input:focus, select:focus, textarea:focus {
     outline: none; border-color: var(--accent-primary);
     box-shadow: 0 0 0 3px var(--accent-primary-glow), 0 0 16px -4px var(--accent-primary-glow);
@@ -457,11 +601,18 @@ select option { background: #14162a; color: var(--text-primary); }
 .badge-neutral { background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--glass-border); }
 
 /* Alertas */
+/* Los 4 border-color de abajo quedaron hardcodeados con los valores
+   VIEJOS de semantic-warning/info/danger/success cuando se reescribió
+   la paleta — el borde de cada alerta no coincidía más con su propio
+   fondo/texto (ej: alert-info con fondo y letra celeste nueva, pero
+   borde verde-azulado de la paleta anterior). Se pasan a los mismos
+   tokens que ya usan background/color, así quedan siempre sincronizados
+   pase lo que pase con la paleta de acá en adelante. */
 .alert { padding: 11px 15px; border-radius: var(--radius-sm); font-size: 0.85em; margin-bottom: 16px; border: 1px solid; }
-.alert-warning { background: var(--semantic-warning-bg); border-color: rgba(232, 130, 46, 0.35); color: var(--semantic-warning); }
-.alert-info { background: var(--semantic-info-bg); border-color: rgba(0, 229, 196, 0.3); color: var(--semantic-info); }
-.alert-danger { background: var(--danger-bg); border-color: rgba(255, 77, 125, 0.35); color: var(--danger); }
-.alert-success { background: var(--success-bg); border-color: rgba(41, 230, 176, 0.35); color: var(--success); }
+.alert-warning { background: var(--semantic-warning-bg); border-color: var(--semantic-warning); color: var(--semantic-warning); }
+.alert-info { background: var(--semantic-info-bg); border-color: var(--semantic-info); color: var(--semantic-info); }
+.alert-danger { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+.alert-success { background: var(--success-bg); border-color: var(--success); color: var(--success); }
 .alert-empty { text-align: center; color: var(--text-faint); padding: 46px 10px 30px; font-size: 0.88em; position: relative; }
 .alert-empty::before, .alert-empty::after {
     content: ''; position: absolute; top: 0; left: 50%; width: 34px; height: 34px;
@@ -485,7 +636,7 @@ select option { background: #14162a; color: var(--text-primary); }
 }
 @keyframes radarPulso {
     0% { box-shadow: 0 0 0 0 var(--accent-primary-glow); }
-    100% { box-shadow: 0 0 0 16px rgba(176, 107, 255, 0); }
+    100% { box-shadow: 0 0 0 16px rgba(139, 92, 246, 0); }
 }
 
 /* Comando universal (Ctrl+K) */
@@ -506,7 +657,11 @@ select option { background: #14162a; color: var(--text-primary); }
     width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--glass-border);
     padding: 18px 20px; color: var(--text-primary); font-size: 1em; font-family: var(--font-ui);
 }
-.command-input:focus { outline: none; }
+/* outline:none sin reemplazo era un agujero real de accesibilidad —
+   alguien navegando con teclado (Ctrl+K abre esto) perdía el único
+   indicador de foco. El borde inferior ya existe siempre; al enfocar
+   pasa a violeta en vez de sacar el anillo sin poner nada en su lugar. */
+.command-input:focus { outline: none; border-bottom-color: var(--accent-primary); }
 .command-results { max-height: 320px; overflow-y: auto; }
 .command-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; color: var(--text-primary); transition: background 0.12s; }
 .command-item:hover, .command-item.activo { background: rgba(255,255,255,0.05); }
@@ -519,7 +674,7 @@ select option { background: #14162a; color: var(--text-primary); }
 .id-copiable:hover { color: var(--accent-denim); }
 .destello-copiado { animation: destelloCopiado 0.5s ease-out; border-radius: 3px; }
 @keyframes destelloCopiado {
-    0% { background: rgba(46, 230, 255, 0.35); box-shadow: 0 0 12px var(--accent-cyan-glow); }
+    0% { background: rgba(56, 189, 248, 0.35); box-shadow: 0 0 12px var(--accent-cyan-glow); }
     100% { background: transparent; box-shadow: none; }
 }
 
@@ -530,7 +685,7 @@ select option { background: #14162a; color: var(--text-primary); }
 .chat-window.open { display: flex; animation: fadeInUp 0.2s ease; }
 .chat-header { padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--glass-border); font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
 .chat-body { flex: 1; padding: 16px; overflow-y: auto; font-size: 0.9em; display: flex; flex-direction: column; gap: 12px; }
-.chat-msg-bot { background: rgba(255,255,255,0.04); padding: 11px 15px; border-radius: 10px; border-left: 3px solid var(--accent-gold); }
+.chat-msg-bot { background: rgba(255,255,255,0.04); padding: 11px 15px; border-radius: 10px; border-left: 3px solid var(--accent-primary); }
 .chat-msg-user { background: var(--accent-denim); color: white; padding: 11px 15px; border-radius: 10px; align-self: flex-end; max-width: 85%; }
 .chat-footer { padding: 12px; background: rgba(255,255,255,0.03); border-top: 1px solid var(--glass-border); display: flex; gap: 8px; }
 
@@ -585,7 +740,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .drawer-tabs { display: flex; border-bottom: 1px solid var(--glass-border); overflow-x: auto; }
 .drawer-tab { padding: 12px 16px; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.85em; font-weight:600; white-space: nowrap; border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s; }
 .drawer-tab:hover { color: var(--text-primary); }
-.drawer-tab.active { color: var(--accent-brand); border-bottom-color: var(--accent-brand); text-shadow: 0 0 12px var(--accent-brand-glow); }
+.drawer-tab.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
 .drawer-body { flex: 1; overflow-y: auto; padding: 20px 22px; }
 .drawer-loading { text-align: center; color: var(--text-faint); padding: 40px 0; }
 
@@ -625,22 +780,41 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 @keyframes pulseCurva { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 
 
-/* ---------- Nav agrupado en desplegables ---------- */
+/* ---------- Nav agrupado en desplegables (mega-menu) ----------
+   Cada opción ahora es ícono + nombre + una línea que explica el
+   beneficio, no solo el nombre de la página — para alguien que no sabe
+   de memoria qué hace "Embudo de Conversión", la descripción hace ese
+   trabajo ahí mismo, sin tener que entrar a averiguar. */
 .nav-dropdown { position: relative; }
 .nav-dropdown-toggle { background: none; border: none; font-family: var(--font-ui); }
 .nav-chevron { font-size: 0.7em; margin-left: 4px; opacity: 0.6; }
-.nav-dropdown.active > .nav-dropdown-toggle { background: rgba(255,255,255,0.06); color: var(--accent-brand); }
+.nav-dropdown.active > .nav-dropdown-toggle { background: rgba(255,255,255,0.06); color: var(--accent-primary); }
 .nav-dropdown-menu {
-    position: absolute; top: 100%; left: 0; margin-top: 6px; min-width: 190px;
-    background: var(--glass-bg-alt); border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
-    backdrop-filter: blur(16px); box-shadow: var(--shadow-elevated);
-    display: none; flex-direction: column; padding: 6px; z-index: 60;
+    position: absolute; top: 100%; left: 0; margin-top: 8px; min-width: 340px;
+    background: var(--glass-bg-alt); border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-elevated);
+    display: none; flex-direction: column; padding: 8px; z-index: 60;
 }
 .nav-dropdown:hover .nav-dropdown-menu, .nav-dropdown.open .nav-dropdown-menu { display: flex; }
-.nav-dropdown-item { padding: 9px 12px; border-radius: 6px; color: var(--text-secondary); font-size: 0.88em; }
-.nav-dropdown-item:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
-.nav-dropdown-item.active { color: var(--accent-brand); font-weight: 600; }
-.nav-badge-usado { color: var(--accent-brand); font-size: 10px; margin-left: 6px; vertical-align: middle; }
+.nav-dropdown-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 12px; border-radius: var(--radius-sm); color: var(--text-secondary);
+    transition: background var(--transition-fast);
+}
+.nav-dropdown-item:hover { background: rgba(255,255,255,0.05); }
+.nav-dropdown-item-icon {
+    width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(139, 92, 246, 0.10); color: var(--accent-primary);
+    margin-top: 1px;
+}
+.nav-dropdown-item-icon .icon { width: 15px; height: 15px; }
+.nav-dropdown-item-texto { min-width: 0; }
+.nav-dropdown-item-nombre { font-size: 0.9em; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; }
+.nav-dropdown-item-desc { font-size: 0.78em; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+.nav-dropdown-item.active .nav-dropdown-item-nombre { color: var(--accent-primary); }
+.nav-dropdown-item.active .nav-dropdown-item-icon { background: rgba(139, 92, 246, 0.18); }
+.nav-badge-usado { color: var(--accent-gold); font-size: 10px; margin-left: 6px; vertical-align: middle; }
 
 /* ---------- Tab-strip persistente por grupo (Finanzas / Crecimiento / Catálogo) ----------
    En vez de tener que reabrir el dropdown cada vez que se quiere ir de una
@@ -667,11 +841,11 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 .subnav-tab:hover { color: var(--text-primary); }
-.subnav-tab.active { color: var(--accent-brand); border-bottom-color: var(--accent-brand); }
+.subnav-tab.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
 .subnav-tab-badge {
     font-size: 9px; font-weight: 700; letter-spacing: 0.03em;
-    color: var(--accent-brand); background: rgba(245, 166, 35, 0.14);
-    border: 1px solid rgba(245, 166, 35, 0.3);
+    color: var(--accent-gold); background: rgba(242, 201, 76, 0.14);
+    border: 1px solid rgba(242, 201, 76, 0.3);
     padding: 2px 6px; border-radius: 4px; line-height: 1.3;
 }
 
@@ -686,7 +860,13 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 /* ---------- P&L waterfall de 14 días (Dashboard) ---------- */
 .pl-waterfall { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
 .pl-tile { flex: 1; min-width: 150px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 16px 18px; }
-.pl-tile-resultado { border-color: var(--accent-brand); background: rgba(245, 166, 35, 0.06); }
+/* El borde de este tile lo pisa el JS en tiempo real (violeta si el
+   margen es positivo, rojo si es negativo — ver cargarGananciaDiaVsPromedio
+   en dashboard_personalizable.html) — el fondo quedaba fijo en un
+   naranja viejo sin relación con ninguno de los dos casos, mezclándose
+   mal con cualquiera de los dos bordes. Fondo neutro, el borde ya dice
+   todo lo que hace falta decir. */
+.pl-tile-resultado { border-color: var(--accent-primary); background: rgba(139, 92, 246, 0.06); }
 .pl-tile-valor { font-size: 1.5em; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .pl-operador { font-size: 1.6em; font-weight: 700; color: var(--text-faint); flex-shrink: 0; }
 .pl-detalle-tabla { display: flex; flex-direction: column; gap: 10px; }
@@ -714,7 +894,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .roas-slider { margin-top: 20px; max-width: 420px; margin-left: auto; margin-right: auto; }
 .roas-slider-track { position: relative; height: 10px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: visible; }
 .roas-slider-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-brand), var(--success)); transition: width 0.5s cubic-bezier(0.16,1,0.3,1); }
-.roas-slider-fill-riesgo { background: linear-gradient(90deg, var(--danger), var(--semantic-warning, #e8822e)); }
+.roas-slider-fill-riesgo { background: linear-gradient(90deg, var(--danger), var(--semantic-warning, #f0a13b)); }
 .roas-slider-marca { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--text-primary); opacity: 0.55; }
 .roas-slider-etiquetas { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.74em; color: var(--text-faint); }
 
@@ -731,11 +911,11 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .margen-leyenda { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.78em; color: var(--text-secondary); margin-bottom: 12px; }
 .margen-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 .margen-dot-ok { background: var(--success); }
-.margen-dot-limite { background: var(--semantic-warning, #e8822e); }
+.margen-dot-limite { background: var(--semantic-warning, #f0a13b); }
 .margen-dot-pierde { background: var(--danger); }
 .fila-margen-ok { border-left: 3px solid var(--success); }
-.fila-margen-limite { border-left: 3px solid var(--semantic-warning, #e8822e); }
-.fila-margen-pierde { border-left: 3px solid var(--danger); background: rgba(255, 77, 125, 0.04); }
+.fila-margen-limite { border-left: 3px solid var(--semantic-warning, #f0a13b); }
+.fila-margen-pierde { border-left: 3px solid var(--danger); background: rgba(244, 63, 94, 0.04); }
 
 /* ---------- Tendencias: tabs del explorador, veredicto, seguimientos ---------- */
 .tendencias-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--glass-border); }
@@ -745,7 +925,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
 }
 .tendencias-tab:hover { color: var(--text-primary); }
-.tendencias-tab.activo { color: var(--accent-brand); border-bottom-color: var(--accent-brand); }
+.tendencias-tab.activo { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
 
 .veredicto-caja { background: rgba(255,255,255,0.03); border-radius: var(--radius-md); padding: 14px 16px; }
 
@@ -891,12 +1071,18 @@ body.modo-despacho-limpio { padding-top: 20px; }
 .checklist-barra { height: 8px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; flex: 1; }
 .checklist-fill { height: 100%; border-radius: 99px; transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1); background: linear-gradient(90deg, var(--accent-gold), var(--success)); }
 .checklist-items { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
-.checklist-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 0.88em; color: var(--text-secondary); text-decoration: none; transition: background 0.15s; }
-a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
-.checklist-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--glass-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.7em; }
-.checklist-item.completo { color: var(--text-primary); }
+/* Antes los ítems PENDIENTES (los que hay que leer para saber qué
+   falta hacer) usaban --text-secondary a 0.88em, y los ya completados
+   (que ya no requieren acción) usaban --text-primary, bien brillante —
+   exactamente al revés de lo que hace falta leer primero. Un ítem
+   pendiente es interactivo (tiene link), así que además necesita el
+   mismo contraste que cualquier otro texto accionable de la app. */
+.checklist-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: var(--text-base); color: var(--text-primary); text-decoration: none; transition: background 0.15s; }
+a.checklist-item:hover { background: rgba(255,255,255,0.04); }
+.checklist-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--glass-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.78em; }
+.checklist-item.completo { color: var(--text-secondary); }
 .checklist-item.completo .checklist-check { background: var(--success); border-color: var(--success); color: #06201a; }
-.checklist-item.completo .checklist-texto { text-decoration: line-through; text-decoration-color: var(--text-faint); opacity: 0.7; }
+.checklist-item.completo .checklist-texto { text-decoration: line-through; text-decoration-color: var(--text-faint); }
 
 /* ---------- HUD fijo: números críticos visibles en cualquier pantalla ---------- */
 .hud-fijo { position: fixed; bottom: 26px; left: 26px; z-index: 99; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 10px; }
@@ -989,14 +1175,14 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-p
     font-family: var(--font-data); font-weight: 700; font-size: 0.95em; flex-shrink: 0;
     border: 2px solid; transition: box-shadow 0.2s;
 }
-.seo-score-alto { border-color: var(--success); color: var(--success); box-shadow: 0 0 12px -2px rgba(41,230,176,0.4); }
-.seo-score-medio { border-color: var(--semantic-warning); color: var(--semantic-warning); box-shadow: 0 0 12px -2px rgba(232,130,46,0.4); }
-.seo-score-bajo { border-color: var(--danger); color: var(--danger); box-shadow: 0 0 12px -2px rgba(255,77,125,0.4); }
+.seo-score-alto { border-color: var(--success); color: var(--success); box-shadow: 0 0 12px -2px rgba(34,197,94,0.4); }
+.seo-score-medio { border-color: var(--semantic-warning); color: var(--semantic-warning); box-shadow: 0 0 12px -2px rgba(240,161,59,0.4); }
+.seo-score-bajo { border-color: var(--danger); color: var(--danger); box-shadow: 0 0 12px -2px rgba(244,63,94,0.4); }
 
 /* ---------- Dashboard personalizable ---------- */
 .grid-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
 .widget-dashboard { display: block; text-decoration: none; color: inherit; cursor: pointer; min-height: 110px; }
-.widget-dashboard:hover { border-color: rgba(176,107,255,0.4); }
+.widget-dashboard:hover { border-color: rgba(139,92,246,0.4); }
 .widget-dashboard-ancho { grid-column: span 2; cursor: default; position: relative; }
 .widget-dashboard-ancho:hover { border-color: var(--glass-border); }
 .btn-descargar-grafico {
@@ -1043,7 +1229,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-p
 }
 .tour-anillo {
     position: fixed; border: 2px solid var(--accent-primary); border-radius: 10px;
-    box-shadow: 0 0 0 4px rgba(176,107,255,0.18), 0 0 24px rgba(176,107,255,0.35);
+    box-shadow: 0 0 0 4px rgba(139,92,246,0.18), 0 0 24px rgba(139,92,246,0.35);
     transition: all 0.25s cubic-bezier(0.16,1,0.3,1); pointer-events: none;
 }
 .tour-tarjeta {
@@ -1101,7 +1287,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-p
 /* Nivel 1 — Hero: el foco de la pantalla, máxima elevación */
 .card-hero {
     background: var(--glass-bg-alt);
-    border: 1px solid rgba(176, 107, 255, 0.28);
+    border: 1px solid rgba(139, 92, 246, 0.28);
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     border-radius: var(--radius-md); padding: 30px;
     box-shadow: var(--shadow-elevated), 0 0 40px -10px var(--accent-primary-glow);
@@ -1111,7 +1297,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-p
 .card-hero:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-elevated), 0 0 56px -8px var(--accent-primary-glow);
-    border-color: rgba(176, 107, 255, 0.5);
+    border-color: rgba(139, 92, 246, 0.5);
 }
 
 /* Nivel 2 — Panel: agrupador estándar (alias semántico de .panel) */
@@ -1127,7 +1313,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-p
 .card-panel:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-elevated), 0 0 24px -8px var(--accent-primary-glow);
-    border-color: rgba(176, 107, 255, 0.4);
+    border-color: rgba(139, 92, 246, 0.4);
 }
 
 /* Nivel 3 — Detail: soporte y contexto, mínima elevación */
@@ -1200,6 +1386,6 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-p
 .rf-vacio { cursor: default; }
 .rf-vacio:hover { background: none; }
 .rf-hoy { box-shadow: inset 0 0 0 1px var(--accent-gold); }
-.rf-en-rango { background: rgba(176,107,255,0.15); border-radius: 0; color: var(--text-primary); }
+.rf-en-rango { background: rgba(139,92,246,0.15); border-radius: 0; color: var(--text-primary); }
 .rf-limite { background: var(--accent-primary); color: #fff; font-weight: 700; }
 .rf-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-soft); text-align: center; font-size: 0.8em; color: var(--text-secondary); font-family: var(--font-data); }

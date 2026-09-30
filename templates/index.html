@@ -14,34 +14,30 @@
 </div>
 
 <div class="panel" id="panel-resumen-diario" style="border-left:3px solid var(--accent-gold);">
-    <div class="panel-title"><svg class="icon" style="color:var(--accent-brand);"><use href="#icon-bolt"/></svg> Resumen de Hoy</div>
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-bolt"/></svg> Resumen de Hoy</div>
     <div id="resumen-diario-contenido">
         <div class="skeleton" style="height:80px; border-radius:8px;"></div>
     </div>
 </div>
 
-<div class="stat-strip">
-    <div class="stat-chip accent-gold">
-        <svg class="icon stat-chip-icon"><use href="#icon-shirt"/></svg>
-        <div class="stat-chip-label">Modelos Activos</div>
+<div class="stat-strip stat-strip-kpi">
+    <div class="stat-chip kpi-card accent-primary">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-shirt"/></svg></span><span class="stat-chip-label">Modelos Activos</span></div>
         <div class="stat-chip-value">{{ stats.activas }}</div>
         <div class="stat-chip-desc">Publicaciones online</div>
     </div>
-    <div class="stat-chip accent-denim">
-        <svg class="icon stat-chip-icon"><use href="#icon-coin"/></svg>
-        <div class="stat-chip-label">Capital en Stock</div>
+    <div class="stat-chip kpi-card accent-gold">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Capital en Stock</span></div>
         <div class="stat-chip-value">${{ stats.valor_total }}</div>
         <div class="stat-chip-desc">Precio × unidades totales</div>
     </div>
-    <div class="stat-chip accent-success">
-        <svg class="icon stat-chip-icon"><use href="#icon-box"/></svg>
-        <div class="stat-chip-label">Depósito Propio</div>
+    <div class="stat-chip kpi-card accent-success">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-box"/></svg></span><span class="stat-chip-label">Depósito Propio</span></div>
         <div class="stat-chip-value">{{ stats.propio }} u.</div>
         <div class="stat-chip-desc">Stock físico en local</div>
     </div>
-    <div class="stat-chip accent-denim">
-        <svg class="icon stat-chip-icon"><use href="#icon-truck"/></svg>
-        <div class="stat-chip-label">Depósito FULL</div>
+    <div class="stat-chip kpi-card accent-primary">
+        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-truck"/></svg></span><span class="stat-chip-label">Depósito FULL</span></div>
         <div class="stat-chip-value">{{ stats.full }} u.</div>
         <div class="stat-chip-desc">En bodegas de MeLi</div>
     </div>
