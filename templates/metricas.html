@@ -1,155 +1,204 @@
 {% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, delta, vacio %}
 {% block title %}Ganancia Real · CoreLux{% endblock %}
 {% block content %}
+{% set rs = resumen.raw %}
+{% set total_costos = (rs.comision or 0) + (rs.envios or 0) + (rs.costo_ads or 0) + (rs.costo_fabricacion or 0) %}
+{% set hay_ventas = rs.facturado and rs.facturado > 0 %}
+{% set margen_pct = (rs.ganancia_neta / rs.facturado * 100) if hay_ventas else 0 %}
+{# Mismos umbrales que el resto de la app: ≥15% deja plata, 0–15% al límite, <0% pierde #}
+{% set falta_costo = hay_ventas and rs.costo_fabricacion == 0 %}
+{# Sin costo de fabricación cargado el margen es falso: nunca se pinta de verde "todo bien" #}
+{% set tono = 'danger' if rs.ganancia_neta < 0 else ('warn' if (falta_costo or margen_pct < 15) else 'ok') %}
+{% set reclamos_total = posventa.devoluciones + posventa.reclamos %}
+
 <div class="page-header">
     <div>
-        <h1 class="page-title">Liquidación & Ganancia Neta Real</h1>
-        <div class="page-subtitle">Período: {{ fecha_desde }} al {{ fecha_hasta }} — Monotributo (sin retenciones automáticas)</div>
+        <h1 class="page-title">Ganancia Real</h1>
+        <div class="page-subtitle">Lo que realmente te queda de cada venta — <strong>{{ fecha_desde }}</strong> al <strong>{{ fecha_hasta }}</strong></div>
     </div>
     <div class="flex-gap no-imprimir">
-        <a class="btn btn-secondary" href="/metricas/exportar_excel?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> Exportar a Excel</a>
-        <button type="button" class="btn btn-secondary" onclick="window.print()"><svg class="icon" style="width:14px;height:14px;margin-right:5px;vertical-align:middle;"><use href="#icon-download"/></svg>Exportar a PDF</button>
+        <a class="btn btn-secondary" href="/metricas/exportar_excel?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> Excel</a>
+        <button type="button" class="btn btn-secondary" onclick="window.print()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> PDF</button>
     </div>
 </div>
 
-<div class="alert alert-info">
-    <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-info"/></svg>Acá ves la ganancia real de cada venta, con publicidad, envíos y devoluciones ya descontados.
-</div>
-
-{% if not ads_disponible %}
-<div class="alert alert-warning">No vemos gasto en Publicidad este período — revisá que le hayas dado acceso a tus campañas de Ads, o que tengas campañas activas.</div>
-{% elif gasto_ads_total_periodo is not none %}
-<div class="alert alert-info">
-    <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-percent"/></svg>Gasto total en Ads este período: <strong>${{ "%.2f"|format(gasto_ads_total_periodo)|replace(".", ",") }}</strong>
-</div>
-{% endif %}
-
-<div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title"><svg class="icon" style="color:var(--semantic-warning);"><use href="#icon-alert"/></svg> Devoluciones, Cancelaciones y Reclamos del Período</div>
-    <div class="stat-strip" style="margin-bottom: 14px;">
-        <div class="stat-chip"><div class="stat-chip-label">Devoluciones</div><div class="stat-chip-value">{{ posventa.devoluciones }}</div></div>
-        <div class="stat-chip"><div class="stat-chip-label">Cancelaciones</div><div class="stat-chip-value">{{ posventa.cancelaciones }}</div></div>
-        <div class="stat-chip"><div class="stat-chip-label">Reclamos</div><div class="stat-chip-value">{{ posventa.reclamos }}</div></div>
-        <div class="stat-chip accent-warning"><div class="stat-chip-label">Dinero Retenido</div><div class="stat-chip-value">${{ posventa.dinero_retenido }}</div></div>
+<!-- ── Período: lo primero, porque todo lo de abajo depende de esto ───────── -->
+<form action="/metricas" method="GET" class="ux-periodo no-imprimir">
+    <div class="ux-periodo-botones">
+        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(7, this)">7 días</button>
+        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(14, this)">14 días</button>
+        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(30, this)">30 días</button>
     </div>
-
-    {% if posventa.ranking_motivos_devolucion %}
-    <div style="margin-bottom:16px;">
-        <div style="font-size:0.85em; color:var(--text-secondary); margin-bottom:8px;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"><use href="#icon-layers"/></svg> Motivos de devolución más frecuentes:</div>
-        <div class="flex-gap">
-            {% for m in posventa.ranking_motivos_devolucion %}
-            <span class="badge {% if loop.first %}badge-danger{% else %}badge-neutral{% endif %}">{{ m.motivo }} ({{ m.cantidad }})</span>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
-    {% if posventa.lista %}
-    <table class="data-table">
-        <thead><tr><th>Fecha</th><th>Tipo</th><th>Orden</th><th>Motivo</th><th>Estado</th></tr></thead>
-        <tbody>
-            {% for item in posventa.lista %}
-            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
-                <td class="text-muted">{{ item.fecha }}</td>
-                <td><span class="badge badge-danger">{{ item.tipo }}</span></td>
-                <td><a href="{{ item.link }}" target="_blank" class="badge badge-neutral" style="text-decoration:none;">#{{ item.id_orden }} ↗</a></td>
-                <td>{{ item.motivo }}</td>
-                <td><span class="badge badge-warning">{{ item.estado }}</span></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% if posventa.lista|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ posventa.lista|length - 5 }} más...</button>
-    {% endif %}
-    {% else %}
-    <div class="alert-empty" style="padding: 12px 0;"><svg class="icon" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"><use href="#icon-check"/></svg>Período impecable: sin devoluciones ni reclamos registrados.</div>
-    {% endif %}
-</div>
-
-<form action="/metricas" method="GET" class="filter-row">
     <div class="rango-fechas" id="rango-metricas" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
         <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-metricas')"></button>
         <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
     </div>
-    <button type="submit" class="btn btn-denim" style="align-self:flex-end;">Ver período</button>
-    <div style="display:flex; gap:6px; align-self:flex-end;">
-        <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(7, this)">7 días</button>
-        <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(14, this)">14 días</button>
-        <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(30, this)">30 días</button>
-    </div>
+    <button type="submit" class="btn btn-primary">Ver período</button>
 </form>
 <script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-metricas'));</script>
 
-<div class="stat-strip stat-strip-kpi">
-    <div class="stat-chip kpi-card accent-success">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="stat-chip-label">Facturado</span></div>
-        <div class="stat-chip-value">${{ resumen.facturado }}
-            {% if comparacion_anterior.variacion_facturado_pct is not none %}
-            <span class="kpi-tendencia {{ 'up' if comparacion_anterior.variacion_facturado_pct >= 0 else 'down' }}" style="font-size:0.5em;" title="vs. {{ comparacion_anterior.desde }} al {{ comparacion_anterior.hasta }} (${{ comparacion_anterior.facturado_formateado }})">
-                {{ '▲' if comparacion_anterior.variacion_facturado_pct >= 0 else '▼' }} {{ comparacion_anterior.variacion_facturado_pct|abs }}%
-            </span>
-            {% endif %}
-        </div>
-        <div class="stat-chip-desc">vs. período anterior ({{ comparacion_anterior.desde }} al {{ comparacion_anterior.hasta }})</div>
-    </div>
-    <div class="stat-chip kpi-card {% if resumen.ganancia_neta_negativa %}accent-danger{% else %}accent-primary{% endif %}">
-        <div class="kpi-card-top"><span class="kpi-card-icon"><svg class="icon"><use href="#icon-wallet"/></svg></span><span class="stat-chip-label">Ganancia Neta Real</span></div>
-        <div class="stat-chip-value">${{ resumen.ganancia_neta }}</div>
-        <div class="stat-chip-desc">Lo que queda en el bolsillo{% if resumen.raw.facturado %} · {{ (resumen.raw.ganancia_neta / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
-    </div>
-    <div class="stat-chip" style="border-color:var(--danger); background:var(--danger-bg);">
-        <div class="stat-chip-label" style="color:var(--danger);">Comisiones MeLi</div>
-        <div class="stat-chip-value text-danger">${{ resumen.comision }}</div>
-        <div class="stat-chip-desc">Cargo por venta{% if resumen.raw.facturado %} · {{ (resumen.raw.comision / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
-    </div>
-    <div class="stat-chip" style="border-color:var(--accent-cyan); background:rgba(56,189,248,0.06);">
-        <div class="stat-chip-label" style="color:var(--accent-cyan);">Envíos</div>
-        <div class="stat-chip-value" style="color:var(--accent-cyan);">${{ resumen.envios }}</div>
-        <div class="stat-chip-desc">Costo de logística{% if resumen.raw.facturado %} · {{ (resumen.raw.envios / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
-    </div>
-    <div class="stat-chip">
-        <div class="stat-chip-label">Publicidad</div>
-        <div class="stat-chip-value">${{ resumen.costo_ads }}</div>
-        <div class="stat-chip-desc">Gasto en Ads{% if resumen.raw.facturado %} · {{ (resumen.raw.costo_ads / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
-    </div>
-    <div class="stat-chip">
-        <div class="stat-chip-label">Costo de Fabricación</div>
-        <div class="stat-chip-value">${{ resumen.costo_fabricacion }}</div>
-        <div class="stat-chip-desc">Costo del producto{% if resumen.raw.facturado %} · {{ (resumen.raw.costo_fabricacion / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
-    </div>
-    {% if ganancia_por_unidad %}
-    <div class="stat-chip">
-        <div class="stat-chip-label">Ganancia por Unidad</div>
-        <div class="stat-chip-value">${{ ganancia_por_unidad }}</div>
-        <div class="stat-chip-desc">Promedio · {{ total_unidades_periodo }} unidades vendidas</div>
-    </div>
-    {% endif %}
-</div>
+{% if not hay_ventas %}
+{{ vacio("No hay ventas en este período", "Probá con un rango más amplio — o sincronizá para traer lo último de Mercado Libre.", "calendar", "info", "Ver los últimos 30 días", "/metricas") }}
+{% else %}
 
-<div class="filter-row" style="align-items:stretch;">
-    <div class="panel" style="flex:1.3; min-width:320px;">
-        <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-bolt"/></svg> Punto de Equilibrio</div>
-        {% if punto_equilibrio %}
-        <div class="pe-badge {% if punto_equilibrio.superado %}pe-badge-ok{% else %}pe-badge-falta{% endif %}">
-            {% if punto_equilibrio.superado %}Superado {{ punto_equilibrio.veces_superado }}x{% else %}Todavía no cubrís tus costos fijos{% endif %}
-        </div>
-        <div class="stat-strip" style="margin-top:14px;">
-            <div class="stat-chip"><div class="stat-chip-label">Margen de contribución</div><div class="stat-chip-value">{{ punto_equilibrio.margen_contribucion_pct }}%</div></div>
-            <div class="stat-chip"><div class="stat-chip-label">Costo fijo del período</div><div class="stat-chip-value">${{ punto_equilibrio.costos_fijos_f }}</div></div>
-            <div class="stat-chip"><div class="stat-chip-label">Ventas mínimas necesarias</div><div class="stat-chip-value">${{ punto_equilibrio.ventas_minimas_f }}</div></div>
-        </div>
-        {% else %}
-        <div class="alert-empty" style="padding:12px 0;">Cargá tus costos fijos en <a href="/costos">Costos</a> para ver tu punto de equilibrio acá.</div>
+<!-- ── 1. CUÁNTO GANÉ ───────────────────────────────────────────────────── -->
+<div class="ux-hero ux-{{ tono }}">
+    <div class="ux-hero-etiqueta">
+        Ganancia neta real del período
+        {% if comparacion_anterior.variacion_facturado_pct is not none %}
+        <span class="no-imprimir">{{ delta(comparacion_anterior.variacion_facturado_pct) }} <span style="text-transform:none; letter-spacing:0; font-weight:600;">facturación vs. período anterior</span></span>
         {% endif %}
     </div>
-    <div class="panel" style="flex:1; min-width:280px;">
-        <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Factura MeLi</div>
-        {% if factura_meli %}
-        <div class="page-subtitle" style="margin-bottom:10px;">
-            {{ factura_meli.date_from }} al {{ factura_meli.date_to }}
-            <span class="badge {% if factura_meli.en_curso %}badge-info{% else %}badge-neutral{% endif %}" style="margin-left:6px;">{{ 'En curso' if factura_meli.en_curso else 'Cerrado' }}</span>
+    <div class="ux-hero-numero">{{ rs.ganancia_neta|plata }}</div>
+    <div class="ux-hero-frase">
+        {% if rs.ganancia_neta < 0 %}
+        De <b>{{ rs.facturado|plata }}</b> facturados, <b>perdiste {{ (rs.ganancia_neta|abs)|plata }}</b>: los costos superan lo que vendiste.
+        {% else %}
+        De <b>{{ rs.facturado|plata }}</b> facturados, <b>te quedaron {{ rs.ganancia_neta|plata }}</b> — el <b>{{ margen_pct|pct }}</b> de lo que vendiste.
+        {% endif %}
+    </div>
+
+    <!-- A dónde se fue cada peso: barra 100% + leyenda con montos -->
+    {% set base = [rs.facturado, total_costos]|max %}
+    <div class="ux-reparto" role="img" aria-label="Reparto de lo facturado: comisiones, envíos, publicidad, fabricación y ganancia">
+        {% if rs.comision %}<span style="width:{{ rs.comision / base * 100 }}%; background:var(--danger);" title="Comisiones de MeLi"></span>{% endif %}
+        {% if rs.envios %}<span style="width:{{ rs.envios / base * 100 }}%; background:var(--accent-cyan);" title="Envíos"></span>{% endif %}
+        {% if rs.costo_ads %}<span style="width:{{ rs.costo_ads / base * 100 }}%; background:var(--semantic-warning);" title="Publicidad"></span>{% endif %}
+        {% if rs.costo_fabricacion %}<span style="width:{{ rs.costo_fabricacion / base * 100 }}%; background:var(--accent-primary);" title="Costo de fabricación"></span>{% endif %}
+        {% if rs.ganancia_neta > 0 %}<span style="width:{{ rs.ganancia_neta / base * 100 }}%; background:var(--success);" title="Ganancia"></span>{% endif %}
+    </div>
+    <div class="ux-reparto-leyenda">
+        <div class="ux-reparto-item"><i style="background:var(--danger);"></i><span>Comisiones MeLi</span><b>{{ rs.comision|plata }}</b><em>{{ (rs.comision / rs.facturado * 100)|pct }}</em></div>
+        <div class="ux-reparto-item"><i style="background:var(--accent-cyan);"></i><span>Envíos</span><b>{{ rs.envios|plata }}</b><em>{{ (rs.envios / rs.facturado * 100)|pct }}</em></div>
+        <div class="ux-reparto-item"><i style="background:var(--semantic-warning);"></i><span>Publicidad</span><b>{{ rs.costo_ads|plata }}</b><em>{{ (rs.costo_ads / rs.facturado * 100)|pct }}</em></div>
+        <div class="ux-reparto-item"><i style="background:var(--accent-primary);"></i><span>Fabricación</span><b>{{ rs.costo_fabricacion|plata }}</b><em>{{ (rs.costo_fabricacion / rs.facturado * 100)|pct }}</em></div>
+        <div class="ux-reparto-item ux-reparto-ganancia"><i style="background:var(--success);"></i><span>Te queda</span><b>{{ rs.ganancia_neta|plata }}</b><em>{{ margen_pct|pct }}</em></div>
+    </div>
+</div>
+
+<!-- ── 2. QUÉ REVISAR: avisos que cambian cómo leer el número ──────────────── -->
+{% if falta_costo %}
+{{ banner("warn", "alert", "<b>Falta cargar el costo de fabricación</b> — la ganancia real es menor a la que ves", "Sin ese dato, cada venta parece tener el 100% de margen sobre el producto.", "Cargar costos", "/costos", "btn-alerta") }}
+{% endif %}
+{% if not ads_disponible %}
+{{ banner("info", "percent", "<b>No vemos gasto de publicidad</b> en este período", "Revisá que hayas dado acceso a tus campañas de Ads, o que tengas campañas activas.") }}
+{% endif %}
+{% if reclamos_total > 0 %}
+{% set hay_retenido = posventa.dinero_retenido not in ('0,00', '0', 0) %}
+{{ banner("danger", "alert", ("<b>%d reclamo(s) y devolución(es)</b> en este período"|format(reclamos_total)) ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Revisá los que siguen abiertos: cada uno sin resolver puede sumar a tu reputación negativa.", "Ver detalle", "#seccion-reclamos", "btn-urgente") }}
+{% endif %}
+{% if punto_equilibrio %}
+{% if punto_equilibrio.superado %}
+{{ banner("ok", "check", "<b>Cubriste tus costos fijos %sx</b> este período"|format(punto_equilibrio.veces_superado), "Necesitabas vender " ~ punto_equilibrio.ventas_minimas_f|string ~ " para no perder.") }}
+{% else %}
+{{ banner("warn", "alert", "<b>Todavía no cubrís tus costos fijos</b> — necesitás vender $" ~ punto_equilibrio.ventas_minimas_f ~ " en el período", "Costo fijo del período: $" ~ punto_equilibrio.costos_fijos_f ~ " · margen de contribución " ~ punto_equilibrio.margen_contribucion_pct ~ "%") }}
+{% endif %}
+{% endif %}
+
+<!-- ── 3. NÚMEROS CLAVE ─────────────────────────────────────────────────── -->
+<div class="ux-kpis">
+    {{ kpi("Facturado", rs.facturado|plata, "accion", "coin", "vs. período anterior (" ~ comparacion_anterior.desde ~ " al " ~ comparacion_anterior.hasta ~ ")") }}
+    {{ kpi("Unidades vendidas", total_unidades_periodo|numero, "info", "box", "en el período") }}
+    {% if ganancia_por_unidad %}
+    {{ kpi("Ganancia por unidad", "$" ~ ganancia_por_unidad, "ok" if rs.ganancia_neta >= 0 else "danger", "wallet", "promedio real, ya descontado todo") }}
+    {% endif %}
+    {{ kpi("Margen neto", margen_pct|pct, tono, "percent", "ganancia sobre lo facturado") }}
+</div>
+
+<!-- ── 4. QUÉ MODELOS DEJAN PLATA Y CUÁLES NO ──────────────────────────── -->
+{% if consolidados %}
+{% set pierden = consolidados|selectattr('raw.neto_total', 'lt', 0)|list %}
+<div class="ux-seccion ux-{{ 'danger' if pierden else 'ok' }}">Qué modelos dejan plata
+    {% if pierden %}<span class="ux-pill ux-danger">{{ pierden|length }} pierde{{ 'n' if pierden|length > 1 }} plata</span>{% else %}<span class="ux-pill ux-ok">todos ganan</span>{% endif %}
+</div>
+<div class="panel" data-mostrar-mas-scope>
+    <div class="margen-leyenda">
+        <span><span class="margen-dot margen-dot-ok"></span>Deja plata (≥15%)</span>
+        <span><span class="margen-dot margen-dot-limite"></span>Al límite (0–15%)</span>
+        <span><span class="margen-dot margen-dot-pierde"></span>Pierde plata (&lt;0%)</span>
+        <span class="text-muted">Promedios ponderados reales: total en pesos ÷ unidades.</span>
+    </div>
+    <table class="data-table">
+        <thead><tr><th></th><th>Modelo</th><th class="num">Unid.</th><th class="num">Precio prom.</th><th class="num">Comisión</th><th class="num">Envío</th><th class="num">Ads</th><th class="num">Costo</th><th class="num">Neto por unidad</th><th class="num">Neto total</th></tr></thead>
+        <tbody>
+            {% for c in consolidados %}
+            {% set m = ((c.raw.neto_total / c.raw.total_facturado * 100) if c.raw.total_facturado else 0) %}
+            <tr class="ux-fila-{{ 'ok' if m >= 15 else ('warn' if m >= 0 else 'danger') }} {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
+                <td style="width:50px; padding-right:0;">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="" class="thumb-sm" loading="lazy">{% endif %}</td>
+                <td class="ux-col-titulo"><strong>{{ c.titulo }}</strong>{% if m < 0 %} <span class="ux-pill ux-danger">Pierde plata</span>{% elif m < 15 %} <span class="ux-pill ux-warn">Al límite</span>{% endif %}</td>
+                <td class="num">{{ c.unidades }}</td>
+                <td class="num">${{ c.precio_promedio }}</td>
+                <td class="num text-danger">${{ c.cargo_u }}</td>
+                <td class="num text-danger">${{ c.envio_u }}</td>
+                <td class="num text-danger">${{ c.ads_u }}</td>
+                <td class="num text-danger">${{ c.costo_u }}</td>
+                <td class="num {{ 'text-danger' if m < 0 else 'text-success' }}"><strong>${{ c.neto_u }}</strong></td>
+                <td class="num {{ 'text-danger' if m < 0 else 'text-success' }}"><strong>${{ c.neto_total }}</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if consolidados|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver los {{ consolidados|length - 5 }} modelos restantes</button>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ── 5. DETALLE: plegado para no abrumar ──────────────────────────────── -->
+<div class="ux-seccion ux-neutral">Más detalle</div>
+
+<details class="ux-detalle" id="seccion-reclamos" {% if reclamos_total > 0 %}open{% endif %}>
+    <summary>
+        <svg class="icon" style="width:18px;height:18px;color:var(--semantic-warning);"><use href="#icon-alert"/></svg>
+        Reclamos, devoluciones y cancelaciones
+        {% if reclamos_total > 0 %}<span class="ux-pill ux-danger">{{ reclamos_total }} en el período</span>{% else %}<span class="ux-pill ux-ok">sin problemas</span>{% endif %}
+    </summary>
+    <div class="ux-detalle-cuerpo" data-mostrar-mas-scope>
+        <div class="ux-kpis">
+            {{ kpi("Devoluciones", posventa.devoluciones, "warn" if posventa.devoluciones else "ok", "refresh") }}
+            {{ kpi("Reclamos", posventa.reclamos, "danger" if posventa.reclamos else "ok", "alert") }}
+            {{ kpi("Cancelaciones", posventa.cancelaciones, "neutral", "x") }}
+            {{ kpi("Dinero retenido", "$" ~ posventa.dinero_retenido, "warn", "lock") }}
         </div>
+        {% if posventa.ranking_motivos_devolucion %}
+        <div style="margin-bottom:16px;">
+            <div style="font-size:0.85em; color:var(--text-secondary); margin-bottom:8px;"><b>Motivos de devolución más frecuentes</b></div>
+            <div class="flex-gap">
+                {% for m in posventa.ranking_motivos_devolucion %}
+                <span class="ux-pill {{ 'ux-danger' if loop.first else 'ux-neutral ux-pill-suave' }}">{{ m.motivo }} · {{ m.cantidad }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if posventa.lista %}
+        <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Orden</th><th>Motivo</th><th>Estado</th></tr></thead>
+            <tbody>
+                {% for item in posventa.lista %}
+                <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
+                    <td class="text-muted">{{ item.fecha }}</td>
+                    <td><span class="ux-pill ux-danger">{{ item.tipo }}</span></td>
+                    <td><a href="{{ item.link }}" target="_blank" rel="noopener" class="badge badge-neutral" style="text-decoration:none;">#{{ item.id_orden }} ↗</a></td>
+                    <td>{{ item.motivo }}</td>
+                    <td><span class="ux-pill ux-warn">{{ item.estado }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if posventa.lista|length > 5 %}
+        <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver {{ posventa.lista|length - 5 }} más</button>
+        {% endif %}
+        {% else %}
+        {{ banner("ok", "check", "<b>Período impecable:</b> sin devoluciones ni reclamos registrados") }}
+        {% endif %}
+    </div>
+</details>
+
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Lo que te facturó Mercado Libre {% if factura_meli %}<span class="ux-detalle-nota">{{ factura_meli.date_from }} al {{ factura_meli.date_to }} · {{ 'en curso' if factura_meli.en_curso else 'cerrada' }}</span>{% endif %}</summary>
+    <div class="ux-detalle-cuerpo">
+        {% if factura_meli %}
         <table class="data-table">
             <tbody>
                 {% for c in factura_meli.cargos[:6] %}
@@ -158,26 +207,19 @@
                 <tr style="border-top:1px solid var(--glass-border);"><td><strong>Total facturado por MeLi</strong></td><td class="num"><strong>${{ factura_meli.total_cargos_formateado }}</strong></td></tr>
             </tbody>
         </table>
-        <div class="text-muted" style="font-size:0.76em; margin-top:8px;"><a href="/facturacion">Ver el detalle completo →</a></div>
+        <div style="margin-top:12px;"><a class="btn btn-secondary" href="/facturacion">Ver el detalle completo →</a></div>
         {% else %}
-        <div class="alert-empty" style="padding:12px 0;">No se pudo traer la facturación de MeLi ahora mismo.</div>
+        {{ banner("info", "info", "<b>No pudimos traer</b> la facturación de MeLi ahora mismo", "Probá de nuevo en un rato.") }}
+        {% endif %}
+        {% if gasto_ads_total_periodo is not none and ads_disponible %}
+        <div class="text-muted" style="font-size:0.82em; margin-top:12px;">Gasto total en Ads del período: <b>{{ gasto_ads_total_periodo|plata }}</b></div>
         {% endif %}
     </div>
-</div>
+</details>
 
-<div class="filter-row" style="align-items:stretch;">
-    <div class="panel" style="flex:1; min-width:280px;">
-        <div class="panel-title">Composición de Costos</div>
-        {% if resumen.raw.facturado %}
-        <div style="position:relative; height:200px;">
-            <canvas id="canvas-composicion-costos"></canvas>
-        </div>
-        {% else %}
-        <div class="alert-empty">Sin facturación en el período.</div>
-        {% endif %}
-    </div>
-    <div class="panel" style="flex:1.3; min-width:320px;">
-        <div class="panel-title">Margen por Canal de Envío</div>
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-truck"/></svg> Margen por canal de envío</summary>
+    <div class="ux-detalle-cuerpo">
         {% if canales_envio %}
         <div class="canal-envio-lista">
             {% for c in canales_envio %}
@@ -186,7 +228,7 @@
                 {% if c.sin_datos %}
                 <div class="text-muted" style="font-size:0.8em;">Sin ventas por este canal.</div>
                 {% else %}
-                <div class="checklist-barra"><div class="checklist-fill" style="width:{{ 100 if c.margen_pct > 100 else (0 if c.margen_pct < 0 else c.margen_pct) }}%; {% if c.margen_pct < 0 %}background:var(--danger);{% endif %}"></div></div>
+                <div class="ux-barra ux-{{ 'danger' if c.margen_pct < 0 else ('ok' if c.margen_pct >= 15 else 'warn') }}" style="flex:1;"><span style="width:{{ 100 if c.margen_pct > 100 else (0 if c.margen_pct < 0 else c.margen_pct) }}%;"></span></div>
                 <div class="canal-envio-valores">
                     <span>{{ c.unidades }} u.</span>
                     <span class="{% if c.margen_pct < 0 %}text-danger{% else %}text-success{% endif %}"><strong>${{ c.ganancia_neta_formateada }}</strong> ({{ c.margen_pct }}%)</span>
@@ -196,409 +238,240 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="alert-empty">Sin datos de logística en el período.</div>
+        <div class="text-muted">Sin datos de logística en el período.</div>
         {% endif %}
     </div>
-</div>
+</details>
 
 {% if analitica_clientes %}
-<div class="filter-row" style="align-items:stretch;">
-    <div class="panel" style="flex:1; min-width:300px;">
-        <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-users"/></svg> Clientes</div>
-        <div class="stat-strip" style="margin-bottom:16px;">
-            <div class="stat-chip"><div class="stat-chip-label">Clientes distintos</div><div class="stat-chip-value">{{ analitica_clientes.clientes_distintos }}</div></div>
-            <div class="stat-chip accent-success">
-                <div class="stat-chip-label">Compraron más de una vez</div>
-                <div class="stat-chip-value">{{ analitica_clientes.pct_repiten }}%</div>
-                <div class="stat-chip-desc">{{ analitica_clientes.clientes_repiten }} de {{ analitica_clientes.clientes_distintos }} clientes</div>
-            </div>
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-users"/></svg> Tus clientes y cómo te pagan <span class="ux-detalle-nota">{{ analitica_clientes.clientes_distintos }} clientes · {{ analitica_clientes.pct_repiten }}% volvieron a comprar</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="ux-kpis">
+            {{ kpi("Clientes distintos", analitica_clientes.clientes_distintos, "info", "users") }}
+            {{ kpi("Compraron más de una vez", analitica_clientes.pct_repiten|pct(0), "ok", "star", "<b>" ~ analitica_clientes.clientes_repiten ~ "</b> de " ~ analitica_clientes.clientes_distintos) }}
+            {% if analitica_clientes.pct_cuotas is not none %}
+            {{ kpi("Pagan en cuotas", analitica_clientes.pct_cuotas|pct(0), "accion", "credit-card", "<b>" ~ analitica_clientes.cant_ordenes_cuotas ~ "</b> órdenes") }}
+            {{ kpi("Pagan de contado", analitica_clientes.pct_contado|pct(0), "ok", "coin", "<b>" ~ analitica_clientes.cant_ordenes_contado ~ "</b> órdenes") }}
+            {% endif %}
         </div>
-        <div class="pl-detalle-tabla">
-            {% for f in analitica_clientes.distribucion_frecuencia %}
-            {% if f.cantidad > 0 %}
-            <div class="pl-detalle-fila">
-                <span class="pl-detalle-label">{{ f.veces }}</span>
-                <div class="checklist-barra" style="flex:1;"><div class="checklist-fill" style="width:{{ (f.cantidad / analitica_clientes.clientes_distintos * 100) | round(0) }}%;"></div></div>
-                <span class="pl-detalle-valor" style="width:50px;">{{ f.cantidad }}</span>
+        <div class="filter-row" style="align-items:flex-start;">
+            <div style="flex:1; min-width:280px;">
+                <div class="page-subtitle" style="margin-bottom:8px;"><b>¿Cuántas veces compró cada cliente?</b></div>
+                <div class="pl-detalle-tabla">
+                    {% for f in analitica_clientes.distribucion_frecuencia %}{% if f.cantidad > 0 %}
+                    <div class="pl-detalle-fila">
+                        <span class="pl-detalle-label">{{ f.veces }}</span>
+                        <div class="ux-barra" style="flex:1;"><span style="width:{{ (f.cantidad / analitica_clientes.clientes_distintos * 100) | round(0) }}%;"></span></div>
+                        <span class="pl-detalle-valor" style="width:50px;">{{ f.cantidad }}</span>
+                    </div>
+                    {% endif %}{% endfor %}
+                </div>
+            </div>
+            {% if analitica_clientes.pct_cuotas is not none and analitica_clientes.distribucion_cuotas %}
+            <div style="flex:1; min-width:280px;">
+                <div class="page-subtitle" style="margin-bottom:8px;"><b>¿En cuántas cuotas compran?</b>{% if analitica_clientes.cuota_mas_elegida %} La más elegida: {{ analitica_clientes.cuota_mas_elegida }}.{% endif %}</div>
+                <div class="pl-detalle-tabla">
+                    {% for c in analitica_clientes.distribucion_cuotas %}
+                    <div class="pl-detalle-fila">
+                        <span class="pl-detalle-label">{{ c.cuotas }} cuotas</span>
+                        <div class="ux-barra ux-info" style="flex:1;"><span style="width:{{ (c.cantidad / analitica_clientes.cant_ordenes_cuotas * 100) | round(0) }}%;"></span></div>
+                        <span class="pl-detalle-valor" style="width:50px;">{{ c.cantidad }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
             {% endif %}
-            {% endfor %}
         </div>
     </div>
-    <div class="panel" style="flex:1; min-width:300px;">
-        <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-credit-card"/></svg> Cómo te Pagan</div>
-        {% if analitica_clientes.pct_cuotas is not none %}
-        <div class="stat-strip" style="margin-bottom:16px;">
-            <div class="stat-chip"><div class="stat-chip-label">En cuotas</div><div class="stat-chip-value">{{ analitica_clientes.pct_cuotas }}%</div><div class="stat-chip-desc">{{ analitica_clientes.cant_ordenes_cuotas }} órdenes</div></div>
-            <div class="stat-chip accent-success"><div class="stat-chip-label">Contado</div><div class="stat-chip-value">{{ analitica_clientes.pct_contado }}%</div><div class="stat-chip-desc">{{ analitica_clientes.cant_ordenes_contado }} órdenes</div></div>
-        </div>
-        {% if analitica_clientes.distribucion_cuotas %}
-        <div class="page-subtitle" style="margin-bottom:8px;">¿En cuántas cuotas compran?{% if analitica_clientes.cuota_mas_elegida %} — la más elegida: {{ analitica_clientes.cuota_mas_elegida }} cuotas{% endif %}</div>
-        <div class="pl-detalle-tabla">
-            {% for c in analitica_clientes.distribucion_cuotas %}
-            <div class="pl-detalle-fila">
-                <span class="pl-detalle-label">{{ c.cuotas }} cuotas</span>
-                <div class="checklist-barra" style="flex:1;"><div class="checklist-fill hero-ganancia-fill-neutro" style="width:{{ (c.cantidad / analitica_clientes.cant_ordenes_cuotas * 100) | round(0) }}%;"></div></div>
-                <span class="pl-detalle-valor" style="width:50px;">{{ c.cantidad }}</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% else %}
-        <div class="alert-empty">Todavía no tenemos el dato de cuotas para las ventas de este período — se completa con las próximas sincronizaciones.</div>
-        {% endif %}
-    </div>
-</div>
+</details>
 {% endif %}
 
 {% if evolucion_mensual %}
-<div class="panel panel-colapsable" id="panel-evolucion-mensual" role="button" tabindex="0" aria-expanded="false" onclick="if(event.target.closest('.contenido-colapsable')) return; _abrirPanelConGrafico(this, _iniciarChartEvolucionMensual);">
-    <div class="panel-title">
-        <span>Evolución Mensual — Costos vs. Resultado Neto</span>
-        <span class="chevron-colapsable">▾</span>
-    </div>
-    <div class="page-subtitle" style="margin-bottom:0;">Últimos {{ evolucion_mensual|length }} meses, incluyendo el actual en curso. Click para ver el gráfico.</div>
-    <div class="contenido-colapsable">
-        <div style="position:relative; height:240px; margin-top:14px;">
-            <canvas id="canvas-evolucion-mensual"></canvas>
-        </div>
-    </div>
-</div>
+<details class="ux-detalle" id="det-evolucion" data-grafico="evolucion">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--success);"><use href="#icon-chart"/></svg> Evolución mensual: costos vs. resultado neto <span class="ux-detalle-nota">últimos {{ evolucion_mensual|length }} meses</span></summary>
+    <div class="ux-detalle-cuerpo"><div style="position:relative; height:240px;"><canvas id="canvas-evolucion-mensual" role="img" aria-label="Costos y resultado neto por mes"></canvas></div></div>
+</details>
 {% endif %}
-
-<div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">Consolidado por Modelo — promedios ponderados reales</div>
-    <div class="page-subtitle" style="margin-bottom:10px;">Total en pesos dividido unidades vendidas — nunca un promedio simple de talles.</div>
-    {% if not consolidados %}
-    <div class="alert-empty">No hay ventas registradas en este período.</div>
-    {% else %}
-    <div class="margen-leyenda">
-        <span><span class="margen-dot margen-dot-ok"></span>Deja plata (≥15%)</span>
-        <span><span class="margen-dot margen-dot-limite"></span>Margen al límite (0-15%)</span>
-        <span><span class="margen-dot margen-dot-pierde"></span>Pierde plata (&lt;0%)</span>
-    </div>
-    <table class="data-table">
-        <thead><tr><th></th><th>Modelo</th><th class="num">Unidades</th><th class="num">Precio prom.</th><th class="num">Comisión u.</th><th class="num">Envío u.</th><th class="num">Ads u.</th><th class="num">Costo u.</th><th class="num">Neto u.</th><th class="num">Neto total</th></tr></thead>
-        <tbody>
-            {% for c in consolidados %}
-            {% set margen_pct = ((c.raw.neto_total / c.raw.total_facturado * 100) if c.raw.total_facturado else 0) %}
-            <tr class="fila-margen-{{ 'ok' if margen_pct >= 15 else ('limite' if margen_pct >= 0 else 'pierde') }} {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
-                <td style="width:50px; padding-right:0;">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="" class="thumb-sm">{% endif %}</td>
-                <td><strong>{{ c.titulo }}</strong></td>
-                <td class="num">{{ c.unidades }}</td>
-                <td class="num">${{ c.precio_promedio }}</td>
-                <td class="num text-danger">${{ c.cargo_u }}</td>
-                <td class="num text-danger">${{ c.envio_u }}</td>
-                <td class="num text-danger">${{ c.ads_u }}</td>
-                <td class="num text-danger">${{ c.costo_u }}</td>
-                <td class="num text-success"><strong>${{ c.neto_u }}</strong></td>
-                <td class="num text-success">${{ c.neto_total }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% if consolidados|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ consolidados|length - 5 }} más...</button>
-    {% endif %}
-    {% endif %}
-</div>
 
 {% if pareto_ganancia %}
-<div class="panel panel-colapsable" id="panel-pareto-ganancia" role="button" tabindex="0" aria-expanded="false" onclick="if(event.target.closest('.contenido-colapsable')) return; _abrirPanelConGrafico(this, _iniciarChartPareto);">
-    <div class="panel-title">
-        <span>Concentración de la Ganancia</span>
-        <span class="chevron-colapsable">▾</span>
+<details class="ux-detalle" id="det-pareto" data-grafico="pareto">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-gold);"><use href="#icon-trophy"/></svg> Concentración de la ganancia <span class="ux-detalle-nota"><b>{{ pareto_ganancia.productos_80 }} de {{ pareto_ganancia.total_productos }}</b> modelos generan el 80%</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="page-subtitle" style="margin-bottom:10px;">Esos modelos son los que más te conviene cuidar: stock, precio y publicidad primero.</div>
+        <div style="position:relative; height:220px;"><canvas id="canvas-pareto-ganancia" role="img" aria-label="Ganancia por modelo y porcentaje acumulado"></canvas></div>
     </div>
-    <div class="page-subtitle" style="margin-bottom:0;">
-        <strong>{{ pareto_ganancia.productos_80 }} de {{ pareto_ganancia.total_productos }}</strong> modelos generan el 80% de tu ganancia de este período — cuidalos primero. Click para ver el gráfico.
-    </div>
-    <div class="contenido-colapsable">
-        <div style="position:relative; height:220px; margin-top:14px;">
-            <canvas id="canvas-pareto-ganancia"></canvas>
-        </div>
-    </div>
-</div>
+</details>
 {% endif %}
 
-<div class="panel" data-mostrar-mas-scope>
-    <div class="panel-title">Historial de Ventas Detallado ({{ ventas|length }})</div>
-    {% if not ventas %}
-    <div class="alert-empty">No hay ventas registradas en este período.</div>
-    {% else %}
-    <table class="data-table">
-        <thead><tr><th>Fecha</th><th>Producto</th><th>Talle</th><th class="num">Cant.</th><th class="num">Venta</th><th class="num">Cargo</th><th class="num">Envío</th><th class="num">Ads</th><th class="num">Costo</th><th class="num">Neto</th></tr></thead>
-        <tbody>
-            {% for v in ventas %}
-            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
-                <td class="text-muted">{{ v.fecha }}</td>
-                <td>{{ v.titulo }}</td>
-                <td>{{ v.talle }}</td>
-                <td class="num">{{ v.cantidad }}</td>
-                <td class="num">${{ v.precio_venta }}</td>
-                <td class="num text-danger">${{ v.cargo_venta }}</td>
-                <td class="num text-danger">${{ v.costo_envio }}{% if v.envio_pendiente %} <span class="badge badge-warning">pendiente</span>{% endif %}</td>
-                <td class="num text-danger">${{ v.costo_ads }}</td>
-                <td class="num text-danger">${{ v.costo_fabricacion }}</td>
-                <td class="num {% if v.es_negativo %}text-danger{% else %}text-success{% endif %}"><strong>${{ v.ganancia_neta_formateada }}</strong></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% if ventas|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ ventas|length - 5 }} más...</button>
-    {% endif %}
-    {% endif %}
-</div>
-
-<div class="panel" id="panel-correlacion">
-    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-chart"/></svg> Precio vs. Ventas — ¿El precio afecta cuánto vendés?</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">Cada punto es un modelo. Mirá si los más caros venden menos — o si el precio no importa tanto como creés.</div>
-    <div style="position:relative; height:220px;">
-        <canvas id="canvas-correlacion"></canvas>
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Historial de ventas detallado <span class="ux-detalle-nota">{{ ventas|length }} ventas</span></summary>
+    <div class="ux-detalle-cuerpo" data-mostrar-mas-scope>
+        <table class="data-table">
+            <thead><tr><th>Fecha</th><th>Producto</th><th>Talle</th><th class="num">Cant.</th><th class="num">Venta</th><th class="num">Cargo</th><th class="num">Envío</th><th class="num">Ads</th><th class="num">Costo</th><th class="num">Neto</th></tr></thead>
+            <tbody>
+                {% for v in ventas %}
+                <tr class="{% if v.es_negativo %}ux-fila-danger{% endif %} {% if loop.index > 10 %}oculto-mostrar-mas{% endif %}">
+                    <td class="text-muted">{{ v.fecha }}</td>
+                    <td>{{ v.titulo }}</td>
+                    <td>{{ v.talle }}</td>
+                    <td class="num">{{ v.cantidad }}</td>
+                    <td class="num">${{ v.precio_venta }}</td>
+                    <td class="num text-danger">${{ v.cargo_venta }}</td>
+                    <td class="num text-danger">${{ v.costo_envio }}{% if v.envio_pendiente %} <span class="ux-pill ux-warn">pendiente</span>{% endif %}</td>
+                    <td class="num text-danger">${{ v.costo_ads }}</td>
+                    <td class="num text-danger">${{ v.costo_fabricacion }}</td>
+                    <td class="num {% if v.es_negativo %}text-danger{% else %}text-success{% endif %}"><strong>${{ v.ganancia_neta_formateada }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if ventas|length > 10 %}
+        <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ ventas|length - 10 }} ventas restantes</button>
+        {% endif %}
     </div>
-    <div id="correlacion-empty" class="alert-empty" style="display:none;">Sin datos suficientes para el período.</div>
-</div>
+</details>
 
-<div class="panel" id="panel-heatmap">
-    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-chart"/></svg> Mapa de Calor — ¿Cuándo vendés más?</div>
-    <div class="page-subtitle" style="margin-bottom:14px;">Unidades vendidas por hora del día y día de la semana — últimos 90 días con hora registrada.</div>
-    <div style="position:relative; height:180px;">
-        <canvas id="canvas-heatmap"></canvas>
+<details class="ux-detalle" id="det-mercado" data-grafico="mercado">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-trend"/></svg> Cuándo y a qué precio vendés <span class="ux-detalle-nota">mapa de calor y precio vs. unidades</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="page-subtitle" style="margin-bottom:8px;"><b>¿El precio afecta cuánto vendés?</b> Cada punto es un modelo: mirá si los más caros venden menos.</div>
+        <div style="position:relative; height:220px;"><canvas id="canvas-correlacion" role="img" aria-label="Precio promedio contra unidades vendidas por modelo"></canvas></div>
+        <div id="correlacion-empty" class="text-muted" style="display:none; padding:10px 0;">Sin datos suficientes para el período.</div>
+        <div class="page-subtitle" style="margin:22px 0 8px;"><b>¿Cuándo vendés más?</b> Unidades por hora del día y día de la semana (últimos 90 días).</div>
+        <div style="position:relative; height:180px;"><canvas id="canvas-heatmap" role="img" aria-label="Unidades vendidas por hora y día de la semana"></canvas></div>
+        <div id="heatmap-empty" class="text-muted" style="display:none; padding:10px 0;">Sin datos horarios suficientes para el período.</div>
     </div>
-    <div id="heatmap-empty" class="alert-empty" style="display:none;">Sin datos horarios suficientes para el período.</div>
-</div>
+</details>
+
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-// ── Composición de costos (donut) ────────────────────────────────────────────
-(function () {
-    const canvas = document.getElementById('canvas-composicion-costos');
-    if (!canvas || !window.Chart) return;
-    const labels = ['Comisiones MeLi', 'Envíos', 'Publicidad', 'Costo de Fabricación'];
-    const valores = [
-        {{ (resumen.raw.comision or 0) | tojson }},
-        {{ (resumen.raw.envios or 0) | tojson }},
-        {{ (resumen.raw.costo_ads or 0) | tojson }},
-        {{ (resumen.raw.costo_fabricacion or 0) | tojson }},
-    ];
-    const estilo = getComputedStyle(document.documentElement);
-    const colores = ['--danger', '--accent-cyan', '--accent-gold', '--accent-brand'].map(v => estilo.getPropertyValue(v).trim());
-    const total = valores.reduce((a, b) => a + b, 0);
-    if (total <= 0) return;
-    const colorTexto = estilo.getPropertyValue('--text-secondary').trim() || '#9494b8';
-    new Chart(canvas, {
-        type: 'doughnut',
-        data: { labels, datasets: [{ data: valores, backgroundColor: colores, borderColor: 'rgba(9,10,15,0.8)', borderWidth: 2 }] },
-        options: {
-            responsive: true, maintainAspectRatio: false, cutout: '65%',
-            plugins: {
-                legend: { position: 'right', labels: { color: colorTexto, boxWidth: 12, font: { size: 11 } } },
-                tooltip: {
-                    backgroundColor: 'rgba(18,21,48,0.92)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff',
-                    callbacks: { label: ctx => `${ctx.label}: $${ctx.raw.toLocaleString('es-AR', {maximumFractionDigits:0})} (${(ctx.raw/total*100).toFixed(1)}%)` }
-                }
-            }
-        }
+// Los gráficos viven dentro de secciones plegadas: Chart.js mide el canvas al crearlo y, si está oculto
+// (display:none), queda con tamaño 0 sin recuperarse. Por eso se arman recién la primera vez que la
+// sección se abre (evento "toggle"). Además el mapa de calor y la correlación recién piden sus datos ahí:
+// ~2 llamadas menos en cada carga de la página.
+const _TOOLTIP = { backgroundColor: 'rgba(18,21,48,0.94)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff' };
+const _iniciados = {};
+
+document.querySelectorAll('details[data-grafico]').forEach(det => {
+    det.addEventListener('toggle', () => {
+        const clave = det.dataset.grafico;
+        if (!det.open || _iniciados[clave] || !window.Chart) return;
+        _iniciados[clave] = true;
+        requestAnimationFrame(() => ({ evolucion: _iniciarChartEvolucionMensual, pareto: _iniciarChartPareto, mercado: _iniciarMercado })[clave]());
     });
-})();
+});
 
-// ── Evolución mensual y Pareto viven en paneles colapsables (cerrados
-// por default, para no alargar tanto la página) — Chart.js mide el
-// tamaño del canvas al crearlo, y si lo crea mientras el panel está
-// oculto (display:none) el gráfico queda con tamaño 0 y no se
-// recupera solo al abrir. Por eso estos dos NO se crean en el load de
-// la página: se arman recién la primera vez que el panel se abre,
-// cuando el canvas ya tiene un tamaño real. `_abrirPanelConGrafico`
-// hace de puente entre el onclick del panel y el init de cada charto.
-const _graficosInicializados = {};
-
-function _abrirPanelConGrafico(panelEl, iniciarFn) {
-    panelEl.classList.toggle('abierto');
-    if (panelEl.classList.contains('abierto') && !_graficosInicializados[panelEl.id]) {
-        _graficosInicializados[panelEl.id] = true;
-        requestAnimationFrame(iniciarFn);
-    }
+function _estiloGrafico() {
+    const root = getComputedStyle(document.documentElement);
+    const v = (n, f) => root.getPropertyValue(n).trim() || f;
+    return { danger: v('--danger', '#f43f5e'), success: v('--success', '#22c55e'), primario: v('--accent-primary', '#8b5cf6'), gold: v('--accent-gold', '#f2c94c'), texto: v('--text-secondary', '#94a3b8') };
 }
 
 function _iniciarChartEvolucionMensual() {
     const canvas = document.getElementById('canvas-evolucion-mensual');
-    if (!canvas || !window.Chart) return;
-    const serie = {{ evolucion_mensual | tojson }};
-    if (!serie.length) return;
-    const root = getComputedStyle(document.documentElement);
-    const colorDanger = root.getPropertyValue('--danger').trim() || '#f43f5e';
-    const colorSuccess = root.getPropertyValue('--success').trim() || '#22c55e';
-    const colorFaint = root.getPropertyValue('--text-faint').trim() || '#56567a';
+    const serie = {{ (evolucion_mensual or []) | tojson }};
+    if (!canvas || !serie.length) return;
+    const e = _estiloGrafico();
     new Chart(canvas, {
         type: 'bar',
-        data: {
-            labels: serie.map(m => m.mes_label),
-            datasets: [
-                { label: 'Costos', data: serie.map(m => m.costos), backgroundColor: colorDanger, borderRadius: 4 },
-                { label: 'Resultado neto', data: serie.map(m => m.resultado_neto), backgroundColor: colorSuccess, borderRadius: 4 },
-            ]
-        },
+        data: { labels: serie.map(m => m.mes_label), datasets: [
+            { label: 'Costos', data: serie.map(m => m.costos), backgroundColor: e.danger, borderRadius: 4 },
+            { label: 'Resultado neto', data: serie.map(m => m.resultado_neto), backgroundColor: e.success, borderRadius: 4 },
+        ] },
         options: {
-            responsive: true, maintainAspectRatio: false,
-            animation: { duration: 500 },
-            plugins: {
-                legend: { position: 'top', labels: { color: colorFaint, boxWidth: 12, font: { size: 11 } } },
-                tooltip: {
-                    backgroundColor: 'rgba(18,21,48,0.92)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff',
-                    callbacks: { label: ctx => `${ctx.dataset.label}: $${ctx.raw.toLocaleString('es-AR', {maximumFractionDigits:0})}` }
-                }
-            },
-            scales: {
-                x: { ticks: { color: colorFaint }, grid: { display: false } },
-                y: { ticks: { color: colorFaint, callback: v => '$' + v.toLocaleString('es-AR') }, grid: { color: 'rgba(255,255,255,0.04)' } }
-            }
+            responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
+            plugins: { legend: { position: 'top', labels: { color: e.texto, boxWidth: 12, font: { size: 11 } } }, tooltip: { ..._TOOLTIP, callbacks: { label: ctx => `${ctx.dataset.label}: ${UX.plata(ctx.raw)}` } } },
+            scales: { x: { ticks: { color: e.texto }, grid: { display: false } }, y: { ticks: { color: e.texto, callback: v => UX.plata(v) }, grid: { color: 'rgba(255,255,255,0.05)' } } }
         }
     });
 }
 
 function _iniciarChartPareto() {
     const canvas = document.getElementById('canvas-pareto-ganancia');
-    if (!canvas || !window.Chart) return;
     const serie = {{ (pareto_ganancia.serie if pareto_ganancia else []) | tojson }};
-    if (!serie.length) return;
-    const root = getComputedStyle(document.documentElement);
-    const colorPrimario = root.getPropertyValue('--accent-primary').trim() || '#8b5cf6';
-    const colorGold = root.getPropertyValue('--accent-brand').trim() || '#f2c94c';
-    const colorFaint = root.getPropertyValue('--text-faint').trim() || '#56567a';
+    if (!canvas || !serie.length) return;
+    const e = _estiloGrafico();
     new Chart(canvas, {
         data: {
             labels: serie.map(p => p.titulo.length > 18 ? p.titulo.slice(0, 18) + '…' : p.titulo),
             datasets: [
-                { type: 'bar', label: 'Ganancia', data: serie.map(p => p.ganancia), backgroundColor: colorPrimario, borderRadius: 4, yAxisID: 'y' },
-                { type: 'line', label: '% acumulado', data: serie.map(p => p.pct_acumulado), borderColor: colorGold, backgroundColor: colorGold, borderWidth: 2, pointRadius: 3, tension: 0.2, yAxisID: 'y1' },
+                { type: 'bar', label: 'Ganancia', data: serie.map(p => p.ganancia), backgroundColor: e.primario, borderRadius: 4, yAxisID: 'y' },
+                { type: 'line', label: '% acumulado', data: serie.map(p => p.pct_acumulado), borderColor: e.gold, backgroundColor: e.gold, borderWidth: 2, pointRadius: 3, tension: 0.2, yAxisID: 'y1' },
             ]
         },
         options: {
-            responsive: true, maintainAspectRatio: false,
-            animation: { duration: 500 },
-            plugins: {
-                legend: { position: 'top', labels: { color: colorFaint, boxWidth: 12, font: { size: 11 } } },
-                tooltip: {
-                    backgroundColor: 'rgba(18,21,48,0.92)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff',
-                    callbacks: { label: ctx => ctx.dataset.yAxisID === 'y1' ? `Acumulado: ${ctx.raw}%` : `Ganancia: $${ctx.raw.toLocaleString('es-AR', {maximumFractionDigits:0})}` }
-                }
-            },
+            responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
+            plugins: { legend: { position: 'top', labels: { color: e.texto, boxWidth: 12, font: { size: 11 } } }, tooltip: { ..._TOOLTIP, callbacks: { label: ctx => ctx.dataset.yAxisID === 'y1' ? `Acumulado: ${ctx.raw}%` : `Ganancia: ${UX.plata(ctx.raw)}` } } },
             scales: {
-                x: { ticks: { color: colorFaint, maxRotation: 40, minRotation: 40 }, grid: { display: false } },
-                y: { position: 'left', ticks: { color: colorFaint, callback: v => '$' + v.toLocaleString('es-AR') }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                y1: { position: 'right', min: 0, max: 100, ticks: { color: colorFaint, callback: v => v + '%' }, grid: { display: false } },
+                x: { ticks: { color: e.texto, maxRotation: 40, minRotation: 40 }, grid: { display: false } },
+                y: { position: 'left', ticks: { color: e.texto, callback: v => UX.plata(v) }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y1: { position: 'right', min: 0, max: 100, ticks: { color: e.texto, callback: v => v + '%' }, grid: { display: false } },
             }
         }
     });
 }
 
-// ── Correlación precio vs ventas ─────────────────────────────────────────────
-(function () {
-    fetch('/api/metricas/correlacion_precio_ventas?dias=90')
-        .then(r => r.json())
-        .then(d => {
-            if (!d.puntos || !d.puntos.length) {
-                document.getElementById('canvas-correlacion').style.display = 'none';
-                document.getElementById('correlacion-empty').style.display = '';
-                return;
-            }
-            const canvas = document.getElementById('canvas-correlacion');
-            if (!canvas || !window.Chart) return;
-            const root = getComputedStyle(document.documentElement);
-            const colorP = root.getPropertyValue('--accent-primary').trim() || '#8b5cf6';
-            // --text-faint es el color MÁS tenue de la paleta (pensado para
-            // texto secundario decorativo, no para datos) — usarlo en los
-            // ejes de un gráfico dejaba los números de precio/unidades casi
-            // ilegibles sobre el fondo oscuro. --text-secondary tiene bastante
-            // más contraste y es el que se usa para texto funcional en el
-            // resto de la app.
-            const colorF = root.getPropertyValue('--text-secondary').trim() || '#9494b8';
-            const maxU = Math.max(...d.puntos.map(p => p.unidades), 1);
-            new Chart(canvas, {
-                type: 'bubble',
-                data: { datasets: [{ label: 'Modelos', data: d.puntos.map(p => ({ x: p.precio, y: p.unidades, r: Math.max(4, (p.unidades/maxU)*22), titulo: p.titulo })), backgroundColor: 'rgba(139, 92, 246,0.45)', borderColor: colorP, borderWidth: 1 }] },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    animation: { duration: 500 },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(18,21,48,0.92)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff',
-                            callbacks: {
-                                title: items => items[0].raw.titulo,
-                                label: item => `$${item.raw.x.toLocaleString('es-AR')} · ${item.raw.y} uds`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { ticks: { color: colorF, font: { size: 12 }, callback: v => '$' + v.toLocaleString('es-AR') }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Precio promedio', color: colorF, font: { size: 12 } } },
-                        y: { ticks: { color: colorF, font: { size: 12 } }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas', color: colorF, font: { size: 12 } } }
-                    }
-                }
-            });
-        }).catch(() => {
-            document.getElementById('canvas-correlacion').style.display = 'none';
-            document.getElementById('correlacion-empty').style.display = '';
-            document.getElementById('correlacion-empty').textContent = 'No se pudo cargar el gráfico. Revisá la conexión.';
-        });
-})();
+function _iniciarMercado() {
+    _iniciarCorrelacion();
+    _iniciarHeatmap();
+}
 
-// ── Heatmap horario ───────────────────────────────────────────────────────────
-(function () {
-    fetch('/api/metricas/heatmap_horario?dias=90')
-        .then(r => r.json())
-        .then(d => {
-            if (!d.maximo) {
-                document.getElementById('canvas-heatmap').style.display = 'none';
-                document.getElementById('heatmap-empty').style.display = '';
-                return;
+function _sinDatos(canvasId, vacioId, texto) {
+    document.getElementById(canvasId).style.display = 'none';
+    const v = document.getElementById(vacioId);
+    v.style.display = '';
+    if (texto) v.textContent = texto;
+}
+
+function _iniciarCorrelacion() {
+    fetch('/api/metricas/correlacion_precio_ventas?dias=90').then(r => r.json()).then(d => {
+        if (!d.puntos || !d.puntos.length) return _sinDatos('canvas-correlacion', 'correlacion-empty');
+        const e = _estiloGrafico();
+        const maxU = Math.max(...d.puntos.map(p => p.unidades), 1);
+        new Chart(document.getElementById('canvas-correlacion'), {
+            type: 'bubble',
+            data: { datasets: [{ label: 'Modelos', data: d.puntos.map(p => ({ x: p.precio, y: p.unidades, r: Math.max(4, (p.unidades / maxU) * 22), titulo: p.titulo })), backgroundColor: 'rgba(139, 92, 246, 0.45)', borderColor: e.primario, borderWidth: 1 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
+                plugins: { legend: { display: false }, tooltip: { ..._TOOLTIP, callbacks: { title: items => items[0].raw.titulo, label: item => `${UX.plata(item.raw.x)} · ${item.raw.y} uds` } } },
+                scales: {
+                    x: { ticks: { color: e.texto, font: { size: 12 }, callback: v => UX.plata(v) }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Precio promedio', color: e.texto, font: { size: 12 } } },
+                    y: { ticks: { color: e.texto, font: { size: 12 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas', color: e.texto, font: { size: 12 } } }
+                }
             }
-            const canvas = document.getElementById('canvas-heatmap');
-            if (!canvas || !window.Chart) return;
-            const root = getComputedStyle(document.documentElement);
-            const colorFaint = root.getPropertyValue('--text-faint').trim() || '#56567a';
-            const datasets = [];
-            d.dias.forEach((dia, y) => {
-                const datos = d.horas
-                    .filter(h => d.matriz[y][h] > 0)
-                    .map(h => ({ x: h, y: y, v: d.matriz[y][h], r: Math.max(3, (d.matriz[y][h] / d.maximo) * 16) }));
-                if (datos.length) {
-                    datasets.push({
-                        label: dia, data: datos, borderColor: 'transparent',
-                        backgroundColor: datos.map(p => {
-                            const t = p.v / d.maximo;
-                            return `rgba(${Math.round(46 + t*(176-46))},${Math.round(230 + t*(107-230))},${Math.round(255 + t*(255-255))},${0.3 + t*0.6})`;
-                        }),
-                    });
-                }
-            });
-            new Chart(canvas, {
-                type: 'bubble', data: { datasets },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    animation: { duration: 500 },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(18,21,48,0.92)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff',
-                            callbacks: {
-                                title: items => `${d.dias[items[0].raw.y]} ${items[0].raw.x}:00 hs`,
-                                label: item => `${item.raw.v} unidades`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { type: 'linear', min: 0, max: 23, ticks: { stepSize: 3, color: colorFaint, callback: v => v+'h' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                        y: { type: 'linear', min: -0.5, max: 6.5, ticks: { stepSize: 1, color: colorFaint, callback: v => (Number.isInteger(v) && v>=0 && v<=6) ? d.dias[v] : '' }, grid: { color: 'rgba(255,255,255,0.04)' } }
-                    }
-                }
-            });
-        })
-        .catch(() => {
-            document.getElementById('canvas-heatmap').style.display = 'none';
-            document.getElementById('heatmap-empty').style.display = '';
-            document.getElementById('heatmap-empty').textContent = 'No se pudo cargar el gráfico. Revisá la conexión.';
         });
-})();
+    }).catch(() => _sinDatos('canvas-correlacion', 'correlacion-empty', 'No se pudo cargar el gráfico. Revisá la conexión.'));
+}
+
+function _iniciarHeatmap() {
+    fetch('/api/metricas/heatmap_horario?dias=90').then(r => r.json()).then(d => {
+        if (!d.maximo) return _sinDatos('canvas-heatmap', 'heatmap-empty');
+        const e = _estiloGrafico();
+        const datasets = [];
+        d.dias.forEach((dia, y) => {
+            const datos = d.horas.filter(h => d.matriz[y][h] > 0).map(h => ({ x: h, y: y, v: d.matriz[y][h], r: Math.max(3, (d.matriz[y][h] / d.maximo) * 16) }));
+            if (datos.length) {
+                datasets.push({ label: dia, data: datos, borderColor: 'transparent', backgroundColor: datos.map(p => {
+                    const t = p.v / d.maximo;
+                    return `rgba(${Math.round(56 + t * (139 - 56))},${Math.round(189 + t * (92 - 189))},${Math.round(248 + t * (246 - 248))},${0.3 + t * 0.65})`;
+                }) });
+            }
+        });
+        new Chart(document.getElementById('canvas-heatmap'), {
+            type: 'bubble', data: { datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
+                plugins: { legend: { display: false }, tooltip: { ..._TOOLTIP, callbacks: { title: items => `${d.dias[items[0].raw.y]} ${items[0].raw.x}:00 hs`, label: item => `${item.raw.v} unidades` } } },
+                scales: {
+                    x: { type: 'linear', min: 0, max: 23, ticks: { stepSize: 3, color: e.texto, callback: v => v + 'h' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { type: 'linear', min: -0.5, max: 6.5, ticks: { stepSize: 1, color: e.texto, callback: v => (Number.isInteger(v) && v >= 0 && v <= 6) ? d.dias[v] : '' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                }
+            }
+        });
+    }).catch(() => _sinDatos('canvas-heatmap', 'heatmap-empty', 'No se pudo cargar el gráfico. Revisá la conexión.'));
+}
 </script>
 {% endblock %}

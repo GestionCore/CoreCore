@@ -2,6 +2,16 @@
 
 Objetivo: que cada pantalla se entienda **en 5 segundos** — cómo voy, qué tengo que hacer ahora, y dónde toco para hacerlo — con color que guíe la atención y textos cortos en **negrita** donde importa.
 
+## Avance
+
+- [x] Fase 0 — cimientos (`static/css/ux.css`, `static/js/ux.js`, `templates/_ux.html`, filtros `|plata |pct |numero`)
+- [x] Fase 1 — Dashboard · Ganancia Real (piloto, pendiente de aprobación del look)
+- [ ] Fase 2 — Stock · Despacho · Preguntas · Stock masivo
+- [ ] Fase 3 — Facturación · Costos · Monotributo · Reporte fiscal · Calculadora · Ventas fuera de MeLi · Historial de precios
+- [ ] Fase 4 — Promociones · Publicidad · Reputación · Embudo · Logros · Tendencias · Competencia
+- [ ] Fase 5 — Landing · Onboarding · Planes · Suscripción · Referidos · Conectar · Sincronizando · errores
+- [ ] Fase 6 — transversales
+
 ## 1. Diagnóstico (lo que se ve hoy, medido en la app real)
 
 | Hallazgo | Dónde | Por qué molesta |

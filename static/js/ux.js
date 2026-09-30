@@ -67,3 +67,7 @@ const UX = (() => {
 
     return { esc, plata, pct, num, icono, delta, banner, kpi, accion };
 })();
+
+// Al imprimir / exportar a PDF se abren todas las secciones plegables (cerradas no se imprimen) y después se restauran.
+window.addEventListener('beforeprint', () => document.querySelectorAll('details.ux-detalle').forEach(d => { d.dataset.estabaAbierto = d.open ? '1' : '0'; d.open = true; }));
+window.addEventListener('afterprint', () => document.querySelectorAll('details.ux-detalle').forEach(d => { d.open = d.dataset.estabaAbierto === '1'; }));
