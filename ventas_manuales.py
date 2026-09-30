@@ -95,6 +95,7 @@ def obtener_ventas_manuales_recientes(usuario_id, cuenta_id, limite=25):
 
     return [{
         "id": f["id"], "titulo": f["titulo"], "id_variante": f["id_variante"], "cantidad": f["cantidad"],
+        "total": float(f["precio_venta"]) * f["cantidad"],
         "precio_formateado": formatear_moneda(float(f["precio_venta"]) * f["cantidad"]),
         "fecha": f["fecha_venta"].strftime("%Y-%m-%d") if hasattr(f["fecha_venta"], "strftime") else f["fecha_venta"],
         "comprador_nombre": f["comprador_nombre"] or "—",

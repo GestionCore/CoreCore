@@ -1,0 +1,16 @@
+suscripcion, cuando entro me aparece directamente ''quires cancelar la suscripcion?'' y no me deja volver
+no me muestra todas las publicaciones, ni el stock en mi deposito
+en stock me aparece un resumen de hoy (no se si es para esta pagina pero me gusta para el dashboard) y no me dice los numeros de hoy
+en stock masivo, no me deja modificar las unidades del deposito y me dice que las unidades en full no se pueden modificar
+despacho tira error internal server error
+en reclamos, me siguen apareciendo devoluciones que no afectan a la reputacion ni son tan graves, capaz si que aparezcan pero no como reclamo, y los motivos siguen diciendo cosasa que no son el motivo real
+me estoy dando cuenta que no pusimos un lugar para poner el valor de entrega que cobra la logistica por entregar  los pedidos flex (varian por kilometros desde la ubicacion del domicilio y se dividen en 3 sectores con distinto precio) eso lo pone el usuario a mano porque depende de la logistica
+agregar thumbnails cada vez que es una lista, para que sea mejor visualmente, como por ejemplo Consolidado por Modelo — promedios ponderados reales y un par mas
+los textos muchas veces no se leen por ser similares al fondo y no tienen mucho color, son letras chicas y aveces no se entiende nada como el  grafico de Precio vs. Venta
+cuando toco los periodos de 7,14,30 dias, actualiza la pagina y no le da feedback al usuario de que periodo esta viendo, los botones estan iguales a como cuando los toco, podria cambiar de color
+sigue apareciendo el circulo cuando no hay datos, no quiero que esté, que esté cuando tenga que esperar porque esta cargando, por ejemplo en punto de equilibrio me dice ''Cargá tus costos fijos en Costos para ver tu punto de equilibrio acá.''  el circulo arriba de todo, pero ahora ni gira
+la ia sigue respondiendo sin informacion cuando le pongo mas de 2 costos, de paso chequea si puede poner el costo de fabricacion a los articulos para decirle por ejemplo ''todas las camperas de jean valen $12000 y las medias valen $3000'' y que les ponga el precio de fabricacion que le diga por el chat
+calculadora meli  ahora detecta el rubro de mi publicacion ''camperas tapados y trench'' pero no me busca categoria nuevas, le pongo  por ejemplo: ''medias '' y me dice que no encontró
+en facturacion los periodos estan mal, van del 9 al 8 del mes siguiente, el otro periodo es desde el 9  al 8 y asi
+cuando busco algun termino en tendencias por termino, me dice MeLi devolvió 403 — probá con otro término o categoría. y explorar por categoria no me muestra nada, bajo el mismo error 403
+

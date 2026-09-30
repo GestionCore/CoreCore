@@ -65,6 +65,7 @@
 
     --radius-sm: 8px;
     --radius-md: 14px;
+    --radius-lg: 20px;
     --radius-pill: 999px;
     --shadow-card: 0 4px 28px -4px rgba(0, 0, 0, 0.6);
     --shadow-elevated: 0 18px 44px -8px rgba(0, 0, 0, 0.7);
@@ -176,15 +177,28 @@ a { color: inherit; text-decoration: none; }
 .icon { width: 18px; height: 18px; flex-shrink: 0; }
 .stat-chip-icon { width: 22px; height: 22px; color: var(--accent-gold); margin-bottom: 10px; opacity: 0.9; }
 
-/* Cada variante de acento ahora tiñe de verdad su ícono, borde y sombra al
-   pasar el mouse — antes todas las tarjetas salían con el ícono dorado
-   sin importar la clase que tuvieran. */
-.stat-chip.accent-gold .stat-chip-icon { color: var(--accent-gold); }
-.stat-chip.accent-denim .stat-chip-icon, .stat-chip.accent-primary .stat-chip-icon { color: var(--accent-primary); }
-.stat-chip.accent-success .stat-chip-icon { color: var(--success); }
-.stat-chip.accent-danger .stat-chip-icon { color: var(--danger); }
+/* Cada variante de acento tiñe su ícono, borde, sombra Y el número en sí
+   — antes (bug real, no solo estético) solo el ícono chiquito de arriba
+   se coloreaba; el .stat-chip-value, que es el dato que el ojo realmente
+   busca primero, quedaba SIEMPRE en el mismo blanco neutro sin importar
+   si la tarjeta era accent-success, accent-danger, etc. Resultado: casi
+   dos tercios de los stat-chips de la app (62 de 94) ya tenían la
+   intención de color puesta en el HTML y nunca llegaba a mostrarse —
+   toda la app se leía "de un solo color" aunque el dato de que algo es
+   bueno/malo/neutro ya estaba ahí, solo no se veía. */
+.stat-chip.accent-gold .stat-chip-icon, .stat-chip.accent-gold .stat-chip-value { color: var(--accent-gold); }
+.stat-chip.accent-denim .stat-chip-icon, .stat-chip.accent-primary .stat-chip-icon,
+.stat-chip.accent-denim .stat-chip-value, .stat-chip.accent-primary .stat-chip-value { color: var(--accent-primary); }
+.stat-chip.accent-success .stat-chip-icon, .stat-chip.accent-success .stat-chip-value { color: var(--success); }
+.stat-chip.accent-danger .stat-chip-icon, .stat-chip.accent-danger .stat-chip-value { color: var(--danger); }
+.stat-chip.accent-warning .stat-chip-icon, .stat-chip.accent-warning .stat-chip-value { color: var(--semantic-warning); }
+.stat-chip.accent-warning { border-color: rgba(232, 130, 46, 0.3); }
+/* Las tarjetas SIN variante de acento (conteos neutros, "total histórico",
+   etc.) siguen con .stat-chip-value en blanco por default — a propósito:
+   no todo dato necesita un color, solo el que sí importa resaltar. */
 .stat-chip.accent-gold:hover { border-color: rgba(251, 191, 36, 0.4); box-shadow: var(--shadow-glow-gold); }
 .stat-chip.accent-denim:hover, .stat-chip.accent-primary:hover { border-color: rgba(176, 107, 255, 0.4); box-shadow: var(--shadow-glow-primary); }
+.stat-chip.accent-warning:hover { border-color: rgba(232, 130, 46, 0.5); box-shadow: 0 0 32px -4px rgba(232, 130, 46, 0.35); }
 .stat-chip.accent-success:hover { border-color: rgba(34, 211, 165, 0.4); box-shadow: 0 0 32px -4px rgba(34, 211, 165, 0.35); }
 .stat-chip.accent-danger:hover { border-color: rgba(245, 72, 107, 0.4); box-shadow: 0 0 32px -4px rgba(245, 72, 107, 0.35); }
 
@@ -212,9 +226,15 @@ a { color: inherit; text-decoration: none; }
 .topnav { background: rgba(9, 10, 15, 0.8); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; z-index: 50; }
 /* Grid de 3 columnas (1fr / auto / 1fr) en vez de flex: con flex, el
    buscador quedaba pegado al logo porque solo la zona derecha tenía
-   flex-grow — con grid, la columna 1fr (logo) absorbe todo el espacio
-   libre y empuja buscador + nav a la derecha como un bloque parejo, y
-   el buscador queda centrado respecto de ESE bloque (no del logo).
+   flex-grow. El buscador (columna del medio, auto) queda centrado
+   respecto del ancho real disponible cuando las dos columnas 1fr pesan
+   parecido — por eso el nav (Dashboard/Catálogo/Finanzas/Crecimiento)
+   vive en la zona IZQUIERDA junto al logo, y la derecha solo tiene el
+   botón de menú y "Sincronizar Todo": con el nav entero apretujado del
+   lado derecho (como estaba antes) esa columna pesaba mucho más que la
+   del logo solo, y el buscador terminaba centrado respecto de ESE
+   bloque desbalanceado, no del header completo — se leía pegado a la
+   izquierda y amontonado contra el nav.
    Importante: a diferencia de position:absolute, un grid nunca hace que
    las columnas se superpongan aunque el contenido no entre — reserva su
    propio lugar. Y sin overflow-x/y en este contenedor: el desplegable
@@ -239,6 +259,19 @@ a { color: inherit; text-decoration: none; }
 .buscador-central:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(176,107,255,0.2); }
 .buscador-central kbd { margin-left: auto; background: rgba(255,255,255,0.08); border-radius: 4px; padding: 2px 6px; font-family: var(--font-data); font-size: 0.85em; }
 @media (max-width: 900px) { .buscador-central span { display: none; } .buscador-central { min-width: auto; } }
+/* Entre ~900 y ~1300px el ancho mínimo combinado de logo + buscador +
+   4 links de nav + botón de sync no entraba en una sola fila — sin
+   wrap ni breakpoint intermedio, terminaba todo amontonado/superpuesto
+   contra el buscador. Achicamos el nav (sin sacar texto, solo el ícono
+   y el padding) para liberar el espacio que el buscador necesita para
+   quedar centrado de verdad. */
+@media (max-width: 1300px) {
+    .buscador-central { min-width: 170px; }
+    .topnav-link { padding: 8px 7px; font-size: 0.82em; }
+    .topnav-link .icon { display: none; }
+    .topnav-zona-izq { gap: 12px; }
+    .topnav-zona-der { gap: 4px; }
+}
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1em; }
 .brand-mark { width: 14px; height: 14px; background: linear-gradient(135deg, var(--accent-brand), var(--accent-brand-dim)); border-radius: 5px; box-shadow: 0 0 10px var(--accent-brand-glow); }
 .topnav-links { display: flex; gap: 2px; flex-wrap: nowrap; }
@@ -329,14 +362,38 @@ a { color: inherit; text-decoration: none; }
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 0 18px var(--accent-primary-glow));
 }
+.hero-number.acento-danger {
+    background: none; -webkit-text-fill-color: var(--danger); color: var(--danger);
+    filter: drop-shadow(0 0 18px var(--semantic-danger-glow));
+}
+.hero-number.acento-success {
+    background: none; -webkit-text-fill-color: var(--success); color: var(--success);
+    filter: drop-shadow(0 0 18px rgba(41, 230, 176, 0.4));
+}
+.hero-number.acento-warning {
+    background: none; -webkit-text-fill-color: var(--semantic-warning); color: var(--semantic-warning);
+    filter: drop-shadow(0 0 18px var(--semantic-warning-bg));
+}
+/* Para casos con color calculado en JS (score en gradiente rojo→verde,
+   por ejemplo) en vez de un acento fijo — el color final lo pone el
+   caller vía style="color:...", esta clase solo saca el gradiente base. */
+.hero-number.plano { background: none; -webkit-text-fill-color: currentColor; filter: none; }
 .hero-number-label { font-size: 0.32em; font-weight: 600; color: var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); margin-left: 8px; vertical-align: middle; }
 .stat-chip-desc { font-size: 0.78em; color: var(--text-faint); margin-top: 5px; }
 
-/* Modo privacidad */
-body.modo-privacidad .stat-chip-value,
-body.modo-privacidad td.num { filter: blur(6px); transition: filter 0.2s; }
-body.modo-privacidad .stat-chip-value:hover,
-body.modo-privacidad td.num:hover { filter: none; }
+/* Modo privacidad — la clase va en <html>, no en <body> (se aplica
+   desde un script inline en <head>, antes de que <body> exista, para
+   que no haya ni un parpadeo de montos sensibles al cargar).
+   .hero-number incluido a propósito: es la cifra más grande de cada
+   pantalla (Ganancia Neta Real, Facturación), la que más sentido tiene
+   tapar. Antes solo tapaba .stat-chip-value/td.num y dejaba visible
+   justo el número más importante. */
+html.modo-privacidad .stat-chip-value,
+html.modo-privacidad .hero-number,
+html.modo-privacidad td.num { filter: blur(6px); transition: filter 0.2s; }
+html.modo-privacidad .stat-chip-value:hover,
+html.modo-privacidad .hero-number:hover,
+html.modo-privacidad td.num:hover { filter: none; }
 
 /* Tables */
 table.data-table { width: 100%; border-collapse: collapse; }
@@ -412,10 +469,15 @@ select option { background: #14162a; color: var(--text-primary); }
 }
 .alert-empty::before {
     border: 2px solid var(--accent-primary-dim);
-    animation: radarGiro 3s linear infinite;
+    /* 2 vueltas y para — un giro infinito acá se lee como "sigue
+       cargando" para siempre, aunque el estado ya esté resuelto
+       (confirmado vacío, no pendiente de traer datos). */
+    animation: radarGiro 3s linear 2;
+    animation-fill-mode: forwards;
 }
 .alert-empty::after {
-    box-shadow: 0 0 0 0 var(--accent-primary-glow); animation: radarPulso 2.4s ease-out infinite;
+    box-shadow: 0 0 0 0 var(--accent-primary-glow); animation: radarPulso 2.4s ease-out 2;
+    animation-fill-mode: forwards;
 }
 @keyframes radarGiro {
     0% { border-top-color: var(--accent-cyan); transform: rotate(0deg); }
@@ -529,7 +591,8 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 
 /* ---------- Acordeón de stock masivo ---------- */
 .acordeon-header { display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:4px 0; }
-.acordeon-chevron { color: var(--text-secondary); font-size:1.1em; }
+.acordeon-chevron { color: var(--text-secondary); font-size:1.1em; display:inline-block; transition: transform 0.2s; }
+.acordeon-item.abierto .acordeon-chevron { transform: rotate(180deg); }
 
 /* ---------- Animación de venta nueva en "Hoy en vivo" ---------- */
 @keyframes ventaEntrada { from { opacity:0; transform: translateY(-8px); background: rgba(16,185,129,0.15); } to { opacity:1; transform: translateY(0); background: transparent; } }
@@ -730,7 +793,8 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     border: 2px solid var(--text-faint); display: flex; align-items: center; justify-content: center;
     font-size: 1.2em; color: var(--success); cursor: pointer; transition: all 0.2s;
 }
-.despacho-item.despachado .despacho-check { border-color: var(--success); background: rgba(16,185,129,0.15); }
+.despacho-item.despachado .despacho-check { border-color: var(--success); background: rgba(16,185,129,0.15); animation: despachoCheckPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes despachoCheckPop { 0% { transform: scale(0.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
 /* ---------- Embudo de Conversión ---------- */
 .embudo-fila {
@@ -798,14 +862,14 @@ body.modo-despacho-limpio { padding-top: 20px; }
 }
 .ue-segmento { height: 100%; transition: width 0.4s ease; }
 .ue-costo { background: #55556b; }
-.ue-envio { background: #38bdf8; }
+.ue-envio { background: var(--accent-cyan); }
 .ue-comision { background: var(--danger); }
 .ue-ganancia { background: linear-gradient(90deg, var(--success), #16a37e); }
 .ue-ganancia-negativa { background: var(--danger); }
 .unit-economics-leyenda { display: flex; align-items: center; gap: 16px; font-size: 0.76em; color: var(--text-secondary); flex-wrap: wrap; }
 .ue-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
 .ue-dot.ue-costo { background: #55556b; }
-.ue-dot.ue-envio { background: #38bdf8; }
+.ue-dot.ue-envio { background: var(--accent-cyan); }
 .ue-dot.ue-comision { background: var(--danger); }
 .ue-dot.ue-ganancia { background: var(--success); }
 .ue-dot.ue-ganancia-negativa { background: var(--danger); }
@@ -856,18 +920,27 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); color: var(--text-p
 
 /* ---------- Tooltips ricos de la barra superior ---------- */
 .tooltip-ticker {
-    position: fixed; z-index: 500; max-width: 320px; padding: 14px 16px;
-    background: var(--glass-bg-alt); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    position: fixed; z-index: 500; max-width: 320px; padding: 0;
+    /* Capa sólida (--bg-surface) DEBAJO de la capa glass translúcida —
+       si el navegador no rinde bien el backdrop-filter (o el contenido
+       de atrás es claro), el panel no se queda "lavado"/sin contraste;
+       siempre tiene una base opaca propia. */
+    background: linear-gradient(var(--glass-bg-alt), var(--glass-bg-alt)) padding-box, var(--bg-surface);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     border: 1px solid var(--glass-border); border-radius: var(--radius-md);
     box-shadow: var(--shadow-elevated), 0 0 26px -6px var(--accent-primary-glow);
     opacity: 0; transform: translateY(-6px); pointer-events: none;
     transition: opacity 0.15s, transform 0.15s; font-size: 0.82em;
+    overflow: hidden;
 }
 .tooltip-ticker.visible { opacity: 1; transform: translateY(0); }
+.tooltip-ticker-acento { height: 4px; width: 100%; background: var(--tooltip-acento, var(--accent-primary)); }
+.tooltip-ticker-cuerpo { padding: 14px 16px; }
 .tooltip-ticker-titulo { font-weight: 700; font-family: var(--font-display); font-size: 1.05em; margin-bottom: 8px; color: var(--text-primary); }
 .tooltip-ticker-sub { color: var(--text-secondary); margin-top: 8px; font-size: 0.92em; }
 .tooltip-ticker-lista { list-style: none; margin: 0; padding: 0; }
-.tooltip-ticker-lista li { padding: 4px 0; border-bottom: 1px solid var(--border-soft); color: var(--text-secondary); }
+.tooltip-ticker-lista li { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border-soft); color: var(--text-secondary); }
+.tooltip-ticker-lista li::before { content: '•'; color: var(--tooltip-acento, var(--accent-primary)); font-weight: 700; flex-shrink: 0; }
 .tooltip-ticker-lista li:last-child { border-bottom: none; }
 
 /* ---------- Scrollbar personalizada ---------- */

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Stock · Santi Mens{% endblock %}
+{% block title %}Stock · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
         <h1 class="page-title">Panel de Stock & Modelos</h1>
-        <div class="page-subtitle">Sincronización en tiempo real vía Webhooks + Auto-Sync cada 4 min</div>
+        <div class="page-subtitle">Tu stock se actualiza solo, cada 4 minutos</div>
     </div>
     <div class="flex-gap">
         <button class="btn btn-denim" id="btn-sync" onclick="ejecutarSincro()">
@@ -56,7 +56,7 @@
 </div>
 
 <div class="panel" id="panel-oportunidades-seo" style="display:none;">
-    <div class="panel-title"><svg class="icon"><use href="#icon-bolt"/></svg> Oportunidades de Cassini (tendencias que no tenés en tu catálogo)</div>
+    <div class="panel-title"><svg class="icon"><use href="#icon-bolt"/></svg> Tendencias que no tenés en tu catálogo</div>
     <div id="lista-oportunidades-seo" class="flex-gap"></div>
 </div>
 
@@ -92,7 +92,7 @@
         </div>
     </div>
 
-    <form action="/actualizar_precios_masivo" method="POST" class="filter-row" style="border-top: 1px solid var(--border); padding-top: 18px;" onsubmit="confirmarAccion('¿Modificar precios de TODO el catálogo?', this, 'Modificar precios', 'Esta acción afecta todas las publicaciones activas.'); return false;">
+    <form action="/actualizar_precios_masivo" method="POST" class="filter-row" style="border-top: 1px solid var(--border-soft); padding-top: 18px;" onsubmit="confirmarAccion('¿Modificar precios de TODO el catálogo?', this, 'Modificar precios', 'Esta acción afecta todas las publicaciones activas.'); return false;">
         <div class="field-group">
             <label class="field-label">Actualización Masiva</label>
             <select name="accion">
@@ -216,7 +216,7 @@
     function ejecutarSincro() {
         const btn = document.getElementById('btn-sync');
         btn.disabled = true;
-        btn.innerText = 'Sincronizando...';
+        btn.innerHTML = '<svg class="icon spin-anim"><use href="#icon-refresh"/></svg>Sincronizando...';
         fetch('/sincronizar_todo')
             .then(() => window.location.reload())
             .catch(() => window.location.reload());

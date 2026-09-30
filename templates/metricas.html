@@ -13,11 +13,11 @@
 </div>
 
 <div class="alert alert-info">
-    <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-info"/></svg>Ganancia Real ya está completa: rentabilidad real por venta, promedios ponderados, Publicidad y Reclamos/Devoluciones.
+    <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-info"/></svg>Acá ves la ganancia real de cada venta, con publicidad, envíos y devoluciones ya descontados.
 </div>
 
 {% if not ads_disponible %}
-<div class="alert alert-warning">Publicidad (Ads) en $0: comprobá que el permiso esté otorgado o que existan campañas activas en este período.</div>
+<div class="alert alert-warning">No vemos gasto en Publicidad este período — revisá que le hayas dado acceso a tus campañas de Ads, o que tengas campañas activas.</div>
 {% elif gasto_ads_total_periodo is not none %}
 <div class="alert alert-info">
     <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-percent"/></svg>Gasto total en Ads este período: <strong>${{ "%.2f"|format(gasto_ads_total_periodo)|replace(".", ",") }}</strong>
@@ -63,7 +63,7 @@
     <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ posventa.lista|length - 5 }} más...</button>
     {% endif %}
     {% else %}
-    <div class="alert-empty" style="padding: 12px 0;">🎉 Período impecable: sin devoluciones ni reclamos registrados.</div>
+    <div class="alert-empty" style="padding: 12px 0;"><svg class="icon" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"><use href="#icon-check"/></svg>Período impecable: sin devoluciones ni reclamos registrados.</div>
     {% endif %}
 </div>
 
@@ -98,19 +98,19 @@
         <div class="stat-chip-value">${{ resumen.ganancia_neta }}</div>
         <div class="stat-chip-desc">Lo que queda en el bolsillo{% if resumen.raw.facturado %} · {{ (resumen.raw.ganancia_neta / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
     </div>
-    <div class="stat-chip" style="border-color:var(--danger); background:rgba(255,68,68,0.06);">
+    <div class="stat-chip" style="border-color:var(--danger); background:var(--danger-bg);">
         <div class="stat-chip-label" style="color:var(--danger);">Comisiones MeLi</div>
         <div class="stat-chip-value text-danger">${{ resumen.comision }}</div>
         <div class="stat-chip-desc">Cargo por venta{% if resumen.raw.facturado %} · {{ (resumen.raw.comision / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
     </div>
-    <div class="stat-chip" style="border-color:rgba(255,140,0,0.6); background:rgba(255,140,0,0.06);">
-        <div class="stat-chip-label" style="color:#ff8c00;">Envíos</div>
-        <div class="stat-chip-value" style="color:#ff8c00;">${{ resumen.envios }}</div>
+    <div class="stat-chip" style="border-color:var(--accent-cyan); background:rgba(46,230,255,0.06);">
+        <div class="stat-chip-label" style="color:var(--accent-cyan);">Envíos</div>
+        <div class="stat-chip-value" style="color:var(--accent-cyan);">${{ resumen.envios }}</div>
         <div class="stat-chip-desc">Costo de logística{% if resumen.raw.facturado %} · {{ (resumen.raw.envios / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
     </div>
-    <div class="stat-chip" style="border-color:rgba(255,200,50,0.6); background:rgba(255,200,50,0.06);">
-        <div class="stat-chip-label" style="color:#ffc832;">Publicidad</div>
-        <div class="stat-chip-value" style="color:#ffc832;">${{ resumen.costo_ads }}</div>
+    <div class="stat-chip" style="border-color:var(--accent-gold); background:var(--warning-bg);">
+        <div class="stat-chip-label" style="color:var(--accent-gold);">Publicidad</div>
+        <div class="stat-chip-value" style="color:var(--accent-gold);">${{ resumen.costo_ads }}</div>
         <div class="stat-chip-desc">Gasto en Ads{% if resumen.raw.facturado %} · {{ (resumen.raw.costo_ads / resumen.raw.facturado * 100) | round(1) }}% s/facturado{% endif %}</div>
     </div>
     <div class="stat-chip accent-gold">
@@ -367,7 +367,7 @@
     <div id="heatmap-empty" class="alert-empty" style="display:none;">Sin datos horarios suficientes para el período.</div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 // ── Composición de costos (donut) ────────────────────────────────────────────
 (function () {
@@ -380,10 +380,11 @@
         {{ (resumen.raw.costo_ads or 0) | tojson }},
         {{ (resumen.raw.costo_fabricacion or 0) | tojson }},
     ];
-    const colores = ['#ff4d7d', '#ff8c00', '#ffc832', '#f5a623'];
+    const estilo = getComputedStyle(document.documentElement);
+    const colores = ['--danger', '--accent-cyan', '--accent-gold', '--accent-brand'].map(v => estilo.getPropertyValue(v).trim());
     const total = valores.reduce((a, b) => a + b, 0);
     if (total <= 0) return;
-    const colorTexto = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#9494b8';
+    const colorTexto = estilo.getPropertyValue('--text-secondary').trim() || '#9494b8';
     new Chart(canvas, {
         type: 'doughnut',
         data: { labels, datasets: [{ data: valores, backgroundColor: colores, borderColor: 'rgba(9,10,15,0.8)', borderWidth: 2 }] },
@@ -504,7 +505,13 @@ function _iniciarChartPareto() {
             if (!canvas || !window.Chart) return;
             const root = getComputedStyle(document.documentElement);
             const colorP = root.getPropertyValue('--accent-primary').trim() || '#b06bff';
-            const colorF = root.getPropertyValue('--text-faint').trim() || '#56567a';
+            // --text-faint es el color MÁS tenue de la paleta (pensado para
+            // texto secundario decorativo, no para datos) — usarlo en los
+            // ejes de un gráfico dejaba los números de precio/unidades casi
+            // ilegibles sobre el fondo oscuro. --text-secondary tiene bastante
+            // más contraste y es el que se usa para texto funcional en el
+            // resto de la app.
+            const colorF = root.getPropertyValue('--text-secondary').trim() || '#9494b8';
             const maxU = Math.max(...d.puntos.map(p => p.unidades), 1);
             new Chart(canvas, {
                 type: 'bubble',
@@ -523,8 +530,8 @@ function _iniciarChartPareto() {
                         }
                     },
                     scales: {
-                        x: { ticks: { color: colorF, callback: v => '$' + v.toLocaleString('es-AR') }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Precio promedio', color: colorF, font: { size: 11 } } },
-                        y: { ticks: { color: colorF }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas', color: colorF, font: { size: 11 } } }
+                        x: { ticks: { color: colorF, font: { size: 12 }, callback: v => '$' + v.toLocaleString('es-AR') }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Precio promedio', color: colorF, font: { size: 12 } } },
+                        y: { ticks: { color: colorF, font: { size: 12 } }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas', color: colorF, font: { size: 12 } } }
                     }
                 }
             });

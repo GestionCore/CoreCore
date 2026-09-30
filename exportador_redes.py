@@ -19,7 +19,7 @@ COLOR_ACENTO = (245, 166, 35)
 COLOR_TEXTO = (244, 246, 251)
 
 
-def generar_imagen_publicacion(url_foto, titulo, precio_formateado, marca="Santi Mens", ruta_salida=None):
+def generar_imagen_publicacion(url_foto, titulo, precio_formateado, marca="CoreLux", ruta_salida=None):
     """
     Descarga la foto de la publicación y arma una pieza cuadrada lista para
     redes: foto arriba, barra inferior con precio y marca. Devuelve la ruta

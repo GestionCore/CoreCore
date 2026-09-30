@@ -24,6 +24,45 @@ import tendencias as tendencias_mod
 from auth import token_manager
 
 _scheduler_apscheduler = None
+_conexion_lock_scheduler = None  # se mantiene abierta a propósito, ver _tiene_el_lock_del_scheduler
+
+# Número arbitrario para el advisory lock de Postgres — cualquier bigint
+# sirve, con tal de no chocar con otro lock nombrado en el resto de la
+# app (no hay ningún otro pg_advisory_lock en el código a la fecha).
+ID_LOCK_SCHEDULER = 727270001
+
+
+def _tiene_el_lock_del_scheduler():
+    """
+    Con gunicorn corriendo más de un worker (ej. --workers 2 en Railway),
+    cada worker importa app.py por separado y, sin esto, cada uno arrancaría
+    su PROPIO APScheduler — la sincronización de cada cuenta correría 2
+    (o N) veces en simultáneo cada 4 minutos, multiplicando exactamente la
+    carga que hace lenta a la app en vez de repartirla.
+
+    pg_try_advisory_lock es un lock de sesión: dura mientras la conexión
+    siga abierta. Por eso esta conexión NO se devuelve al pool ni se
+    cierra — se mantiene viva a propósito durante toda la vida del proceso
+    del worker que ganó el lock, para retenerlo. Si Postgres no está
+    disponible en este instante (arranque en frío, etc.), se falla "abierto"
+    (devuelve True) — preferible correr el scheduler de más una vez a que
+    no corra en ninguna, que dejaría de sincronizar cuentas en silencio.
+    """
+    global _conexion_lock_scheduler
+    try:
+        conexion = db.obtener_conexion_admin()
+        cursor = conexion.cursor()
+        cursor.execute("SELECT pg_try_advisory_lock(%s)", (ID_LOCK_SCHEDULER,))
+        obtuvo_lock = cursor.fetchone()[0]
+        conexion.commit()
+        if obtuvo_lock:
+            _conexion_lock_scheduler = conexion  # se retiene, no se libera
+            return True
+        db.liberar_conexion_admin(conexion)
+        return False
+    except Exception as e:
+        print(f"[Scheduler] ⚠️ No se pudo chequear el advisory lock ({e}) — arranca igual, por las dudas.")
+        return True
 
 
 def _redis_disponible():
@@ -110,6 +149,10 @@ def iniciar_scheduler():
 
     # Fallback a APScheduler
     if _scheduler_apscheduler is not None:
+        return
+
+    if not _tiene_el_lock_del_scheduler():
+        print("[Scheduler] ℹ️  Otro worker de este mismo proceso ya tiene el scheduler — no arranca acá.")
         return
 
     print(

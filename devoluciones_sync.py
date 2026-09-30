@@ -33,9 +33,21 @@ LIMITE_OFFSET = 1000  # mismo tope de MeLi que ya mordimos con órdenes e ítems
 
 
 def _mapear_tipo_claim(tipo_meli, stage):
+    """
+    Valores reales documentados por MeLi para el campo "type" de
+    /post-purchase/v1/claims/search: "return" (devolución), "cancel_sale"
+    (cancelación hecha por el vendedor) y "change" (cambio de producto/
+    talle — muy común en indumentaria). Ninguno de estos tres afecta la
+    reputación por sí solo; lo que sí la afecta es un reclamo real que
+    entra en mediación. Antes "change" no estaba contemplado y caía en el
+    default "claim" — por eso un simple cambio de talle aparecía en la
+    UI mezclado con reclamos graves.
+    """
     tipo_meli = (tipo_meli or "").lower()
     stage = (stage or "").lower()
     if "return" in tipo_meli or "devol" in tipo_meli:
+        return "return"
+    if "change" in tipo_meli or "cambio" in tipo_meli:
         return "return"
     if "cancel" in tipo_meli:
         return "cancelacion"
@@ -142,7 +154,17 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
                 id_reclamo = str(id_reclamo)
                 status = c.get("status")
                 stage = c.get("stage")
-                razon = _traducir_motivo(c.get("reason_id") or (c.get("resolution", {}) or {}).get("reason"))
+                reason_id_crudo = c.get("reason_id") or (c.get("resolution", {}) or {}).get("reason")
+                razon = _traducir_motivo(reason_id_crudo)
+                if reason_id_crudo and reason_id_crudo not in _MOTIVOS_ES:
+                    # El mapeo de motivos (_MOTIVOS_ES) se armó sin poder
+                    # probarlo contra reclamos reales — si esto aparece en
+                    # producción, es la señal de que MeLi está devolviendo
+                    # un reason_id que no contemplamos todavía. Logueamos
+                    # el crudo para poder agregarlo al diccionario con el
+                    # texto real, en vez de mostrar la traducción genérica
+                    # (Title Case del código) sin verificar que sea correcta.
+                    print(f"[DevolucionesSync] ⚠️ reason_id sin mapear en reclamo {id_reclamo}: '{reason_id_crudo}' (type={c.get('type')}, stage={stage}) — revisar y sumar a _MOTIVOS_ES")
 
                 cursor.execute("""
                     INSERT INTO incidencias_posventa (cuenta_id, id_reclamo, id_orden, tipo, motivo, estado, monto_retenido, fecha)

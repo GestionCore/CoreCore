@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Publicidad · Santi Mens{% endblock %}
+{% block title %}Publicidad · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -27,7 +27,7 @@
 
 <div class="panel" style="text-align:center; padding:34px 26px;">
     <div class="stat-chip-label" style="margin-bottom:6px;">Retorno de la Publicidad (ROAS)</div>
-    <div class="hero-number">{{ roas_general if roas_general is not none else '—' }}{% if roas_general %}x{% endif %}</div>
+    <div class="hero-number {% if te_deja_ganancia is not none %}{{ 'acento-success' if te_deja_ganancia else 'acento-danger' }}{% endif %}">{{ roas_general if roas_general is not none else '—' }}{% if roas_general %}x{% endif %}</div>
     <div class="text-muted" style="font-size:0.85em; margin-top:6px;">
         {% if roas_general is not none %}
         Por cada $1 en pauta, volvieron ${{ roas_general }} en ventas atribuidas — invertiste ${{ costo_total_formateado }} y generó ${{ ventas_atribuidas_formateado }}.
@@ -58,7 +58,7 @@
     </div>
     {% endif %}
 
-    <div class="text-muted" style="font-size:0.76em; margin-top:14px;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg>Este monto viene directo de la API de Ads de MeLi (campo "cost") — históricamente NO incluye IVA. Si tu Facturación de MeLi muestra un número más alto para publicidad, es probablemente por eso, no un error de cálculo acá.</div>
+    <div class="text-muted" style="font-size:0.76em; margin-top:14px;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg>Este monto no incluye IVA — por eso puede verse más bajo que el total de Publicidad que mostramos en Facturación.</div>
 </div>
 
 <div class="stat-strip">
@@ -186,7 +186,7 @@
 </div>
 
 {% if costo_ads_por_publicacion %}
-<div class="panel">
+<div class="panel" data-mostrar-mas-scope>
     <div class="panel-title">Costo de Ads por publicación (últimas ventas del período)</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
         Mismo dato que usamos en Ganancia Real para descontar Ads de tu ganancia neta real, acá para verlo sin cambiar de pantalla.
@@ -195,15 +195,18 @@
         <thead><tr><th>Publicación</th><th class="num">Invertido</th></tr></thead>
         <tbody>
             {% for item in costo_ads_por_publicacion %}
-            <tr><td>{{ item.titulo }}</td><td class="num text-danger">${{ item.costo_formateado }}</td></tr>
+            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}><td>{{ item.titulo }}</td><td class="num text-danger">${{ item.costo_formateado }}</td></tr>
             {% endfor %}
         </tbody>
     </table>
+    {% if costo_ads_por_publicacion|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ costo_ads_por_publicacion|length - 5 }} más...</button>
+    {% endif %}
 </div>
 {% endif %}
 
 <div class="page-subtitle">
-    <svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg><strong>ROAS</strong> = cuánto volvió por cada peso invertido (más alto = mejor). <strong>ACOS</strong> = qué % de esa venta se fue en pagar el anuncio (más bajo = mejor, es la métrica inversa al ROAS). <strong>TACOS</strong> no es de MeLi — es el gasto en Ads sobre TODA tu facturación del período, para ver qué tan dependiente sos de la pauta en general.
+    <svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg><strong>ROAS</strong> = cuánto volvió por cada peso invertido (más alto = mejor). <strong>ACOS</strong> = qué % de esa venta se fue en pagar el anuncio (más bajo = mejor, es la métrica inversa al ROAS). <strong>TACOS</strong> es un cálculo propio de CoreLux: mide el gasto en Ads sobre TODA tu facturación del período, para ver qué tan dependiente sos de la pauta en general.
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -219,6 +222,10 @@ document.addEventListener('DOMContentLoaded', () => {
         g.addColorStop(0, color + '55'); g.addColorStop(1, color + '00');
         return g;
     }
+    const est = getComputedStyle(document.documentElement);
+    const colorGasto = est.getPropertyValue('--accent-gold').trim();
+    const colorUnidades = est.getPropertyValue('--success').trim();
+    const colorTextoSec = est.getPropertyValue('--text-secondary').trim();
     const pluginBrillo = {
         id: 'brilloAds',
         beforeDatasetsDraw(chart) { chart.ctx.save(); chart.ctx.shadowColor = 'rgba(176,107,255,0.5)'; chart.ctx.shadowBlur = 10; },
@@ -229,22 +236,22 @@ document.addEventListener('DOMContentLoaded', () => {
         data: {
             labels: datos.labels || [],
             datasets: [
-                { label: 'Gasto en Ads ($)', data: datos.gasto || [], borderColor: '#ffd93d', backgroundColor: crearDegradado('#ffd93d'), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, yAxisID: 'y' },
-                { label: 'Unidades vendidas', data: datos.unidades || [], borderColor: '#29e6b0', backgroundColor: crearDegradado('#29e6b0'), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, yAxisID: 'y1' }
+                { label: 'Gasto en Ads ($)', data: datos.gasto || [], borderColor: colorGasto, backgroundColor: crearDegradado(colorGasto), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, yAxisID: 'y' },
+                { label: 'Unidades vendidas', data: datos.unidades || [], borderColor: colorUnidades, backgroundColor: crearDegradado(colorUnidades), fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, yAxisID: 'y1' }
             ]
         },
         plugins: [pluginBrillo],
         options: {
             responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { labels: { color: '#9494b8', usePointStyle: true, pointStyle: 'circle' } },
+                legend: { labels: { color: colorTextoSec, usePointStyle: true, pointStyle: 'circle' } },
                 tooltip: { backgroundColor: 'rgba(13,15,38,0.95)', borderColor: 'rgba(176,107,255,0.25)', borderWidth: 1, padding: 12, cornerRadius: 8,
                     callbacks: { label: (c) => c.dataset.yAxisID === 'y1' ? ` ${c.dataset.label}: ${c.parsed.y}` : ` ${c.dataset.label}: $${c.parsed.y.toLocaleString('es-AR')}` } }
             },
             scales: {
-                x: { ticks: { color: '#9494b8' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                y: { position: 'left', ticks: { color: '#ffd93d' }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Gasto ($)', color: '#9494b8' } },
-                y1: { position: 'right', ticks: { color: '#29e6b0', precision: 0 }, grid: { display: false }, title: { display: true, text: 'Unidades', color: '#9494b8' } }
+                x: { ticks: { color: colorTextoSec }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                y: { position: 'left', ticks: { color: colorGasto }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Gasto ($)', color: colorTextoSec } },
+                y1: { position: 'right', ticks: { color: colorUnidades, precision: 0 }, grid: { display: false }, title: { display: true, text: 'Unidades', color: colorTextoSec } }
             }
         }
     });

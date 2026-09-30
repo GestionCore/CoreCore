@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Dashboard · Santi Mens{% endblock %}
+{% block title %}Dashboard · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -185,7 +185,7 @@
 </div>
 {% endif %}
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
     const WIDGETS_DISPONIBLES = [
         { id: 'resumen_dia', nombre: 'Ganancia y Facturación del Día', default: true },
@@ -210,6 +210,18 @@
             _tickerPromiseCache = fetch('/api/ticker').then(r => r.json());
         }
         return _tickerPromiseCache;
+    }
+
+    // Mismo caso que el ticker: el widget "Ganancia y Facturación del
+    // Día" y el hero strip (cargarHeroMetricasDia) piden exactamente lo
+    // mismo — antes pegaban /api/resumen_diario dos veces en la misma
+    // carga, sumando lentitud justo cuando más widgets hay activos.
+    let _resumenDiarioPromiseCache = null;
+    function _fetchResumenDiarioCompartido() {
+        if (!_resumenDiarioPromiseCache) {
+            _resumenDiarioPromiseCache = fetch('/api/resumen_diario').then(r => r.json());
+        }
+        return _resumenDiarioPromiseCache;
     }
 
     function obtenerPrefsDashboard() {
@@ -277,7 +289,7 @@
         if (prefs.resumen_dia) {
             const w = crearTarjetaWidget('resumen_dia', '/metricas');
             grid.appendChild(w);
-            fetch('/api/resumen_diario').then(r => r.json()).then(d => {
+            _fetchResumenDiarioCompartido().then(d => {
                 if (!d) { w.querySelector('div').outerHTML = '<div class="text-muted">Sin datos.</div>'; return; }
                 let variacion = '';
                 if (d.variacion_pct !== null && d.variacion_pct !== undefined) {
@@ -382,7 +394,7 @@
             _fetchTickerCompartido().then(d => {
                 let color = 'var(--success)';
                 if (d.salud_score < 45) color = 'var(--danger)'; else if (d.salud_score < 65) color = 'var(--semantic-warning)';
-                w.innerHTML = `<div class="stat-chip-label">Salud de Cuenta</div><div class="hero-number" style="font-size:1.9em; background:none; -webkit-text-fill-color:${color}; color:${color};">${d.salud_score ?? '—'}</div>
+                w.innerHTML = `<div class="stat-chip-label">Salud de Cuenta</div><div class="hero-number plano" style="font-size:1.9em; color:${color};">${d.salud_score ?? '—'}</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.salud_etiqueta || ''}</div>`;
             });
         }
@@ -391,7 +403,7 @@
             const w = crearTarjetaWidget('reclamos', '/metricas');
             grid.appendChild(w);
             fetch('/api/dashboard/reclamos_resumen').then(r => r.json()).then(d => {
-                w.innerHTML = `<div class="stat-chip-label">Reclamos Abiertos</div><div class="hero-number" style="font-size:1.9em; ${d.cantidad > 0 ? 'background:none; -webkit-text-fill-color:var(--danger); color:var(--danger);' : ''}">${d.cantidad}</div>
+                w.innerHTML = `<div class="stat-chip-label">Reclamos Abiertos</div><div class="hero-number ${d.cantidad > 0 ? 'acento-danger' : ''}" style="font-size:1.9em;">${d.cantidad}</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">$${d.monto_formateado} retenidos</div>`;
             });
         }
@@ -401,7 +413,11 @@
             grid.appendChild(w);
             fetch('/api/dashboard/costos_resumen').then(r => r.json()).then(d => {
                 if (d.margen_promedio === null) { w.innerHTML = '<div class="text-muted">Sin datos de costo cargados todavía.</div>'; return; }
-                w.innerHTML = `<div class="stat-chip-label">Margen Promedio del Catálogo</div><div class="hero-number" style="font-size:1.9em;">${d.margen_promedio}%</div>
+                // Mismos umbrales que la tabla de márgenes de Ganancia Real
+                // (≥15% ok, 0-15% al límite, <0% pierde) — para que el mismo
+                // número signifique lo mismo en toda la app.
+                const acentoMargen = d.margen_promedio >= 15 ? 'acento-success' : (d.margen_promedio >= 0 ? 'acento-warning' : 'acento-danger');
+                w.innerHTML = `<div class="stat-chip-label">Margen Promedio del Catálogo</div><div class="hero-number ${acentoMargen}" style="font-size:1.9em;">${d.margen_promedio}%</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">Más ajustado: ${d.peor.titulo.slice(0,30)}... (${d.peor.margen_pct}%)</div>`;
             });
         }
@@ -410,7 +426,7 @@
             const w = crearTarjetaWidget('stock_riesgo', '/');
             grid.appendChild(w);
             fetch('/api/quiebre_stock').then(r => r.json()).then(d => {
-                w.innerHTML = `<div class="stat-chip-label">Talles en Riesgo de Quiebre</div><div class="hero-number" style="font-size:1.9em;">${d.length}</div>
+                w.innerHTML = `<div class="stat-chip-label">Talles en Riesgo de Quiebre</div><div class="hero-number ${d.length > 0 ? 'acento-warning' : 'acento-success'}" style="font-size:1.9em;">${d.length}</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.length > 0 ? 'Revisar antes de perder ventas' : 'Todo en orden'}</div>`;
             });
         }
@@ -433,7 +449,7 @@
                                     <div style="flex:1; min-width:0;">
                                         <div style="font-size:0.85em; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.nombre}</div>
                                         <div style="height:5px; border-radius:3px; background:var(--glass-border); margin-top:4px; overflow:hidden;">
-                                            <div style="height:100%; width:${Math.round(p.pct/maxPct*100)}%; background:var(--accent-primary); border-radius:3px;"></div>
+                                            <div class="top-prod-barra" data-w="${Math.round(p.pct/maxPct*100)}" style="height:100%; width:0%; background:var(--accent-primary); border-radius:3px; transition:width 0.5s cubic-bezier(0.16,1,0.3,1);"></div>
                                         </div>
                                     </div>
                                     <div style="text-align:right; white-space:nowrap;">
@@ -443,6 +459,9 @@
                                 </div>`).join('')}
                         </div>
                     </a>`;
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    w.querySelectorAll('.top-prod-barra').forEach(el => { el.style.width = el.dataset.w + '%'; });
+                }));
             });
         }
 
@@ -456,14 +475,16 @@
                     <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
                         <div class="stat-chip-label">Últimas Ventas</div>
                         <div style="margin-top:12px;">
-                            <table style="width:100%; border-collapse:collapse; font-size:0.82em;">
+                            <table class="data-table" style="font-size:0.82em;">
+                                <tbody>
                                 ${d.map(v => `
-                                <tr style="border-bottom:1px solid var(--glass-border);">
-                                    <td style="padding:6px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">${v.nombre}</td>
-                                    <td style="padding:6px 4px; color:var(--text-faint); white-space:nowrap;">×${v.cantidad}</td>
-                                    <td style="padding:6px 0; text-align:right; font-weight:600; white-space:nowrap;">${v.precio_f}</td>
-                                    <td style="padding:6px 0 6px 8px; text-align:right; color:var(--text-faint); white-space:nowrap;">${v.fecha}</td>
+                                <tr>
+                                    <td style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">${v.nombre}</td>
+                                    <td class="text-muted num" style="white-space:nowrap;">×${v.cantidad}</td>
+                                    <td class="num" style="font-weight:600; white-space:nowrap;">${v.precio_f}</td>
+                                    <td class="text-muted num" style="white-space:nowrap;">${v.fecha}</td>
                                 </tr>`).join('')}
+                                </tbody>
                             </table>
                         </div>
                     </a>`;
@@ -474,7 +495,7 @@
             const w = crearTarjetaWidget('logro_top', '/logros');
             grid.appendChild(w);
             fetch('/api/dashboard/logro_top').then(r => r.json()).then(d => {
-                if (!d.hay_mision) { w.innerHTML = '<div class="stat-chip-label">Logros</div><div class="text-success" style="margin-top:10px;">🎉 Sin misiones pendientes</div>'; return; }
+                if (!d.hay_mision) { w.innerHTML = '<div class="stat-chip-label">Logros</div><div class="text-success" style="margin-top:10px;"><svg class="icon" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"><use href="#icon-check"/></svg>Sin misiones pendientes</div>'; return; }
                 const color = d.prioridad === 'urgente' ? 'var(--danger)' : (d.prioridad === 'importante' ? 'var(--semantic-warning)' : 'var(--accent-primary)');
                 w.innerHTML = `<div class="stat-chip-label">Misión Prioritaria</div><div style="font-weight:700; margin-top:8px; color:${color};">${d.titulo}</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:6px;">${d.descripcion}</div>`;
@@ -514,7 +535,7 @@
     async function cargarHeroMetricasDia() {
         // Facturado hoy + ventas hoy — dos APIs en paralelo
         const [resumen, hoy, tendencia, ticker] = await Promise.allSettled([
-            fetch('/api/resumen_diario').then(r => r.json()),
+            _fetchResumenDiarioCompartido(),
             fetch('/api/hoy').then(r => r.json()),
             fetch('/api/dashboard/tendencia_ventas').then(r => r.json()),
             _fetchTickerCompartido(),
@@ -564,9 +585,12 @@
             const resp = await fetch('/api/dashboard/ganancia_dia_vs_promedio');
             const d = await resp.json();
 
-            const colorHoy = d.hoy.ganancia >= 0 ? 'var(--success)' : 'var(--danger)';
-            document.getElementById('hero-ganancia-valor').innerHTML =
-                `<span style="background:none; -webkit-text-fill-color:${colorHoy}; color:${colorHoy};">${d.hoy.ganancia_f}</span>`;
+            const negativo = d.hoy.ganancia < 0;
+            const heroGanancia = document.getElementById('hero-ganancia-valor');
+            heroGanancia.className = 'hero-number ' + (negativo ? 'acento-danger' : 'acento-success');
+            heroGanancia.textContent = '$0';
+            const signo = negativo ? '-' : '';
+            animarNumeroHasta(heroGanancia, Math.abs(d.hoy.ganancia), v => signo + '$' + formatearNumeroAR(v, false));
 
             // Barras comparativas: el mayor de los dos valores absolutos marca el 100%.
             const maxAbs = Math.max(Math.abs(d.hoy.ganancia), Math.abs(d.promedio_diario_14d.ganancia), 1);

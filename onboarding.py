@@ -22,16 +22,26 @@ OPCIONES_PANTALLA = {
 RUTA_POR_PANTALLA = {"dashboard": "dashboard_personalizable", "stock": "landing", "metricas": "metricas_vista"}
 
 
-def guardar_respuestas(usuario_id, prioridad, experiencia, pantalla):
-    if prioridad not in OPCIONES_PRIORIDAD or experiencia not in OPCIONES_EXPERIENCIA or pantalla not in OPCIONES_PANTALLA:
+def guardar_respuestas(usuario_id, prioridades, experiencia, pantalla):
+    """
+    `prioridades` es una lista (pedido explícito: esta pregunta admite
+    elegir más de una, a diferencia de las otras dos que son de una
+    sola respuesta por naturaleza — hace cuánto vendés y qué pantalla
+    preferís no tienen sentido como multi-select). Se guarda como texto
+    separado por comas en la misma columna de siempre.
+    """
+    if not prioridades or any(p not in OPCIONES_PRIORIDAD for p in prioridades):
         return False
+    if experiencia not in OPCIONES_EXPERIENCIA or pantalla not in OPCIONES_PANTALLA:
+        return False
+    prioridad_guardada = ",".join(prioridades)
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             UPDATE usuarios SET onboarding_completo = true, prioridad_principal = %s,
                                  experiencia_meli = %s, pantalla_preferida = %s
             WHERE id = %s
-        """, (prioridad, experiencia, pantalla, usuario_id))
+        """, (prioridad_guardada, experiencia, pantalla, usuario_id))
     return True
 
 

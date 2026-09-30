@@ -39,6 +39,14 @@ def formatear_moneda_entera(valor):
 
 
 def limpiar_titulo_modelo(titulo):
+    # titulo puede llegar None (venta sincronizada antes de tener el título
+    # cacheado, publicación borrada del lado de MeLi, etc.) — re.sub explota
+    # con NoneType en vez de string, y esta función se llama desde Despacho,
+    # Stock, Stock Masivo, Catálogo, Dashboard, Tendencias y Análisis de
+    # Stock, así que un solo título nulo tiraba 500/502 en cualquiera de esas
+    # páginas y, en listados, cortaba el resto de las filas de golpe.
+    if not titulo:
+        return ""
     t = re.sub(r'\b(talle|size)\s*[:#]?\s*(xxxl|xxl|xl|l|m|s|\d+)\b', '', titulo, flags=re.IGNORECASE)
     t = re.sub(r'\b(xxxl|xxl|xl|l|m|s)\b', '', t, flags=re.IGNORECASE)
     t = re.sub(r'\s+\d+\s*$', '', t)

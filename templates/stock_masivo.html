@@ -1,13 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Gestión de Stock Masiva · Santi Mens{% endblock %}
+{% block title %}Gestión de Stock Masiva · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
         <h1 class="page-title">Gestión de Stock Masiva</h1>
-        <div class="page-subtitle">Editá el depósito de varias publicaciones a la vez, agrupadas por modelo</div>
+        <div class="page-subtitle">
+            {% if modelos %}Editá el depósito de {{ modelos|length }} modelo{% if modelos|length != 1 %}s{% endif %} a la vez{% else %}Editá el depósito de varias publicaciones a la vez, agrupadas por modelo{% endif %}
+        </div>
     </div>
 </div>
 
+{% if not modelos %}
+<div class="panel"><div class="alert-empty">Todavía no hay publicaciones sincronizadas para mostrar acá. Probá "Sincronizar Todo" en la barra de arriba.</div></div>
+{% else %}
 <div class="panel">
     <div class="field-group">
         <label class="field-label">Buscar (modelo, color o talle — ej: "celeste l")</label>
@@ -18,8 +23,9 @@
 <form action="/actualizar_stock_multiple" method="POST">
     <input type="hidden" name="volver_a" value="/stock_masivo">
     <div id="acordeon-modelos">
+        <div id="acordeon-sin-resultados" class="alert-empty" style="display:none;">No encontramos ningún modelo con ese talle o color.</div>
         {% for m in modelos %}
-        <div class="panel acordeon-item" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}">
+        <div class="panel acordeon-item abierto" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}">
             <div class="acordeon-header" onclick="toggleAcordeon(this)">
                 <div class="row-flex">
                     {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="">{% endif %}
@@ -30,7 +36,7 @@
                 </div>
                 <span class="acordeon-chevron">▾</span>
             </div>
-            <div class="acordeon-body" style="display:none;">
+            <div class="acordeon-body" style="display:block;">
                 <table class="data-table">
                     <thead><tr><th>Talle</th><th>Estado</th><th class="num">Depósito</th><th class="num">FULL</th></tr></thead>
                     <tbody>
@@ -44,10 +50,9 @@
                                 {% else %}<span class="badge badge-neutral">Inactiva</span>{% endif %}
                             </td>
                             <td class="num">
-                                {% if v.full > 0 %}<input type="number" value="{{ v.propio }}" disabled style="max-width:90px; margin-left:auto;">
-                                {% else %}<input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" min="0" style="max-width:90px; margin-left:auto;">{% endif %}
+                                <input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" min="0" style="max-width:90px; margin-left:auto;">
                             </td>
-                            <td class="num">{{ v.full }} u.</td>
+                            <td class="num"><span title="El stock de FULL se gestiona desde Mercado Libre, no se puede editar acá">{{ v.full }} u.</span></td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -58,19 +63,26 @@
     </div>
     <button type="submit" class="btn btn-primary">Aplicar cambios a Mercado Libre</button>
 </form>
+{% endif %}
 
 <script>
     function toggleAcordeon(header) {
+        const item = header.closest('.acordeon-item');
         const body = header.nextElementSibling;
         const abierto = body.style.display !== 'none';
         body.style.display = abierto ? 'none' : 'block';
-        header.querySelector('.acordeon-chevron').textContent = abierto ? '▾' : '▴';
+        item.classList.toggle('abierto', !abierto);
     }
     function filtrarAcordeon() {
         const q = document.getElementById('input-buscador-masivo').value;
+        let visibles = 0;
         document.querySelectorAll('.acordeon-item').forEach(item => {
-            item.style.display = coincideBusqueda(item.dataset.buscar, q) ? '' : 'none';
+            const coincide = coincideBusqueda(item.dataset.buscar, q);
+            item.style.display = coincide ? '' : 'none';
+            if (coincide) visibles++;
         });
+        const vacio = document.getElementById('acordeon-sin-resultados');
+        if (vacio) vacio.style.display = visibles === 0 ? '' : 'none';
     }
 </script>
 {% endblock %}

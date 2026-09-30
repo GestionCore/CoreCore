@@ -1,0 +1,15 @@
+.git
+.gitignore
+venv/
+__pycache__/
+*.pyc
+.env
+.env.example
+*.log
+.vscode/
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
+.agents/
+.claude/
+Procfile

@@ -34,7 +34,23 @@ def _obtener_pool():
     if _pool is None:
         if not config.DATABASE_URL:
             raise RuntimeError("Falta DATABASE_URL en las variables de entorno.")
-        _pool = ConnectionPool(config.DATABASE_URL, min_size=1, max_size=20, open=True)
+        # OJO — esto NO puede volver a subirse sin volver a hacer la cuenta
+        # de abajo: cada proceso worker de gunicorn tiene su PROPIO pool
+        # (esto es un global de módulo, psycopg_pool no se comparte entre
+        # procesos), y estamos corriendo con 2 workers. El pooler de
+        # Supabase en modo "Sesión" (el que hace falta para que RLS con
+        # set_config(..., true) sea confiable — ver el comentario grande
+        # más abajo) tiene un tope DURO de 15 conexiones total para todo
+        # el proyecto, lo uses como lo uses. Con min_size=4/max_size=20
+        # de antes, el peor caso era (20 + 10 del pool admin) × 2 workers
+        # = 60 conexiones posibles — muy por encima de 15, y en producción
+        # tiró exactamente el error que predice ese límite
+        # (EMAXCONNSESSION / "couldn't get a connection after 30 sec"),
+        # tumbando el scheduler y varias páginas de golpe.
+        # Presupuesto actual: (4 + 2) × 2 workers = 12, más la conexión
+        # fija que scheduler.py mantiene abierta para el advisory lock =
+        # 13, dejando 2 de margen bajo el tope de 15.
+        _pool = ConnectionPool(config.DATABASE_URL, min_size=1, max_size=4, open=True)
     return _pool
 
 
@@ -43,7 +59,13 @@ def _obtener_pool_admin():
     if _pool_admin is None:
         if not config.DATABASE_URL_ADMIN:
             raise RuntimeError("Falta DATABASE_URL_ADMIN en las variables de entorno.")
-        _pool_admin = ConnectionPool(config.DATABASE_URL_ADMIN, min_size=1, max_size=10, open=True)
+        # Mismo presupuesto de conexiones que _obtener_pool — ver ese
+        # comentario. token_manager.asegurar_token_valido pasa por acá en
+        # casi todas las rutas autenticadas, por eso conserva min_size=1
+        # en vez de 0 (evita abrir una conexión nueva en el camino
+        # caliente de cada pedido), pero max_size se recortó fuerte para
+        # no volver a pisar el tope de 15 de Supabase.
+        _pool_admin = ConnectionPool(config.DATABASE_URL_ADMIN, min_size=1, max_size=2, open=True)
     return _pool_admin
 
 

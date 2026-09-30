@@ -18,6 +18,25 @@ import db
 PRIORIDAD_ORDEN = {"urgente": 0, "importante": 1, "opcional": 2}
 
 
+def _rollback_seguro(cursor):
+    """
+    Si un chequeo de misión falla (permiso faltante, tabla que no
+    existe todavía, lo que sea), Postgres marca TODA la transacción
+    como abortada — cualquier consulta siguiente en el mismo cursor
+    falla también, aunque no tenga nada que ver, con
+    "current transaction is aborted, commands ignored until end of
+    transaction block". Encontrado en producción: eso tumbaba
+    /api/dashboard/logro_top entero por un solo permiso faltante en
+    una tabla que ni siquiera es la que el endpoint necesitaba. Este
+    rollback deja la transacción lista de nuevo para que el resto de
+    los chequeos (y el guardado del historial al final) sigan andando.
+    """
+    try:
+        cursor.connection.rollback()
+    except Exception:
+        pass
+
+
 def _detectar_misiones_base(cursor, cuenta_id):
     misiones = []
 
@@ -34,6 +53,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error detectando stock crítico: {e}")
+        _rollback_seguro(cursor)
 
     try:
         curva_rota = analisis_stock.evaluar_curva_talles(cursor)
@@ -46,27 +66,36 @@ def _detectar_misiones_base(cursor, cuenta_id):
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error detectando curva rota: {e}")
+        _rollback_seguro(cursor)
 
-    cursor.execute("SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND tipo != 'cancelacion'")
-    cant_reclamos, monto_retenido = cursor.fetchone()
-    if cant_reclamos > 0:
-        monto_retenido_fmt = f"{float(monto_retenido):,.0f}".replace(",", ".")
-        misiones.append({
-            "id": "reclamos_abiertos", "categoria": "reclamos", "icono": "⚠️", "prioridad": "urgente" if cant_reclamos >= 3 else "importante",
-            "titulo": f"{cant_reclamos} reclamo(s)/devolución(es) sin resolver",
-            "descripcion": f"Hay ${monto_retenido_fmt} retenidos esperando resolución — cada día que pasa sin responder puede sumar a tu reputación negativa.",
-            "link": "/metricas", "link_texto": "Ver reclamos"
-        })
+    try:
+        cursor.execute("SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND tipo != 'cancelacion'")
+        cant_reclamos, monto_retenido = cursor.fetchone()
+        if cant_reclamos > 0:
+            monto_retenido_fmt = f"{float(monto_retenido):,.0f}".replace(",", ".")
+            misiones.append({
+                "id": "reclamos_abiertos", "categoria": "reclamos", "icono": "⚠️", "prioridad": "urgente" if cant_reclamos >= 3 else "importante",
+                "titulo": f"{cant_reclamos} reclamo(s)/devolución(es) sin resolver",
+                "descripcion": f"Hay ${monto_retenido_fmt} retenidos esperando resolución — cada día que pasa sin responder puede sumar a tu reputación negativa.",
+                "link": "/metricas", "link_texto": "Ver reclamos"
+            })
+    except Exception as e:
+        print(f"[Logros] ⚠️ Error detectando reclamos abiertos: {e}")
+        _rollback_seguro(cursor)
 
-    cursor.execute("SELECT COUNT(*) FROM preguntas_pendientes WHERE estado = 'pendiente' AND creado_en < (now() - interval '1 day')")
-    preguntas_viejas = cursor.fetchone()[0] or 0
-    if preguntas_viejas > 0:
-        misiones.append({
-            "id": "preguntas_viejas", "categoria": "atencion", "icono": "❓", "prioridad": "importante",
-            "titulo": f"{preguntas_viejas} pregunta(s) sin responder hace más de 24hs",
-            "descripcion": "Una pregunta sin responder es una venta que se enfría.",
-            "link": None, "link_texto": None
-        })
+    try:
+        cursor.execute("SELECT COUNT(*) FROM preguntas_pendientes WHERE estado = 'pendiente' AND creado_en < (now() - interval '1 day')")
+        preguntas_viejas = cursor.fetchone()[0] or 0
+        if preguntas_viejas > 0:
+            misiones.append({
+                "id": "preguntas_viejas", "categoria": "atencion", "icono": "❓", "prioridad": "importante",
+                "titulo": f"{preguntas_viejas} pregunta(s) sin responder hace más de 24hs",
+                "descripcion": "Una pregunta sin responder es una venta que se enfría.",
+                "link": None, "link_texto": None
+            })
+    except Exception as e:
+        print(f"[Logros] ⚠️ Error detectando preguntas viejas: {e}")
+        _rollback_seguro(cursor)
 
     try:
         canibalismo = tendencias_mod.detectar_canibalismo(cursor)
@@ -80,6 +109,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error detectando canibalismo: {e}")
+        _rollback_seguro(cursor)
 
     hoy = datetime.now().strftime("%Y-%m-%d")
     hace_7 = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
@@ -112,6 +142,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error calculando SEO score: {e}")
+        _rollback_seguro(cursor)
 
     try:
         movimiento = tendencias_mod.detectar_movimiento_categoria_principal(cursor, cuenta_id)
@@ -126,6 +157,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error detectando movimiento de categoría: {e}")
+        _rollback_seguro(cursor)
 
     try:
         impacto = promociones_mod.obtener_impacto_promociones(cursor)
@@ -140,6 +172,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error calculando impacto de promociones: {e}")
+        _rollback_seguro(cursor)
 
     return misiones
 
@@ -211,6 +244,7 @@ def obtener_logros(cursor, cuenta_id, headers=None):
                 })
         except Exception as e:
             print(f"[Logros] ⚠️ Error detectando zombies: {e}")
+            _rollback_seguro(cursor)
 
     misiones.sort(key=lambda m: PRIORIDAD_ORDEN.get(m["prioridad"], 3))
     recien_resueltas = actualizar_historial_y_marcar_resueltas(cursor, cuenta_id, misiones)

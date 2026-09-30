@@ -41,7 +41,11 @@ def generar_resumen_periodo(cursor, dias=7):
 
     en_riesgo_stock = len(analisis_stock.obtener_variantes_en_riesgo(cursor))
 
-    cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved')")
+    # Mismo criterio que dashboard.obtener_reclamos_resumen: esto alimenta
+    # el HUD "Reclamos abiertos" (ver global.js), así que solo debe contar
+    # tipo='claim' — una devolución simple (tipo='return') no es un
+    # reclamo y no debería sumar acá, aunque siga sin resolver.
+    cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved') AND tipo = 'claim'")
     incidencias_abiertas = cursor.fetchone()[0] or 0
 
     return {

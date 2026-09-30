@@ -8,7 +8,7 @@ mismo mes se hubieran pisado los resúmenes de facturación entre sí.
 Ambas cachés ahora incluyen cuenta_id en su clave.
 """
 import time
-import requests
+import meli_http
 from utils import formatear_moneda
 
 BASE_URL = "https://api.mercadolibre.com/billing/integration"
@@ -26,7 +26,7 @@ def obtener_periodos(access_token, cuenta_id, group="ML"):
 
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.get(f"{BASE_URL}/monthly/periods", headers=headers, params={"group": group, "document_type": "BILL"}, timeout=10)
+        resp = meli_http.get(f"{BASE_URL}/monthly/periods", headers=headers, params={"group": group, "document_type": "BILL"}, timeout=10)
         if resp.status_code == 200:
             data = resp.json()
             resultado = data if isinstance(data, list) else data.get("results", [])
@@ -48,7 +48,7 @@ def obtener_resumen_periodo(access_token, cuenta_id, key, group="ML"):
 
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = requests.get(f"{BASE_URL}/periods/key/{key}/summary/details", headers=headers, params={"group": group, "document_type": "BILL"}, timeout=15)
+        resp = meli_http.get(f"{BASE_URL}/periods/key/{key}/summary/details", headers=headers, params={"group": group, "document_type": "BILL"}, timeout=15)
         if resp.status_code == 200:
             data = resp.json()
             _cache_resumenes[clave] = {"data": data, "timestamp": ahora}
@@ -91,7 +91,7 @@ def obtener_costo_almacenamiento_full(access_token, cuenta_id, period_key, group
     total = 0.0
     cantidad = 0
     try:
-        resp = requests.get(
+        resp = meli_http.get(
             f"{BASE_URL}/periods/key/{period_key}/group/{group}/details",
             headers=headers, params={"document_type": "BILL", "detail_type": "charge", "limit": 100}, timeout=15
         )

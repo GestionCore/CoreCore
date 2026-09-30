@@ -66,6 +66,10 @@ _cache_shipment = {}
 # no cambia con el tiempo (se puede cachear siempre que se consiga, a
 # diferencia del costo 0 de abajo, que a propósito NO se cachea).
 _cache_provincia_envio = {}
+# logistic_type real del envío (drop_off/self_service/fulfillment/...) —
+# tampoco cambia con el tiempo una vez despachado, así que se cachea
+# siempre que se consiga, igual que la provincia.
+_cache_tipo_logistica = {}
 LIMITE_CACHE_SHIPMENT = 20000
 
 
@@ -103,6 +107,12 @@ def _obtener_costo_envio(access_token, shipment_id):
             if len(_cache_provincia_envio) >= LIMITE_CACHE_SHIPMENT:
                 _cache_provincia_envio.clear()
             _cache_provincia_envio[shipment_id] = provincia
+
+        tipo_logistica = data.get("logistic_type")
+        if tipo_logistica:
+            if len(_cache_tipo_logistica) >= LIMITE_CACHE_SHIPMENT:
+                _cache_tipo_logistica.clear()
+            _cache_tipo_logistica[shipment_id] = tipo_logistica
 
         if costo:
             if len(_cache_shipment) >= LIMITE_CACHE_SHIPMENT:
@@ -156,6 +166,7 @@ def _extraer_filas_de_orden(orden, access_token):
     shipment_id = shipping_info.get("id")
     costo_envio_total = _obtener_costo_envio(access_token, str(shipment_id)) if shipment_id else 0.0
     provincia = _cache_provincia_envio.get(str(shipment_id)) if shipment_id else None
+    tipo_logistica = _cache_tipo_logistica.get(str(shipment_id)) if shipment_id else None
     facturado_total_orden = sum(float(it.get("unit_price") or 0) * int(it.get("quantity") or 1) for it in items) or 1.0
 
     buyer = orden.get("buyer", {}) or {}
@@ -189,7 +200,7 @@ def _extraer_filas_de_orden(orden, access_token):
             "envio_estado": shipping_info.get("status"),
             "despachado": shipping_info.get("status") in ("shipped", "delivered"),
             "comprador_nickname": buyer.get("nickname"), "comprador_nombre": buyer.get("first_name"),
-            "cuotas": cuotas_orden, "provincia": provincia,
+            "cuotas": cuotas_orden, "provincia": provincia, "tipo_logistica": tipo_logistica,
         })
     return filas
 
@@ -203,16 +214,17 @@ def _escribir_pagina(cursor, cuenta_id, ordenes, access_token):
             cursor.execute("""
                 INSERT INTO ventas (cuenta_id, id_orden, id_meli, id_variante, titulo, cantidad, precio_venta,
                                      cargo_venta, costo_envio, fecha_venta, hora_venta, shipment_id, envio_estado,
-                                     despachado, comprador_nickname, comprador_nombre, cuotas, provincia)
+                                     despachado, comprador_nickname, comprador_nombre, cuotas, provincia, tipo_logistica)
                 VALUES (%(cuenta_id)s, %(id_orden)s, %(id_meli)s, %(id_variante)s, %(titulo)s, %(cantidad)s,
                         %(precio_venta)s, %(cargo_venta)s, %(costo_envio)s, %(fecha_venta)s, %(hora_venta)s,
-                        %(shipment_id)s, %(envio_estado)s, %(despachado)s, %(comprador_nickname)s, %(comprador_nombre)s, %(cuotas)s, %(provincia)s)
+                        %(shipment_id)s, %(envio_estado)s, %(despachado)s, %(comprador_nickname)s, %(comprador_nombre)s, %(cuotas)s, %(provincia)s, %(tipo_logistica)s)
                 ON CONFLICT (cuenta_id, id_orden, id_meli) DO UPDATE SET
                     cantidad = excluded.cantidad, precio_venta = excluded.precio_venta,
                     cargo_venta = COALESCE(excluded.cargo_venta, ventas.cargo_venta),
                     costo_envio = excluded.costo_envio, envio_estado = excluded.envio_estado,
                     despachado = excluded.despachado, cuotas = COALESCE(excluded.cuotas, ventas.cuotas),
-                    provincia = COALESCE(excluded.provincia, ventas.provincia)
+                    provincia = COALESCE(excluded.provincia, ventas.provincia),
+                    tipo_logistica = COALESCE(excluded.tipo_logistica, ventas.tipo_logistica)
             """, {**f, "cuenta_id": cuenta_id})
             filas_insertadas += 1
     return len(ordenes), filas_insertadas

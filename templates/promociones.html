@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Promociones · Santi Mens{% endblock %}
+{% block title %}Promociones · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -10,7 +10,8 @@
 
 {% if promociones_por_vencer %}
 <div class="alert alert-warning">
-    ⏰ <strong>{{ promociones_por_vencer|length }} promoción(es) por vencer pronto:</strong>
+    <svg class="icon" style="width:14px;height:14px;vertical-align:middle;margin-right:5px;"><use href="#icon-calendar"/></svg>
+    <strong>{{ promociones_por_vencer|length }} promoci{{ "ón" if promociones_por_vencer|length == 1 else "ones" }} por vencer pronto:</strong>
     {% for p in promociones_por_vencer %}{{ p.titulo }} (hasta {{ p.fecha_fin_planeada }}){% if not loop.last %}, {% endif %}{% endfor %}
 </div>
 {% endif %}
@@ -64,13 +65,13 @@
 </div>
 {% endif %}
 
-<div class="panel">
+<div class="panel" data-mostrar-mas-scope>
     <div class="panel-title">Publicaciones con descuento activo ({{ con_descuento|length }})</div>
     <table class="data-table only-desktop">
         <thead><tr><th>Publicación</th><th class="num">Precio original</th><th class="num">Precio actual</th><th class="num">Descuento</th><th></th></tr></thead>
         <tbody>
             {% for p in con_descuento %}
-            <tr>
+            <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
                 <td style="font-family: var(--font-ui);">{{ p.titulo }}</td>
                 <td class="num text-muted" style="text-decoration:line-through;">${{ p.precio_original_formateado }}</td>
                 <td class="num">${{ p.precio_formateado }}</td>
@@ -87,6 +88,9 @@
             {% endif %}
         </tbody>
     </table>
+    {% if con_descuento|length > 5 %}
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ con_descuento|length - 5 }} más...</button>
+    {% endif %}
 </div>
 
 {% if ofertas_relampago %}
@@ -121,37 +125,26 @@
 <div class="panel">
     <div class="panel-title">Campañas de Mercado Libre ({{ campanias|length }})</div>
     <table class="data-table only-desktop">
-        <thead><tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Vigencia</th><th>Cofinanciamiento</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Vigencia</th>{% if hay_cofinanciamiento %}<th>Cofinanciamiento</th>{% endif %}</tr></thead>
         <tbody>
             {% for c in campanias %}
             <tr>
-                <td style="font-family: var(--font-ui);">{{ c.name or c.id }}</td>
-                <td>
-                    <span class="badge badge-neutral">
-                        {% if c.type == 'MARKETPLACE_CAMPAIGN' %}Cofinanciada
-                        {% elif c.type == 'DEAL' %}Tradicional
-                        {% elif c.type == 'PRICE_MATCHING' %}Precios competitivos
-                        {% elif c.type == 'SMART' %}Cofinanciada automática
-                        {% elif c.type == 'LIGHTNING' %}Oferta relámpago
-                        {% else %}{{ c.type }}{% endif %}
-                    </span>
-                </td>
-                <td>{{ c.status }}</td>
-                <td class="text-muted">{{ c.start_date }} — {{ c.finish_date }}</td>
-                <td class="num">
-                    {% if c.benefits and c.benefits.meli_percent is defined %}
-                        MeLi {{ c.benefits.meli_percent }}% / Vos {{ c.benefits.seller_percent }}%
-                    {% else %}—{% endif %}
-                </td>
+                <td style="font-family: var(--font-ui);">{{ c.nombre }}</td>
+                <td><span class="badge badge-neutral">{{ c.tipo_texto }}</span></td>
+                <td><span class="badge {{ c.estado_clase }}">{{ c.estado_texto }}</span></td>
+                <td class="text-muted">{% if c.vigencia_desde %}{{ c.vigencia_desde }} — {{ c.vigencia_hasta or 'sin fecha de cierre' }}{% else %}—{% endif %}</td>
+                {% if hay_cofinanciamiento %}
+                <td class="num">{% if c.meli_percent is not none %}MeLi {{ c.meli_percent }}% / Vos {{ c.seller_percent }}%{% else %}—{% endif %}</td>
+                {% endif %}
             </tr>
             {% endfor %}
             {% if not campanias %}
-            <tr><td colspan="5" class="alert-empty">No hay campañas activas o invitaciones pendientes ahora mismo.</td></tr>
+            <tr><td colspan="{{ 5 if hay_cofinanciamiento else 4 }}" class="alert-empty">No hay campañas activas o invitaciones pendientes ahora mismo.</td></tr>
             {% endif %}
         </tbody>
     </table>
     <div class="page-subtitle" style="margin-top:10px;">
-        Sumarte a una campaña cofinanciada (elegir el nivel de descuento dentro del rango que te ofrece MeLi) todavía se gestiona desde tu panel de Mercado Libre — no lo automaticé todavía porque necesita consultar los ítems candidatos y sus rangos de precio permitidos, y no quiero arriesgarme a mandar un precio mal calculado.
+        Podés sumarte a una campaña cofinanciada eligiendo tu nivel de descuento directamente desde tu panel de Mercado Libre.
     </div>
 </div>
 
@@ -200,7 +193,7 @@
 
         const costo = parseFloat(opcion.dataset.costo) || 0;
         cont.style.display = 'block';
-        cont.innerHTML = 'Calculando impacto en margen...';
+        cont.innerHTML = '<div class="skeleton" style="height:40px;border-radius:8px;"></div>';
         try {
             const resp = await fetch(`/api/simular_costo?precio=${precioDeal}&costo=${costo}&id_meli=${encodeURIComponent(opcion.value)}`);
             const data = await resp.json();

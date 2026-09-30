@@ -112,9 +112,27 @@ def obtener_panorama_competencia(cursor, cuenta_id):
             if precio_hoy is not None and precio_antes and precio_hoy != precio_antes:
                 tendencia_precio = "bajó" if precio_hoy < precio_antes else "subió"
 
+        # Sparkline de precio (mismo cálculo que catalogo.py para el de ventas)
+        # — el historial viene DESC (hoy primero), pero el sparkline se lee
+        # de izquierda a derecha en el tiempo, así que se invierte acá.
+        precios = [h[1] for h in reversed(historial) if h[1] is not None]
+        sparkline_puntos = None
+        if len(precios) >= 2:
+            minimo, maximo = min(precios), max(precios)
+            rango = (maximo - minimo) or 1
+            ancho_svg, alto_svg = 70, 24
+            paso_x = ancho_svg / (len(precios) - 1)
+            puntos = []
+            for idx, valor in enumerate(precios):
+                x = round(idx * paso_x, 1)
+                y = round(alto_svg - ((valor - minimo) / rango) * (alto_svg - 4) - 2, 1)
+                puntos.append(f"{x},{y}")
+            sparkline_puntos = " ".join(puntos)
+
         panorama.append({
             "id_meli_rival": id_rival, "alias": alias or titulo_actual or id_rival, "titulo_actual": titulo_actual,
             "historial": [{"fecha": h[0].strftime("%Y-%m-%d") if hasattr(h[0], "strftime") else h[0], "precio": h[1], "stock": h[2], "es_full": bool(h[3]), "vendidos": h[4]} for h in historial],
-            "tendencia_precio": tendencia_precio
+            "tendencia_precio": tendencia_precio,
+            "sparkline_puntos": sparkline_puntos,
         })
     return panorama

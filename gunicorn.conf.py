@@ -43,9 +43,19 @@ access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s %(D)sµs'
 max_requests = 1000
 max_requests_jitter = 100  # evita que todos los workers se recarguen al mismo tiempo
 
-# Preload: carga el módulo de la app antes de forkear los workers.
-# Ahorra RAM (código compartido) y detecta errores de import al arrancar.
-preload_app = True
+# Preload: en False a propósito. Gunicorn busca este archivo en el
+# directorio de trabajo y lo aplica SIEMPRE, incluso cuando el proceso
+# real arranca por el Procfile con --worker-class gevent (Railway) — el
+# Procfile puede pisar worker_class por CLI, pero no pisa preload_app
+# acá. Con preload_app=True, el módulo de la app (y con él requests/
+# urllib3/ssl) se importa en el proceso master ANTES de que gevent
+# parchee ssl en cada worker — el resultado real, encontrado en
+# producción: cualquier pedido HTTPS de la app (ej. auth/oauth_meli.py
+# canjeando el code de MeLi) tira "maximum recursion depth exceeded",
+# porque queda una mezcla de sockets parcheados y sin parchear. Perder
+# el ahorro de RAM de preload es un costo aceptable frente a que el
+# login con Mercado Libre no funcione.
+preload_app = False
 
 # Para debug de workers colgados
 worker_tmp_dir = "/dev/shm"  # /dev/shm es tmpfs (RAM), más rápido que disco

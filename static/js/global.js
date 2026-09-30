@@ -55,8 +55,8 @@ function revisarMensajeEnURL() {
 
 // ---------- Modo Privacidad ----------
 function alternarModoPrivacidad() {
-    document.body.classList.toggle('modo-privacidad');
-    localStorage.setItem('modo_privacidad', document.body.classList.contains('modo-privacidad') ? '1' : '0');
+    document.documentElement.classList.toggle('modo-privacidad');
+    localStorage.setItem('modo_privacidad', document.documentElement.classList.contains('modo-privacidad') ? '1' : '0');
 }
 
 // ---------- Panel personalizable (mostrar/ocultar paneles opcionales) ----------
@@ -271,8 +271,43 @@ function aplicarUltimosDias(dias, boton) {
     const aISO = (d) => d.toISOString().split('T')[0];
     form.querySelector('input[name="fecha_desde"]').value = aISO(desde);
     form.querySelector('input[name="fecha_hasta"]').value = aISO(hoy);
+    // Feedback visual inmediato del botón tocado — el submit de abajo
+    // recarga la página enseguida, pero marcarUltimosDiasActivo() (más
+    // abajo) es quien deja el estado "presionado" correcto una vez que
+    // esa página nueva termina de cargar.
+    form.querySelectorAll('button[onclick^="aplicarUltimosDias("]').forEach(b => b.classList.remove('active'));
+    boton.classList.add('active');
     form.submit();
 }
+
+/**
+ * Al volver a cargar la página después de tocar "7/14/30 días" (o de
+ * entrar con un período ya guardado), ninguno de esos botones quedaba
+ * marcado como activo — parecía que el click no había hecho nada, aunque
+ * el período sí había cambiado. Se fija comparando fecha_desde/fecha_hasta
+ * (guardadas en el data-desde/data-hasta de .rango-fechas, que sí vienen
+ * del server) contra la cantidad de días de cada botón.
+ */
+function marcarUltimosDiasActivo() {
+    document.querySelectorAll('.rango-fechas[data-desde][data-hasta]').forEach(cont => {
+        const form = cont.closest('form');
+        const desdeStr = cont.dataset.desde, hastaStr = cont.dataset.hasta;
+        if (!form || !desdeStr || !hastaStr) return;
+        const botones = form.querySelectorAll('button[onclick^="aplicarUltimosDias("]');
+        if (!botones.length) return;
+        const desde = new Date(desdeStr + 'T00:00:00');
+        const hasta = new Date(hastaStr + 'T00:00:00');
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        const terminaHoy = Math.abs(hasta - hoy) < 86400000;
+        const dias = Math.round((hasta - desde) / 86400000) + 1;
+        botones.forEach(b => {
+            const m = b.getAttribute('onclick').match(/aplicarUltimosDias\((\d+)/);
+            const n = m ? parseInt(m[1], 10) : null;
+            b.classList.toggle('active', terminaHoy && n === dias);
+        });
+    });
+}
+document.addEventListener('DOMContentLoaded', marcarUltimosDiasActivo);
 
 /**
  * Selector de rango de fechas unificado (pedido explícito) — reemplaza
@@ -571,7 +606,7 @@ async function enviarMensajeCostosChat(evento) {
             _agregarBurbujaCostosChat(texto, false);
             _costosChatHistorial.push({ role: 'assistant', content: JSON.stringify(data) });
         } else if (data.accion === 'confirmar') {
-            _mostrarPropuestaCostosChat(data);
+            _mostrarPropuestaCostosChat(data.gastos || []);
         }
     } catch (e) {
         _agregarBurbujaCostosChat('No pude conectar — intentá de nuevo en un momento.', false);
@@ -582,16 +617,20 @@ async function enviarMensajeCostosChat(evento) {
     return false;
 }
 
-function _mostrarPropuestaCostosChat(propuesta) {
+function _mostrarPropuestaCostosChat(gastos) {
     const cont = document.getElementById('costos-chat-propuesta');
-    const tipoTexto = propuesta.recurrente ? `Recurrente desde ${propuesta.fecha_desde}` : `Único, el ${propuesta.fecha_desde}`;
+    const filas = gastos.map(propuesta => {
+        const tipoTexto = propuesta.recurrente ? `Recurrente desde ${propuesta.fecha_desde}` : `Único, el ${propuesta.fecha_desde}`;
+        return `<div style="font-size:0.9em; line-height:1.7; color:var(--text-secondary); padding:6px 0; border-top:1px solid var(--glass-border);">
+            <strong style="color:var(--text-primary);">${propuesta.concepto}</strong> — $${Number(propuesta.monto).toLocaleString('es-AR')}
+            — ${propuesta.categoria === 'fijo' ? 'Fijo' : 'Variable'} — ${tipoTexto}
+        </div>`;
+    }).join('');
+    const titulo = gastos.length > 1 ? `Voy a cargar estos ${gastos.length} gastos:` : 'Voy a cargar:';
     cont.innerHTML = `
         <div class="panel" style="border-color:var(--accent-primary); margin:0 0 14px;">
-            <div style="font-weight:600; margin-bottom:8px;">Voy a cargar:</div>
-            <div style="font-size:0.9em; line-height:1.7; color:var(--text-secondary);">
-                <strong style="color:var(--text-primary);">${propuesta.concepto}</strong> — $${Number(propuesta.monto).toLocaleString('es-AR')}
-                — ${propuesta.categoria === 'fijo' ? 'Fijo' : 'Variable'} — ${tipoTexto}
-            </div>
+            <div style="font-weight:600; margin-bottom:4px;">${titulo}</div>
+            ${filas}
             <div style="display:flex; gap:10px; margin-top:14px;">
                 <button type="button" class="btn btn-denim" onclick="confirmarPropuestaCostosChat()">Confirmar</button>
                 <button type="button" class="btn btn-secondary" onclick="corregirPropuestaCostosChat()">Corregir</button>
@@ -599,16 +638,16 @@ function _mostrarPropuestaCostosChat(propuesta) {
         </div>
     `;
     cont.style.display = 'block';
-    cont.dataset.propuesta = JSON.stringify(propuesta);
+    cont.dataset.propuesta = JSON.stringify(gastos);
 }
 
 async function confirmarPropuestaCostosChat() {
     const cont = document.getElementById('costos-chat-propuesta');
-    const propuesta = JSON.parse(cont.dataset.propuesta);
+    const propuestas = JSON.parse(cont.dataset.propuesta);
     try {
         const resp = await fetch('/api/costos_chat/confirmar', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ propuesta })
+            body: JSON.stringify({ propuestas })
         });
         const data = await resp.json();
         if (data.ok) {
@@ -661,6 +700,19 @@ function parsearValorMoneda(texto) {
 }
 function formatearNumeroAR(valor, conDecimales) {
     return valor.toLocaleString('es-AR', conDecimales ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 });
+}
+// Cuenta ascendente genérica para un número que llega por fetch (no estaba
+// en el HTML al cargar la página, así que animarContadoresEnPagina() no lo
+// puede tomar solo) — from 0 hasta valorFinal, formateado con `formatearFn`.
+function animarNumeroHasta(el, valorFinal, formatearFn, duracionMs = 650) {
+    const t0 = performance.now();
+    function frame(t) {
+        const progreso = Math.min((t - t0) / duracionMs, 1);
+        const facilitado = 1 - Math.pow(1 - progreso, 3);
+        el.textContent = formatearFn(valorFinal * facilitado);
+        if (progreso < 1) requestAnimationFrame(frame); else el.textContent = formatearFn(valorFinal);
+    }
+    requestAnimationFrame(frame);
 }
 function animarContadoresEnPagina() {
     document.querySelectorAll('.stat-chip-value, .hero-number').forEach(el => {
@@ -802,6 +854,14 @@ async function actualizarTicker() {
         window._ultimoTickerData = data;
     } catch (e) {
         console.error('Error actualizando ticker:', e);
+        // Sin esto, un error acá (server 502, JSON inválido, etc.) dejaba
+        // el pill de arriba con el efecto skeleton (brillo animado) para
+        // siempre — parecía "cargando" sin fin en vez de mostrar que no
+        // se pudo traer el dato.
+        const elVentas = document.getElementById('ticker-ventas');
+        const elLiberacion = document.getElementById('ticker-liberacion');
+        if (elVentas) { elVentas.classList.remove('skeleton'); elVentas.textContent = 'No se pudo cargar'; }
+        if (elLiberacion) { elLiberacion.classList.remove('skeleton'); elLiberacion.textContent = 'No se pudo cargar'; }
     }
 }
 
@@ -826,16 +886,26 @@ function _posicionarTooltipTicker(el, ancla) {
 function mostrarTooltipSalud(ancla) {
     const data = window._ultimoTickerData;
     const el = _crearTooltipTicker();
-    if (!data || data.salud_score === undefined) { el.innerHTML = 'Cargando...'; }
-    else {
+    if (!data || data.salud_score === undefined) {
+        el.innerHTML = '<div class="tooltip-ticker-cuerpo">Cargando...</div>';
+        el.style.removeProperty('--tooltip-acento');
+    } else {
         const detalle = data.salud_detalle || [];
+        const estilo = getComputedStyle(document.documentElement);
+        const color = data.salud_score >= 80 ? estilo.getPropertyValue('--success').trim()
+            : data.salud_score >= 65 ? estilo.getPropertyValue('--semantic-warning').trim()
+            : estilo.getPropertyValue('--danger').trim();
+        el.style.setProperty('--tooltip-acento', color);
         el.innerHTML = `
-            <div class="tooltip-ticker-titulo">Score de salud: ${data.salud_score}/100 (${data.salud_etiqueta})</div>
-            ${detalle.length ? `
-                <div class="tooltip-ticker-sub">En qué se basó:</div>
-                <ul class="tooltip-ticker-lista">${detalle.map(d => `<li>${d}</li>`).join('')}</ul>
-                <div class="tooltip-ticker-sub">Resolviendo estos puntos, el score sube solo.</div>
-            ` : `<div class="tooltip-ticker-sub">Sin descuentos activos — todo en orden.</div>`}
+            <div class="tooltip-ticker-acento"></div>
+            <div class="tooltip-ticker-cuerpo">
+                <div class="tooltip-ticker-titulo">Score de salud: ${data.salud_score}/100 (${data.salud_etiqueta})</div>
+                ${detalle.length ? `
+                    <div class="tooltip-ticker-sub">En qué se basó:</div>
+                    <ul class="tooltip-ticker-lista">${detalle.map(d => `<li>${d}</li>`).join('')}</ul>
+                    <div class="tooltip-ticker-sub">Resolviendo estos puntos, el score sube solo.</div>
+                ` : `<div class="tooltip-ticker-sub">Sin descuentos activos — todo en orden.</div>`}
+            </div>
         `;
     }
     _posicionarTooltipTicker(el, ancla);
@@ -845,16 +915,19 @@ function mostrarTooltipSalud(ancla) {
 function mostrarTooltipVentas(ancla) {
     const data = window._ultimoTickerData;
     const el = _crearTooltipTicker();
-    if (!data) { el.innerHTML = 'Cargando...'; }
+    el.style.removeProperty('--tooltip-acento');
+    if (!data) { el.innerHTML = '<div class="tooltip-ticker-cuerpo">Cargando...</div>'; }
     else {
         const lista = data.ventas_hoy_detalle || [];
         el.innerHTML = `
-            <div class="tooltip-ticker-titulo">Ventas de hoy — $${data.facturado_hoy}</div>
-            ${lista.length ? `
-                <ul class="tooltip-ticker-lista">
-                    ${lista.map(v => `<li>${v.hora} — ${v.cantidad}× ${v.titulo.slice(0, 38)}${v.titulo.length > 38 ? '…' : ''} <strong>$${v.precio_formateado}</strong></li>`).join('')}
-                </ul>
-            ` : `<div class="tooltip-ticker-sub">Todavía no hay ventas registradas hoy.</div>`}
+            <div class="tooltip-ticker-cuerpo">
+                <div class="tooltip-ticker-titulo">Ventas de hoy — $${data.facturado_hoy}</div>
+                ${lista.length ? `
+                    <ul class="tooltip-ticker-lista">
+                        ${lista.map(v => `<li>${v.hora} — ${v.cantidad}× ${v.titulo.slice(0, 38)}${v.titulo.length > 38 ? '…' : ''} <strong>$${v.precio_formateado}</strong></li>`).join('')}
+                    </ul>
+                ` : `<div class="tooltip-ticker-sub">Todavía no hay ventas registradas hoy.</div>`}
+            </div>
         `;
     }
     _posicionarTooltipTicker(el, ancla);
@@ -888,7 +961,8 @@ async function marcarCurvaRota() {
 // con el mouse. También suma comandos de ACCIÓN (no solo ir-a-una-página):
 // esos llevan `accion` (nombre de función global) en vez de `url`.
 const ATAJOS_COMANDO = [
-    { alias: ['stk', 'stock', 'inicio', 'home'], texto: 'Ir a Stock', url: '/' },
+    { alias: ['stk', 'stock'], texto: 'Ir a Stock', url: '/stock' },
+    { alias: ['inicio', 'home'], texto: 'Ir a Inicio', url: '/' },
     { alias: ['masivo', 'stockm'], texto: 'Ir a Stock Masivo', url: '/stock_masivo' },
     { alias: ['desp', 'despacho'], texto: 'Ir a Despacho', url: '/despacho' },
     { alias: ['dash', 'dashboard', 'resumen'], texto: 'Ir a Dashboard', url: '/dashboard' },
@@ -1254,7 +1328,7 @@ async function cargarTabSalud(idMeli) {
         const color = d.porcentaje >= 70 ? 'var(--success)' : (d.porcentaje >= 40 ? 'var(--warning)' : 'var(--danger)');
         const recs = d.recomendaciones.map(r => `<li style="margin-bottom:6px;">${r}</li>`).join('');
         cont.innerHTML = `
-            <div class="page-subtitle" style="margin-bottom:14px;">Puntaje propio calculado localmente — no es el score interno oficial de MeLi.</div>
+            <div class="page-subtitle" style="margin-bottom:14px;">Puntaje estimado por CoreLux, no el oficial de MeLi.</div>
             <div style="height:14px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; margin-bottom:16px;"><div style="height:100%; width:${d.porcentaje}%; background:${color};"></div></div>
             <div class="stat-chip-value" style="margin-bottom:16px;">${d.porcentaje}%</div>
             ${recs ? `<ul style="padding-left:18px;">${recs}</ul>` : '<div class="text-success">¡Sin recomendaciones pendientes!</div>'}
@@ -1365,6 +1439,11 @@ document.addEventListener('DOMContentLoaded', () => {
     envolverIdsCopiables(document.body);
     inicializarComando();
     actualizarTicker();
+    // El HUD fijo solo pedía sus datos AL ABRIRSE — quedaba en "—" 5-6
+    // segundos justo cuando el usuario ya quería verlo. Se precarga acá,
+    // en segundo plano, apenas entra a cualquier pantalla, para que al
+    // hacer click el panel ya tenga los números listos.
+    cargarHud();
     revisarMensajeEnURL();
     marcarCurvaRota();
     cargarOportunidadesSeo();

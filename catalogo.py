@@ -63,7 +63,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
         if talle_real and talle_real != "Único":
             talle_detectado = talle_real
         else:
-            match_talle = re.search(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', titulo, re.IGNORECASE)
+            match_talle = re.search(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', titulo or "", re.IGNORECASE)
             talle_detectado = match_talle.group(0).upper() if match_talle else "Único"
         modelo_clave = limpiar_titulo_modelo(titulo)
 

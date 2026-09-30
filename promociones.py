@@ -117,6 +117,63 @@ def sugerir_candidatos_promocion(cursor, umbral_dias_sin_rotar=20):
     return sugeridos[:8]
 
 
+_TIPOS_CAMPANIA_LEGIBLES = {
+    "MARKETPLACE_CAMPAIGN": "Cofinanciada",
+    "DEAL": "Tradicional",
+    "PRICE_MATCHING": "Precios competitivos",
+    "SMART": "Cofinanciada automática",
+    "LIGHTNING": "Oferta relámpago",
+    "SELLER_COUPON_CAMPAIGN": "Cupón de descuento",
+    "PRE_NEGOTIATED": "Prenegociada",
+}
+_ESTADOS_CAMPANIA_LEGIBLES = {
+    "started": ("En curso", "badge-success"),
+    "active": ("En curso", "badge-success"),
+    "candidate": ("Podés sumarte", "badge-info"),
+    "pending": ("Pendiente de aprobación", "badge-warning"),
+    "finished": ("Finalizada", "badge-neutral"),
+    "rejected": ("Rechazada", "badge-neutral"),
+}
+
+
+def _fecha_campania_legible(iso_str):
+    """MeLi devuelve fechas de campaña como ISO-8601 completo con hora y
+    zona ("2026-09-06T03:50:00Z") — mostrar eso crudo en una tabla es
+    ruido; acá solo interesa el día."""
+    if not iso_str:
+        return None
+    try:
+        return datetime.fromisoformat(str(iso_str).replace("Z", "+00:00")).strftime("%d/%m/%Y")
+    except (ValueError, TypeError):
+        return str(iso_str)[:10]
+
+
+def formatear_campanias_para_vista(campanias):
+    """
+    Traduce los campos crudos de la API de campañas de MeLi (tipos y
+    estados en inglés/códigos internos, fechas ISO completas) a algo
+    legible para la tabla — sin esto la pantalla de Promociones mostraba
+    "started", "SELLER_COUPON_CAMPAIGN" y timestamps con hora tal cual
+    los manda la API.
+    """
+    resultado = []
+    for c in campanias:
+        tipo_raw = c.get("type")
+        estado_raw = c.get("status")
+        estado_texto, estado_clase = _ESTADOS_CAMPANIA_LEGIBLES.get(estado_raw, (estado_raw, "badge-neutral"))
+        benefits = c.get("benefits") or {}
+        resultado.append({
+            "nombre": c.get("name") or c.get("id"),
+            "tipo_texto": _TIPOS_CAMPANIA_LEGIBLES.get(tipo_raw, tipo_raw),
+            "estado_texto": estado_texto, "estado_clase": estado_clase,
+            "vigencia_desde": _fecha_campania_legible(c.get("start_date")),
+            "vigencia_hasta": _fecha_campania_legible(c.get("finish_date")),
+            "meli_percent": benefits.get("meli_percent") if "meli_percent" in benefits else None,
+            "seller_percent": benefits.get("seller_percent") if "meli_percent" in benefits else None,
+        })
+    return resultado
+
+
 def obtener_promociones_usuario(access_token, user_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     try:

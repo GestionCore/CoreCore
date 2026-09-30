@@ -63,7 +63,17 @@ def obtener_horario_corte_hoy(access_token, user_id, logistic_type="drop_off"):
 
 
 def tiene_flex_habilitado(access_token, site_id, user_id):
-    """Chequea si el vendedor tiene una suscripción activa a Mercado Envíos Flex."""
+    """
+    Chequea si el vendedor tiene una suscripción activa a Mercado Envíos
+    Flex. Solo un 404 confirma de verdad "no tiene Flex" — cualquier otro
+    código de error (401/403/429/5xx) o timeout es un problema transitorio
+    de la API, no una respuesta real, así que NO se cachea como "no tiene":
+    antes se cacheaba cualquier respuesta que no fuera 200 como "false" por
+    TTL_SEGUNDOS (6 horas), así que un solo hipo de la API dejaba mostrando
+    el cartel de "no tenés Flex" a un vendedor que sí lo tiene, por horas.
+    Ante la duda (sin cache previo) se asume que SÍ tiene, para no afirmar
+    algo falso — a lo sumo no se muestra un aviso informativo de más.
+    """
     ahora = time.time()
     cacheado = _cache_flex_habilitado.get(user_id)
     if cacheado is not None and (ahora - cacheado["timestamp"]) < TTL_SEGUNDOS:
@@ -72,9 +82,15 @@ def tiene_flex_habilitado(access_token, site_id, user_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
         resp = meli_http.get(f"https://api.mercadolibre.com/shipping/flex/sites/{site_id}/users/{user_id}/subscriptions/v1", headers=headers, timeout=8)
-        habilitado = resp.status_code == 200 and bool(resp.json())
-        _cache_flex_habilitado[user_id] = {"data": habilitado, "timestamp": ahora}
-        return habilitado
+        if resp.status_code == 200:
+            habilitado = bool(resp.json())
+            _cache_flex_habilitado[user_id] = {"data": habilitado, "timestamp": ahora}
+            return habilitado
+        if resp.status_code == 404:
+            _cache_flex_habilitado[user_id] = {"data": False, "timestamp": ahora}
+            return False
+        print(f"[Logística] ⚠️ Respuesta inesperada chequeando Flex: {resp.status_code}")
+        return (cacheado or {}).get("data", True)
     except Exception as e:
         print(f"[Logística] ❌ Error chequeando Flex: {e}")
-        return (cacheado or {}).get("data", False)
+        return (cacheado or {}).get("data", True)

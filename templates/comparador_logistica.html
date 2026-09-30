@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Propia vs FULL · Santi Mens{% endblock %}
+{% block title %}Propia vs FULL · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -9,12 +9,12 @@
 </div>
 
 <div class="alert alert-warning">
-    Compara según la logística ACTUAL de cada publicación — si alguna cambió de Propia a FULL (o al revés) durante el período, las ventas viejas de ese modelo quedan del lado de su logística de hoy, no la de cuando se vendieron.
+    Agrupamos cada venta según la logística que usa la publicación hoy, no la que tenía cuando se vendió. Si cambiaste alguna de Propia a FULL, tenelo en cuenta al leer estos números.
 </div>
 
 {% if cantidad_cargos_almacenamiento == 0 %}
 <div class="alert alert-info">
-    No encontré cargos de almacenamiento prolongado en la facturación de este período — puede ser que no hayas tenido, o que MeLi lo nombre distinto a como lo estoy buscando. Si sabés que tuviste ese cargo este mes, avisame para ajustar la búsqueda.
+    No encontramos cargos de almacenamiento prolongado en este período. Si te parece que falta alguno, contactanos y lo revisamos.
 </div>
 {% endif %}
 

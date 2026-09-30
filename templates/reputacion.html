@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Reputación · Santi Mens{% endblock %}
+{% block title %}Reputación · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -15,13 +15,13 @@
 <div class="panel" style="text-align:center; padding:36px 26px;">
     <div class="stat-chip-label" style="margin-bottom:8px;">Nivel de reputación</div>
     <div class="hero-number
-        {% if rep.nivel_id in ['5_green', '4_light_green'] %}acento-primario{% endif %}"
-        style="{% if rep.nivel_id == '1_red' %}background:none; -webkit-text-fill-color:var(--danger); color:var(--danger);
-               {% elif rep.nivel_id == '2_orange' %}background:none; -webkit-text-fill-color:var(--warning); color:var(--warning);{% endif %}">
+        {% if rep.nivel_id in ['5_green', '4_light_green'] %}acento-primario
+        {% elif rep.nivel_id == '1_red' %}acento-danger
+        {% elif rep.nivel_id == '2_orange' %}acento-warning{% endif %}">
         {{ rep.nivel_nombre.split(' (')[0] }}
     </div>
     {% if rep.power_seller_nombre %}
-    <div style="margin-top:10px;"><span class="badge badge-warning" style="font-size:0.9em;">🏅 Mercado Líder {{ rep.power_seller_nombre }}</span></div>
+    <div style="margin-top:10px;"><span class="badge badge-achieve" style="font-size:0.9em;"><svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"><use href="#icon-trophy"/></svg>Mercado Líder {{ rep.power_seller_nombre }}</span></div>
     {% endif %}
 </div>
 
@@ -40,9 +40,10 @@
             <tbody>
                 <tr><td>Total histórico</td><td class="num">{{ rep.total_transacciones }}</td></tr>
                 <tr><td>Completadas</td><td class="num text-success">{{ rep.completadas }}</td></tr>
-                <tr><td>Canceladas</td><td class="num text-danger">{{ rep.canceladas }}</td></tr>
+                <tr><td>Canceladas / devueltas <span class="text-muted" style="font-size:0.85em;">(número oficial de MeLi)</span></td><td class="num text-danger">{{ rep.canceladas }}</td></tr>
             </tbody>
         </table>
+        <div class="text-muted" style="font-size:0.78em; margin-top:8px;">MeLi agrupa cancelaciones, devoluciones y ventas no completadas en este único número — no las separa ni en su propia API. Abajo tenés el desglose real de lo que CoreLux registró.</div>
     </div>
 
     <div class="panel" style="flex:1; min-width:280px;">
@@ -50,13 +51,27 @@
         <div style="height:200px; position:relative; margin-bottom:14px;"><canvas id="chartCalificaciones"></canvas></div>
         <table class="data-table">
             <tbody>
-                <tr><td>👍 Positivas</td><td class="num text-success">{{ rep.ratings_positivas }}</td></tr>
-                <tr><td>➖ Neutras</td><td class="num">{{ rep.ratings_neutras }}</td></tr>
-                <tr><td>👎 Negativas</td><td class="num text-danger">{{ rep.ratings_negativas }}</td></tr>
+                <tr><td><i class="ue-dot" style="background:var(--success);"></i>Positivas</td><td class="num text-success">{{ rep.ratings_positivas }}</td></tr>
+                <tr><td><i class="ue-dot" style="background:var(--text-faint);"></i>Neutras</td><td class="num">{{ rep.ratings_neutras }}</td></tr>
+                <tr><td><i class="ue-dot" style="background:var(--danger);"></i>Negativas</td><td class="num text-danger">{{ rep.ratings_negativas }}</td></tr>
             </tbody>
         </table>
     </div>
 </div>
+
+{% if incidencias_por_tipo.devoluciones or incidencias_por_tipo.reclamos or incidencias_por_tipo.cancelaciones %}
+<div class="panel">
+    <div class="panel-title">Desglose real: devoluciones, reclamos y cancelaciones</div>
+    <div class="page-subtitle" style="margin-bottom:14px;">
+        A diferencia del número agrupado de MeLi de arriba, esto sí distingue cada tipo — con lo que CoreLux sincronizó desde tu cuenta.
+    </div>
+    <div class="stat-strip">
+        <div class="stat-chip accent-primary"><div class="stat-chip-label">Devoluciones</div><div class="stat-chip-value">{{ incidencias_por_tipo.devoluciones }}</div></div>
+        <div class="stat-chip accent-warning"><div class="stat-chip-label">Reclamos</div><div class="stat-chip-value">{{ incidencias_por_tipo.reclamos }}</div></div>
+        <div class="stat-chip accent-danger"><div class="stat-chip-label">Cancelaciones</div><div class="stat-chip-value">{{ incidencias_por_tipo.cancelaciones }}</div></div>
+    </div>
+</div>
+{% endif %}
 
 {% if rep.reclamos.tasa is not none or rep.demora_en_despacho.tasa is not none or rep.cancelaciones_metrica.tasa is not none %}
 <div class="panel">
@@ -85,9 +100,14 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.Chart) return;
+    const estilo = getComputedStyle(document.documentElement);
+    const cSuccess = estilo.getPropertyValue('--success').trim();
+    const cDanger = estilo.getPropertyValue('--danger').trim();
+    const cGold = estilo.getPropertyValue('--accent-gold').trim();
+    const cTextoSec = estilo.getPropertyValue('--text-secondary').trim();
     const opcionesComunes = {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { color: '#9494b8', usePointStyle: true, pointStyle: 'circle', padding: 12 } } }
+        plugins: { legend: { position: 'bottom', labels: { color: cTextoSec, usePointStyle: true, pointStyle: 'circle', padding: 12 } } }
     };
 
     const ctxTrans = document.getElementById('chartTransacciones');
@@ -98,8 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
         new Chart(ctxTrans, {
             type: 'doughnut',
             data: {
-                labels: ['Completadas', 'Canceladas', 'En curso / otro'],
-                datasets: [{ data: [completadas, canceladas, enCurso], backgroundColor: ['#29e6b0', '#f5486b', '#9494b8'], borderWidth: 0 }]
+                labels: ['Completadas', 'Canceladas / devueltas', 'En curso / otro'],
+                datasets: [{ data: [completadas, canceladas, enCurso], backgroundColor: [cSuccess, cDanger, cTextoSec], borderWidth: 0 }]
             },
             options: opcionesComunes
         });
@@ -113,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 labels: ['Positivas', 'Neutras', 'Negativas'],
                 datasets: [{
                     data: [{{ rep.ratings_positivas }}, {{ rep.ratings_neutras }}, {{ rep.ratings_negativas }}],
-                    backgroundColor: ['#29e6b0', '#ffd93d', '#f5486b'], borderWidth: 0
+                    backgroundColor: [cSuccess, cGold, cDanger], borderWidth: 0
                 }]
             },
             options: opcionesComunes

@@ -24,3 +24,10 @@ CREATE TABLE IF NOT EXISTS referrals (
 
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_codigo ON referrals(codigo);
+
+-- GRANT explícito — mismo patrón encontrado en producción con otras
+-- tablas de este mismo lote de migraciones (navegacion_visitas,
+-- tendencias_seguimiento, alertas_usuario): sin esto, "permission
+-- denied for table referrals" para el rol real de la app.
+GRANT SELECT, INSERT, UPDATE, DELETE ON referrals TO app_backend;
+GRANT USAGE, SELECT ON referrals_id_seq TO app_backend;

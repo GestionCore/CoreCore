@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Reporte Fiscal · Santi Mens{% endblock %}
+{% block title %}Reporte Fiscal · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
@@ -23,8 +23,8 @@
 
 <div class="alert alert-info">
     <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-info"/></svg>
-    Los montos de <strong>Ganancia Neta Estimada</strong> no incluyen Publicidad (Ads) — ese desglose está en la pantalla de Publicidad. El costo de fabricación es una estimación basada en el costo actual cargado por producto.
-    Siempre confirmá los números con tu contador antes de presentar algo a AFIP.
+    Los montos de <strong>Ganancia Neta Estimada</strong> no incluyen Publicidad (ese desglose está en la pantalla de Publicidad), y el costo de fabricación es el que tenés cargado hoy por producto.<br>
+    Antes de presentar algo a AFIP, siempre conviene confirmar los números con tu contador.
 </div>
 
 <div class="stat-strip" style="margin-bottom:20px;">
@@ -33,7 +33,7 @@
         <div class="stat-chip-value">${{ totales.facturacion_f }}</div>
         <div class="stat-chip-desc">{{ totales.ordenes }} órdenes</div>
     </div>
-    <div class="stat-chip" style="border-color:var(--semantic-danger);">
+    <div class="stat-chip" style="border-color:var(--danger);">
         <div class="stat-chip-label">Total cargos MeLi</div>
         <div class="stat-chip-value text-danger">${{ totales.cargos_totales_f }}</div>
         <div class="stat-chip-desc">Comisiones + envíos</div>
@@ -42,7 +42,7 @@
         <div class="stat-chip-label">Gastos operativos</div>
         <div class="stat-chip-value" style="color:var(--semantic-warning);">${{ totales.gastos_f }}</div>
     </div>
-    <div class="stat-chip {% if totales.ganancia_estimada >= 0 %}accent-success{% endif %}" {% if totales.ganancia_estimada < 0 %}style="border-color:var(--semantic-danger);"{% endif %}>
+    <div class="stat-chip {% if totales.ganancia_estimada >= 0 %}accent-success{% endif %}" {% if totales.ganancia_estimada < 0 %}style="border-color:var(--danger);"{% endif %}>
         <div class="stat-chip-label">Ganancia estimada anual</div>
         <div class="stat-chip-value {% if totales.ganancia_estimada >= 0 %}text-success{% else %}text-danger{% endif %}">${{ totales.ganancia_f }}</div>
         <div class="stat-chip-desc">Sin Ads</div>

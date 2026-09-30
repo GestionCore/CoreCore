@@ -134,6 +134,11 @@ def _inyectar_nav_grupos():
     return {"nav_grupos": nav_config.GRUPOS_NAV}
 
 
+@app.context_processor
+def _inyectar_anio_actual():
+    return {"anio_actual": datetime.now().year}
+
+
 @app.after_request
 def _trackear_navegacion(response):
     """
@@ -197,11 +202,35 @@ def landing():
         cursor = conexion.cursor()
         cursor.execute("SELECT pantalla_preferida FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila_pref = cursor.fetchone()
+    # Reenviamos los query params (ej. ?msg=...&tipo=... de un toast) en
+    # este redirect interno — si no, un mensaje armado para "/" se perdía
+    # en el salto automático a la pantalla preferida (dashboard/métricas),
+    # que nunca llegaba a leerlo.
     if fila_pref and fila_pref[0] == "dashboard":
-        return redirect(url_for("dashboard_personalizable"))
+        return redirect(url_for("dashboard_personalizable", **request.args))
     if fila_pref and fila_pref[0] == "metricas":
-        return redirect(url_for("metricas_vista"))
+        return redirect(url_for("metricas_vista", **request.args))
 
+    productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id, g.cuenta_id)
+    return render_template("index.html", productos=productos, stats=stats, active_nav="stock")
+
+
+@app.route("/stock")
+@login_requerido
+def stock_vista():
+    """
+    Página fija de Stock — separada de "/" a propósito. "/" ("landing")
+    hace un redirect "inteligente" según `pantalla_preferida` (puede
+    mandar a Dashboard o a Métricas en vez de mostrar Stock), así que el
+    link "Stock" del nav no puede apuntar ahí: si el usuario eligió
+    Dashboard como pantalla preferida en el onboarding, cada click en
+    "Stock" terminaba devolviéndolo al Dashboard en vez de mostrar el
+    catálogo. Esta ruta siempre muestra Stock, sin importar la preferencia.
+    """
+    try:
+        token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return redirect(url_for("reconectar"))
     productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id, g.cuenta_id)
     return render_template("index.html", productos=productos, stats=stats, active_nav="stock")
 
@@ -312,29 +341,166 @@ def conectar():
     return redirect(oauth_meli.construir_url_autorizacion(state))
 
 
+@app.route("/conectar_otra_cuenta")
+@login_requerido
+def conectar_otra_cuenta():
+    """
+    Arranca el mismo flujo de OAuth que /conectar, pero marcado para que
+    /callback sepa que hay que VINCULAR la cuenta de MeLi que autorice al
+    usuario ya logueado (registro.vincular_cuenta_adicional), en vez de
+    tratarlo como un login nuevo — así es como un usuario Elite conecta
+    su segunda (o tercera...) cuenta sin desloguearse.
+
+    Solo plan Elite: el límite "Base = 1 cuenta" no tenía enforcement
+    real en el backend antes de esto — lo agregamos acá mismo, en el
+    único punto de entrada que puede sumar una cuenta.
+
+    El link de autorización que se muestra abajo funciona en CUALQUIER
+    navegador/ventana/dispositivo, no solo en este — ver la nota larga
+    en migrations/0013 sobre por qué hacía falta sacar esto de la cookie
+    de sesión. Mercado Libre no te deja elegir cuenta en su propio login
+    si ya hay una sesión de MeLi activa en el navegador; por eso se
+    ofrece copiar el link para abrirlo en otro lado en vez de mandar
+    directo.
+    """
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT plan FROM usuarios WHERE id = %s", (g.usuario_id,))
+        fila = cursor.fetchone()
+    if not fila or fila[0] != "elite":
+        from urllib.parse import urlencode
+        return redirect(f"/planes?{urlencode({'msg': 'Conectar más de una cuenta es una función del Plan Elite.', 'tipo': 'info'})}")
+
+    state = oauth_meli.generar_state()
+    session["oauth_state"] = state
+    session["vinculando_cuenta_extra"] = True
+    with db.conexion_usuario(g.usuario_id) as conexion:
+        cursor = conexion.cursor()
+        # Purga oportunista de intentos viejos abandonados (>15 min) —
+        # no hace falta un cron aparte para una tabla tan chica.
+        cursor.execute("DELETE FROM oauth_vinculaciones_pendientes WHERE creado_en < now() - interval '15 minutes'")
+        cursor.execute("INSERT INTO oauth_vinculaciones_pendientes (state, usuario_id) VALUES (%s, %s)", (state, g.usuario_id))
+
+    url_autorizacion = oauth_meli.construir_url_autorizacion(state)
+    return render_template("conectar_otra_cuenta.html", url_autorizacion=url_autorizacion)
+
+
+MOTIVO_USUARIO_CANCELO = "usuario_cancelo"
+MOTIVO_INTENTO_VENCIDO = "intento_vencido"
+MOTIVO_GENERICO = "generico"
+MOTIVO_CUENTA_YA_VINCULADA = "cuenta_ya_vinculada"
+
+
 @app.route("/callback")
 def callback():
-    """MeLi redirige acá después de que el usuario aprueba (o rechaza) el permiso."""
+    """MeLi redirige acá después de que el usuario aprueba (o rechaza) el permiso.
+
+    El detalle técnico de cada falla (código HTTP, cuerpo de la respuesta,
+    nombres de parámetros OAuth) se loguea server-side para debug, pero
+    nunca se le muestra al usuario — error_conexion.html solo recibe una
+    categoría, y decide ella misma qué mensaje mostrar.
+    """
     error = request.args.get("error")
     if error:
-        return render_template("error_conexion.html", motivo=f"Mercado Libre informó un error: {error}")
+        app.logger.warning("Callback OAuth: MeLi devolvió error=%s", error)
+        return render_template("error_conexion.html", motivo=MOTIVO_USUARIO_CANCELO)
 
     code = request.args.get("code")
     state_recibido = request.args.get("state")
     state_esperado = session.pop("oauth_state", None)
 
     if not code:
-        return render_template("error_conexion.html", motivo="No llegó el código de autorización.")
-    if not state_esperado or state_recibido != state_esperado:
-        return render_template("error_conexion.html", motivo="El parámetro de seguridad (state) no coincide — por las dudas, volvé a intentar conectar.")
+        app.logger.warning("Callback OAuth: no llegó 'code' en la URL de vuelta.")
+        return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
+
+    # El state puede validarse de DOS formas: contra la cookie de sesión
+    # de ESTE navegador (login normal, o "agregar cuenta" completado en
+    # el mismo navegador) — o contra una vinculación pendiente guardada
+    # en la base por /conectar_otra_cuenta, que es justamente lo que
+    # permite completar el login de MeLi en OTRO navegador/ventana/
+    # dispositivo sin cookie de sesión de CoreLux (ver migrations/0013).
+    # El propio state (aleatorio, de un solo uso) es la prueba en ambos
+    # casos — no se necesita la cookie si el state matchea esa tabla.
+    usuario_id_vinculacion_pendiente = None
+    if state_recibido and state_recibido != state_esperado:
+        with db.conexion_admin() as conexion:
+            cursor = conexion.cursor()
+            cursor.execute(
+                "DELETE FROM oauth_vinculaciones_pendientes WHERE state = %s AND creado_en > now() - interval '15 minutes' RETURNING usuario_id",
+                (state_recibido,)
+            )
+            fila = cursor.fetchone()
+        if fila:
+            usuario_id_vinculacion_pendiente = fila[0]
+
+    state_valido = (state_esperado and state_recibido == state_esperado) or usuario_id_vinculacion_pendiente is not None
+    if not state_valido:
+        app.logger.warning("Callback OAuth: state no coincide (esperado=%s, recibido=%s).", bool(state_esperado), bool(state_recibido))
+        return render_template("error_conexion.html", motivo=MOTIVO_INTENTO_VENCIDO)
 
     ok, resultado = oauth_meli.intercambiar_codigo_por_token(code)
     if not ok:
-        return render_template("error_conexion.html", motivo=resultado)
+        app.logger.warning("Callback OAuth: falló el intercambio de código — %s", resultado)
+        return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
 
     ok_datos, datos_meli = oauth_meli.obtener_datos_usuario_meli(resultado["access_token"])
     if not ok_datos:
-        return render_template("error_conexion.html", motivo=datos_meli)
+        app.logger.warning("Callback OAuth: falló la consulta de datos del usuario — %s", datos_meli)
+        return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
+
+    # Si venimos de "Agregar otra cuenta" (/conectar_otra_cuenta), esta
+    # autorización se vincula al usuario_id ya logueado en vez de crear
+    # un usuario nuevo — así es como funciona el multi-cuenta de Plan
+    # Elite. El usuario_id sale de la vinculación pendiente en la base
+    # cuando existe (funciona sin importar en qué navegador se completó
+    # el login de MeLi); si no, cae al flag de sesión de siempre (mismo
+    # navegador).
+    if usuario_id_vinculacion_pendiente is not None:
+        vinculando = True
+        usuario_id_actual = usuario_id_vinculacion_pendiente
+    else:
+        vinculando = session.pop("vinculando_cuenta_extra", False)
+        usuario_id_actual = session.get("usuario_id")
+
+    if vinculando and usuario_id_actual:
+        from urllib.parse import urlencode
+        cuenta_id, resultado_vinculo = registro.vincular_cuenta_adicional(usuario_id_actual, datos_meli)
+        if resultado_vinculo == "ya_de_otro_usuario":
+            app.logger.warning("Callback OAuth: intento de vincular meli_user_id=%s, ya pertenece a otro usuario.", datos_meli.get("meli_user_id"))
+            return render_template("error_conexion.html", motivo=MOTIVO_CUENTA_YA_VINCULADA)
+
+        token_manager.guardar_tokens(
+            cuenta_id, resultado["access_token"], resultado["refresh_token"], resultado["expires_in"]
+        )
+        # Activa la cuenta recién vinculada — si ya tenía datos de una
+        # sincronización previa (reconexión), login_requerido la deja pasar
+        # directo; si es nueva, va a mostrarle sincronizando.html sola.
+        iniciar_sesion(usuario_id_actual, cuenta_id)
+
+        if resultado_vinculo == "reconectada":
+            # El navegador ya tenía una sesión activa en mercadolibre.com
+            # con la MISMA cuenta que ya estaba conectada acá — MeLi no
+            # muestra selector de cuenta si ya hay una sesión, así que el
+            # OAuth "autoriza" la misma de siempre en vez de una distinta.
+            # Antes esto redirigía en silencio al Dashboard sin avisar
+            # nada — se sentía como que el botón no hacía nada. Este
+            # mensaje explica lo que pasó y cómo conectar una cuenta
+            # REALMENTE distinta.
+            msg = "Esa cuenta de Mercado Libre ya estaba conectada a tu usuario — no se agregó ninguna nueva. Para sumar una cuenta distinta, primero cerrá sesión en mercadolibre.com (o usá una ventana privada) y volvé a intentar."
+            return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': 'info'})}")
+
+        try:
+            from tasks.sync_tasks import sincronizar_todo_task
+            sincronizar_todo_task.delay(usuario_id_actual, cuenta_id)
+        except Exception:
+            import threading
+            threading.Thread(
+                target=sincronizador.sincronizar_todo,
+                args=(usuario_id_actual, cuenta_id),
+                daemon=True,
+            ).start()
+        msg = f"¡Cuenta {datos_meli.get('nickname') or ''} conectada! Ya podés cambiar entre tus cuentas desde el selector del menú.".replace("  ", " ")
+        return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': 'success'})}")
 
     usuario_id, cuenta_id, es_nuevo = registro.crear_o_actualizar_login(datos_meli)
 
@@ -449,7 +615,16 @@ def api_hoy():
 @app.route("/api/ticker")
 @login_requerido
 def api_ticker():
-    return jsonify(dashboard_mod.obtener_ticker(g.usuario_id, g.cuenta_id))
+    # Este ticker vive en el nav de TODAS las páginas — si esto tira sin
+    # capturar, el pill de arriba queda con el efecto skeleton (el
+    # "círculo"/franja que se supone brilla mientras carga) trabado para
+    # siempre, porque el JS de global.js no tenía manejo de error: solo
+    # logueaba en consola y dejaba el elemento tal cual estaba.
+    try:
+        return jsonify(dashboard_mod.obtener_ticker(g.usuario_id, g.cuenta_id))
+    except Exception as e:
+        print(f"[Dashboard] ⚠️ Error armando el ticker: {e}")
+        return jsonify(None), 502
 
 
 @app.route("/api/quiebre_stock")
@@ -876,6 +1051,8 @@ def promociones_vista():
 
     campanias = promociones_mod.obtener_promociones_usuario(access_token, seller_id) if seller_id else []
     campanias_activas = [c for c in campanias if c.get("status") in ("started", "active")]
+    campanias_vista = promociones_mod.formatear_campanias_para_vista(campanias_activas)
+    hay_cofinanciamiento = any(c["meli_percent"] is not None for c in campanias_vista)
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -898,7 +1075,7 @@ def promociones_vista():
         promociones_por_vencer = promociones_mod.obtener_promociones_por_vencer(cursor)
 
     return render_template(
-        "promociones.html", campanias=campanias_activas, con_descuento=con_descuento,
+        "promociones.html", campanias=campanias_vista, hay_cofinanciamiento=hay_cofinanciamiento, con_descuento=con_descuento,
         catalogo=catalogo_promo, ofertas_relampago=[], combos_sugeridos=combos_sugeridos,
         impacto_promociones=impacto_promociones, sugerencias_promocion=sugerencias_promocion,
         promociones_por_vencer=promociones_por_vencer, active_nav="promociones"
@@ -955,36 +1132,45 @@ def tendencias_vista():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        category_id, categoria_nombre = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            category_id, categoria_nombre = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
 
-        lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id)
-        relevantes = [t for t in lista if t.get("relevante")]
-        resto = [] if category_id else [t for t in lista if not t.get("relevante")]
+            lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id)
+            relevantes = [t for t in lista if t.get("relevante")]
+            resto = [] if category_id else [t for t in lista if not t.get("relevante")]
 
-        oportunidades = tendencias_mod.cruzar_tendencias_con_catalogo(relevantes, cursor)
-        terminos_oportunidad = {o["termino"]: o for o in oportunidades}
+            oportunidades = tendencias_mod.cruzar_tendencias_con_catalogo(relevantes, cursor)
+            terminos_oportunidad = {o["termino"]: o for o in oportunidades}
 
-        canibalismo = tendencias_mod.detectar_canibalismo(cursor)
+            canibalismo = tendencias_mod.detectar_canibalismo(cursor)
 
-        keywords_de_hoy = [t.get("keyword") for t in lista if t.get("keyword")]
-        emergentes = tendencias_mod.registrar_y_detectar_emergentes(cursor, g.cuenta_id, keywords_de_hoy)
+            keywords_de_hoy = [t.get("keyword") for t in lista if t.get("keyword")]
+            emergentes = tendencias_mod.registrar_y_detectar_emergentes(cursor, g.cuenta_id, keywords_de_hoy)
 
-        seo_scores = tendencias_mod.calcular_seo_scores_catalogo(cursor, relevantes)
-        coincide_con_competencia = tendencias_mod.cruzar_tendencias_con_competencia(relevantes, cursor)
-        calendario_estacional = tendencias_mod.obtener_calendario_estacional()
+            seo_scores = tendencias_mod.calcular_seo_scores_catalogo(cursor, relevantes)
+            coincide_con_competencia = tendencias_mod.cruzar_tendencias_con_competencia(relevantes, cursor)
+            calendario_estacional = tendencias_mod.obtener_calendario_estacional()
 
-        # Aseguramos que la categoría principal quede en seguimiento
-        # automático — así el resumen de arriba y la alerta de Logros
-        # tienen algo para comparar apenas empiecen a acumularse
-        # snapshots (el primer día no hay historial todavía, es honesto).
-        tendencias_mod.asegurar_seguimiento_categoria_principal(cursor, g.cuenta_id, category_id, categoria_nombre)
-        seguimientos = tendencias_mod.listar_seguimientos_con_historial(cursor, g.cuenta_id)
+            # Aseguramos que la categoría principal quede en seguimiento
+            # automático — así el resumen de arriba y la alerta de Logros
+            # tienen algo para comparar apenas empiecen a acumularse
+            # snapshots (el primer día no hay historial todavía, es honesto).
+            tendencias_mod.asegurar_seguimiento_categoria_principal(cursor, g.cuenta_id, category_id, categoria_nombre)
+            seguimientos = tendencias_mod.listar_seguimientos_con_historial(cursor, g.cuenta_id)
 
-        analisis_categoria_principal = None
-        if category_id:
-            analisis_categoria_principal = tendencias_mod.explorar_demanda(access_token, category_id=category_id)
+            analisis_categoria_principal = None
+            if category_id:
+                analisis_categoria_principal = tendencias_mod.explorar_demanda(access_token, category_id=category_id)
+    except Exception as e:
+        # Esta ruta encadena ~10 pasos (categoría, tendencias de MeLi,
+        # cruces con catálogo/competencia, seguimiento histórico) — con
+        # todo eso sin red de contención, cualquier tropiezo puntual (un
+        # dato inesperado, un hipo de la API de MeLi) tumbaba la página
+        # entera con un 500 crudo. Mejor avisar y dejar reintentar.
+        print(f"[Tendencias] ❌ Error armando la página: {e}")
+        return "No pudimos armar la página de Tendencias ahora mismo. Probá recargar en un rato — si sigue pasando, avisanos.", 502
 
     for t in relevantes:
         opo = terminos_oportunidad.get(t.get("keyword"))
@@ -1095,9 +1281,13 @@ def logros_vista():
     except token_manager.CuentaDesconectada:
         pass
 
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        resultado = logros_mod.obtener_logros(cursor, g.cuenta_id, headers)
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            resultado = logros_mod.obtener_logros(cursor, g.cuenta_id, headers)
+    except Exception as e:
+        print(f"[Logros] ❌ Error armando la página: {e}")
+        return "No pudimos armar la página de Logros ahora mismo. Probá recargar en un rato — si sigue pasando, avisanos.", 502
 
     conteo_por_prioridad = {"urgente": 0, "importante": 0, "opcional": 0}
     for m in resultado["misiones"]:
@@ -1146,7 +1336,24 @@ def reputacion_vista():
         return "No se encontró tu cuenta.", 401
 
     datos = reputacion_mod.obtener_reputacion(access_token, fila[0])
-    return render_template("reputacion.html", rep=datos, active_nav="reputacion")
+
+    # MeLi solo expone un número agregado de "canceladas" en su reputación
+    # oficial (agrupa cancelaciones, devoluciones y ventas no completadas
+    # en un solo bucket — no lo separan ni en su propia API). Acá SÍ
+    # tenemos el desglose real, porque incidencias_posventa lo trackea
+    # por tipo desde que arrancamos a sincronizarlo (devoluciones_sync.py)
+    # — se muestra como un panel aparte, no mezclado con el número
+    # oficial de MeLi, porque cubren ventanas de tiempo distintas.
+    incidencias_por_tipo = {"devoluciones": 0, "reclamos": 0, "cancelaciones": 0}
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT tipo, COUNT(*) FROM incidencias_posventa GROUP BY tipo")
+        conteo_tipo = dict(cursor.fetchall())
+    incidencias_por_tipo["devoluciones"] = conteo_tipo.get("return", 0)
+    incidencias_por_tipo["reclamos"] = conteo_tipo.get("claim", 0)
+    incidencias_por_tipo["cancelaciones"] = conteo_tipo.get("cancelacion", 0)
+
+    return render_template("reputacion.html", rep=datos, incidencias_por_tipo=incidencias_por_tipo, active_nav="reputacion")
 
 
 @app.route("/competencia")
@@ -1294,10 +1501,10 @@ def onboarding_vista():
 @app.route("/onboarding/guardar", methods=["POST"])
 @login_requerido
 def onboarding_guardar():
-    prioridad = request.form.get("prioridad_principal")
+    prioridades = request.form.getlist("prioridad_principal")
     experiencia = request.form.get("experiencia_meli")
     pantalla = request.form.get("pantalla_preferida")
-    ok = onboarding.guardar_respuestas(g.usuario_id, prioridad, experiencia, pantalla)
+    ok = onboarding.guardar_respuestas(g.usuario_id, prioridades, experiencia, pantalla)
     if not ok:
         return render_template(
             "onboarding.html", opciones_prioridad=onboarding.OPCIONES_PRIORIDAD,
@@ -1444,10 +1651,10 @@ def api_costos_chat():
 @login_requerido
 def api_costos_chat_confirmar():
     datos = request.get_json(silent=True) or {}
-    propuesta = datos.get("propuesta")
-    if not propuesta:
+    propuestas = datos.get("propuestas")
+    if not propuestas:
         return jsonify({"ok": False, "error": "Falta la propuesta."}), 400
-    ok, mensaje = costos_chat.confirmar_y_guardar(g.usuario_id, g.cuenta_id, propuesta)
+    ok, mensaje = costos_chat.confirmar_y_guardar(g.usuario_id, g.cuenta_id, propuestas)
     return jsonify({"ok": ok, "error": None if ok else mensaje})
 
 
@@ -1718,7 +1925,12 @@ def despacho_vista():
         flex_habilitado = logistica.tiene_flex_habilitado(access_token, "MLA", seller_id)
 
     offset_horas = 24 - hora_corte
-    paquetes, total, listos, cantidad_shipments = despacho_mod.obtener_paquetes_del_dia(g.usuario_id, g.cuenta_id, access_token, fecha, offset_horas)
+    paquetes, total, listos, cantidad_shipments, tiene_flex = despacho_mod.obtener_paquetes_del_dia(g.usuario_id, g.cuenta_id, access_token, fecha, offset_horas)
+    # El chequeo de la API de "¿tenés Flex?" puede fallar por un hipo
+    # transitorio y quedar cacheado horas (ver logistica.py) — si hoy
+    # mismo hay al menos un envío real de Flex en la lista, eso pesa más
+    # que la respuesta de esa API: es evidencia directa de que sí lo tiene.
+    flex_habilitado = flex_habilitado or tiene_flex
 
     return render_template(
         "despacho.html", paquetes=paquetes, fecha=fecha, total=total, listos=listos,
@@ -1820,10 +2032,15 @@ def api_calculadora_buscar_categoria():
         headers = {}
     try:
         # Búsqueda por dominio/keyword (devuelve las categorías con mejor score semántico)
+        # OJO: este endpoint de MeLi rechaza con 400 cualquier "limit" fuera
+        # de 1-8 (a diferencia de la mayoría de sus otros endpoints, que
+        # toleran hasta 50) — con 10 esta búsqueda fallaba SIEMPRE de forma
+        # silenciosa (cae al fallback, que es mucho menos preciso) para
+        # cualquier término, no solo los nuevos.
         resp = meli_http.get(
             "https://api.mercadolibre.com/sites/MLA/domain_discovery/search",
             headers=headers,
-            params={"q": q, "limit": 10},
+            params={"q": q, "limit": 8},
         )
         resultados = []
         if resp.status_code == 200:
@@ -1849,6 +2066,20 @@ def api_calculadora_buscar_categoria():
                         for v in (f.get("values") or [])[:8]:
                             if v.get("id"):
                                 resultados.append({"id": v["id"], "nombre": v.get("name", v["id"])})
+        if not resultados:
+            # Último fallback, sin depender de ningún endpoint "inteligente"
+            # de MeLi (domain_discovery/search predictor pueden no devolver
+            # nada para un término genérico de una sola palabra, tipo
+            # "ropa" — no son buscadores de categorías, son predictores de
+            # categoría a partir de un título de publicación completo):
+            # match por texto contra las ~30 categorías raíz de MeLi, que
+            # cubre exactamente ese caso ("ropa" → "Ropa y Accesorios").
+            q_lower = q.lower()
+            palabras_q = set(q_lower.split())
+            for c in tendencias_mod.obtener_categorias_raiz():
+                nombre_lower = c["nombre"].lower()
+                if q_lower in nombre_lower or palabras_q & set(nombre_lower.split()):
+                    resultados.append({"id": c["id"], "nombre": c["nombre"]})
         return jsonify(resultados[:10])
     except Exception as e:
         print(f"[Calculadora] Error buscando categoría: {e}")

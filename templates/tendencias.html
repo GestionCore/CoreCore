@@ -8,7 +8,7 @@
             {% if categoria_nombre %}
                 Radar de <strong>{{ categoria_nombre }}</strong> + explorador de demanda de cualquier categoría de Mercado Libre
             {% else %}
-                No pude detectar tu categoría — filtrando por palabras clave de indumentaria
+                No identificamos tu categoría todavía — por ahora filtramos por palabras clave de indumentaria
             {% endif %}
         </div>
     </div>
@@ -142,7 +142,7 @@
 <div class="panel" data-mostrar-mas-scope>
     <div class="panel-title"><svg class="icon"><use href="#icon-edit"/></svg> Score de SEO por publicación</div>
     <div class="page-subtitle" style="margin-bottom:14px;">
-        Qué tan bien aprovechado está cada título para la búsqueda — no es una caja negra, cada punto tiene una razón concreta.
+        Qué tan bien aprovechado está cada título para la búsqueda — cada punto de este puntaje tiene una razón concreta, así sabés exactamente qué mejorar.
     </div>
     {% for s in seo_scores %}
     <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="padding:14px 0; border-bottom:1px solid var(--border-soft);">
@@ -229,7 +229,7 @@
 </div>
 {% endif %}
 {% else %}
-<div class="page-subtitle">📡 El radar de tendencias oficiales de MeLi no tiene datos disponibles ahora mismo para tu categoría — usá el Análisis de Categoría y Demanda de arriba, que no depende de eso.</div>
+<div class="page-subtitle"><svg class="icon" style="width:14px;height:14px;vertical-align:middle;margin-right:5px;"><use href="#icon-info"/></svg>El radar de tendencias oficiales de MeLi no tiene datos disponibles ahora mismo para tu categoría — usá el Análisis de Categoría y Demanda de arriba, que no depende de eso.</div>
 {% endif %}
 
 {% if canibalismo %}
@@ -254,7 +254,7 @@
 </div>
 {% endif %}
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 // ── Sparklines de los seguimientos con historial suficiente ─────────────────
 (function () {
@@ -466,7 +466,7 @@ function abrirEstimadorMargen(categoryId, precioSugerido) {
     const cont = document.getElementById('estimador-margen-cont');
     cont.innerHTML = `
         <div style="background:rgba(255,255,255,0.03); border-radius:10px; padding:14px 16px; margin-bottom:18px;">
-            <div class="page-subtitle" style="margin-bottom:10px;">¿Cuánto te quedaría vendiendo a este precio? Metele tu costo de fabricación estimado — esto ni Nubimetrics ni Real Trends te lo pueden calcular, no tienen tu estructura de costos.</div>
+            <div class="page-subtitle" style="margin-bottom:10px;">¿Cuánto te quedaría vendiendo a este precio? Metele tu costo de fabricación estimado — esto no lo calcula ninguna herramienta externa, depende de tu estructura de costos, que solo vos conocés.</div>
             <div class="filter-row" style="align-items:flex-end;">
                 <div class="field-group" style="max-width:160px;">
                     <label class="field-label">Precio de venta</label>
