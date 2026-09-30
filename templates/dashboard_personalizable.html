@@ -480,10 +480,11 @@
         }
         if (ticker.status === 'fulfilled' && ticker.value) {
             const d = ticker.value;
-            const inc = d.incidencias_activas || 0;
+            const inc = d.incidencias_activas || 0, dev = d.devoluciones_activas || 0;
+            const notaDev = dev > 0 ? ` · ${dev} ${dev === 1 ? 'devolución' : 'devoluciones'} por gestionar` : '';
             _pintarKpi('kpi-reclamos', {
-                tono: inc > 0 ? 'danger' : 'ok', valor: String(inc),
-                subHtml: inc > 0 ? '<b>Resolvelos</b> para proteger tu reputación' : 'Sin reclamos ni devoluciones abiertas',
+                tono: inc > 0 ? 'danger' : (dev > 0 ? 'warn' : 'ok'), valor: String(inc),
+                subHtml: inc > 0 ? `<b>Resolvelos</b> para proteger tu reputación${notaDev}` : (dev > 0 ? `Sin reclamos abiertos${notaDev}` : 'Sin reclamos ni devoluciones abiertas'),
             });
             const score = d.salud_score;
             _pintarKpi('kpi-salud', {

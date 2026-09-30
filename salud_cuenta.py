@@ -7,12 +7,13 @@ def calcular_score_salud(cursor):
     score = 100
     detalle = []
 
-    cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved')")
+    # Solo los reclamos reales ('claim') restan: una devolución o una cancelación no afectan la reputación
+    cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved') AND tipo = 'claim'")
     reclamos_activos = cursor.fetchone()[0] or 0
     if reclamos_activos > 0:
         resta = min(reclamos_activos * 15, 45)
         score -= resta
-        detalle.append(f"-{resta} por {reclamos_activos} reclamo(s)/devolución(es) activa(s)")
+        detalle.append(f"-{resta} por {reclamos_activos} reclamo(s) activo(s)")
 
     cursor.execute("""
         SELECT COALESCE(v.stock_propio,0) + COALESCE(v.stock_full,0) as stock_talle

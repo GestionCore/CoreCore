@@ -72,18 +72,32 @@ def _detectar_misiones_base(cursor, cuenta_id):
         _rollback_seguro(cursor)
 
     try:
-        cursor.execute("SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND tipo != 'cancelacion'")
+        cursor.execute("SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND tipo = 'claim'")
         cant_reclamos, monto_retenido = cursor.fetchone()
         if cant_reclamos > 0:
             monto_retenido_fmt = f"{float(monto_retenido):,.0f}".replace(",", ".")
             misiones.append({
                 "id": "reclamos_abiertos", "categoria": "reclamos", "icono": "⚠️", "prioridad": "urgente" if cant_reclamos >= 3 else "importante",
-                "titulo": f"{cant_reclamos} reclamo(s)/devolución(es) sin resolver",
+                "titulo": f"{cant_reclamos} reclamo(s) sin resolver",
                 "descripcion": (f"Hay ${monto_retenido_fmt} retenidos esperando resolución — cada día que pasa sin responder puede sumar a tu reputación negativa." if monto_retenido else "Cada día que pasa sin responder puede sumar a tu reputación negativa."),
                 "link": "/metricas", "link_texto": "Ver reclamos"
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error detectando reclamos abiertos: {e}")
+        _rollback_seguro(cursor)
+
+    try:
+        cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND tipo = 'return'")
+        cant_devoluciones = cursor.fetchone()[0] or 0
+        if cant_devoluciones > 0:
+            misiones.append({
+                "id": "devoluciones_abiertas", "categoria": "reclamos", "icono": "↩️", "prioridad": "importante" if cant_devoluciones >= 3 else "opcional",
+                "titulo": f"{cant_devoluciones} devolución(es) por gestionar",
+                "descripcion": "Por sí solas no cuentan como un reclamo, pero conviene resolverlas a tiempo: una devolución sin gestionar puede terminar en reclamo.",
+                "link": "/metricas#seccion-reclamos", "link_texto": "Ver devoluciones"
+            })
+    except Exception as e:
+        print(f"[Logros] ⚠️ Error detectando devoluciones abiertas: {e}")
         _rollback_seguro(cursor)
 
     try:

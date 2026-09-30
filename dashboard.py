@@ -112,10 +112,14 @@ def obtener_ticker(usuario_id, cuenta_id=None):
             hora_str = h.strftime("%H:%M") if hasattr(h, "strftime") else (h or "")[:5]
             ventas_hoy_detalle.append({"titulo": t, "cantidad": c, "precio_formateado": formatear_moneda(p), "hora": hora_str})
 
-        # Mismo criterio que Logros ("reclamos/devoluciones sin resolver"): una cancelación no es algo
-        # que el vendedor tenga que resolver — sin esto el header decía 9 y Logros 8 para lo mismo.
-        cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved') AND tipo != 'cancelacion'")
-        incidencias_activas = cursor.fetchone()[0] or 0
+        # Reclamos y devoluciones se cuentan POR SEPARADO (lo pidió el usuario: una devolución simple no es un
+        # reclamo). Solo un reclamo real ('claim') puede afectar la reputación; una devolución es gestión del día a día.
+        # Las cancelaciones no son nada que el vendedor tenga que resolver.
+        cursor.execute("""
+            SELECT COALESCE(SUM((tipo = 'claim')::int), 0), COALESCE(SUM((tipo = 'return')::int), 0)
+            FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved')
+        """)
+        incidencias_activas, devoluciones_activas = (int(x or 0) for x in cursor.fetchone())
 
         salud = salud_cuenta.calcular_score_salud(cursor)
 
@@ -133,7 +137,7 @@ def obtener_ticker(usuario_id, cuenta_id=None):
     return {
         "ventas_hoy": ord_hoy, "facturado_hoy": formatear_moneda(fact_hoy),
         "liberacion_manana": formatear_moneda(liberacion_manana), "bridge_activo": False,
-        "incidencias_activas": incidencias_activas, "salud_score": salud["score"], "racha_dias": racha_dias,
+        "incidencias_activas": incidencias_activas, "devoluciones_activas": devoluciones_activas, "salud_score": salud["score"], "racha_dias": racha_dias,
         "salud_etiqueta": salud["etiqueta"], "salud_detalle": salud["detalle"],
         "ventas_hoy_detalle": ventas_hoy_detalle
     }

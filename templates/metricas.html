@@ -84,9 +84,12 @@
 {% if not ads_disponible %}
 {{ banner("info", "percent", "<b>No vemos gasto de publicidad</b> en este período", "Revisá que hayas dado acceso a tus campañas de Ads, o que tengas campañas activas.") }}
 {% endif %}
-{% if reclamos_total > 0 %}
+{# Solo un reclamo real puede afectar la reputación: va en rojo. Una devolución es gestión normal del día a día: aviso más suave #}
 {% set hay_retenido = posventa.dinero_retenido not in ('0,00', '0', 0) %}
-{{ banner("danger", "alert", ("<b>%d reclamo(s) y devolución(es)</b> en este período"|format(reclamos_total)) ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Revisá los que siguen abiertos: cada uno sin resolver puede sumar a tu reputación negativa.", "Ver detalle", "#seccion-reclamos", "btn-urgente") }}
+{% if posventa.reclamos > 0 %}
+{{ banner("danger", "alert", ("<b>%d reclamo(s)</b> en este período"|format(posventa.reclamos)) ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Revisá los que siguen abiertos: un reclamo sin resolver puede sumar a tu reputación negativa.", "Ver detalle", "#seccion-reclamos", "btn-urgente") }}
+{% elif posventa.devoluciones > 0 %}
+{{ banner("warn", "refresh", ("<b>%d devolución(es)</b> en este período"|format(posventa.devoluciones)) ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Por sí solas no afectan tu reputación, pero conviene gestionarlas a tiempo para que no terminen en reclamo.", "Ver detalle", "#seccion-reclamos") }}
 {% endif %}
 {% if punto_equilibrio %}
 {% if punto_equilibrio.superado %}
@@ -152,7 +155,7 @@
     <summary>
         <svg class="icon" style="width:18px;height:18px;color:var(--semantic-warning);"><use href="#icon-alert"/></svg>
         Reclamos, devoluciones y cancelaciones
-        {% if reclamos_total > 0 %}<span class="ux-pill ux-danger">{{ reclamos_total }} en el período</span>{% else %}<span class="ux-pill ux-ok">sin problemas</span>{% endif %}
+        {% if posventa.reclamos > 0 %}<span class="ux-pill ux-danger">{{ posventa.reclamos }} reclamo{{ 's' if posventa.reclamos != 1 }}</span>{% endif %}{% if posventa.devoluciones > 0 %}<span class="ux-pill ux-warn">{{ posventa.devoluciones }} {{ 'devolución' if posventa.devoluciones == 1 else 'devoluciones' }}</span>{% endif %}{% if reclamos_total == 0 %}<span class="ux-pill ux-ok">sin problemas</span>{% endif %}
     </summary>
     <div class="ux-detalle-cuerpo" data-mostrar-mas-scope>
         <div class="ux-kpis">
@@ -178,7 +181,7 @@
                 {% for item in posventa.lista %}
                 <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
                     <td class="text-muted">{{ item.fecha }}</td>
-                    <td><span class="ux-pill ux-danger">{{ item.tipo }}</span></td>
+                    <td><span class="ux-pill {{ 'ux-danger' if item.tipo == 'RECLAMO' else ('ux-warn' if item.tipo == 'DEVOLUCIÓN' else 'ux-neutral ux-pill-suave') }}">{{ item.tipo }}</span></td>
                     <td><a href="{{ item.link }}" target="_blank" rel="noopener" class="badge badge-neutral" style="text-decoration:none;">#{{ item.id_orden }} ↗</a></td>
                     <td>{{ item.motivo }}</td>
                     <td><span class="ux-pill ux-warn">{{ item.estado }}</span></td>

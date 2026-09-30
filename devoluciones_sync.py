@@ -24,6 +24,7 @@ Nota de confianza, para ser honesto sobre el riesgo de cada mitad:
   /post-purchase/v1/claims/{id} para tenerlo — queda pendiente como
   mejora futura, no algo que haya que inventar.
 """
+import re
 from datetime import datetime
 import meli_http
 import db
@@ -85,27 +86,45 @@ _MOTIVOS_ES = {
     "COUNTERFEIT": "Artículo falsificado",
     "RETURN_REQUEST": "Solicitud de devolución",
     "CANCEL_REQUEST": "Solicitud de cancelación",
-    # Códigos PDD (Post-venta / Defensa del Comprador)
-    "PDD9939": "Artículo no recibido",
-    "PDD9940": "Artículo dañado al llegar",
-    "PDD9941": "Artículo diferente al anunciado",
-    "PDD9942": "Artículo defectuoso",
-    "PDD9943": "Pedido incompleto",
-    "PDD9944": "Artículo equivocado enviado",
-    "PDD9945": "Artículo perdido en tránsito",
-    "PDD9946": "Calidad no corresponde",
-    "PDD9947": "Talle/medida diferente al publicado",
-    "PDD9948": "Color diferente al publicado",
 }
 
 
+# Catálogo oficial de motivos de MeLi (PDD9939, PNR…): es el mismo para TODAS las cuentas, por eso
+# puede cachearse a nivel de proceso sin mezclar datos entre cuentas.
+_cache_motivos_oficiales = {}
+
+
+def _motivo_oficial(headers, reason_id):
+    """
+    Texto real del motivo según Mercado Libre (GET /post-purchase/v1/claims/reasons/{id}).
+    El mapeo a mano que había antes era inventado y estaba mal: PDD9939 es "Llegó lo que compré en
+    buenas condiciones pero no lo quiero" (arrepentimiento), no "Artículo no recibido".
+    """
+    if not reason_id:
+        return None
+    if reason_id in _cache_motivos_oficiales:
+        return _cache_motivos_oficiales[reason_id]
+    try:
+        resp = meli_http.get(f"https://api.mercadolibre.com/post-purchase/v1/claims/reasons/{reason_id}", headers=headers, timeout=10)
+        if resp.status_code == 200:
+            detalle = (resp.json().get("detail") or "").strip()
+            if detalle:
+                _cache_motivos_oficiales[reason_id] = detalle[:200]
+                return _cache_motivos_oficiales[reason_id]
+    except Exception as e:
+        print(f"[DevolucionesSync] ⚠️ No se pudo consultar el motivo {reason_id}: {e}")
+    return None   # los fallos no se cachean: se reintenta en la próxima sincronización
+
+
 def _traducir_motivo(reason_id):
+    """Respaldo cuando MeLi no devuelve el texto del motivo: nunca se inventa una explicación."""
     if not reason_id:
         return None
     traducido = _MOTIVOS_ES.get(reason_id)
     if traducido:
         return traducido
-    # fallback: convertir código a texto legible
+    if re.match(r"^[A-Za-z]{2,4}\d+$", reason_id):
+        return f"Motivo {reason_id.upper()} (sin detalle de MeLi)"
     return reason_id.replace("_", " ").replace("-", " ").title()
 
 
@@ -123,6 +142,8 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     offset = 0
     filas_totales = 0
+    ids_abiertos = []
+    lista_completa = False   # solo si se leyó TODA la lista de abiertos se puede cerrar lo que falta
 
     while True:
         try:
@@ -143,6 +164,7 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
         data = resp.json()
         claims = data.get("data") or data.get("results") or []
         if not claims:
+            lista_completa = True
             break
 
         with db.conexion_usuario(usuario_id) as conexion:
@@ -152,11 +174,13 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
                 if id_reclamo is None:
                     continue
                 id_reclamo = str(id_reclamo)
+                ids_abiertos.append(id_reclamo)
                 status = c.get("status")
                 stage = c.get("stage")
                 reason_id_crudo = c.get("reason_id") or (c.get("resolution", {}) or {}).get("reason")
-                razon = _traducir_motivo(reason_id_crudo)
-                if reason_id_crudo and reason_id_crudo not in _MOTIVOS_ES:
+                razon_oficial = _motivo_oficial(headers, reason_id_crudo)
+                razon = razon_oficial or _traducir_motivo(reason_id_crudo)
+                if reason_id_crudo and not razon_oficial and reason_id_crudo not in _MOTIVOS_ES:
                     # El mapeo de motivos (_MOTIVOS_ES) se armó sin poder
                     # probarlo contra reclamos reales — si esto aparece en
                     # producción, es la señal de que MeLi está devolviendo
@@ -167,22 +191,73 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
                     print(f"[DevolucionesSync] ⚠️ reason_id sin mapear en reclamo {id_reclamo}: '{reason_id_crudo}' (type={c.get('type')}, stage={stage}) — revisar y sumar a _MOTIVOS_ES")
 
                 cursor.execute("""
-                    INSERT INTO incidencias_posventa (cuenta_id, id_reclamo, id_orden, tipo, motivo, estado, monto_retenido, fecha)
-                    VALUES (%s, %s, %s, %s, %s, %s, 0.0, %s)
+                    INSERT INTO incidencias_posventa (cuenta_id, id_reclamo, id_orden, tipo, motivo, reason_id, estado, monto_retenido, fecha)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 0.0, %s)
                     ON CONFLICT (cuenta_id, id_reclamo) DO UPDATE SET
-                        estado = excluded.estado, motivo = COALESCE(excluded.motivo, incidencias_posventa.motivo)
+                        estado = excluded.estado, motivo = COALESCE(excluded.motivo, incidencias_posventa.motivo),
+                        reason_id = COALESCE(excluded.reason_id, incidencias_posventa.reason_id)
                 """, (
                     cuenta_id, id_reclamo, str(c.get("resource_id") or ""),
-                    _mapear_tipo_claim(c.get("type"), stage), razon,
+                    _mapear_tipo_claim(c.get("type"), stage), razon, reason_id_crudo,
                     _mapear_estado_claim(status, stage), _parsear_fecha(c.get("date_created")),
                 ))
                 filas_totales += 1
 
         offset += TAMANO_PAGINA
-        if offset >= LIMITE_OFFSET or len(claims) < TAMANO_PAGINA:
+        if len(claims) < TAMANO_PAGINA:
+            lista_completa = True
+            break
+        if offset >= LIMITE_OFFSET:
             break
 
+    # MeLi solo lista los reclamos ABIERTOS: los que se cerraron del lado de ellos dejaban de aparecer acá, pero en
+    # nuestra base quedaban "abiertos" para siempre (se contaban 8 cuando MeLi tenía 6). Se cierran los que ya no vienen.
+    if lista_completa:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            cursor.execute("""
+                UPDATE incidencias_posventa SET estado = 'closed'
+                WHERE cuenta_id = %s AND tipo IN ('claim', 'return', 'cancelacion') AND estado NOT IN ('closed', 'resolved')
+                  AND NOT (id_reclamo = ANY(%s))
+            """, (cuenta_id, ids_abiertos))
+            if cursor.rowcount:
+                print(f"[DevolucionesSync] Cuenta {cuenta_id}: {cursor.rowcount} reclamo(s)/devolución(es) ya cerrados en MeLi se cerraron acá también.")
+
+    _completar_motivos_viejos(usuario_id, cuenta_id, headers)
     return filas_totales
+
+
+def _completar_motivos_viejos(usuario_id, cuenta_id, headers, tope=15):
+    """
+    Reclamos guardados antes de tener `reason_id` (con el motivo traducido mal): se consulta cada uno a MeLi y se
+    corrige con el texto oficial. Son pocos por pasada (`tope`), así una cuenta con mucho historial se va
+    poniendo al día en las siguientes sincronizaciones sin frenar ésta.
+    """
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT id_reclamo FROM incidencias_posventa
+            WHERE cuenta_id = %s AND reason_id IS NULL AND tipo IN ('claim', 'return', 'cancelacion') AND id_reclamo ~ '^[0-9]+$'
+            ORDER BY fecha DESC NULLS LAST LIMIT %s
+        """, (cuenta_id, tope))
+        pendientes = [f[0] for f in cursor.fetchall()]
+    for id_reclamo in pendientes:
+        try:
+            resp = meli_http.get(f"https://api.mercadolibre.com/post-purchase/v1/claims/{id_reclamo}", headers=headers, timeout=10)
+            if resp.status_code != 200:
+                continue
+            reason_id = resp.json().get("reason_id")
+        except Exception as e:
+            print(f"[DevolucionesSync] ⚠️ No se pudo completar el reclamo {id_reclamo}: {e}")
+            continue
+        if not reason_id:
+            continue
+        texto = _motivo_oficial(headers, reason_id) or _traducir_motivo(reason_id)
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            conexion.cursor().execute(
+                "UPDATE incidencias_posventa SET reason_id = %s, motivo = %s WHERE cuenta_id = %s AND id_reclamo = %s",
+                (reason_id, texto, cuenta_id, id_reclamo)
+            )
 
 
 def sincronizar_preguntas(usuario_id, cuenta_id, access_token, seller_id):

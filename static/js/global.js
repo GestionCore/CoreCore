@@ -811,7 +811,7 @@ async function actualizarTicker() {
         if (pillInc && txtInc) {
             if (data.incidencias_activas > 0) {
                 pillInc.style.display = 'inline-flex';
-                txtInc.textContent = `${data.incidencias_activas} reclamo/devolución activa`;
+                txtInc.textContent = `${data.incidencias_activas} reclamo${data.incidencias_activas === 1 ? '' : 's'} activo${data.incidencias_activas === 1 ? '' : 's'}`;
             } else {
                 pillInc.style.display = 'none';
             }

@@ -278,7 +278,7 @@ MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones corridas hasta `0016_competencia_catalogo.sql` — 
+- Migraciones corridas hasta `0017_incidencias_reason_id.sql` — 
   verificá `migrate.py --status` contra Supabase real antes de asumir
   cuál es la última aplicada, el número más alto en `migrations/` no
   siempre coincide con lo corrido de verdad.
