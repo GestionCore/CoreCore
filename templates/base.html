@@ -30,6 +30,7 @@
     </script>
 </head>
 <body {% if session.get('mostrar_tutorial') %}data-mostrar-tutorial="1"{% endif %}>
+<a href="#contenido-principal" class="saltar-al-contenido">Saltar al contenido</a>
 <!-- El canvas de partículas (static/js/particulas.js) queda en el repo
      por si hace falta revertir, pero se dejó de incluir acá: era la pieza
      más literal de la estética Tron/vaporwave, y esa dirección se
@@ -189,7 +190,7 @@
 </div>
 {% endif %}
 
-<main class="page-container">
+<main class="page-container" id="contenido-principal" tabindex="-1">
     {% block content %}{% endblock %}
 </main>
 
@@ -325,6 +326,7 @@
                 <svg class="icon" style="width:18px;height:18px;"><use href="#icon-eye"/></svg>
                 <span>Modo privacidad</span>
             </button>
+            <button type="button" class="menu-lateral-item" onclick="iniciarTutorial()"><span>Ver el tutorial de nuevo</span></button>
         </div>
 
         <div class="menu-lateral-section">

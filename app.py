@@ -2342,10 +2342,15 @@ def api_calculadora_categorias():
     except token_manager.CuentaDesconectada:
         return jsonify({"error": "Cuenta desconectada"}), 401
     import db
-    headers = {"Authorization": f"Bearer {access_token}"}
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        categorias = calculadora_costos.obtener_categorias_del_catalogo(headers, cursor)
+    # Una llamada a MeLi por publicación (1,7 s): las categorías de un catálogo casi no cambian, se guardan 6 horas por cuenta
+    clave = construir_key("categorias_calculadora", g.cuenta_id)
+    categorias = cache.get(clave)
+    if categorias is None:
+        headers = {"Authorization": f"Bearer {access_token}"}
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            categorias = calculadora_costos.obtener_categorias_del_catalogo(headers, cursor)
+        cache.set(clave, categorias, timeout=6 * 3600)
     return jsonify(categorias)
 
 

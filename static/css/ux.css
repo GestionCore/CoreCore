@@ -56,6 +56,13 @@
 .ux-hero-nota { font-size: 0.8em; color: var(--text-secondary); margin-top: 4px; }
 html.modo-privacidad .ux-hero-numero, html.modo-privacidad .ux-kpi-valor { filter: blur(8px); transition: filter 0.2s; }
 html.modo-privacidad .ux-hero-numero:hover, html.modo-privacidad .ux-kpi-valor:hover { filter: none; }
+/* También los montos de rankings, distribuciones, precios y el resumen de cobros */
+html.modo-privacidad .ux-rank-valor, html.modo-privacidad .ux-dist-val, html.modo-privacidad .ux-precio-actual, html.modo-privacidad .ux-precio-estado b,
+html.modo-privacidad .ux-regla-etiquetas b { filter: blur(6px); transition: filter 0.2s; }
+html.modo-privacidad .ux-rank-valor:hover, html.modo-privacidad .ux-dist-val:hover, html.modo-privacidad .ux-precio-actual:hover { filter: none; }
+/* Saltar al contenido (teclado y lectores de pantalla): solo se ve al recibir el foco */
+.saltar-al-contenido { position: absolute; left: 12px; top: -48px; z-index: 10000; padding: 10px 16px; border-radius: 10px; background: var(--accent-primary); color: #fff; font-weight: 700; text-decoration: none; transition: top 0.15s; }
+.saltar-al-contenido:focus { top: 10px; }
 
 /* ---------- Pastilla de variación (▲ / ▼) ---------- */
 .ux-delta {
