@@ -199,6 +199,9 @@ seguridad.iniciar(app)
 import legal
 app.register_blueprint(legal.bp)
 
+import costos_importar
+app.register_blueprint(costos_importar.bp)
+
 
 def _detalle_error(e):
     """Mensaje para el usuario cuando algo falla: genérico; el detalle técnico va al log (y a Sentry), no a la pantalla."""

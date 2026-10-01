@@ -49,6 +49,7 @@ def iniciar(app):
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=EN_PRODUCCION,
         PERMANENT_SESSION_LIFETIME=timedelta(days=14),
+        MAX_CONTENT_LENGTH=5 * 1024 * 1024,      # 5 MB: alcanza de sobra para los archivos que se suben (planillas de costos)
     )
 
     @app.before_request

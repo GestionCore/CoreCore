@@ -119,6 +119,73 @@
 </details>
 {% endif %}
 
+<!-- ── 2c. CARGAR COSTOS DESDE EXCEL ─────────────────────────────────────────── -->
+<details class="ux-detalle" id="importar-costos" {% if sin_costo and sin_costo|length > 5 %}open{% endif %}>
+    <summary>
+        <svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-upload"/></svg>
+        Cargar los costos desde un Excel
+        {% if sin_costo %}<span class="ux-pill ux-warn">{{ sin_costo|length }} sin costo</span>{% endif %}
+    </summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="text-muted" style="font-size:0.9em; line-height:1.6; margin-bottom:14px;">Descargá la planilla con todas tus publicaciones (las que no tienen costo, primero), completá la columna <b>Costo de fabricación ($)</b> y subila. <b>Antes de guardar te mostramos qué va a cambiar</b>; las celdas vacías no tocan nada.</div>
+        <div class="flex-gap" style="margin-bottom:14px;">
+            <a class="btn btn-secondary" href="/costos/plantilla"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> Descargar la planilla</a>
+            <label class="btn btn-primary" for="archivo-costos" style="cursor:pointer;"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-upload"/></svg> Subir la planilla completa</label>
+            <input type="file" id="archivo-costos" accept=".xlsx,.csv" style="display:none;">
+        </div>
+        <div id="importar-resultado"></div>
+    </div>
+</details>
+<script>
+(function () {
+    let cambiosPendientes = [];
+    const caja = () => document.getElementById('importar-resultado');
+    document.getElementById('archivo-costos').addEventListener('change', async (ev) => {
+        const archivo = ev.target.files[0];
+        if (!archivo) return;
+        caja().innerHTML = '<div class="text-muted">Leyendo el archivo…</div>';
+        const datos = new FormData();
+        datos.append('archivo', archivo);
+        try {
+            const r = await (await fetch('/api/costos/importar/vista_previa', { method: 'POST', body: datos })).json();
+            if (!r.ok) { caja().innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>' + UX.esc(r.detalle || 'No se pudo leer el archivo') + '</b>' }); return; }
+            pintarVistaPrevia(r);
+        } catch (e) {
+            caja().innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No pudimos leer el archivo</b>', detalle: 'Probá de nuevo con la planilla que descargás desde acá.' });
+        } finally { ev.target.value = ''; }
+    });
+
+    function pintarVistaPrevia(r) {
+        cambiosPendientes = r.cambios;
+        const filas = r.cambios.slice(0, 40).map(c => `<tr><td>${UX.esc(c.titulo)}</td><td class="num text-muted">${c.antes ? UX.plata(c.antes) : '—'}</td><td class="num"><b>${UX.plata(c.despues)}</b></td></tr>`).join('');
+        const avisos = [];
+        if (r.sin_cambio) avisos.push(`${r.sin_cambio} ya tenían ese costo`);
+        if (r.total_ignoradas) avisos.push(`${r.total_ignoradas} no son de tu cuenta y se ignoran`);
+        const errores = r.errores.map(e => `<li>Fila ${e.fila}: ${UX.esc(e.titulo || e.id)} — ${UX.esc(e.motivo)}</li>`).join('');
+        caja().innerHTML = `
+            ${r.cambios.length ? UX.banner({ tono: 'accion', icono: 'check', tituloHtml: `<b>${r.cambios.length} costo${r.cambios.length === 1 ? '' : 's'} para guardar</b>`, detalle: avisos.join(' · ') }) : UX.banner({ tono: 'info', icono: 'info', tituloHtml: '<b>No hay cambios para guardar</b>', detalle: avisos.join(' · ') || 'Completá la columna de costo y volvé a subir la planilla.' })}
+            ${r.total_errores ? `<div class="text-muted" style="font-size:0.85em; margin:10px 0;"><b>${r.total_errores} fila${r.total_errores === 1 ? '' : 's'} con problemas (no se guardan):</b><ul style="margin:6px 0 0; padding-left:20px;">${errores}</ul></div>` : ''}
+            ${r.cambios.length ? `<div style="overflow-x:auto; margin-top:12px;"><table class="data-table"><thead><tr><th>Publicación</th><th class="num">Antes</th><th class="num">Después</th></tr></thead><tbody>${filas}</tbody></table></div>
+            ${r.cambios.length > 40 ? `<div class="text-muted" style="font-size:0.82em; margin-top:6px;">Se muestran 40; se guardan los ${r.cambios.length}.</div>` : ''}
+            <div class="flex-gap" style="margin-top:14px;"><button type="button" class="btn btn-primary btn-lg" id="btn-aplicar-costos">Guardar ${r.cambios.length} costo${r.cambios.length === 1 ? '' : 's'}</button><button type="button" class="btn btn-secondary" id="btn-cancelar-costos">Cancelar</button></div>` : ''}`;
+        const guardar = document.getElementById('btn-aplicar-costos');
+        if (guardar) guardar.addEventListener('click', aplicar);
+        const cancelar = document.getElementById('btn-cancelar-costos');
+        if (cancelar) cancelar.addEventListener('click', () => { cambiosPendientes = []; caja().innerHTML = ''; });
+    }
+
+    async function aplicar(ev) {
+        const btn = ev.currentTarget;
+        btn.disabled = true; btn.textContent = 'Guardando…';
+        try {
+            const r = await (await fetch('/api/costos/importar/aplicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cambios: cambiosPendientes }) })).json();
+            if (r.ok) { mostrarToast(`✓ ${r.actualizadas} costos guardados`, 'success'); setTimeout(() => window.location.reload(), 900); }
+            else { mostrarToast(r.detalle || 'No se pudo guardar', 'error'); btn.disabled = false; btn.textContent = 'Guardar'; }
+        } catch (e) { mostrarToast('Error de red — probá de nuevo', 'error'); btn.disabled = false; btn.textContent = 'Guardar'; }
+    }
+})();
+</script>
+
 <!-- ── 3. GASTOS DEL NEGOCIO ───────────────────────────────────────────── -->
 <div class="ux-seccion ux-info">Gastos del negocio</div>
 
