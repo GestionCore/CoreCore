@@ -377,6 +377,13 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-camp-stats span { display: block; font-size: 0.8em; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
 .ux-camp-reco { font-size: 0.82em; line-height: 1.45; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--ux-c) 14%, transparent); }
 
+/* Ganancia Real: valores de ranking, distribución de márgenes y costo Flex */
+.ux-rank-valor { min-width: 84px; text-align: right; font-size: 0.9em; }
+.ux-dist-fila { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 0.85em; }
+.ux-dist-etq { width: 92px; flex-shrink: 0; color: var(--text-secondary); font-weight: 600; }
+.ux-dist-val { width: 70px; text-align: right; flex-shrink: 0; }
+.ux-flex-neto { font-family: var(--font-data); font-size: 2.1em; font-weight: 800; color: var(--semantic-warning); line-height: 1.1; margin: 4px 0 2px; }
+
 /* Título de publicación con su miniatura al lado (celdas de tabla, preguntas) */
 .ux-titulo-thumb { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ux-titulo-thumb .thumb-sm { flex-shrink: 0; }

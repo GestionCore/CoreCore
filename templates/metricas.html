@@ -151,7 +151,112 @@
 </div>
 {% endif %}
 
-<!-- ── 5. DETALLE: plegado para no abrumar ──────────────────────────────── -->
+<!-- ── 5. LO QUE MÁS VENDE ──────────────────────────────────────────────── -->
+{% if top_facturacion %}
+<div class="ux-seccion ux-accion">Lo que más vende</div>
+<div class="ux-dos-col" style="margin-top:0;">
+    <div class="panel">
+        <div class="panel-title">Modelos que más facturan</div>
+        {% for p in top_facturacion %}
+        <div class="ux-rank-fila ux-accion">
+            {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ p.titulo }}</div><div class="ux-rank-barra"><span style="width:{{ p.pct_barra }}%;"></span></div></div>
+            <div class="ux-rank-valor"><b>${{ p.valor_f }}</b></div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="panel">
+        <div class="panel-title">Modelos que más unidades venden</div>
+        {% for p in top_unidades %}
+        <div class="ux-rank-fila ux-info">
+            {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ p.titulo }}</div><div class="ux-rank-barra"><span style="width:{{ p.pct_barra }}%;"></span></div></div>
+            <div class="ux-rank-valor"><b>{{ p.valor_f }}</b></div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ── 6. POR DÓNDE SALE CADA VENTA: canal de envío y costo de entrega Flex ─── -->
+{% if canales_envio or (flex_resumen and flex_resumen.ordenes) %}
+<div class="ux-seccion ux-info">Margen por canal de envío</div>
+<div class="ux-dos-col" style="margin-top:0;">
+    <div class="panel">
+        <div class="text-muted" style="font-size:0.85em; margin-bottom:12px;">Lo que deja cada venta según cómo sale: ganancia después de comisión, envío, publicidad y fabricación.</div>
+        <div class="canal-envio-lista">
+            {% for c in canales_envio or [] %}
+            <div class="canal-envio-fila">
+                <div class="canal-envio-nombre">{{ c.nombre }}</div>
+                {% if c.sin_datos %}
+                <div class="text-muted" style="font-size:0.8em;">Sin ventas por este canal.</div>
+                {% else %}
+                <div class="ux-barra ux-{{ 'danger' if c.margen_pct < 0 else ('ok' if c.margen_pct >= 15 else 'warn') }}" style="height:12px;"><span style="width:{{ [[c.margen_pct, 0]|max, 100]|min }}%;"></span></div>
+                <div class="canal-envio-valores">
+                    <span>{{ c.unidades }} u.</span>
+                    <span class="{% if c.margen_pct < 0 %}text-danger{% else %}text-success{% endif %}"><strong>${{ c.ganancia_neta_formateada }}</strong> · margen {{ c.margen_pct|string|replace('.', ',') }}%</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% if flex_resumen and flex_resumen.ordenes %}
+    {% set flex_neto = flex_resumen.costo %}
+    {% set flex_bruto = (flex_neto / (1 - flex_reintegro)) if flex_neto else 0 %}
+    <div class="panel">
+        <div class="panel-title">Flex: lo que te cuesta entregar</div>
+        {% if flex_neto %}
+        <div class="ux-flex-neto">{{ flex_neto|plata }}</div>
+        <div class="text-muted" style="font-size:0.85em;">te costaron {{ flex_resumen.ordenes - flex_resumen.sin_zona }} entrega{{ 's' if (flex_resumen.ordenes - flex_resumen.sin_zona) != 1 }}, ya descontado el reintegro de Mercado Libre</div>
+        <table class="data-table" style="margin-top:12px;"><tbody>
+            <tr><td>Lo que te cobra tu logística</td><td class="num text-danger"><b>{{ flex_bruto|plata }}</b></td></tr>
+            <tr><td>Reintegro de Mercado Libre ({{ (flex_reintegro * 100)|round|int }}%)</td><td class="num text-success"><b>{{ (flex_bruto - flex_neto)|plata }}</b></td></tr>
+            <tr style="border-top:1px solid var(--border-soft);"><td><b>Te cuesta</b></td><td class="num"><b>{{ flex_neto|plata }}</b></td></tr>
+        </tbody></table>
+        {% else %}
+        <div class="text-muted" style="font-size:0.9em; line-height:1.5;">Hiciste <b>{{ flex_resumen.ordenes }} envío{{ 's' if flex_resumen.ordenes != 1 }} Flex</b> en el período, pero todavía no cargaste lo que te cobra tu logística: <b>su costo de entrega no está en tu ganancia</b>.</div>
+        {% endif %}
+        <div style="margin-top:12px;"><a class="btn {{ 'btn-alerta' if flex_resumen.sin_zona else 'btn-secondary' }}" href="/costos#entrega-flex">{{ 'Cargar costo de entrega' if flex_resumen.sin_zona else 'Ajustar mis umbrales' }}</a></div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ── 7. SALUD DE LA CARTERA ───────────────────────────────────────────── -->
+{% if distribucion_margenes or pareto_ganancia %}
+<div class="ux-seccion ux-gold">Salud de tu catálogo</div>
+<div class="ux-dos-col" style="margin-top:0;">
+    {% if pareto_ganancia %}
+    <div class="panel">
+        <div class="panel-title">Concentración de la ganancia</div>
+        <div class="text-muted" style="font-size:0.85em; margin-bottom:10px;"><b style="color:var(--text-primary);">{{ pareto_ganancia.productos_80 }} de {{ pareto_ganancia.total_productos }} modelos</b> generan el 80% de tu ganancia: son los que más te conviene cuidar (stock, precio y publicidad primero).</div>
+        <div style="position:relative; height:240px;"><canvas id="canvas-pareto-ganancia" role="img" aria-label="Ganancia por modelo y porcentaje acumulado"></canvas></div>
+    </div>
+    {% endif %}
+    {% if distribucion_margenes %}
+    <div class="panel">
+        <div class="panel-title">Distribución de márgenes</div>
+        <div class="text-muted" style="font-size:0.85em; margin-bottom:12px;">Qué porcentaje de tus modelos cae en cada rango de margen neto.</div>
+        {% for b in distribucion_margenes %}
+        <div class="ux-dist-fila">
+            <span class="ux-dist-etq">{{ b.etiqueta }}</span>
+            <div class="ux-barra ux-{{ b.tono }}" style="flex:1;"><span style="width:{{ b.pct }}%;"></span></div>
+            <span class="ux-dist-val"><b>{{ b.pct }}%</b> <span class="text-muted">({{ b.cantidad }})</span></span>
+        </div>
+        {% endfor %}
+        {% if modelos_pierden %}<div style="margin-top:12px;">{{ banner("danger", "alert", "<b>" ~ modelos_pierden ~ " modelo" ~ ("s" if modelos_pierden != 1) ~ " vende" ~ ("n" if modelos_pierden != 1) ~ " a pérdida</b>", "Están en rojo en la tabla de arriba: revisá su precio o su costo.") }}</div>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if evolucion_mensual %}
+<div class="ux-seccion ux-ok">Evolución mensual <span class="text-muted" style="font-weight:600; font-size:0.8em;">costos vs. resultado neto · últimos {{ evolucion_mensual|length }} meses</span></div>
+<div class="panel"><div style="position:relative; height:260px;"><canvas id="canvas-evolucion-mensual" role="img" aria-label="Costos y resultado neto por mes"></canvas></div></div>
+{% endif %}
+
+<!-- ── 8. DETALLE: plegado para no abrumar ──────────────────────────────── -->
 <div class="ux-seccion ux-neutral">Más detalle</div>
 
 <details class="ux-detalle" id="seccion-reclamos" {% if reclamos_total > 0 %}open{% endif %}>
@@ -223,32 +328,6 @@
     </div>
 </details>
 
-<details class="ux-detalle">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-truck"/></svg> Margen por canal de envío</summary>
-    <div class="ux-detalle-cuerpo">
-        {% if canales_envio %}
-        <div class="canal-envio-lista">
-            {% for c in canales_envio %}
-            <div class="canal-envio-fila">
-                <div class="canal-envio-nombre">{{ c.nombre }}</div>
-                {% if c.sin_datos %}
-                <div class="text-muted" style="font-size:0.8em;">Sin ventas por este canal.</div>
-                {% else %}
-                <div class="ux-barra ux-{{ 'danger' if c.margen_pct < 0 else ('ok' if c.margen_pct >= 15 else 'warn') }}" style="flex:1;"><span style="width:{{ 100 if c.margen_pct > 100 else (0 if c.margen_pct < 0 else c.margen_pct) }}%;"></span></div>
-                <div class="canal-envio-valores">
-                    <span>{{ c.unidades }} u.</span>
-                    <span class="{% if c.margen_pct < 0 %}text-danger{% else %}text-success{% endif %}"><strong>${{ c.ganancia_neta_formateada }}</strong> ({{ c.margen_pct }}%)</span>
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="text-muted">Sin datos de logística en el período.</div>
-        {% endif %}
-    </div>
-</details>
-
 {% if analitica_clientes %}
 <details class="ux-detalle">
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-users"/></svg> Tus clientes y cómo te pagan <span class="ux-detalle-nota">{{ analitica_clientes.clientes_distintos }} clientes · {{ analitica_clientes.pct_repiten }}% volvieron a comprar</span></summary>
@@ -289,23 +368,6 @@
             </div>
             {% endif %}
         </div>
-    </div>
-</details>
-{% endif %}
-
-{% if evolucion_mensual %}
-<details class="ux-detalle" id="det-evolucion" data-grafico="evolucion">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--success);"><use href="#icon-chart"/></svg> Evolución mensual: costos vs. resultado neto <span class="ux-detalle-nota">últimos {{ evolucion_mensual|length }} meses</span></summary>
-    <div class="ux-detalle-cuerpo"><div style="position:relative; height:240px;"><canvas id="canvas-evolucion-mensual" role="img" aria-label="Costos y resultado neto por mes"></canvas></div></div>
-</details>
-{% endif %}
-
-{% if pareto_ganancia %}
-<details class="ux-detalle" id="det-pareto" data-grafico="pareto">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-gold);"><use href="#icon-trophy"/></svg> Concentración de la ganancia <span class="ux-detalle-nota"><b>{{ pareto_ganancia.productos_80 }} de {{ pareto_ganancia.total_productos }}</b> modelos generan el 80%</span></summary>
-    <div class="ux-detalle-cuerpo">
-        <div class="page-subtitle" style="margin-bottom:10px;">Esos modelos son los que más te conviene cuidar: stock, precio y publicidad primero.</div>
-        <div style="position:relative; height:220px;"><canvas id="canvas-pareto-ganancia" role="img" aria-label="Ganancia por modelo y porcentaje acumulado"></canvas></div>
     </div>
 </details>
 {% endif %}
@@ -361,6 +423,12 @@
 const _TOOLTIP = { backgroundColor: 'rgba(18,21,48,0.94)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff' };
 const _iniciados = {};
 
+document.addEventListener('DOMContentLoaded', () => {
+    if (!window.Chart) return;
+    _iniciarChartEvolucionMensual();
+    _iniciarChartPareto();
+});
+
 document.querySelectorAll('details[data-grafico]').forEach(det => {
     det.addEventListener('toggle', () => {
         const clave = det.dataset.grafico;
@@ -373,7 +441,7 @@ document.querySelectorAll('details[data-grafico]').forEach(det => {
 function _estiloGrafico() {
     const root = getComputedStyle(document.documentElement);
     const v = (n, f) => root.getPropertyValue(n).trim() || f;
-    return { danger: v('--danger', '#f43f5e'), success: v('--success', '#22c55e'), primario: v('--accent-primary', '#8b5cf6'), gold: v('--accent-gold', '#f2c94c'), texto: v('--text-secondary', '#94a3b8') };
+    return { grilla: v('--border-soft', 'rgba(255,255,255,0.08)'), danger: v('--danger', '#f43f5e'), success: v('--success', '#22c55e'), primario: v('--accent-primary', '#8b5cf6'), gold: v('--accent-gold', '#f2c94c'), texto: v('--text-secondary', '#94a3b8') };
 }
 
 function _iniciarChartEvolucionMensual() {
@@ -390,7 +458,7 @@ function _iniciarChartEvolucionMensual() {
         options: {
             responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
             plugins: { legend: { position: 'top', labels: { color: e.texto, boxWidth: 12, font: { size: 11 } } }, tooltip: { ..._TOOLTIP, callbacks: { label: ctx => `${ctx.dataset.label}: ${UX.plata(ctx.raw)}` } } },
-            scales: { x: { ticks: { color: e.texto }, grid: { display: false } }, y: { ticks: { color: e.texto, callback: v => UX.plata(v) }, grid: { color: 'rgba(255,255,255,0.05)' } } }
+            scales: { x: { ticks: { color: e.texto }, grid: { display: false } }, y: { ticks: { color: e.texto, callback: v => UX.plata(v) }, grid: { color: e.grilla } } }
         }
     });
 }
@@ -413,7 +481,7 @@ function _iniciarChartPareto() {
             plugins: { legend: { position: 'top', labels: { color: e.texto, boxWidth: 12, font: { size: 11 } } }, tooltip: { ..._TOOLTIP, callbacks: { label: ctx => ctx.dataset.yAxisID === 'y1' ? `Acumulado: ${ctx.raw}%` : `Ganancia: ${UX.plata(ctx.raw)}` } } },
             scales: {
                 x: { ticks: { color: e.texto, maxRotation: 40, minRotation: 40 }, grid: { display: false } },
-                y: { position: 'left', ticks: { color: e.texto, callback: v => UX.plata(v) }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { position: 'left', ticks: { color: e.texto, callback: v => UX.plata(v) }, grid: { color: e.grilla } },
                 y1: { position: 'right', min: 0, max: 100, ticks: { color: e.texto, callback: v => v + '%' }, grid: { display: false } },
             }
         }

@@ -1011,6 +1011,42 @@ def metricas_vista():
     except Exception as e:
         print(f"[Métricas] ⚠️ Error resumiendo envíos Flex: {e}")
 
+    # Lo que más vende y cómo se reparten los márgenes: salen de los modelos consolidados (promedios ponderados reales)
+    top_facturacion, top_unidades, distribucion_margenes, modelos_pierden = [], [], [], 0
+    try:
+        cons = datos["consolidados"]
+
+        # Por MODELO (los talles se suman): lo que importa es qué producto vende, no qué talle
+        from utils import limpiar_titulo_modelo
+        por_modelo = {}
+        for c in cons:
+            nombre = limpiar_titulo_modelo(c["titulo"]) or c["titulo"]
+            m = por_modelo.setdefault(nombre, {"titulo": nombre, "thumbnail": c.get("thumbnail"), "facturado": 0.0, "unidades": 0})
+            m["facturado"] += c["raw"]["total_facturado"]
+            m["unidades"] += c["unidades"]
+            m["thumbnail"] = m["thumbnail"] or c.get("thumbnail")
+        modelos = list(por_modelo.values())
+
+        def _top(clave, formato):
+            ordenados = sorted(modelos, key=lambda c: -clave(c))[:6]
+            maximo = clave(ordenados[0]) if ordenados else 0
+            return [{"titulo": c["titulo"], "thumbnail": c["thumbnail"], "valor_f": formato(clave(c)),
+                     "pct_barra": max(round(clave(c) / maximo * 100), 4) if maximo > 0 else 0} for c in ordenados if clave(c) > 0]
+
+        top_facturacion = _top(lambda c: c["facturado"], lambda x: formatear_moneda(x).split(",")[0])
+        top_unidades = _top(lambda c: c["unidades"], lambda x: f"{int(x)} u.")
+
+        tramos = [("Pierden plata", None, 0, "danger"), ("0 a 10%", 0, 10, "warn"), ("10 a 20%", 10, 20, "info"), ("20 a 30%", 20, 30, "ok"),
+                  ("30 a 40%", 30, 40, "ok"), ("40 a 50%", 40, 50, "ok"), ("Más de 50%", 50, None, "ok")]
+        margenes = [(c["raw"]["neto_total"] / c["raw"]["total_facturado"] * 100) if c["raw"]["total_facturado"] else 0 for c in cons]
+        for etiqueta, desde, hasta, tono in tramos:
+            cantidad = sum(1 for m in margenes if (desde is None or m >= desde) and (hasta is None or m < hasta))
+            distribucion_margenes.append({"etiqueta": etiqueta, "cantidad": cantidad, "tono": tono,
+                                          "pct": round(cantidad / len(margenes) * 100) if margenes else 0})
+        modelos_pierden = sum(1 for m in margenes if m < 0)
+    except Exception as e:
+        print(f"[Métricas] ⚠️ Error armando top de productos y distribución de márgenes: {e}")
+
     # Ganancia por unidad (B8).
     total_unidades_periodo = sum(v["cantidad"] for v in datos["ventas"])
     ganancia_por_unidad = formatear_moneda(datos["resumen"]["raw"]["ganancia_neta"] / total_unidades_periodo) if total_unidades_periodo > 0 else None
@@ -1058,7 +1094,8 @@ def metricas_vista():
         punto_equilibrio=punto_equilibrio, canales_envio=canales_envio,
         factura_meli=factura_meli, evolucion_mensual=evolucion_mensual,
         total_unidades_periodo=total_unidades_periodo, ganancia_por_unidad=ganancia_por_unidad,
-        analitica_clientes=analitica_clientes, pareto_ganancia=pareto_ganancia, flex_resumen=flex_resumen,
+        analitica_clientes=analitica_clientes, pareto_ganancia=pareto_ganancia, flex_resumen=flex_resumen, flex_reintegro=flex.REINTEGRO_MELI,
+        top_facturacion=top_facturacion, top_unidades=top_unidades, distribucion_margenes=distribucion_margenes, modelos_pierden=modelos_pierden,
         active_nav="metricas"
     )
 

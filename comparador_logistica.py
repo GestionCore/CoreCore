@@ -9,12 +9,14 @@ def calcular_comparacion(usuario_id, cuenta_id, access_token, fecha_desde, fecha
         cursor = conexion.cursor()
         cursor.execute("""
             SELECT v.id_meli, v.cantidad, v.precio_venta, v.cargo_venta, v.costo_envio,
-                   COALESCE(p.tipo_logistica, 'desconocido'), COALESCE(p.precio_costo, 0)
+                   COALESCE(v.tipo_logistica, p.tipo_logistica, 'desconocido'), COALESCE(p.precio_costo, 0)
             FROM ventas v LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
             WHERE v.fecha_venta BETWEEN %s AND %s
         """, (fecha_desde, fecha_hasta))
         filas = cursor.fetchall()
 
+    # El canal sale del tipo de logística REAL de cada venta (ventas.tipo_logistica); solo si todavía no se conoce se usa el de la
+    # publicación, que puede estar desactualizado (una publicación con FULL y Flex a la vez vendía todo como FULL).
     # 3 canales, no 2: "self_service" es Flex (el vendedor entrega, MeLi
     # solo intermedia el envío) — antes caía adentro de "propia" junto
     # con drop_off/cross_docking (envío clásico por correo), mezclando
