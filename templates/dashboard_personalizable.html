@@ -48,6 +48,16 @@
     </div>
 </div>
 
+<!-- ── 1b. LAS ÚLTIMAS DOS SEMANAS: qué días ganaste y cuáles perdiste ────── -->
+<div class="panel" id="panel-ganancia-14d">
+    <div class="ux-panel-cab">
+        <div class="panel-title" style="margin:0;">Ganancia por día · últimos 14 días</div>
+        <div class="ux-leyenda"><span><i class="ux-dot ux-dot-ok"></i>Ganaste</span><span><i class="ux-dot ux-dot-mal"></i>Perdiste</span><span><i class="ux-dot ux-dot-linea"></i>Promedio</span></div>
+    </div>
+    <div class="ux-dash-grafico" id="caja-grafico-14d"><div class="skeleton" style="position:absolute; inset:0; border-radius:12px;"></div><canvas id="chartGanancia14d" role="img" aria-label="Ganancia neta por día de los últimos 14 días"></canvas></div>
+    <div class="ux-ministats" id="ministats-14d"></div>
+</div>
+
 <!-- ── 2. QUÉ HAGO: cola de acciones (misiones de Logros, con botón) ──────── -->
 <div id="bloque-acciones">
     <div class="ux-acciones-titulo">Lo que tenés que hacer hoy <span class="ux-contador" id="acciones-contador" style="display:none;"></span></div>
@@ -500,6 +510,43 @@
         });
     }
 
+    // ── 1b. Ganancia día por día: barras verdes/rojas + línea del promedio ─────────
+    function pintarGraficoGanancia14d(d) {
+        const canvas = document.getElementById('chartGanancia14d');
+        const serie = d.serie_14d || [];
+        if (!canvas || !serie.length || !window.Chart) { const p = document.getElementById('panel-ganancia-14d'); if (p) p.style.display = 'none'; return; }
+        const estilo = getComputedStyle(document.documentElement);
+        const tok = (n, f) => estilo.getPropertyValue(n).trim() || f;
+        const cOk = tok('--success', '#22c55e'), cMal = tok('--danger', '#f43f5e'), cTexto = tok('--text-secondary', '#94a3b8'), cGrilla = tok('--border-soft', 'rgba(255,255,255,0.08)'), cLinea = tok('--accent-primary', '#8b5cf6');
+        const promedio = d.promedio_diario_14d.ganancia;
+        const ultimo = serie.length - 1;
+        new Chart(canvas, {
+            data: {
+                labels: serie.map(s => s.etiqueta),
+                datasets: [
+                    { type: 'bar', label: 'Ganancia', data: serie.map(s => s.ganancia), backgroundColor: serie.map(s => s.ganancia < 0 ? cMal : cOk), borderRadius: 6, borderSkipped: false,
+                      borderColor: serie.map((s, i) => i === ultimo ? tok('--text-primary', '#fff') : 'transparent'), borderWidth: serie.map((s, i) => i === ultimo ? 2 : 0) },
+                    { type: 'line', label: 'Promedio diario', data: serie.map(() => promedio), borderColor: cLinea, borderDash: [6, 5], borderWidth: 2, pointRadius: 0, fill: false },
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { padding: 12, cornerRadius: 8, callbacks: {
+                    title: (items) => items[0].dataIndex === ultimo ? 'Hoy (' + serie[ultimo].etiqueta + ')' : serie[items[0].dataIndex].etiqueta,
+                    label: (c) => c.dataset.type === 'line' ? ` Promedio: ${UX.plata(c.parsed.y)}` : ` Ganancia: ${UX.plata(c.parsed.y)}`,
+                    afterLabel: (c) => c.dataset.type === 'line' ? '' : ` ${serie[c.dataIndex].ventas} venta${serie[c.dataIndex].ventas === 1 ? '' : 's'} · facturó ${UX.plata(serie[c.dataIndex].facturado)}` } } },
+                scales: { x: { ticks: { color: cTexto }, grid: { display: false } }, y: { ticks: { color: cTexto, callback: (v) => UX.plata(v) }, grid: { color: cGrilla } } }
+            }
+        });
+        document.querySelector('#caja-grafico-14d .skeleton')?.remove();
+        const p = d.periodo_14d, mejor = d.mejor_dia;
+        document.getElementById('ministats-14d').innerHTML = `
+            <div><span>Mejor día</span><b class="text-success">${mejor ? UX.esc(mejor.ganancia_f) : '—'}</b><em>${mejor ? UX.esc(mejor.etiqueta) : ''}</em></div>
+            <div><span>Total 14 días</span><b class="${p.margen_negativo ? 'text-danger' : 'text-success'}">${UX.esc(p.margen_f)}</b><em>ganancia neta</em></div>
+            <div><span>Promedio diario</span><b>${UX.esc(d.promedio_diario_14d.ganancia_f)}</b><em>por día</em></div>
+            <div><span>Ventas</span><b>${UX.esc(d.ventas_14d)}</b><em>en 14 días</em></div>`;
+    }
+
     // ── 1. Cómo voy: hero de ganancia + resultado de 14 días ─────────────────
     async function cargarGananciaDiaVsPromedio() {
         try {
@@ -552,6 +599,8 @@
             document.getElementById('valor-hoy').textContent = d.hoy.ganancia_f;
             document.getElementById('valor-promedio').textContent = d.promedio_diario_14d.ganancia_f;
 
+            pintarGraficoGanancia14d(d);
+
             // Resultado de los últimos 14 días
             const p = d.periodo_14d;
             if (p.facturado > 0 && p.costo_fabricacion === 0) {
@@ -580,6 +629,7 @@
             console.error('[Dashboard] Error cargando ganancia vs promedio', e);
             document.getElementById('hero-frase').textContent = 'No pudimos calcular la ganancia de hoy en este momento. Probá recargar en un rato.';
             document.querySelectorAll('#hero-ganancia-valor .skeleton, .pl-tile-valor.skeleton').forEach(sk => { sk.classList.remove('skeleton'); sk.textContent = '—'; });
+            const panel14 = document.getElementById('panel-ganancia-14d'); if (panel14) panel14.style.display = 'none';
         }
     }
 

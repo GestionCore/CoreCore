@@ -384,6 +384,16 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-dist-val { width: 70px; text-align: right; flex-shrink: 0; }
 .ux-flex-neto { font-family: var(--font-data); font-size: 2.1em; font-weight: 800; color: var(--semantic-warning); line-height: 1.1; margin: 4px 0 2px; }
 
+/* Dashboard: ganancia por día */
+.ux-panel-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.ux-leyenda { display: flex; gap: 14px; font-size: 0.78em; color: var(--text-secondary); flex-wrap: wrap; }
+.ux-dot-linea { background: var(--accent-primary); border-radius: 2px; height: 3px; width: 14px; vertical-align: middle; }
+.ux-dash-grafico { position: relative; height: 230px; }
+.ux-ministats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+.ux-ministats span { display: block; font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); font-weight: 700; }
+.ux-ministats b { font-family: var(--font-data); font-size: 1.25em; display: block; margin: 2px 0; }
+.ux-ministats em { font-style: normal; font-size: 0.75em; color: var(--text-secondary); }
+
 /* Título de publicación con su miniatura al lado (celdas de tabla, preguntas) */
 .ux-titulo-thumb { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ux-titulo-thumb .thumb-sm { flex-shrink: 0; }

@@ -846,7 +846,24 @@ def api_dashboard_ganancia_dia_vs_promedio():
     def _f(n):
         return f"${formatear_moneda_entera(n)}"
 
+    # Ganancia día por día de los últimos 14 (mismas ventas, misma fórmula: no pide nada más a MeLi)
+    por_dia = {}
+    for v in datos["ventas"]:
+        d = por_dia.setdefault(v["fecha"], {"ganancia": 0.0, "facturado": 0.0, "ventas": 0})
+        d["ganancia"] += v["raw"]["ganancia_neta"]
+        d["facturado"] += v["raw"]["precio_venta"]
+        d["ventas"] += 1
+    serie_14d = []
+    for i in range(14):
+        dia = hoy - timedelta(days=13 - i)
+        d = por_dia.get(dia.strftime("%Y-%m-%d"), {"ganancia": 0.0, "facturado": 0.0, "ventas": 0})
+        serie_14d.append({"fecha": dia.strftime("%Y-%m-%d"), "etiqueta": dia.strftime("%d/%m"), "ganancia": round(d["ganancia"], 2),
+                          "facturado": round(d["facturado"], 2), "ventas": d["ventas"]})
+    mejor = max(serie_14d, key=lambda s: s["ganancia"])
+    mejor_dia = {"etiqueta": mejor["etiqueta"], "ganancia": mejor["ganancia"], "ganancia_f": _f(mejor["ganancia"])} if mejor["ventas"] else None
+
     return jsonify({
+        "serie_14d": serie_14d, "mejor_dia": mejor_dia, "ventas_14d": sum(s["ventas"] for s in serie_14d),
         "hoy": {
             "ganancia": round(ganancia_hoy, 2), "ganancia_f": _f(ganancia_hoy),
             "facturado": round(facturado_hoy, 2), "facturado_f": _f(facturado_hoy),

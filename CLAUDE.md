@@ -238,6 +238,14 @@ y color donde hay que mirar. Piezas (usarlas, no reinventar HTML):
 - `templates/_ux.html` — macros Jinja (`banner`, `kpi`, `delta`, `vacio`,
   `seccion`) y `static/js/ux.js` — `UX.banner/kpi/accion/plata/pct/esc`
   para pantallas armadas con fetch. Filtros Jinja `|plata |pct |numero`.
+- Componentes visuales agregados después (en `ux.css`, mismos tokens): `ux-medidor`
+  (ROAS contra equilibrio con zonas), `ux-embudo`, `ux-rank-fila` (ranking con
+  foto + barra de color por rendimiento), `ux-camp-card`, `ux-dist-fila`
+  (distribución), `ux-ministats`, `ux-chip-serie` (series del gráfico que se
+  prenden/apagan), `ux-donut-*`, `ux-split`. Los gráficos Chart.js leen los
+  colores de los tokens (`--success`, `--danger`, `--border-soft`…) para que el
+  tema claro funcione; no escribir `rgba(255,255,255,…)` fijo para grillas.
+  Un gráfico dentro de un `<details>` cerrado mide 0: armarlo al abrir o sacarlo a la vista.
 - Regla de las pantallas: cómo voy → qué hago → números → detalle plegado.
   Un botón primario por pantalla; el historial y las tablas largas al final.
 - **Todo texto externo (MeLi, base, usuario) se escapa** (`UX.esc` / autoescape).
