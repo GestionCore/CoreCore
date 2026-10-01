@@ -22,10 +22,10 @@
 
 <!-- ── 2. NÚMEROS ─────────────────────────────────────────────────────── -->
 <div class="ux-kpis">
-    {{ kpi("Modelos activos", stats.activas, "accion", "shirt", "publicaciones online") }}
+    {{ kpi("Modelos activos", stats.activas, "accion", "grid", "publicaciones online") }}
     {{ kpi("Capital en stock", "$" ~ stats.valor_total.split(',')[0], "gold", "coin", "precio × unidades totales") }}
     {{ kpi("Depósito propio", stats.propio ~ " u.", "ok" if stats.propio else "neutral", "box", "stock físico en tu local") }}
-    {{ kpi("Depósito FULL", stats.full ~ " u.", "info", "truck", "en bodegas de MeLi (solo lectura)") }}
+    {% if capacidades.get('full') is not false %}{{ kpi("Depósito FULL", stats.full ~ " u.", "info", "truck", "en bodegas de MeLi (solo lectura)") }}{% endif %}
     {{ kpi("Sin stock", sin_stock|length, "danger" if sin_stock else "ok", "alert", "<b>publicaciones activas</b> sin una unidad" if sin_stock else "ninguna publicación activa agotada") }}
 </div>
 
@@ -84,7 +84,7 @@
                 <th class="num">Precio</th>
                 <th>Estado</th>
                 <th class="num">Propio</th>
-                <th class="num">FULL</th>
+                {% if capacidades.get('full') is not false %}<th class="num">FULL</th>{% endif %}
                 <th>Ventas 7 días</th>
                 <th></th>
             </tr>
@@ -131,7 +131,7 @@
                     {% else %}<span class="ux-pill ux-neutral ux-pill-suave">Inactiva</span>{% endif %}
                 </td>
                 <td class="num" data-label="Propio"><strong>{{ p.stock_propio }} u.</strong></td>
-                <td class="num" data-label="FULL"><strong>{{ p.stock_full }} u.</strong></td>
+                {% if capacidades.get('full') is not false %}<td class="num" data-label="FULL"><strong>{{ p.stock_full }} u.</strong></td>{% endif %}
                 <td data-label="Ventas 7 días">
                     {% if p.sparkline_total_7d > 0 %}
                     <span class="row-flex" style="gap:8px;">

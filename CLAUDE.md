@@ -219,6 +219,45 @@ scopeado por cuenta_id antes de confiar en él.
   silencio → no se actualizaba NINGUNA publicación ("0/83 ítems
   sincronizados"; probablemente era el "no me muestra todas las publicaciones"
   de `cosas.txt`). Mientras producción corra el código viejo sigue roto.
+- **Pantallas nuevas sobre datos de MeLi ya guardados** (2026-10-01), todas
+  generales para cualquier rubro y ocultas si no aplican a la cuenta:
+  `/calidad` (`calidad.py`: puntaje y acciones de MeLi + visitas/conversión),
+  `/precios` (`precios.py`: precio mínimo = ganancia $0 y recomendado = margen
+  objetivo, con la comisión (`cargo_venta`, incluye cuotas y cupones) y el envío
+  POR UNIDAD reales de cada publicación en 90 días; NUNCA se estima con el
+  promedio de otras publicaciones — el envío de dos productos no se parece —,
+  las que no vendieron van aparte), unidades de FULL no disponibles en Stock
+  (`full_stock.py`, se cuentan UNA vez por `inventory_id`: varias publicaciones
+  comparten inventario), cupones financiados en Promociones
+  (`promociones.obtener_cupones`), tendencia de visitas en el Embudo, límite de
+  despacho por paquete en Despacho (`GET /shipments/{id}/sla` → `expected_date`
+  y `status`), panel de catálogo en Competencia (`catalogo_ganar.py`: precio
+  para ganar el puesto principal cruzado con el precio mínimo; ⚠️ construido
+  contra la documentación, sin ver nunca una respuesta real: la cuenta de prueba
+  no tiene catálogo) y aviso de mensajes de compradores sin leer
+  (`mensajes.py`, `/api/mensajes/sin_leer`; ⚠️ la app NO envía mensajes: se
+  responde en MeLi; el largo máximo del vendedor es 350 caracteres y las órdenes
+  FULL vienen `blocked_by_fulfillment`).
+- **Lo que se esconde según `capacidades`**: Publicidad (`ads`), Competencia
+  (`catalogo`), panel Flex de Costos (`flex`), columna/KPI FULL de Stock
+  (`full`); nav (`requiere` en `nav_config.py`), Ctrl+K (`window.CAPACIDADES`) y
+  subnav. Ganancia Real muestra Flex solo si hay envíos Flex.
+- **Webhooks** (`/notificaciones_meli` y `/webhook`, `sincronizador.procesar_notificacion_webhook`):
+  validan `application_id` contra `MELI_CLIENT_ID`, no usan el contenido como
+  dato (solo deciden QUÉ volver a pedir a MeLi) y juntan ráfagas con
+  `antirrebote.py` (1 sync por cuenta cada 15 s). Temas: `items`, `orders_v2`/`orders`/
+  `shipments` (sync de ventas), `questions`, `claims`/`post_purchase`.
+  ⚠️ Falta, del lado del usuario, tildar esos temas y poner la Notification URL
+  `https://corelux.app/notificaciones_meli` en el panel de MeLi Developers
+  (no se puede hacer desde acá). Mientras tanto el scheduler (4 min) cubre todo.
+- ⚠️ **Generalización pendiente (grande)**: agrupar publicaciones por
+  "modelo + talle" parseando el TÍTULO con un regex de talles (`XXXL|XXL|XL|L|M|S|\d+`)
+  está repetido en `catalogo.py`, `stock_masivo.py`, `analisis_stock.py`,
+  `dashboard.py`, `despacho.py`, `sincronizador.py`, `costos.py`, `publicidad.py`.
+  Para un rubro sin talles puede inventar uno ("Pack 12" → "Talle 12"). La salida
+  limpia es agrupar por `user_product_id`/`family_id` de MeLi o por los atributos
+  SIZE/COLOR de la variante, en vez del título. Los textos y prompts de IA, el
+  calendario estacional y Tendencias ya no asumen indumentaria.
 
 ## Lo que NO existe todavía (no asumas que sí)
 - Puente de WhatsApp (Baileys) — comentado en `iniciar_corelux.bat`

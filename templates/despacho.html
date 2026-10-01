@@ -12,7 +12,7 @@
 </div>
 
 {% if not flex_habilitado %}
-{{ banner("warn", "alert", "<b>No tenés Mercado Envíos Flex</b> habilitado en tu cuenta", "Este panel solo te muestra despachos de Correo (Mercado Envíos estándar).") }}
+{{ banner("info", "info", "<b>Tu cuenta no usa Mercado Envíos Flex</b>", "Acá ves los despachos de Correo (Mercado Envíos estándar): los de FULL los despacha Mercado Libre.") }}
 {% endif %}
 
 {% set atrasados = paquetes|selectattr('limite_tono', 'equalto', 'danger')|rejectattr('despachado')|list %}

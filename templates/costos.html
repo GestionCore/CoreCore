@@ -88,6 +88,8 @@
 </div>
 {% endif %}
 
+{# Solo para cuentas que usan Flex: un False confirmado (capacidades.py) esconde el panel entero #}
+{% if capacidades.get('flex') is not false %}
 <!-- ── 2b. ENTREGA FLEX: lo que te cobra tu logística ────────────────────── -->
 {% set flex_sin_precio = flex_data.umbrales|selectattr('precio', 'none')|list|length == flex_data.umbrales|length %}
 <details class="ux-detalle" id="entrega-flex" {% if hay_flex and (flex_pendientes_n or flex_sin_precio) %}open{% endif %}>
@@ -115,6 +117,7 @@
         <div id="flex-vista-previa"></div>
     </div>
 </details>
+{% endif %}
 
 <!-- ── 3. GASTOS DEL NEGOCIO ───────────────────────────────────────────── -->
 <div class="ux-seccion ux-info">Gastos del negocio</div>
@@ -357,6 +360,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        if (!document.getElementById('entrega-flex')) return;   // la cuenta no usa Flex: el panel no está
         pintarOrigenFlex(); pintarUmbralesFlex(); pintarVistaPreviaFlex(FLEX.vista_previa);
         const cont = document.getElementById('flex-umbrales');
         if (!cont) return;
