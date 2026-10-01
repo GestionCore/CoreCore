@@ -270,6 +270,14 @@ scopeado por cuenta_id antes de confiar en él.
   talle, `family_id` no — es la clave de "modelo" que no depende del título ni del
   rubro (el sincronizador la guarda en `productos_padre.family_id`): usarla si
   alguna vez se reemplaza el agrupado por título.
+- **Costo de ofrecer cuotas (migración 0028, `ventas.financiacion`)**: el cargo
+  `financing_add_on_fee` (collector → ml) del pago. ⚠️ Se cobra **por publicación,
+  como un % casi fijo del precio, en CADA venta aunque el comprador pague de
+  contado** (se verificó: en publicaciones con 100% de ventas en 1 cuota —dinero
+  en cuenta, débito, transferencia— el cargo igual es 8-13%). Por eso el panel de
+  Ganancia Real ("Lo que te cuesta ofrecer cuotas") agrupa POR PUBLICACIÓN y no
+  por cuotas elegidas por el comprador. Ya está DENTRO de `cargo_venta`: es un
+  desglose, no resta nada de nuevo. Se rellena de a 30 órdenes por sync.
 - **Ventas canceladas/reembolsadas después de sincronizarlas (migración 0026)**:
   el sync pide órdenes por fecha de CREACIÓN y nunca guarda las canceladas, pero
   una orden paga que se cancela días después (devolución con reembolso) seguía en
@@ -442,7 +450,7 @@ MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones corridas hasta `0027_opiniones.sql` — 
+- Migraciones corridas hasta `0028_financiacion.sql` — 
   verificá `migrate.py --status` contra Supabase real antes de asumir
   cuál es la última aplicada, el número más alto en `migrations/` no
   siempre coincide con lo corrido de verdad.

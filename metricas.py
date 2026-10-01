@@ -210,7 +210,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
 
         cursor.execute("""
             SELECT id_orden, id_meli, titulo, cantidad, precio_venta, cargo_venta, costo_envio, fecha_venta, id_variante, envio_estado,
-                   COALESCE(costo_flex, 0) AS costo_flex, retenciones, neto_recibido
+                   COALESCE(costo_flex, 0) AS costo_flex, retenciones, neto_recibido, COALESCE(financiacion, 0) AS financiacion, cuotas
             FROM ventas WHERE fecha_venta BETWEEN %s AND %s ORDER BY fecha_venta DESC
         """, (fecha_desde, fecha_hasta))
         ventas_db = cursor.fetchall()
@@ -360,6 +360,30 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         })
     lista_consolidados.sort(key=lambda c: -c["facturado_raw"])
 
+    # Lo que cuesta ofrecer cuotas sin interés: Mercado Libre cobra un cargo de financiación POR PUBLICACIÓN (un % casi fijo del precio) en cada
+    # venta, aunque el comprador pague de contado. Ya está dentro de los cargos de MeLi; acá se separa para poder decidir publicación por publicación.
+    por_publicacion = {}
+    for v in ventas_db:
+        p = por_publicacion.setdefault(v["id_meli"], {"id_meli": v["id_meli"], "titulo": v["titulo"], "thumbnail": thumbnails_por_item.get(v["id_meli"]),
+                                                      "ventas": 0, "facturado": 0.0, "financiacion": 0.0})
+        p["ventas"] += 1
+        p["facturado"] += float(v["precio_venta"]) * v["cantidad"]
+        p["financiacion"] += float(v["financiacion"])
+    total_financiacion = sum(p["financiacion"] for p in por_publicacion.values())
+    facturado_periodo = sum(p["facturado"] for p in por_publicacion.values())
+    resumen_financiacion = None
+    if total_financiacion > 0:
+        con_cargo = sorted((p for p in por_publicacion.values() if p["financiacion"] > 0), key=lambda p: -p["financiacion"])
+        for p in con_cargo:
+            p["pct"] = round(p["financiacion"] / p["facturado"] * 100, 1) if p["facturado"] else 0.0
+            p["financiacion"] = round(p["financiacion"], 2)
+        resumen_financiacion = {
+            "total": formatear_moneda(total_financiacion), "total_raw": round(total_financiacion, 2),
+            "pct_facturado": round(total_financiacion / facturado_periodo * 100, 1) if facturado_periodo else 0.0,
+            "publicaciones": con_cargo[:12], "publicaciones_total": len(con_cargo),
+            "sin_cargo": sum(1 for p in por_publicacion.values() if p["financiacion"] <= 0),
+        }
+
     total_devoluciones = sum(1 for inc in incidencias_db if inc["tipo"] in ("returns", "return") or "devol" in (inc["tipo"] or "").lower())
     total_cancelaciones = sum(1 for inc in incidencias_db if "cancel" in (inc["tipo"] or "").lower())
     def _es_reclamo(inc):
@@ -384,7 +408,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
 
     resumen_posventa = {
         "devoluciones": total_devoluciones, "cancelaciones": total_cancelaciones, "reclamos": total_reclamos, "reclamos_sin_impacto": reclamos_sin_impacto,
-        "ventas_retiradas": int(retiradas["ordenes"] or 0), "monto_retirado": formatear_moneda(retiradas["monto"]),
+        "financiacion": resumen_financiacion, "ventas_retiradas": int(retiradas["ordenes"] or 0), "monto_retirado": formatear_moneda(retiradas["monto"]),
         "dinero_retenido": formatear_moneda(total_dinero_retenido),
         "ranking_motivos_devolucion": ranking_motivos_devolucion,
         "lista": [

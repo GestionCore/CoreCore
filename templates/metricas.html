@@ -288,6 +288,33 @@
 <!-- ── 8. DETALLE: plegado para no abrumar ──────────────────────────────── -->
 <div class="ux-seccion ux-neutral">Más detalle</div>
 
+{% if posventa.financiacion %}
+{% set fin = posventa.financiacion %}
+<details class="ux-detalle" id="seccion-cuotas">
+    <summary>
+        <svg class="icon" style="width:18px;height:18px;color:var(--semantic-warning);"><use href="#icon-credit-card"/></svg>
+        Lo que te cuesta ofrecer cuotas
+        <span class="ux-pill ux-warn">${{ fin.total }} · {{ fin.pct_facturado|string|replace('.', ',') }}% de lo facturado</span>
+    </summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="text-muted" style="font-size:0.88em; line-height:1.55; margin-bottom:12px;">Mercado Libre cobra un <b>cargo de financiación por publicación</b> —un porcentaje del precio— en cada venta de las que ofrecen cuotas sin interés, <b>aunque el comprador pague de contado</b>. Ya está restado en tu ganancia (viene dentro de los cargos de Mercado Libre): acá lo ves separado para decidir publicación por publicación.</div>
+        <div class="ux-kpis">
+            {{ kpi("Cargo de financiación", "$" ~ fin.total, "warn", "credit-card", fin.pct_facturado|string|replace('.', ',') ~ "% de lo facturado") }}
+            {{ kpi("Publicaciones con cargo", fin.publicaciones_total, "info", "tag", "de " ~ (fin.publicaciones_total + fin.sin_cargo) ~ " con ventas en el período") }}
+        </div>
+        <div class="text-muted" style="font-size:0.85em; margin-bottom:6px;"><b>Las que más te cuestan</b></div>
+        {% for p in fin.publicaciones %}
+        <div class="ux-rank-fila ux-{{ 'danger' if p.pct >= 10 else ('warn' if p.pct >= 6 else 'neutral') }}">
+            {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ p.titulo }}</div><div class="text-muted" style="font-size:0.8em;">{{ p.ventas }} venta{{ 's' if p.ventas != 1 }} · {{ p.facturado|plata }} facturados</div></div>
+            <div class="ux-rank-valor"><b>{{ p.financiacion|plata }}</b><div><span class="ux-pill {{ 'ux-danger' if p.pct >= 10 else ('ux-warn' if p.pct >= 6 else 'ux-neutral ux-pill-suave') }}">{{ p.pct|string|replace('.', ',') }}% del precio</span></div></div>
+        </div>
+        {% endfor %}
+        <div class="text-muted" style="font-size:0.8em; margin-top:10px; line-height:1.5;">El porcentaje depende de cuántas cuotas sin interés ofrece cada publicación: cuantas más, más cuesta. Podés cambiarlo desde la publicación en Mercado Libre. Antes de sacar las cuotas pensá en lo que aportan a la conversión: es una decisión comercial, no solo de costo.</div>
+    </div>
+</details>
+{% endif %}
+
 <details class="ux-detalle" id="seccion-reclamos" {% if reclamos_total > 0 %}open{% endif %}>
     <summary>
         <svg class="icon" style="width:18px;height:18px;color:var(--semantic-warning);"><use href="#icon-alert"/></svg>

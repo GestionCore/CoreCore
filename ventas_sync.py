@@ -198,7 +198,9 @@ def _datos_de_pago(access_token, payment_id):
         retenciones = _suma(lambda c: c.get("type") == "tax")
         # Cupones que financia el VENDEDOR (collector -> ML). Los que financia MeLi van de ML al comprador y no le cuestan nada.
         cupones = _suma(lambda c: c.get("type") == "coupon" and (c.get("accounts") or {}).get("from") == "collector")
-        datos = {"retenciones": round(retenciones, 2), "cupones": round(cupones, 2), "neto": round(float(neto), 2),
+        # Costo de ofrecer cuotas que paga el vendedor (ya está dentro del sale_fee / cargo_venta; acá se separa para mostrarlo)
+        financiacion = _suma(lambda c: c.get("name") == "financing_add_on_fee" and (c.get("accounts") or {}).get("from") == "collector")
+        datos = {"retenciones": round(retenciones, 2), "cupones": round(cupones, 2), "financiacion": round(financiacion, 2), "neto": round(float(neto), 2),
                  "liberacion": (d.get("money_release_date") or "")[:10] or None}
         if len(_cache_pago) >= LIMITE_CACHE_SHIPMENT:
             _cache_pago.clear()
@@ -303,11 +305,12 @@ def _extraer_filas_de_orden(orden, access_token):
     if pagos and datos_pagos and all(datos_pagos):
         retenciones_orden = sum(d["retenciones"] for d in datos_pagos)
         cupones_orden = sum(d["cupones"] for d in datos_pagos)
+        financiacion_orden = sum(d.get("financiacion") or 0 for d in datos_pagos)
         neto_orden = sum(d["neto"] for d in datos_pagos)
         liberacion = min((d["liberacion"] for d in datos_pagos if d["liberacion"]), default=None)
         pago_id = pagos[0].get("id")
     else:
-        retenciones_orden = cupones_orden = neto_orden = liberacion = pago_id = None
+        retenciones_orden = cupones_orden = financiacion_orden = neto_orden = liberacion = pago_id = None
 
     filas = []
     for it in items:
@@ -322,13 +325,14 @@ def _extraer_filas_de_orden(orden, access_token):
 
         proporcion = (precio_unitario * cantidad) / facturado_total_orden
         cupones_item = round(cupones_orden * proporcion, 2) if cupones_orden is not None else None
+        financiacion_item = round(financiacion_orden * proporcion, 2) if financiacion_orden is not None else None
         # cargo_venta = TODO lo que MeLi cobra por la venta: comisión + financiación (sale_fee) + cupones que financia el vendedor
         if cargo_venta is not None and cupones_item:
             cargo_venta = round(cargo_venta + cupones_item, 2)
         costo_envio_item = round(costo_envio_total * proporcion, 2)
 
         filas.append({
-            "envio_shipment_total": envio_shipment_total, "pago_id": pago_id, "fecha_liberacion": liberacion, "cupones": cupones_item,
+            "envio_shipment_total": envio_shipment_total, "pago_id": pago_id, "fecha_liberacion": liberacion, "cupones": cupones_item, "financiacion": financiacion_item,
             "retenciones": round(retenciones_orden * proporcion, 2) if retenciones_orden is not None else None,
             "neto_recibido": round(neto_orden * proporcion, 2) if neto_orden is not None else None,
             "id_orden": id_orden, "id_meli": id_meli, "id_variante": str(item_info.get("variation_id") or ""),
@@ -359,12 +363,12 @@ def _escribir_pagina(cursor, cuenta_id, ordenes, access_token):
                                      cargo_venta, costo_envio, fecha_venta, hora_venta, shipment_id, envio_estado,
                                      despachado, comprador_nickname, comprador_nombre, cuotas, provincia, tipo_logistica,
                                      codigo_postal, localidad, destino_lat, destino_lon,
-                                     envio_shipment_total, retenciones, neto_recibido, fecha_liberacion, monto_liberacion, pago_id, cupones)
+                                     envio_shipment_total, retenciones, neto_recibido, fecha_liberacion, monto_liberacion, pago_id, cupones, financiacion)
                 VALUES (%(cuenta_id)s, %(id_orden)s, %(id_meli)s, %(id_variante)s, %(titulo)s, %(cantidad)s,
                         %(precio_venta)s, %(cargo_venta)s, %(costo_envio)s, %(fecha_venta)s, %(hora_venta)s,
                         %(shipment_id)s, %(envio_estado)s, %(despachado)s, %(comprador_nickname)s, %(comprador_nombre)s, %(cuotas)s, %(provincia)s, %(tipo_logistica)s,
                         %(codigo_postal)s, %(localidad)s, %(destino_lat)s, %(destino_lon)s,
-                        %(envio_shipment_total)s, %(retenciones)s, %(neto_recibido)s, %(fecha_liberacion)s, %(neto_recibido)s, %(pago_id)s, %(cupones)s)
+                        %(envio_shipment_total)s, %(retenciones)s, %(neto_recibido)s, %(fecha_liberacion)s, %(neto_recibido)s, %(pago_id)s, %(cupones)s, %(financiacion)s)
                 ON CONFLICT (cuenta_id, id_orden, id_meli) DO UPDATE SET
                     cantidad = excluded.cantidad, precio_venta = excluded.precio_venta,
                     cargo_venta = CASE
@@ -385,7 +389,8 @@ def _escribir_pagina(cursor, cuenta_id, ordenes, access_token):
                     monto_liberacion = COALESCE(excluded.monto_liberacion, ventas.monto_liberacion),
                     fecha_liberacion = COALESCE(excluded.fecha_liberacion, ventas.fecha_liberacion),
                     pago_id = COALESCE(excluded.pago_id, ventas.pago_id),
-                    cupones = COALESCE(excluded.cupones, ventas.cupones)
+                    cupones = COALESCE(excluded.cupones, ventas.cupones),
+                    financiacion = COALESCE(excluded.financiacion, ventas.financiacion)
             """, {**f, "cuenta_id": cuenta_id})
             filas_insertadas += 1
             if f["shipment_id"]:
@@ -564,18 +569,61 @@ def _completar_datos_de_pago(usuario_id, cuenta_id, access_token, dias=DIAS_COMP
                         cargo_venta = CASE WHEN v.cargo_venta IS NULL THEN NULL
                                       ELSE v.cargo_venta - COALESCE(v.cupones, 0) + COALESCE(ROUND(%(cup)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2), 0) END,
                         cupones = COALESCE(ROUND(%(cup)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2), 0),
+                        financiacion = COALESCE(ROUND(%(fin)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2), 0),
                         retenciones = ROUND(%(reten)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2),
                         neto_recibido = ROUND(%(neto)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2),
                         monto_liberacion = ROUND(%(neto)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2),
                         fecha_liberacion = %(lib)s, pago_id = %(pago)s
                     FROM (SELECT id_orden, SUM(precio_venta * cantidad) AS fact FROM ventas WHERE cuenta_id = %(cuenta)s AND id_orden = %(orden)s GROUP BY id_orden) t
                     WHERE v.cuenta_id = %(cuenta)s AND v.id_orden = t.id_orden
-                """, {"cup": sum(d["cupones"] for d in datos), "reten": sum(d["retenciones"] for d in datos), "neto": sum(d["neto"] for d in datos), "lib": liberacion,
+                """, {"cup": sum(d["cupones"] for d in datos), "fin": sum(d.get("financiacion") or 0 for d in datos), "reten": sum(d["retenciones"] for d in datos), "neto": sum(d["neto"] for d in datos), "lib": liberacion,
                       "pago": pagos[0], "cuenta": cuenta_id, "orden": id_orden})
                 completados += 1
         return completados
     except Exception as e:
         print(f"[VentasSync] ⚠️ No se pudo completar los datos de pago de ventas viejas: {e}")
+        return 0
+
+
+_financiacion_sin_dato = set()
+
+
+def _completar_financiacion(usuario_id, cuenta_id, access_token, dias=DIAS_COMPLETAR_LOGISTICA, tope=30):
+    """
+    Separa el cargo de financiación (lo que cuesta ofrecer cuotas) en las ventas que ya tenían su pago guardado antes de que existiera
+    esta columna. Una consulta por orden, de a `tope` por pasada, las más nuevas primero. Ya está dentro de cargo_venta: no cambia la ganancia.
+    """
+    try:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            cursor.execute("""
+                SELECT id_orden, MIN(pago_id) FROM ventas
+                WHERE cuenta_id = %s AND origen = 'meli' AND financiacion IS NULL AND pago_id IS NOT NULL AND fecha_venta >= current_date - %s
+                GROUP BY id_orden ORDER BY MAX(fecha_venta) DESC LIMIT %s
+            """, (cuenta_id, dias, tope + len(_financiacion_sin_dato)))
+            pendientes = [(o, p) for o, p in cursor.fetchall() if o not in _financiacion_sin_dato][:tope]
+        if not pendientes:
+            return 0
+        with ThreadPoolExecutor(max_workers=HILOS_COSTO_ENVIO) as pool:
+            resultados = list(pool.map(lambda op: (op[0], _datos_de_pago(access_token, op[1])), pendientes))
+        completados = 0
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            for id_orden, datos in resultados:
+                if not datos:
+                    if len(_financiacion_sin_dato) >= LIMITE_CACHE_SHIPMENT:
+                        _financiacion_sin_dato.clear()
+                    _financiacion_sin_dato.add(id_orden)
+                    continue
+                cursor.execute("""
+                    UPDATE ventas v SET financiacion = COALESCE(ROUND(%(fin)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2), 0)
+                    FROM (SELECT id_orden, SUM(precio_venta * cantidad) AS fact FROM ventas WHERE cuenta_id = %(cuenta)s AND id_orden = %(orden)s GROUP BY id_orden) t
+                    WHERE v.cuenta_id = %(cuenta)s AND v.id_orden = t.id_orden
+                """, {"fin": datos.get("financiacion") or 0, "cuenta": cuenta_id, "orden": id_orden})
+                completados += 1
+        return completados
+    except Exception as e:
+        print(f"[VentasSync] ⚠️ No se pudo completar el cargo de financiación de ventas viejas: {e}")
         return 0
 
 
@@ -659,6 +707,7 @@ def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
     completados = _completar_datos_de_envio(usuario_id, cuenta_id, access_token)
     if completados:
         print(f"[VentasSync] 🚚 Cuenta {cuenta_id}: completé los datos de envío de {completados} venta(s) anteriores.")
+    _completar_financiacion(usuario_id, cuenta_id, access_token)
     pagos_completados = _completar_datos_de_pago(usuario_id, cuenta_id, access_token)
     if pagos_completados:
         print(f"[VentasSync] 💵 Cuenta {cuenta_id}: completé lo depositado y las retenciones de {pagos_completados} orden(es) anteriores.")
