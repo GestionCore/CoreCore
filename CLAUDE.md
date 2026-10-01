@@ -402,8 +402,9 @@ reportados — antes de decir "no hay más bugs conocidos", leelo. Al
 en 3 commits "fix: batch de bugs reportados..."). Quedan pendientes o
 sin confirmar en vivo: el resumen de números de hoy en Stock, un campo
 para cargar el costo de entrega Flex por zona (HECHO, ver Entrega Flex), el
-motivo real de reclamos (falta ver logs de un sync real para terminar
-de mapear los `reason_id` de MeLi), si los períodos de Facturación
+motivo real de reclamos (HECHO: el texto sale de
+`/post-purchase/v1/claims/reasons/{id}`) y cuáles afectan la reputación (HECHO,
+ver Reclamos arriba), si los períodos de Facturación
 (9 al 8 del mes siguiente) están realmente mal o es el ciclo real de
 MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
 
