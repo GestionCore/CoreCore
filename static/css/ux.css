@@ -440,6 +440,24 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
     .ux-precio-estado { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; text-align: left; }
 }
 
+/* Opiniones de compradores */
+.ux-estrellas { display: inline-flex; letter-spacing: 1px; font-size: 1em; line-height: 1; vertical-align: middle; }
+.ux-estrellas span { color: var(--border-soft); }
+.ux-estrellas span.on { color: var(--accent-gold, #e8b84b); }
+.ux-estrellas span.media { color: color-mix(in srgb, var(--accent-gold, #e8b84b) 55%, var(--border-soft)); }
+.ux-hero-numero .ux-estrellas { font-size: 0.4em; margin-left: 10px; }
+.ux-opinion { padding: 12px 0; border-top: 1px solid var(--border-soft); }
+.ux-opinion:first-of-type { border-top: 0; }
+.ux-opinion-cab { display: flex; align-items: center; gap: 10px; }
+.ux-opinion-titulo { font-weight: 700; margin-top: 4px; }
+.ux-opinion-texto { color: var(--text-secondary); font-size: 0.9em; line-height: 1.5; margin-top: 2px; white-space: pre-line; }
+.ux-opinion-prod { margin: 0; }
+.ux-opinion-prod-cab { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.ux-opinion-prod-cab .thumb-sm { flex-shrink: 0; }
+.ux-opinion-nota { font-family: var(--font-data); font-size: 1.6em; font-weight: 800; color: var(--ux-c); line-height: 1.1; }
+.ux-opinion-attr { margin-top: 10px; padding: 8px 12px; border-radius: 10px; font-size: 0.85em; background: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
+.ux-opinion-attr-alerta { background: color-mix(in srgb, var(--semantic-warning) 14%, transparent); }
+
 /* Título de publicación con su miniatura al lado (celdas de tabla, preguntas) */
 .ux-titulo-thumb { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ux-titulo-thumb .thumb-sm { flex-shrink: 0; }

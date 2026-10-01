@@ -8,6 +8,7 @@ que una cuenta con muchas publicaciones se va completando sola. Las pantallas le
   visitas   GET /items/{id}/visits/time_window            visitas de los últimos 14 días y de los 14 anteriores
   full      GET /inventories/{inventory_id}/stock/fulfillment   unidades no disponibles en FULL (dañadas, perdidas, en tránsito...)
   catalogo  GET /items/{id}/price_to_win                  solo publicaciones de catálogo: si ganan, comparten o pierden el primer lugar
+  opiniones GET /reviews/item/{id}                        calificación, distribución de estrellas, atributos y las opiniones críticas
 
 Cada una es best-effort: un error no frena el sync ni toca lo que ya había.
 """
@@ -19,8 +20,8 @@ import meli_http
 
 SITE_ID = "MLA"
 HILOS = 6
-HORAS = {"calidad": 24, "visitas": 6, "full": 6, "catalogo": 3}
-TOPE = {"calidad": 25, "visitas": 25, "full": 20, "catalogo": 20}
+HORAS = {"calidad": 24, "visitas": 6, "full": 6, "catalogo": 3, "opiniones": 24}
+TOPE = {"calidad": 25, "visitas": 25, "full": 20, "catalogo": 20, "opiniones": 12}
 
 
 def _pendientes(cursor, cuenta_id, columna_en, horas, condicion, tope, columnas="id_meli"):
@@ -186,10 +187,71 @@ def refrescar_catalogo(usuario_id, cuenta_id, access_token, tope=TOPE["catalogo"
     return len(ids)
 
 
+def _opinion_critica(r):
+    return {"estrellas": r.get("rate"), "titulo": (r.get("title") or "")[:120], "texto": (r.get("content") or "")[:400],
+            "fecha": (r.get("date_created") or "")[:10]}
+
+
+def datos_de_opiniones(item_id, headers):
+    """
+    Lo que Mercado Libre sabe de las opiniones de una publicación, o None si no respondió. Las publicaciones de un mismo modelo
+    (todos sus talles o variantes) comparten opiniones y tienen el mismo family_id, por eso quien llama pide UNA por familia y
+    reparte el resultado.
+    """
+    try:
+        resp = meli_http.get(f"https://api.mercadolibre.com/reviews/item/{item_id}", headers=headers, params={"limit": 1}, timeout=10)
+        if resp.status_code != 200:
+            return None
+        d = resp.json()
+        niveles = {str(i + 1): int((d.get("rating_levels") or {}).get(clave) or 0)
+                   for i, clave in enumerate(("one_star", "two_star", "three_star", "four_star", "five_star"))}
+        total = int((d.get("paging") or {}).get("total") or 0)
+        atributos = [{"texto": a.get("display_text"), "opciones": [{"nombre": o.get("name"), "porcentaje": o.get("percentage")} for o in a.get("histogram") or []]}
+                     for a in d.get("quali_attributes") or [] if a.get("display_text")]
+        criticas = []
+        for estrellas in (1, 2, 3):
+            if not niveles[str(estrellas)]:
+                continue
+            r = meli_http.get(f"https://api.mercadolibre.com/reviews/item/{item_id}", headers=headers, params={"limit": 3, "rating": estrellas}, timeout=10)
+            if r.status_code == 200:
+                criticas += [_opinion_critica(x) for x in (r.json().get("reviews") or [])]
+        criticas.sort(key=lambda x: x["fecha"], reverse=True)
+        return {"promedio": d.get("rating_average"), "total": total, "niveles": niveles, "atributos": atributos, "criticas": criticas[:6]}
+    except Exception as e:
+        print(f"[Enriquecimiento] ⚠️ Opiniones de {item_id}: {e}")
+        return None
+
+
+def refrescar_opiniones(usuario_id, cuenta_id, access_token, tope=TOPE["opiniones"]):
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        pendientes = _pendientes(conexion.cursor(), cuenta_id, "opiniones_en", HORAS["opiniones"], "", tope, "id_meli, family_id")
+    if not pendientes:
+        return 0
+    headers = {"Authorization": f"Bearer {access_token}"}
+    # Una consulta por familia de publicaciones (family_id); sin ese dato, por publicación
+    representantes = {}
+    for id_meli, family_id in pendientes:
+        representantes.setdefault(family_id or id_meli, (id_meli, family_id))
+    resultados = _en_paralelo(lambda rep: (rep, datos_de_opiniones(rep[0], headers)), list(representantes.values()))
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        for (id_meli, family_id), datos in resultados:
+            if datos is None:
+                continue
+            valores = (datos["promedio"], datos["total"], json.dumps(datos["niveles"]), json.dumps(datos["atributos"]), json.dumps(datos["criticas"]))
+            # El mismo resultado para todas las publicaciones de la familia
+            cursor.execute("""
+                UPDATE productos_padre SET opiniones_promedio = %s, opiniones_total = %s, opiniones_niveles = %s::jsonb,
+                       opiniones_atributos = %s::jsonb, opiniones_criticas = %s::jsonb, opiniones_en = now()
+                WHERE cuenta_id = %s AND (id_meli = %s OR (%s::text IS NOT NULL AND family_id = %s))
+            """, valores + (cuenta_id, id_meli, family_id, family_id))
+    return len(representantes)
+
+
 def refrescar_todo(usuario_id, cuenta_id, access_token, capacidades=None):
     """Una pasada de cada uno (solo lo que aplica a la cuenta). Nunca levanta una excepción: es un extra, no puede frenar el sync."""
     caps = capacidades or {}
-    pasos = [("calidad", refrescar_calidad), ("visitas", refrescar_visitas)]
+    pasos = [("calidad", refrescar_calidad), ("visitas", refrescar_visitas), ("opiniones", refrescar_opiniones)]
     if caps.get("full") is not False:
         pasos.append(("full", refrescar_full))
     if caps.get("catalogo") is not False:

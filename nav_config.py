@@ -20,6 +20,7 @@ GRUPOS_NAV = {
             {"nav_key": "despacho", "label": "Despacho", "href": "/despacho", "endpoint": "despacho_vista"},
             {"nav_key": "preguntas", "label": "Preguntas", "href": "/preguntas", "endpoint": "preguntas_vista"},
             {"nav_key": "calidad", "label": "Calidad", "href": "/calidad", "endpoint": "calidad_vista"},
+            {"nav_key": "opiniones", "label": "Opiniones", "href": "/opiniones", "endpoint": "opiniones_vista"},
         ],
     },
     "finanzas": {

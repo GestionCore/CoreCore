@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
+{% block title %}Opiniones · CoreLux{% endblock %}
+{% block content %}
+{% macro estrellas(n) -%}
+<span class="ux-estrellas" aria-label="{{ n }} de 5 estrellas">{% for i in range(1, 6) %}<span class="{{ 'on' if n >= i - 0.25 else ('media' if n >= i - 0.75 else '') }}">★</span>{% endfor %}</span>
+{%- endmacro %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-users"/></svg>Opiniones de compradores</h1>
+        <div class="page-subtitle">Qué calificación tienen tus productos y <strong>qué dicen quienes no quedaron conformes</strong> — para corregir lo que baja tus ventas</div>
+    </div>
+</div>
+
+{% if not total_opiniones %}
+{% if ya_revisadas %}
+{{ vacio("Todavía no hay opiniones en tus productos", "Cuando los compradores califiquen lo que te compraron, acá ves la calificación, lo que valoran y lo que conviene mejorar.", "chat", "info") }}
+{% else %}
+{{ vacio("Estamos trayendo las opiniones de tus productos", "Se completan solas en las próximas sincronizaciones; en unos minutos aparecen acá.", "refresh", "info", "Ir a Stock", "/stock") }}
+{% endif %}
+{% else %}
+
+<!-- ── 1. CÓMO ESTÁN ─────────────────────────────────────────────────────── -->
+<div class="ux-hero ux-{{ tono }}">
+    <div class="ux-hero-etiqueta">Calificación promedio de tus productos</div>
+    <div class="ux-hero-numero">{{ promedio|string|replace('.', ',') }} {{ estrellas(promedio) }}</div>
+    <div class="ux-hero-frase">
+        <b>{{ total_opiniones|numero }} opiniones</b>: el <b>{{ pct_buenas|string|replace('.', ',') }}%</b> son de 4 y 5 estrellas{% if pct_malas %} y el <b>{{ pct_malas|string|replace('.', ',') }}%</b> de 1 y 2{% endif %}.
+        {% if revisar %}<b>{{ revisar|length }}</b> {{ 'producto conviene' if revisar|length == 1 else 'productos convienen' }} revisarse.{% else %}<b>Ningún producto necesita atención</b> por sus opiniones.{% endif %}
+    </div>
+    {% if sin_opiniones %}<div class="ux-hero-nota">{{ sin_opiniones }} {{ 'producto todavía no tiene' if sin_opiniones == 1 else 'productos todavía no tienen' }} opiniones.</div>{% endif %}
+</div>
+
+<!-- ── 2. QUÉ HACER ───────────────────────────────────────────────────── -->
+{% if revisar %}
+<div class="ux-acciones-titulo">Para revisar <span class="ux-contador">{{ revisar|length }}</span></div>
+<div class="ux-lista-acciones">
+    {% for p in revisar[:4] %}
+    <div class="ux-item-accion ux-warn">
+        {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm" alt="" loading="lazy" style="flex-shrink:0;">{% else %}<div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-alert"/></svg></div>{% endif %}
+        <div class="ux-item-accion-cuerpo">
+            <div class="ux-item-accion-titulo">{{ p.titulo }}</div>
+            <div class="ux-item-accion-detalle"><b>{{ p.promedio|string|replace('.', ',') }} ★</b> sobre {{ p.total }} opiniones · <b>{{ p.pct_criticas|string|replace('.', ',') }}%</b> de 1 y 2 estrellas{% if p.unidades %} · {{ p.unidades }} ventas en {{ 90 }} días{% endif %}</div>
+        </div>
+        <a class="btn btn-alerta" href="#producto-{{ loop.index0 }}">Ver opiniones</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ── 3. NÚMEROS ─────────────────────────────────────────────────────── -->
+<div class="ux-kpis">
+    {{ kpi("Calificación", promedio|string|replace('.', ',') ~ " ★", tono, "star", "promedio de " ~ total_opiniones|numero ~ " opiniones") }}
+    {{ kpi("5 estrellas", pct_cinco|string|replace('.', ',') ~ "%", "ok", "check", "compradores encantados") }}
+    {{ kpi("1 y 2 estrellas", pct_malas|string|replace('.', ',') ~ "%", "danger" if pct_malas >= 8 else ("warn" if pct_malas >= 4 else "ok"), "alert", ((niveles['1'] + niveles['2']) ~ " opiniones")) }}
+    {{ kpi("Productos con opiniones", productos|length, "info", "users", "de " ~ total_productos ~ " en tu catálogo") }}
+</div>
+
+<!-- ── 4. LO QUE DICEN QUIENES NO QUEDARON CONFORMES ─────────────────────── -->
+{% if criticas %}
+<div class="ux-seccion ux-warn">Lo que dicen quienes no quedaron conformes <span class="text-muted" style="font-weight:600; font-size:0.8em;">las más recientes</span></div>
+<div class="panel" data-mostrar-mas-scope>
+    {% for c in criticas %}
+    <div class="ux-opinion {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
+        <div class="ux-opinion-cab">{{ estrellas(c.estrellas) }} <span class="text-muted" style="font-size:0.8em;">{{ c.fecha }}</span></div>
+        {% if c.titulo %}<div class="ux-opinion-titulo">{{ c.titulo }}</div>{% endif %}
+        {% if c.texto %}<div class="ux-opinion-texto">{{ c.texto }}</div>{% endif %}
+        <div class="text-muted" style="font-size:0.78em; margin-top:4px;">sobre {% if c.permalink %}<a href="{{ c.permalink }}" target="_blank" rel="noopener">{{ c.producto }} ↗</a>{% else %}{{ c.producto }}{% endif %}</div>
+    </div>
+    {% endfor %}
+    {% if criticas|length > 5 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ criticas|length - 5 }} restantes</button>{% endif %}
+</div>
+{% endif %}
+
+<!-- ── 5. PRODUCTO POR PRODUCTO ─────────────────────────────────────────── -->
+<div class="ux-seccion ux-accion">Producto por producto</div>
+<div class="ux-dos-col" style="margin-top:0;">
+    {% for p in productos %}
+    <div class="panel ux-opinion-prod ux-{{ p.tono }}" id="producto-{{ loop.index0 }}">
+        <div class="ux-opinion-prod-cab">
+            {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div style="min-width:0; flex:1;">
+                <div style="font-weight:700; line-height:1.3;">{% if p.permalink %}<a href="{{ p.permalink }}" target="_blank" rel="noopener" style="color:var(--text-primary); text-decoration:none;">{{ p.titulo }} ↗</a>{% else %}{{ p.titulo }}{% endif %}{% if not p.activa %} <span class="ux-pill ux-neutral ux-pill-suave">Pausada</span>{% endif %}</div>
+                <div class="text-muted" style="font-size:0.8em;">{{ p.total }} opinion{{ 'es' if p.total != 1 else '' }}{% if p.unidades %} · {{ p.unidades }} ventas en 90 días{% endif %}</div>
+            </div>
+            <div style="text-align:right;"><div class="ux-opinion-nota">{{ p.promedio|string|replace('.', ',') }}</div>{{ estrellas(p.promedio) }}</div>
+        </div>
+        {% for d in p.distribucion %}
+        <div class="ux-dist-fila">
+            <span class="ux-dist-etq">{{ d.estrellas }} ★</span>
+            <div class="ux-barra ux-{{ 'ok' if d.estrellas >= 4 else ('warn' if d.estrellas == 3 else 'danger') }}" style="flex:1;"><span style="width:{{ d.pct }}%;"></span></div>
+            <span class="ux-dist-val"><b>{{ d.pct }}%</b> <span class="text-muted">({{ d.cantidad }})</span></span>
+        </div>
+        {% endfor %}
+        {% for a in p.atributos %}<div class="ux-opinion-attr">{{ a.texto }}</div>{% endfor %}
+        {% if p.revisar %}<div class="ux-opinion-attr ux-opinion-attr-alerta">Conviene revisar la descripción, las fotos y las medidas: {{ p.pct_criticas|string|replace('.', ',') }}% lo calificó con 1 o 2 estrellas.</div>{% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

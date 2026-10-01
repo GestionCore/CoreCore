@@ -158,8 +158,8 @@ def _escribir_item_en_db(cuenta_id, datos, cursor):
 
     cursor.execute("""
         INSERT INTO productos_padre (cuenta_id, id_meli, titulo, precio, estado, tipo_logistica, thumbnail, precio_original, recibis_estimado, cuotas_cantidad, cuotas_monto,
-                                     catalog_product_id, inventory_id, permalink, category_id, listing_type_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                     catalog_product_id, inventory_id, permalink, category_id, listing_type_id, user_product_id, family_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (cuenta_id, id_meli) DO UPDATE SET
             titulo = excluded.titulo, precio = excluded.precio,
             estado = excluded.estado, tipo_logistica = excluded.tipo_logistica,
@@ -167,11 +167,13 @@ def _escribir_item_en_db(cuenta_id, datos, cursor):
             recibis_estimado = excluded.recibis_estimado,
             cuotas_cantidad = excluded.cuotas_cantidad, cuotas_monto = excluded.cuotas_monto,
             catalog_product_id = excluded.catalog_product_id, inventory_id = excluded.inventory_id, permalink = excluded.permalink,
-            category_id = excluded.category_id, listing_type_id = excluded.listing_type_id
+            category_id = excluded.category_id, listing_type_id = excluded.listing_type_id,
+            user_product_id = excluded.user_product_id, family_id = excluded.family_id
         RETURNING id
     """, (cuenta_id, id_item, titulo, precio_actual, nuevo_estado, p.get("shipping", {}).get("logistic_type"),
           thumbnail, datos["precio_original"], datos["recibis_estimado"], cuotas_cantidad, cuotas_monto,
-          p.get("catalog_product_id"), p.get("inventory_id"), p.get("permalink"), p.get("category_id"), p.get("listing_type_id")))
+          p.get("catalog_product_id"), p.get("inventory_id"), p.get("permalink"), p.get("category_id"), p.get("listing_type_id"),
+          p.get("user_product_id"), str(p["family_id"]) if p.get("family_id") else None))
     id_padre_interno = cursor.fetchone()[0]
 
     variantes = p.get("variations", [])

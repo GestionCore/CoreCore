@@ -49,6 +49,7 @@ import calidad as calidad_mod
 import precios as precios_mod
 import catalogo_ganar
 import mensajes as mensajes_mod
+import opiniones as opiniones_mod
 import full_stock
 import flex
 import chat_ia
@@ -3053,6 +3054,14 @@ def precios_vista():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         datos = precios_mod.obtener_datos(conexion.cursor(), g.cuenta_id, margen, publicidad)
     return render_template("precios.html", active_nav="precios", **datos)
+
+
+@app.route("/opiniones")
+@login_requerido
+def opiniones_vista():
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        datos = opiniones_mod.obtener_datos(conexion.cursor(), g.cuenta_id)
+    return render_template("opiniones.html", active_nav="opiniones", **datos)
 
 
 @app.route("/calidad")
