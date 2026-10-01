@@ -105,7 +105,7 @@
         </div>
         <div class="embudo-barras">
             <div class="embudo-etapa">
-                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-eye"/></svg><b>{{ e.visitas }}</b> visitas</span>
+                <span class="embudo-etapa-label"><svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-eye"/></svg><b>{{ e.visitas }}</b> visitas{% if e.tendencia_visitas is not none %} <span class="{{ 'text-danger' if e.tendencia_visitas < 0 else 'text-success' }}" title="Visitas de los últimos 14 días contra los 14 anteriores" style="font-size:0.9em;">{{ '▲' if e.tendencia_visitas >= 0 else '▼' }} {{ e.tendencia_visitas|abs }}%</span>{% endif %}</span>
                 <div class="embudo-barra-fondo"><div class="embudo-barra" data-w="{{ '100' if e.visitas > 0 else '0' }}" style="width:0%; background:var(--accent-cyan);"></div></div>
             </div>
             <div class="embudo-etapa">

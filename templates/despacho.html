@@ -15,6 +15,11 @@
 {{ banner("warn", "alert", "<b>No tenés Mercado Envíos Flex</b> habilitado en tu cuenta", "Este panel solo te muestra despachos de Correo (Mercado Envíos estándar).") }}
 {% endif %}
 
+{% set atrasados = paquetes|selectattr('limite_tono', 'equalto', 'danger')|rejectattr('despachado')|list %}
+{% if atrasados %}
+{{ banner("danger", "alert", "<b>" ~ atrasados|length ~ " paquete" ~ ("s" if atrasados|length != 1 else "") ~ " con el plazo de despacho vencido</b>", "Mercado Libre ya los marca como demorados: despachalos primero para que no afecten tu reputación.") }}
+{% endif %}
+
 {% if total > 0 %}
 <!-- ── 1. CUÁNTO FALTA: el número y una barra que pasa de naranja a verde ─────── -->
 <div class="ux-hero {{ 'ux-ok' if listos == total else 'ux-warn' }}" id="hero-despacho">
@@ -59,12 +64,13 @@
         <div class="despacho-info" onclick="toggleDespacho(this.closest('.despacho-item'), '{{ p.id_orden }}', '{{ p.id_meli }}', '{{ p.id_variante }}')" style="cursor:pointer;">
             <strong>{{ p.modelo }}</strong>
             <div style="margin-top:4px; font-size:0.9em;">
-                <b>Talle {{ p.talle }}</b> · {{ p.cantidad }} u.
+                {% if p.talle != 'Único' %}<b>Talle {{ p.talle }}</b> · {% endif %}<b>{{ p.cantidad }} u.</b>
                 {% if p.comprador_nombre %} · {{ p.comprador_nombre }}{% endif %}
                 {% if p.comprador_nickname %} · <span class="text-muted" title="Usuario de MeLi">@{{ p.comprador_nickname }}</span>{% endif %}
             </div>
             <div class="flex-gap" style="margin-top:6px; gap:6px;">
                 <span class="ux-pill {{ 'ux-info' if p.tipo_envio == 'Flex' else 'ux-neutral ux-pill-suave' }}">{{ p.tipo_envio }}</span>
+                {% if p.limite_texto and not p.despachado %}<span class="ux-pill ux-{{ p.limite_tono }}" title="Hasta cuándo hay que entregar el paquete, según Mercado Libre">Despachá antes: {{ p.limite_texto }}</span>{% endif %}
                 {% if p.etiqueta_impresa and not p.despachado %}<span class="ux-pill ux-warn ux-pill-suave" title="La etiqueta ya se imprimió en MeLi">Etiqueta ya impresa</span>{% endif %}
                 <a href="https://www.mercadolibre.com.ar/ventas/{{ p.id_orden }}/detalle" target="_blank" rel="noopener" class="text-muted" style="font-size:0.78em; text-decoration:none;" onclick="event.stopPropagation();">Orden #{{ p.id_orden }} ↗</a>
             </div>

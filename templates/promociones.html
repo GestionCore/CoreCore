@@ -17,6 +17,7 @@
     {{ kpi("Con descuento activo", con_descuento|length, "ok" if con_descuento else "neutral", "tag", "publicaciones con precio rebajado") }}
     {{ kpi("Candidatas a promocionar", (sugerencias_promocion|length) if sugerencias_promocion else 0, "warn" if sugerencias_promocion else "neutral", "bolt", "stock alto y venta lenta") }}
     {{ kpi("Campañas de MeLi", campanias|length, "info", "percent", "activas o con invitación pendiente") }}
+    {% if cupones %}{{ kpi("Cupones que pagaste", cupones.total|plata, "warn", "percent", "en " ~ cupones.dias ~ " días" ~ ((" · " ~ cupones.pct_facturado|string|replace('.', ',') ~ "% de lo facturado") if cupones.pct_facturado is not none else "")) }}{% endif %}
     {% if ofertas_relampago %}{{ kpi("Ofertas relámpago", ofertas_relampago|length, "accion", "flame", "disponibles para sumarte") }}{% endif %}
 </div>
 
@@ -99,6 +100,22 @@
     <div style="padding:20px;">{{ vacio("No tenés publicaciones con descuento ahora", "Creá uno arriba o elegí una de las que conviene promocionar.", "tag", "info") }}</div>
     {% endif %}
 </div>
+
+{% if cupones %}
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--semantic-warning);"><use href="#icon-percent"/></svg> Cupones que financiaste vos <span class="ux-detalle-nota">{{ cupones.total|plata }} · {{ cupones.ventas_con_cupon }} de {{ cupones.ventas }} ventas</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="text-muted" style="font-size:0.85em; margin-bottom:8px; line-height:1.5;">Es lo que Mercado Libre te descontó por cupones que paga el vendedor (en promedio <b>{{ cupones.promedio|plata }}</b> por venta con cupón). Ya está restado en Ganancia Real. Los cupones que paga Mercado Libre no te cuestan nada y no figuran acá.</div>
+        {% for t in cupones.top %}
+        <div class="ux-rank-fila ux-warn">
+            {% if t.thumbnail %}<img src="{{ t.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ t.titulo }}</div><div class="text-muted" style="font-size:0.8em;">{{ t.ventas }} venta{{ 's' if t.ventas != 1 }} con cupón</div></div>
+            <div class="ux-rank-valor"><b>{{ t.total|plata }}</b></div>
+        </div>
+        {% endfor %}
+    </div>
+</details>
+{% endif %}
 
 {% if impacto_promociones %}
 <div class="ux-seccion ux-accion">¿Funcionaron tus promociones?</div>

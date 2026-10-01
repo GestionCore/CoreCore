@@ -6,6 +6,7 @@ Postgres se arma sumando un INTERVAL directamente sobre el timestamp
 combinado de fecha_venta + hora_venta.
 """
 import re
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from psycopg.rows import dict_row
 import db
@@ -19,6 +20,25 @@ def _tipo_envio_legible(tipo_logistica):
     la perspectiva de "quién tiene que despachar esto" — fulfillment (FULL) ya
     se filtra antes, ni siquiera llega acá."""
     return "Flex" if tipo_logistica == "self_service" else "Correo"
+
+
+def _limite_de_despacho(sla):
+    """
+    GET /shipments/{id}/sla → {"status": "on_time" | "delayed" | ..., "expected_date": "2026-10-01T23:00:00-03:00"}: hasta cuándo
+    hay que entregar el paquete (al correo o a la logística Flex) para cumplir el plazo que Mercado Libre le prometió al comprador.
+    Devuelve (texto, tono) o (None, None) si MeLi no informó fecha.
+    """
+    try:
+        limite = datetime.fromisoformat(sla.get("expected_date"))
+    except (TypeError, ValueError, AttributeError):
+        return None, None
+    ahora = datetime.now(limite.tzinfo)
+    dias = (limite.date() - ahora.date()).days
+    hora = limite.strftime("%H:%M")
+    texto = f"hoy {hora}" if dias == 0 else (f"mañana {hora}" if dias == 1 else f"{limite.strftime('%d/%m')} {hora}")
+    if sla.get("status") == "delayed" or limite < ahora:
+        return "vencido" if limite < ahora else texto, "danger"
+    return texto, ("warn" if dias <= 0 else "info")
 
 
 def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_horas):
@@ -81,7 +101,11 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
                     if resp.status_code != 200:
                         return None
                     info_envio = resp.json()
-                    return (clave, id_orden, id_meli, id_variante, shipment_id, info_envio.get("status"), info_envio.get("substatus"), info_envio.get("logistic_type"))
+                    sla = None
+                    if info_envio.get("status") not in ("shipped", "delivered", "not_delivered", "cancelled"):
+                        resp_sla = meli_http.get(f"https://api.mercadolibre.com/shipments/{shipment_id}/sla", headers=headers_shipment, timeout=6)
+                        sla = resp_sla.json() if resp_sla.status_code == 200 else None
+                    return (clave, id_orden, id_meli, id_variante, shipment_id, info_envio.get("status"), info_envio.get("substatus"), info_envio.get("logistic_type"), sla)
                 except Exception as e:
                     print(f"[Despacho] ⚠️ No se pudo verificar el envío {shipment_id}: {e}")
                     return None
@@ -92,8 +116,10 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
             for resultado in resultados:
                 if resultado is None:
                     continue
-                clave, id_orden, id_meli, id_variante, shipment_id, status, substatus, tipo_logistica_real = resultado
+                clave, id_orden, id_meli, id_variante, shipment_id, status, substatus, tipo_logistica_real, sla = resultado
                 paquete = paquetes_por_clave[clave]
+                if sla:
+                    paquete["limite_texto"], paquete["limite_tono"] = _limite_de_despacho(sla)
                 if status in ("shipped", "delivered", "not_delivered"):
                     cursor.execute(
                         "UPDATE ventas SET despachado = true WHERE cuenta_id = %s AND id_orden = %s AND id_meli = %s AND id_variante = %s",

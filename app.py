@@ -1192,12 +1192,13 @@ def promociones_vista():
         impacto_promociones = promociones_mod.obtener_impacto_promociones(cursor)
         sugerencias_promocion = promociones_mod.sugerir_candidatos_promocion(cursor)
         promociones_por_vencer = promociones_mod.obtener_promociones_por_vencer(cursor)
+        cupones = promociones_mod.obtener_cupones(cursor, g.cuenta_id)
 
     return render_template(
         "promociones.html", campanias=campanias_vista, hay_cofinanciamiento=hay_cofinanciamiento, con_descuento=con_descuento,
         catalogo=catalogo_promo, ofertas_relampago=[], combos_sugeridos=combos_sugeridos,
         impacto_promociones=impacto_promociones, sugerencias_promocion=sugerencias_promocion,
-        promociones_por_vencer=promociones_por_vencer, active_nav="promociones"
+        promociones_por_vencer=promociones_por_vencer, cupones=cupones, active_nav="promociones"
     )
 
 

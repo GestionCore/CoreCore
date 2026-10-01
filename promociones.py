@@ -231,3 +231,29 @@ def participar_oferta_relampago(access_token, item_id, deal_price, stock):
         return False, f"{resp.status_code} - {resp.text}"
     except Exception as e:
         return False, str(e)
+
+
+def obtener_cupones(cursor, cuenta_id, dias=30):
+    """
+    Cupones que el vendedor financió en los últimos `dias` días (ventas.cupones: el cargo "coupon_fee" del pago). Es plata que MeLi
+    descuenta de lo depositado y que ya está dentro de cargo_venta, o sea que Ganancia Real la resta. Los cupones que paga MeLi no
+    le cuestan nada al vendedor y no se cuentan. Devuelve None si no hubo ninguno (la pantalla no muestra nada).
+    """
+    cursor.execute("""
+        SELECT COALESCE(SUM(cupones), 0), COUNT(*) FILTER (WHERE COALESCE(cupones, 0) > 0), COUNT(*), COALESCE(SUM(precio_venta * cantidad), 0)
+        FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND fecha_venta >= current_date - %s
+    """, (cuenta_id, dias))
+    total, con_cupon, ventas, facturado = cursor.fetchone()
+    total, facturado = float(total), float(facturado)
+    if total <= 0:
+        return None
+    cursor.execute("""
+        SELECT v.id_meli, MAX(v.titulo), MAX(p.thumbnail), SUM(v.cupones), COUNT(*) FILTER (WHERE COALESCE(v.cupones, 0) > 0)
+        FROM ventas v LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+        WHERE v.cuenta_id = %s AND v.origen = 'meli' AND v.fecha_venta >= current_date - %s
+        GROUP BY v.id_meli HAVING SUM(COALESCE(v.cupones, 0)) > 0 ORDER BY 4 DESC LIMIT 8
+    """, (cuenta_id, dias))
+    top = [{"id_meli": r[0], "titulo": r[1], "thumbnail": r[2], "total": float(r[3]), "ventas": int(r[4])} for r in cursor.fetchall()]
+    return {"dias": dias, "total": round(total, 2), "ventas_con_cupon": int(con_cupon), "ventas": int(ventas),
+            "pct_facturado": round(total / facturado * 100, 1) if facturado > 0 else None,
+            "promedio": round(total / con_cupon, 2) if con_cupon else 0, "top": top}

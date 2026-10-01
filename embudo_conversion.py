@@ -102,11 +102,11 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=30):
 
     cursor.execute("""
         SELECT p.id_meli, p.titulo, p.thumbnail, p.precio,
-               COALESCE(SUM(v.stock_propio + v.stock_full), 0) AS stock_total
+               COALESCE(SUM(v.stock_propio + v.stock_full), 0) AS stock_total, p.visitas_14d, p.visitas_previas_14d
         FROM productos_padre p
         LEFT JOIN productos_variantes v ON v.id_padre = p.id
         WHERE p.estado = 'active'
-        GROUP BY p.id_meli, p.titulo, p.thumbnail, p.precio
+        GROUP BY p.id_meli, p.titulo, p.thumbnail, p.precio, p.visitas_14d, p.visitas_previas_14d
     """)
     activos = cursor.fetchall()
     if not activos:
@@ -129,8 +129,11 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=30):
                 preguntas_por_item[id_meli] = 0
 
     resultado = []
-    for id_meli, titulo, thumbnail, precio, stock_total in activos:
+    for id_meli, titulo, thumbnail, precio, stock_total, visitas_14d, visitas_previas in activos:
         visitas = visitas_por_item.get(id_meli, 0) or 0
+        # Tendencia: las visitas de los últimos 14 días contra los 14 anteriores (las completa enriquecimiento.py en segundo plano);
+        # con muy pocas visitas el porcentaje no dice nada
+        tendencia = round((visitas_14d - visitas_previas) / visitas_previas * 100) if (visitas_14d is not None and visitas_previas and visitas_previas >= 20) else None
         preguntas = preguntas_por_item.get(id_meli, 0)
         vendidas = ventas_por_item.get(id_meli, 0)
         tasa_conversion = round((vendidas / visitas) * 100, 2) if visitas > 0 else None
@@ -146,7 +149,7 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=30):
         resultado.append({
             "id_meli": id_meli, "titulo": titulo, "visitas": visitas, "preguntas": preguntas,
             "vendidas": vendidas, "tasa_conversion": tasa_conversion, "diagnostico": diagnostico,
-            "thumbnail": thumbnail, "precio": float(precio or 0), "stock_total": int(stock_total or 0),
+            "thumbnail": thumbnail, "precio": float(precio or 0), "stock_total": int(stock_total or 0), "tendencia_visitas": tendencia,
         })
 
     def _prioridad(r):
