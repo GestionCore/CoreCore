@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import meli_http
 import db
+import flex
 
 TAMANO_PAGINA = 50
 COLCHON_INCREMENTAL_HORAS = 2
@@ -70,7 +71,23 @@ _cache_provincia_envio = {}
 # tampoco cambia con el tiempo una vez despachado, así que se cachea
 # siempre que se consiga, igual que la provincia.
 _cache_tipo_logistica = {}
+# (código postal, localidad, lat, lon) de destino — lo usa flex.py para ubicar el envío y calcular su zona.
+_cache_ubicacion_envio = {}
 LIMITE_CACHE_SHIPMENT = 20000
+
+
+def _ubicacion_de_envio(data):
+    """(código postal, localidad, latitud, longitud) del destino de un /shipments/{id}, o None si MeLi no informó nada de eso."""
+    direccion = (data or {}).get("receiver_address", {}) or {}
+    codigo_postal = str(direccion.get("zip_code") or "").strip() or None
+    localidad = ((direccion.get("city") or {}).get("name") or (direccion.get("neighborhood") or {}).get("name") or "").strip() or None
+    try:
+        lat, lon = float(direccion.get("latitude")), float(direccion.get("longitude"))
+    except (TypeError, ValueError):
+        lat = lon = None
+    if lat is not None and lat == 0 and lon == 0:
+        lat = lon = None   # MeLi manda 0,0 cuando la dirección no está geolocalizada
+    return (codigo_postal, localidad, lat, lon) if (codigo_postal or localidad or lat is not None) else None
 
 
 def _obtener_costo_envio(access_token, shipment_id):
@@ -107,6 +124,12 @@ def _obtener_costo_envio(access_token, shipment_id):
             if len(_cache_provincia_envio) >= LIMITE_CACHE_SHIPMENT:
                 _cache_provincia_envio.clear()
             _cache_provincia_envio[shipment_id] = provincia
+
+        ubicacion = _ubicacion_de_envio(data)
+        if ubicacion:
+            if len(_cache_ubicacion_envio) >= LIMITE_CACHE_SHIPMENT:
+                _cache_ubicacion_envio.clear()
+            _cache_ubicacion_envio[shipment_id] = ubicacion
 
         tipo_logistica = data.get("logistic_type")
         if tipo_logistica:
@@ -167,6 +190,7 @@ def _extraer_filas_de_orden(orden, access_token):
     costo_envio_total = _obtener_costo_envio(access_token, str(shipment_id)) if shipment_id else 0.0
     provincia = _cache_provincia_envio.get(str(shipment_id)) if shipment_id else None
     tipo_logistica = _cache_tipo_logistica.get(str(shipment_id)) if shipment_id else None
+    codigo_postal, localidad, destino_lat, destino_lon = (_cache_ubicacion_envio.get(str(shipment_id)) or (None, None, None, None)) if shipment_id else (None, None, None, None)
     facturado_total_orden = sum(float(it.get("unit_price") or 0) * int(it.get("quantity") or 1) for it in items) or 1.0
 
     buyer = orden.get("buyer", {}) or {}
@@ -201,6 +225,7 @@ def _extraer_filas_de_orden(orden, access_token):
             "despachado": shipping_info.get("status") in ("shipped", "delivered"),
             "comprador_nickname": buyer.get("nickname"), "comprador_nombre": buyer.get("first_name"),
             "cuotas": cuotas_orden, "provincia": provincia, "tipo_logistica": tipo_logistica,
+            "codigo_postal": codigo_postal, "localidad": localidad, "destino_lat": destino_lat, "destino_lon": destino_lon,
         })
     return filas
 
@@ -211,20 +236,28 @@ def _escribir_pagina(cursor, cuenta_id, ordenes, access_token):
     filas_insertadas = 0
     for orden in ordenes:
         for f in _extraer_filas_de_orden(orden, access_token):
+            # costo_envio = lo que informa MeLi + costo_flex (entrega Flex que cargó el usuario, ver flex.py): al
+            # reprocesar una orden hay que conservar esa parte, si no el costo Flex se perdería en el próximo sync.
             cursor.execute("""
                 INSERT INTO ventas (cuenta_id, id_orden, id_meli, id_variante, titulo, cantidad, precio_venta,
                                      cargo_venta, costo_envio, fecha_venta, hora_venta, shipment_id, envio_estado,
-                                     despachado, comprador_nickname, comprador_nombre, cuotas, provincia, tipo_logistica)
+                                     despachado, comprador_nickname, comprador_nombre, cuotas, provincia, tipo_logistica,
+                                     codigo_postal, localidad, destino_lat, destino_lon)
                 VALUES (%(cuenta_id)s, %(id_orden)s, %(id_meli)s, %(id_variante)s, %(titulo)s, %(cantidad)s,
                         %(precio_venta)s, %(cargo_venta)s, %(costo_envio)s, %(fecha_venta)s, %(hora_venta)s,
-                        %(shipment_id)s, %(envio_estado)s, %(despachado)s, %(comprador_nickname)s, %(comprador_nombre)s, %(cuotas)s, %(provincia)s, %(tipo_logistica)s)
+                        %(shipment_id)s, %(envio_estado)s, %(despachado)s, %(comprador_nickname)s, %(comprador_nombre)s, %(cuotas)s, %(provincia)s, %(tipo_logistica)s,
+                        %(codigo_postal)s, %(localidad)s, %(destino_lat)s, %(destino_lon)s)
                 ON CONFLICT (cuenta_id, id_orden, id_meli) DO UPDATE SET
                     cantidad = excluded.cantidad, precio_venta = excluded.precio_venta,
                     cargo_venta = COALESCE(excluded.cargo_venta, ventas.cargo_venta),
-                    costo_envio = excluded.costo_envio, envio_estado = excluded.envio_estado,
+                    costo_envio = excluded.costo_envio + ventas.costo_flex, envio_estado = excluded.envio_estado,
                     despachado = excluded.despachado, cuotas = COALESCE(excluded.cuotas, ventas.cuotas),
                     provincia = COALESCE(excluded.provincia, ventas.provincia),
-                    tipo_logistica = COALESCE(excluded.tipo_logistica, ventas.tipo_logistica)
+                    tipo_logistica = COALESCE(excluded.tipo_logistica, ventas.tipo_logistica),
+                    codigo_postal = COALESCE(excluded.codigo_postal, ventas.codigo_postal),
+                    localidad = COALESCE(excluded.localidad, ventas.localidad),
+                    destino_lat = COALESCE(excluded.destino_lat, ventas.destino_lat),
+                    destino_lon = COALESCE(excluded.destino_lon, ventas.destino_lon)
             """, {**f, "cuenta_id": cuenta_id})
             filas_insertadas += 1
     return len(ordenes), filas_insertadas
@@ -273,6 +306,72 @@ def _sincronizar_rango(usuario_id, cuenta_id, access_token, seller_id, fecha_des
     return ordenes_procesadas, filas_insertadas
 
 
+DIAS_COMPLETAR_LOGISTICA = 60
+TOPE_COMPLETAR_LOGISTICA = 40
+# Envíos que MeLi no supo informar: no se reintentan en cada pasada (si no, los mismos 40 tapan a los que sí se pueden
+# completar). shipment_id es un ID global de MeLi, no de una cuenta, así que compartir este set no mezcla tenants.
+_logistica_sin_dato = set()
+
+
+def _completar_datos_de_envio(usuario_id, cuenta_id, access_token, dias=DIAS_COMPLETAR_LOGISTICA, tope=TOPE_COMPLETAR_LOGISTICA):
+    """
+    Completa el tipo de logística y el destino (código postal + localidad) de ventas viejas. Se guardan al sincronizar
+    la orden, pero el sync incremental solo reprocesa las últimas horas: las anteriores a la migración 0012 no tienen
+    tipo_logistica y las anteriores a la 0019 no tienen destino. Sin eso un envío Flex viejo no se puede identificar ni
+    ubicar (ver flex.py). Se hacen de a `tope` por pasada, las más nuevas primero: un GET a /shipments/{id} por envío.
+    Best-effort — nunca rompe el sync. Devuelve cuántos envíos se completaron.
+    """
+    try:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            cursor.execute("""
+                SELECT shipment_id FROM ventas
+                WHERE cuenta_id = %s AND origen = 'meli' AND shipment_id IS NOT NULL AND fecha_venta >= current_date - %s
+                  AND (tipo_logistica IS NULL OR (tipo_logistica = 'self_service' AND destino_lat IS NULL))
+                GROUP BY shipment_id ORDER BY MAX(fecha_venta) DESC LIMIT %s
+            """, (cuenta_id, dias, tope + len(_logistica_sin_dato)))
+            pendientes = [r[0] for r in cursor.fetchall() if r[0] not in _logistica_sin_dato][:tope]
+        if not pendientes:
+            return 0
+
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        def _datos_de(shipment_id):
+            try:
+                resp = meli_http.get(f"https://api.mercadolibre.com/shipments/{shipment_id}", headers=headers, timeout=8)
+                if resp.status_code != 200:
+                    return shipment_id, None, None
+                data = resp.json()
+                return shipment_id, data.get("logistic_type"), _ubicacion_de_envio(data)
+            except Exception:
+                return shipment_id, None, None
+
+        with ThreadPoolExecutor(max_workers=HILOS_COSTO_ENVIO) as pool:
+            resultados = list(pool.map(_datos_de, pendientes))
+
+        completados = 0
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            for shipment_id, tipo, ubicacion in resultados:
+                if not tipo and not ubicacion:
+                    if len(_logistica_sin_dato) >= LIMITE_CACHE_SHIPMENT:
+                        _logistica_sin_dato.clear()
+                    _logistica_sin_dato.add(shipment_id)
+                    continue
+                codigo_postal, localidad, destino_lat, destino_lon = ubicacion or (None, None, None, None)
+                cursor.execute("""
+                    UPDATE ventas SET tipo_logistica = COALESCE(tipo_logistica, %s),
+                                      codigo_postal = COALESCE(codigo_postal, %s), localidad = COALESCE(localidad, %s),
+                                      destino_lat = COALESCE(destino_lat, %s), destino_lon = COALESCE(destino_lon, %s)
+                    WHERE cuenta_id = %s AND shipment_id = %s
+                """, (tipo, codigo_postal, localidad, destino_lat, destino_lon, cuenta_id, shipment_id))
+                completados += 1
+        return completados
+    except Exception as e:
+        print(f"[VentasSync] ⚠️ No se pudo completar los datos de envío de ventas viejas: {e}")
+        return 0
+
+
 def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor()
@@ -291,6 +390,19 @@ def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("UPDATE cuentas_meli SET ultima_sincronizacion_ventas = %s WHERE id = %s", (ahora, cuenta_id))
+
+    completados = _completar_datos_de_envio(usuario_id, cuenta_id, access_token)
+    if completados:
+        print(f"[VentasSync] 🚚 Cuenta {cuenta_id}: completé los datos de envío de {completados} venta(s) anteriores.")
+
+    # Flex: los envíos de un lugar cuya zona el usuario ya eligió quedan con su costo de entrega sin pedirle nada más.
+    try:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            aplicadas = flex.aplicar_zonas_automaticas(conexion.cursor(), cuenta_id)
+        if aplicadas:
+            print(f"[VentasSync] 🚚 Cuenta {cuenta_id}: {aplicadas} envío(s) Flex con zona aplicada automáticamente.")
+    except Exception as e:
+        print(f"[VentasSync] ⚠️ No se pudieron aplicar las zonas Flex automáticas: {e}")
 
     print(f"[VentasSync] ✨ Cuenta {cuenta_id}: {ordenes_procesadas} orden(es), {filas_insertadas} fila(s) de venta sincronizadas.")
     return ordenes_procesadas, filas_insertadas

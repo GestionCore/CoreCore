@@ -571,6 +571,21 @@ function iniciarTutorial() {
     _posicionarPasoTour();
 }
 
+// ---------- Entrega Flex ----------
+// Zona de entrega (1 a 3; 0 = sin costo) de una orden Flex. Devuelve {ok, error, otras}; cada pantalla pinta el resultado a su manera.
+async function asignarZonaFlex(idOrden, zona) {
+    try {
+        const resp = await fetch('/api/flex/zona', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_orden: String(idOrden), zona })
+        });
+        const data = await resp.json();
+        return { ok: !!data.ok, error: data.error || 'No se pudo guardar la zona.', otras: data.otras || 0 };
+    } catch (e) {
+        return { ok: false, error: 'No pude conectar — revisá la conexión y probá de nuevo.' };
+    }
+}
+
 // ---------- Costos por chat ----------
 let _costosChatHistorial = [];
 

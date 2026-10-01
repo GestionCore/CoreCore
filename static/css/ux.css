@@ -305,6 +305,15 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-opcion-doble { flex-direction: column; align-items: flex-start; gap: 2px; }   /* nombre arriba, camino completo debajo: hay categorías con el mismo nombre en rubros distintos */
 .ux-opcion-doble span { line-height: 1.35; }
 .ux-opcion-msg { padding: 10px 14px; color: var(--text-secondary); font-size: 0.85em; }
+
+/* Zona de entrega Flex: 3 botones, la elegida en color */
+.ux-zonas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ux-zona { border: 1px solid var(--border-soft); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 5px 12px; font-size: 0.78em; font-weight: 700; font-family: var(--font-ui); cursor: pointer; }
+.ux-zona:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--text-primary); }
+.ux-zona.activa { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
+.ux-zona:disabled { opacity: 0.45; cursor: not-allowed; }
+.ux-flex-fila { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border-soft); flex-wrap: wrap; }
+.ux-flex-fila-info { flex: 1; min-width: 200px; }
 @media (max-width: 900px) { .ux-calc { grid-template-columns: 1fr; } .ux-calc > .panel { position: static; } }
 
 /* ---------- Escalera de niveles (reputación): 5 tramos, el actual resaltado ---------- */

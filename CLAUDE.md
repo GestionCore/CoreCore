@@ -145,6 +145,31 @@ scopeado por cuenta_id antes de confiar en él.
   Pago. El día que se implemente cobro real, ASEGURARSE de excluir
   estos `usuario_id` de cualquier proceso de facturación — no tienen
   (ni van a tener) una suscripción real de MP detrás.
+- **Entrega Flex por zona** (`flex.py`, migraciones 0018–0020): en Flex el
+  vendedor entrega con su propia logística y MeLi reporta `costo_envio = 0`;
+  el costo real lo cobra esa logística por distancia (3 zonas). El usuario
+  carga 3 precios (`cuentas_meli.flex_tarifa_zona1..3`) en Costos.
+  `ventas.costo_envio` = lo que informa MeLi + `ventas.costo_flex`, así
+  Ganancia Real/Dashboard/Facturación/Fiscal lo suman sin tocar sus
+  cálculos; `ventas_sync` conserva `costo_flex` al reprocesar una orden y
+  TODA asignación de zona mueve `costo_flex` y `costo_envio` juntos
+  (`flex._aplicar_zona`, una sola sentencia para cualquier cantidad de
+  órdenes). `ventas.flex_zona`: 1–3, o 0 = "sin costo" (entrega el propio
+  vendedor); NULL = pendiente. La zona se resuelve así, en este orden: lo que
+  el usuario eligió a mano para un código postal/localidad
+  (`cuentas_meli.flex_zonas_memoria`) > regla de distancia opcional (CP de
+  salida + hasta cuántos km llega cada zona; MeLi trae las coordenadas
+  exactas del destino en `/shipments/{id}` y resuelve el CP de salida en
+  `/countries/AR/zip_codes/{cp}`) > a mano (por localidad en Costos, por
+  envío en Despacho). Aplicar la regla siempre muestra una vista previa
+  (envíos y costo por zona) y el usuario confirma. Una venta ya asignada
+  queda valuada al precio de ese momento; cambiar tarifas solo la recalcula
+  si el usuario lo pide. Ganancia Real avisa cuántos Flex del período siguen
+  sin zona. `ventas_sync._completar_datos_de_envio` completa de a 40 por
+  pasada el tipo de logística y el destino de ventas viejas (60 días).
+  ⚠️ Los km de la regla son una estimación en línea recta desde el centro
+  del CP de salida: sugerirle al usuario contrastarlo con lo que le factura
+  su logística.
 
 ## Lo que NO existe todavía (no asumas que sí)
 - Puente de WhatsApp (Baileys) — comentado en `iniciar_corelux.bat`
@@ -264,7 +289,7 @@ reportados — antes de decir "no hay más bugs conocidos", leelo. Al
 2026-09-30, de sus 16 ítems originales, 11 ya se arreglaron (repartidos
 en 3 commits "fix: batch de bugs reportados..."). Quedan pendientes o
 sin confirmar en vivo: el resumen de números de hoy en Stock, un campo
-para cargar el costo de entrega Flex por zona (feature, no bug), el
+para cargar el costo de entrega Flex por zona (HECHO, ver Entrega Flex), el
 motivo real de reclamos (falta ver logs de un sync real para terminar
 de mapear los `reason_id` de MeLi), si los períodos de Facturación
 (9 al 8 del mes siguiente) están realmente mal o es el ciclo real de
@@ -284,7 +309,7 @@ MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones corridas hasta `0017_incidencias_reason_id.sql` — 
+- Migraciones corridas hasta `0020_flex_distancia.sql` — 
   verificá `migrate.py --status` contra Supabase real antes de asumir
   cuál es la última aplicada, el número más alto en `migrations/` no
   siempre coincide con lo corrido de verdad.

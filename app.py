@@ -45,6 +45,7 @@ import analisis_stock
 import onboarding
 import monotributo
 import costos_chat
+import flex
 import chat_ia
 import db
 import nav_config
@@ -1002,6 +1003,14 @@ def metricas_vista():
     except Exception as e:
         print(f"[Métricas] ⚠️ Error calculando evolución mensual: {e}")
 
+    # Envíos Flex del período: los que siguen sin zona no tienen su costo de entrega en la ganancia.
+    flex_resumen = None
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            flex_resumen = flex.resumen_periodo(conexion.cursor(), g.cuenta_id, fecha_desde, fecha_hasta)
+    except Exception as e:
+        print(f"[Métricas] ⚠️ Error resumiendo envíos Flex: {e}")
+
     # Ganancia por unidad (B8).
     total_unidades_periodo = sum(v["cantidad"] for v in datos["ventas"])
     ganancia_por_unidad = formatear_moneda(datos["resumen"]["raw"]["ganancia_neta"] / total_unidades_periodo) if total_unidades_periodo > 0 else None
@@ -1049,7 +1058,7 @@ def metricas_vista():
         punto_equilibrio=punto_equilibrio, canales_envio=canales_envio,
         factura_meli=factura_meli, evolucion_mensual=evolucion_mensual,
         total_unidades_periodo=total_unidades_periodo, ganancia_por_unidad=ganancia_por_unidad,
-        analitica_clientes=analitica_clientes, pareto_ganancia=pareto_ganancia,
+        analitica_clientes=analitica_clientes, pareto_ganancia=pareto_ganancia, flex_resumen=flex_resumen,
         active_nav="metricas"
     )
 
@@ -1921,7 +1930,87 @@ def costos_vista():
           "sin_costo": sum(1 for x in it if x["estado"] == "active" and not x["precio_costo"])} for m, it in grupos.items()),
         key=lambda gr: (not gr["activo"], -gr["sin_costo"], gr["modelo"])
     )
-    return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, modelos=modelos, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, active_nav="costos")
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        tarifas_flex = flex.obtener_tarifas(cursor, g.cuenta_id)
+        flex_regla = flex.obtener_regla_distancia(cursor, g.cuenta_id)
+        flex_pendientes = flex.pendientes_de_zona(cursor, g.cuenta_id, (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d"))
+        flex_vista_previa = flex.vista_previa_automatica(cursor, g.cuenta_id)
+        cursor.execute("SELECT COUNT(*) FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND tipo_logistica = 'self_service'", (g.cuenta_id,))
+        hay_flex = (cursor.fetchone()[0] or 0) > 0
+    return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, modelos=modelos, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta,
+                           tarifas_flex=tarifas_flex, flex_regla=flex_regla, flex_pendientes=flex_pendientes, flex_vista_previa=flex_vista_previa, hay_flex=hay_flex, active_nav="costos")
+
+
+@app.route("/api/flex/configuracion", methods=["POST"])
+@login_requerido
+def api_flex_configuracion():
+    """
+    Precios de las 3 zonas de entrega Flex + (opcional) la regla de distancia: código postal de salida y hasta cuántos
+    km llega la Zona 1 y la Zona 2. Todo o nada. Con recalcular=true reaplica los precios nuevos a los envíos que ya
+    tienen zona. Con los precios nuevos resuelve también los envíos cuya zona ya se sabe (recordada o por distancia).
+    """
+    datos = request.get_json(silent=True) or {}
+    crudas = datos.get("tarifas") or {}
+    tarifas = {z: crudas.get(str(z)) for z in flex.ZONAS}
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "error": "Tu cuenta de Mercado Libre está desconectada. Reconectala para seguir."}), 401
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        ok, error = flex.guardar_tarifas(cursor, g.cuenta_id, tarifas)
+        if ok:
+            ok, error = flex.guardar_regla_distancia(cursor, g.cuenta_id, access_token, datos.get("origen_cp"), datos.get("km_zona1"), datos.get("km_zona2"))
+        if not ok:
+            conexion.rollback()   # todo o nada: si la regla está mal no queda guardada ni la mitad
+            return jsonify({"ok": False, "error": error}), 400
+        recalculadas = flex.recalcular_zonas_asignadas(cursor, g.cuenta_id) if datos.get("recalcular") else 0
+        vista_previa = flex.vista_previa_automatica(cursor, g.cuenta_id)
+    return jsonify({"ok": True, "recalculadas": recalculadas, "vista_previa": vista_previa})
+
+
+@app.route("/api/flex/aplicar", methods=["POST"])
+@login_requerido
+def api_flex_aplicar():
+    """Aplica a los envíos Flex sin zona la que les corresponde (lo recordado o la regla de distancia). Lo confirma el usuario tras ver la vista previa."""
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        aplicadas = flex.aplicar_zonas_automaticas(conexion.cursor(), g.cuenta_id)
+    return jsonify({"ok": True, "aplicadas": aplicadas})
+
+
+@app.route("/api/flex/zona", methods=["POST"])
+@login_requerido
+def api_flex_zona():
+    """
+    Zona de entrega de UNA orden Flex (1 a 3; 0 = sin costo). Mueve el costo de entrega de esa venta, recuerda la zona
+    para su código postal y la aplica a las otras órdenes sin zona del mismo lugar.
+    """
+    datos = request.get_json(silent=True) or {}
+    try:
+        zona = int(datos.get("zona"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Zona inválida."}), 400
+    id_orden = str(datos.get("id_orden") or "").strip()
+    if not id_orden:
+        return jsonify({"ok": False, "error": "Falta la orden."}), 400
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        ok, error, otras = flex.asignar_zona_recordando(conexion.cursor(), g.cuenta_id, id_orden, zona)
+    return jsonify({"ok": ok, "error": error, "otras": otras}), (200 if ok else 400)
+
+
+@app.route("/api/flex/zona_localidad", methods=["POST"])
+@login_requerido
+def api_flex_zona_localidad():
+    """Zona para TODOS los envíos Flex sin zona de una localidad; queda recordada para los que lleguen después."""
+    datos = request.get_json(silent=True) or {}
+    try:
+        zona = int(datos.get("zona"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Zona inválida."}), 400
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        ok, error, cantidad = flex.asignar_zona_a_localidad(conexion.cursor(), g.cuenta_id, datos.get("provincia"), datos.get("localidad"), zona)
+    return jsonify({"ok": ok, "error": error, "ordenes": cantidad}), (200 if ok else 400)
 
 
 @app.route("/ventas_manuales")
@@ -2056,10 +2145,15 @@ def despacho_vista():
     # que la respuesta de esa API: es evidencia directa de que sí lo tiene.
     flex_habilitado = flex_habilitado or tiene_flex
 
+    tarifas_flex = {}
+    if tiene_flex:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            tarifas_flex = flex.obtener_tarifas(conexion.cursor(), g.cuenta_id)
+
     return render_template(
         "despacho.html", paquetes=paquetes, fecha=fecha, total=total, listos=listos,
         cantidad_shipments=cantidad_shipments, hora_corte=hora_corte,
-        flex_habilitado=flex_habilitado, active_nav="despacho"
+        flex_habilitado=flex_habilitado, tarifas_flex=tarifas_flex, active_nav="despacho"
     )
 
 

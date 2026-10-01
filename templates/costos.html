@@ -88,6 +88,100 @@
 </div>
 {% endif %}
 
+<!-- ── 2b. ENTREGA FLEX: lo que te cobra tu logística ────────────────────── -->
+{% set flex_precios_cargados = tarifas_flex.values()|reject('none')|list|length %}
+{% set flex_pendientes_n = flex_pendientes.total_ordenes %}
+<details class="ux-detalle" id="entrega-flex" {% if hay_flex and (flex_pendientes_n or not flex_precios_cargados) %}open{% endif %}>
+    <summary>
+        <svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-truck"/></svg>
+        Entrega Flex — lo que te cobra tu logística
+        {% if flex_pendientes_n %}<span class="ux-pill ux-warn" id="pill-flex-sin-zona">{{ flex_pendientes_n }} envío{{ 's' if flex_pendientes_n != 1 }} sin zona</span>{% elif flex_precios_cargados and hay_flex %}<span class="ux-pill ux-ok" id="pill-flex-sin-zona">al día</span>{% endif %}
+    </summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="text-muted" style="font-size:0.88em; line-height:1.55; margin-bottom:14px;">Mercado Libre no sabe cuánto te cobra tu logística por entregar un envío Flex: depende de la distancia y se divide en 3 zonas. Cargá el precio de cada zona: <b>se suma al costo de envío de cada venta</b> en Ganancia Real.</div>
+
+        <div style="font-weight:800; margin-bottom:6px;">1 · Precio de cada zona</div>
+        <div class="filter-row" style="align-items:flex-end;">
+            {% for z in [1, 2, 3] %}
+            <div class="field-group" style="min-width:150px; flex:1;">
+                <label class="field-label" for="flex-zona-{{ z }}">Zona {{ z }}</label>
+                <input type="number" id="flex-zona-{{ z }}" step="0.01" min="0" inputmode="decimal" placeholder="$ por entrega" value="{{ tarifas_flex[z] if tarifas_flex[z] is not none }}">
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="font-weight:800; margin:16px 0 2px;">2 · Que la zona se calcule sola <span class="text-muted" style="font-weight:600; font-size:0.85em;">(opcional)</span></div>
+        <div class="text-muted" style="font-size:0.85em; margin-bottom:8px;">Tu logística cobra según los km desde tu domicilio. Indicá desde qué código postal salís y hasta dónde llega cada zona: CoreLux mide la distancia en línea recta a cada entrega y elige la zona. Después lo podés corregir envío por envío.</div>
+        <div class="filter-row" style="align-items:flex-end;">
+            <div class="field-group" style="min-width:150px; flex:1;">
+                <label class="field-label" for="flex-origen-cp">Código postal de salida</label>
+                <input type="text" id="flex-origen-cp" inputmode="numeric" maxlength="8" placeholder="Ej: 1886" value="{{ flex_regla.origen_cp if flex_regla }}">
+            </div>
+            <div class="field-group" style="min-width:150px; flex:1;">
+                <label class="field-label" for="flex-km-1">Zona 1: hasta (km)</label>
+                <input type="number" id="flex-km-1" step="0.1" min="0" inputmode="decimal" placeholder="Ej: 10" value="{{ flex_regla.km_zona1|round(1) if flex_regla }}">
+            </div>
+            <div class="field-group" style="min-width:150px; flex:1;">
+                <label class="field-label" for="flex-km-2">Zona 2: hasta (km)</label>
+                <input type="number" id="flex-km-2" step="0.1" min="0" inputmode="decimal" placeholder="Ej: 25" value="{{ flex_regla.km_zona2|round(1) if flex_regla }}">
+            </div>
+        </div>
+        <div class="text-muted" style="font-size:0.8em; margin-top:4px;">La Zona 3 es todo lo que queda más lejos.</div>
+
+        <label style="display:flex; align-items:center; gap:8px; margin:14px 0 4px; font-size:0.88em; cursor:pointer;"><input type="checkbox" id="flex-recalcular" style="width:auto;"> Aplicar también los precios nuevos a los envíos que ya tienen zona</label>
+        <div class="text-muted" style="font-size:0.8em; margin-bottom:10px;">Sin tildar, los envíos ya cargados conservan el precio con el que se valuaron.</div>
+        <button type="button" class="btn btn-primary" id="btn-guardar-flex" onclick="guardarConfigFlex()">Guardar y ver qué envíos resuelve</button>
+
+        <div id="flex-vista-previa"></div>
+
+        {% if flex_pendientes_n %}
+        <details class="ux-detalle" id="flex-manual" style="margin-top:16px;" {% if not flex_vista_previa.ordenes %}open{% endif %}>
+            <summary>Elegir la zona a mano <span class="ux-detalle-nota">{{ flex_pendientes_n }} envío{{ 's' if flex_pendientes_n != 1 }} sin zona · últimos 60 días</span></summary>
+            <div class="ux-detalle-cuerpo">
+                {% if not flex_precios_cargados %}<div class="text-muted" id="pista-flex-precios" style="font-size:0.85em; margin-bottom:6px;"><b style="color:var(--semantic-warning);">Primero cargá el precio de las zonas</b> (arriba) y después elegí la zona.</div>{% endif %}
+                {% if flex_pendientes.grupos %}
+                <div class="text-muted" style="font-size:0.85em; margin-bottom:4px;">Una zona por localidad: se aplica a todos los envíos de ahí y queda recordada para los próximos.</div>
+                <div id="lista-flex-sin-zona">
+                    {% for gr in flex_pendientes.grupos %}
+                    <div class="ux-flex-fila" data-provincia="{{ gr.provincia or '' }}" data-localidad="{{ gr.localidad or '' }}">
+                        <div class="ux-flex-fila-info">
+                            <b>{{ gr.localidad }}</b> <span class="text-muted">· {{ gr.provincia }}</span>
+                            <div class="text-muted" style="font-size:0.82em;">{{ gr.ordenes }} envío{{ 's' if gr.ordenes != 1 }} · {{ gr.total|plata }}{% if gr.codigos_postales %} · CP {{ gr.codigos_postales|join(', ') }}{% endif %}</div>
+                        </div>
+                        <div class="ux-zonas">
+                            {% for z in [1, 2, 3] %}
+                            <button type="button" class="ux-zona" data-zona="{{ z }}" {% if tarifas_flex[z] is none %}disabled title="Cargá primero el precio de esta zona"{% endif %} onclick="elegirZonaLocalidad(this, {{ z }})">Zona {{ z }}{% if tarifas_flex[z] is not none %} · {{ tarifas_flex[z]|plata }}{% endif %}</button>
+                            {% endfor %}
+                            <button type="button" class="ux-zona" data-zona="0" onclick="elegirZonaLocalidad(this, 0)">Sin costo</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if flex_pendientes.sin_ubicacion %}
+                <div style="font-weight:800; margin:16px 0 2px;">Sin ubicación <span class="text-muted" style="font-weight:600; font-size:0.85em;">· Mercado Libre no informó de dónde son{% if flex_pendientes.total_sin_ubicacion > flex_pendientes.sin_ubicacion|length %} (mostrando {{ flex_pendientes.sin_ubicacion|length }} de {{ flex_pendientes.total_sin_ubicacion }}){% endif %}</span></div>
+                <div id="lista-flex-sin-ubicacion">
+                    {% for o in flex_pendientes.sin_ubicacion %}
+                    <div class="ux-flex-fila" data-orden="{{ o.id_orden }}">
+                        <div class="ux-flex-fila-info"><b>{{ o.titulo or 'Venta Flex' }}</b><div class="text-muted" style="font-size:0.82em;">{{ o.fecha }} · {{ o.total|plata }}</div></div>
+                        <div class="ux-zonas">
+                            {% for z in [1, 2, 3] %}
+                            <button type="button" class="ux-zona" data-zona="{{ z }}" {% if tarifas_flex[z] is none %}disabled title="Cargá primero el precio de esta zona"{% endif %} onclick="elegirZonaFlexCostos(this, {{ z }})">Zona {{ z }}{% if tarifas_flex[z] is not none %} · {{ tarifas_flex[z]|plata }}{% endif %}</button>
+                            {% endfor %}
+                            <button type="button" class="ux-zona" data-zona="0" onclick="elegirZonaFlexCostos(this, 0)">Sin costo</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </details>
+        {% elif hay_flex %}
+        <div style="margin-top:14px;">{{ banner("ok", "check", "<b>Todos tus envíos Flex tienen zona</b>", "Su costo de entrega ya está en tu ganancia.") }}</div>
+        {% endif %}
+    </div>
+</details>
+
 <!-- ── 3. GASTOS DEL NEGOCIO ───────────────────────────────────────────── -->
 <div class="ux-seccion ux-info">Gastos del negocio</div>
 
@@ -235,6 +329,113 @@
             mostrarToast('No se pudo guardar. Probá de nuevo.', 'error');
             boton.disabled = false; boton.innerHTML = htmlOriginal; _costosGuardando = false;
         }
+    }
+
+    // ── Entrega Flex ──────────────────────────────────────────────────────────
+    if (location.hash === '#entrega-flex') document.getElementById('entrega-flex')?.setAttribute('open', '');
+    const _NOMBRE_ZONA = { 0: 'Sin costo', 1: 'Zona 1', 2: 'Zona 2', 3: 'Zona 3' };
+    const VISTA_PREVIA_FLEX = {{ flex_vista_previa|tojson }};
+
+    function actualizarBotonesZonaFlex(tarifas) {
+        document.querySelectorAll('#entrega-flex .ux-zona').forEach(b => {
+            if (b.dataset.zona === '0') return;
+            const precio = tarifas[b.dataset.zona];
+            b.disabled = precio === null || precio === undefined;
+            b.textContent = 'Zona ' + b.dataset.zona + (b.disabled ? '' : ' · ' + UX.plata(precio));
+        });
+    }
+
+    // Qué resolvería el sistema solo, y cuánto cuesta: siempre se muestra ANTES de aplicar nada
+    function pintarVistaPrevia(vp) {
+        const caja = document.getElementById('flex-vista-previa');
+        if (!caja) return;
+        if (!vp || (!vp.ordenes && !vp.sin_precio)) { caja.innerHTML = ''; return; }
+        const filas = (vp.zonas || []).map(z => `<div class="ux-flex-fila" style="padding:6px 0;"><div class="ux-flex-fila-info"><b>${UX.esc(_NOMBRE_ZONA[z.zona])}</b> <span class="text-muted">· ${z.ordenes} envío${z.ordenes === 1 ? '' : 's'}</span></div><div><b>${UX.plata(z.costo)}</b></div></div>`).join('');
+        const avisos = [];
+        if (vp.sin_precio) avisos.push(`${vp.sin_precio} envío${vp.sin_precio === 1 ? '' : 's'} caen en una zona sin precio cargado: cargá el precio y volvé a guardar.`);
+        if (vp.sin_resolver) avisos.push(`${vp.sin_resolver} envío${vp.sin_resolver === 1 ? '' : 's'} sin datos para calcular la zona: elegila a mano abajo.`);
+        caja.innerHTML = `<div class="ux-banner ux-info" style="margin-top:16px; display:block;">
+            <div style="font-weight:800; margin-bottom:6px;">${vp.ordenes ? `Con estos datos se resuelven solos ${vp.ordenes} envío${vp.ordenes === 1 ? '' : 's'} Flex` : 'Todavía no hay envíos para resolver'}</div>
+            ${filas}
+            ${vp.ordenes ? `<div class="ux-flex-fila" style="padding:8px 0 0;"><div class="ux-flex-fila-info"><b>Costo de entrega total que se suma a tu ganancia</b></div><div style="font-size:1.1em;"><b>${UX.plata(vp.costo_total)}</b></div></div>` : ''}
+            ${avisos.map(a => `<div class="text-muted" style="font-size:0.85em; margin-top:6px;">${UX.esc(a)}</div>`).join('')}
+            ${vp.ordenes ? `<button type="button" class="btn btn-primary" id="btn-aplicar-flex" style="margin-top:12px;" onclick="aplicarFlexAutomatico(${vp.ordenes})">Aplicar a estos ${vp.ordenes} envíos</button>` : ''}
+        </div>`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => pintarVistaPrevia(VISTA_PREVIA_FLEX));
+
+    async function guardarConfigFlex() {
+        const tarifas = {};
+        const numericas = {};
+        [1, 2, 3].forEach(z => {
+            const v = document.getElementById('flex-zona-' + z).value.trim();
+            tarifas[z] = v;
+            numericas[z] = v === '' ? null : parseFloat(v);
+        });
+        const boton = document.getElementById('btn-guardar-flex');
+        boton.disabled = true;
+        try {
+            const resp = await fetch('/api/flex/configuracion', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tarifas, recalcular: document.getElementById('flex-recalcular').checked,
+                    origen_cp: document.getElementById('flex-origen-cp').value, km_zona1: document.getElementById('flex-km-1').value, km_zona2: document.getElementById('flex-km-2').value }) });
+            const d = await resp.json();
+            if (!d.ok) { mostrarToast(d.error || 'No se pudo guardar.', 'error'); return; }
+            actualizarBotonesZonaFlex(numericas);
+            if (Object.values(numericas).some(v => v !== null)) document.getElementById('pista-flex-precios')?.remove();
+            pintarVistaPrevia(d.vista_previa);
+            mostrarToast(d.recalculadas ? `Guardado — recalculé ${d.recalculadas} envío${d.recalculadas === 1 ? '' : 's'} que ya tenían zona` : 'Precios y regla de distancia guardados', 'success');
+        } catch (e) {
+            mostrarToast('No pude conectar — probá de nuevo.', 'error');
+        } finally {
+            boton.disabled = false;
+        }
+    }
+
+    async function aplicarFlexAutomatico(cantidad) {
+        const boton = document.getElementById('btn-aplicar-flex');
+        boton.disabled = true;
+        try {
+            const d = await (await fetch('/api/flex/aplicar', { method: 'POST' })).json();
+            if (!d.ok) { mostrarToast('No se pudo aplicar. Probá de nuevo.', 'error'); boton.disabled = false; return; }
+            const msg = `Listo: ${d.aplicadas} envío${d.aplicadas === 1 ? '' : 's'} Flex con zona — el costo de entrega ya está en tu ganancia`;
+            if (cambiosCostos().length) { mostrarToast(msg + '. Guardá tus costos y recargá para ver el estado actualizado.', 'success'); document.getElementById('flex-vista-previa').innerHTML = ''; return; }
+            const params = new URLSearchParams(window.location.search);
+            params.set('msg', msg); params.set('tipo', 'success');
+            window.location.href = window.location.pathname + '?' + params.toString() + '#entrega-flex';
+        } catch (e) {
+            mostrarToast('No pude conectar — probá de nuevo.', 'error');
+            boton.disabled = false;
+        }
+    }
+
+    function _actualizarPendientesFlex() {
+        const quedan = document.querySelectorAll('#flex-manual .ux-flex-fila').length;
+        const pill = document.getElementById('pill-flex-sin-zona');
+        if (pill) { if (quedan) { pill.className = 'ux-pill ux-warn'; pill.textContent = quedan + ' fila' + (quedan === 1 ? '' : 's') + ' por resolver'; } else { pill.className = 'ux-pill ux-ok'; pill.textContent = 'al día'; } }
+    }
+
+    // Una zona para todos los envíos de una localidad
+    async function elegirZonaLocalidad(boton, zona) {
+        const fila = boton.closest('.ux-flex-fila');
+        try {
+            const d = await (await fetch('/api/flex/zona_localidad', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provincia: fila.dataset.provincia, localidad: fila.dataset.localidad, zona }) })).json();
+            if (!d.ok) { mostrarToast(d.error || 'No se pudo guardar la zona.', 'error'); return; }
+            mostrarToast(`${_NOMBRE_ZONA[zona]} para ${fila.dataset.localidad}: ${d.ordenes} envío${d.ordenes === 1 ? '' : 's'} — y queda recordada para los próximos`, 'success');
+            fila.remove();
+            _actualizarPendientesFlex();
+        } catch (e) { mostrarToast('No pude conectar — probá de nuevo.', 'error'); }
+    }
+
+    // Una zona para un envío puntual (los que MeLi no ubicó)
+    async function elegirZonaFlexCostos(boton, zona) {
+        const fila = boton.closest('.ux-flex-fila');
+        const r = await asignarZonaFlex(fila.dataset.orden, zona);
+        if (!r.ok) { mostrarToast(r.error, 'error'); return; }
+        mostrarToast(`${_NOMBRE_ZONA[zona]} guardada — el costo de entrega ya está en tu ganancia`, 'success');
+        fila.remove();
+        _actualizarPendientesFlex();
     }
 
     window.addEventListener('beforeunload', (e) => { if (!_costosGuardando && cambiosCostos().length) { e.preventDefault(); e.returnValue = ''; } });
