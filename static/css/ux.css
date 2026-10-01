@@ -458,6 +458,15 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-opinion-attr { margin-top: 10px; padding: 8px 12px; border-radius: 10px; font-size: 0.85em; background: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
 .ux-opinion-attr-alerta { background: color-mix(in srgb, var(--semantic-warning) 14%, transparent); }
 
+/* Dashboard: cuándo te compran */
+.ux-cc-resumen { font-size: 0.9em; line-height: 1.55; color: var(--text-secondary); }
+.ux-cc-resumen b { color: var(--text-primary); }
+.ux-horas { display: flex; align-items: flex-end; gap: 3px; height: 130px; padding-top: 6px; }
+.ux-hora { flex: 1; height: 100%; display: flex; align-items: flex-end; border-radius: 4px 4px 0 0; }
+.ux-hora i { display: block; width: 100%; background: var(--accent-primary); border-radius: 4px 4px 0 0; min-height: 0; }
+.ux-hora:hover i { background: var(--success); }
+.ux-horas-eje { display: flex; justify-content: space-between; font-size: 0.72em; color: var(--text-faint); margin-top: 6px; }
+
 /* Título de publicación con su miniatura al lado (celdas de tabla, preguntas) */
 .ux-titulo-thumb { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ux-titulo-thumb .thumb-sm { flex-shrink: 0; }

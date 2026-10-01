@@ -84,6 +84,55 @@ def obtener_ventas_por_provincia(usuario_id, cuenta_id=None, dias=30):
     ]
 
 
+DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+MIN_ORDENES_CUANDO_COMPRAN = 30     # con menos ventas el patrón no dice nada
+
+
+def obtener_cuando_compran(usuario_id, cuenta_id=None, dias=90):
+    """
+    Cuándo te compran: ventas por día de la semana y por hora del día (hora argentina). `hora_venta` se guarda tal como la informa Mercado
+    Libre, en UTC-4; la hora de Argentina es UTC-3, o sea una hora más: se corrige acá, al mostrarla. Devuelve None si hay muy pocas ventas.
+    """
+    desde = (datetime.now(timezone.utc) - timedelta(days=dias)).strftime("%Y-%m-%d")
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT EXTRACT(ISODOW FROM (fecha_venta + hora_venta + interval '1 hour'))::int,
+                   EXTRACT(HOUR FROM (fecha_venta + hora_venta + interval '1 hour'))::int,
+                   COUNT(DISTINCT id_orden), COALESCE(SUM(precio_venta * cantidad), 0)
+            FROM ventas
+            WHERE fecha_venta >= %s AND origen = 'meli' AND hora_venta IS NOT NULL AND eliminado_en IS NULL
+            GROUP BY 1, 2
+        """, (desde,))
+        filas = cursor.fetchall()
+    total = sum(int(f[2]) for f in filas)
+    if total < MIN_ORDENES_CUANDO_COMPRAN:
+        return None
+    por_dia = [{"nombre": DIAS_SEMANA[i], "ordenes": 0, "facturado": 0.0} for i in range(7)]
+    por_hora = [{"hora": h, "ordenes": 0} for h in range(24)]
+    for dia, hora, n, fact in filas:
+        por_dia[dia - 1]["ordenes"] += int(n)
+        por_dia[dia - 1]["facturado"] += float(fact)
+        por_hora[hora]["ordenes"] += int(n)
+    maximo_dia = max(d["ordenes"] for d in por_dia) or 1
+    maximo_hora = max(h["ordenes"] for h in por_hora) or 1
+    for d in por_dia:
+        d["pct"] = round(d["ordenes"] / maximo_dia * 100)
+        d["pct_total"] = round(d["ordenes"] / total * 100)
+        d["facturado_formateado"] = formatear_moneda(d["facturado"])
+    for h in por_hora:
+        h["alto"] = max(round(h["ordenes"] / maximo_hora * 100), 2) if h["ordenes"] else 0
+    # La mejor franja de 3 horas seguidas (puede cruzar la medianoche)
+    mejor = max(range(24), key=lambda h: sum(por_hora[(h + k) % 24]["ordenes"] for k in range(3)))
+    return {
+        "dias": por_dia, "horas": por_hora, "total": total, "desde_dias": dias,
+        "mejor_dia": max(por_dia, key=lambda d: d["ordenes"])["nombre"],
+        "peor_dia": min(por_dia, key=lambda d: d["ordenes"])["nombre"],
+        "franja": f"{mejor:02d} a {(mejor + 3) % 24:02d} h",
+        "pct_franja": round(sum(por_hora[(mejor + k) % 24]["ordenes"] for k in range(3)) / total * 100),
+    }
+
+
 def obtener_ticker(usuario_id, cuenta_id=None):
     # Mismo criterio que obtener_ventas_hoy: "hoy" es el día en Argentina
     # (UTC-3), no el del reloj del sistema donde corra el proceso — si

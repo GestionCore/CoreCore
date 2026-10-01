@@ -121,6 +121,32 @@
 
 <div id="grid-widgets-dashboard" class="grid-dashboard"></div>
 
+{% if cuando_compran %}
+<div class="panel">
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-calendar"/></svg> Cuándo te compran <span class="text-muted" style="font-weight:500; font-size:0.78em;">últimos {{ cuando_compran.desde_dias }} días · {{ cuando_compran.total }} ventas · hora de Argentina</span></div>
+    <div class="ux-cc-resumen">Comprás más los <b>{{ cuando_compran.mejor_dia|lower }}</b> y la mejor franja es de <b>{{ cuando_compran.franja }}</b> ({{ cuando_compran.pct_franja }}% de tus ventas). Los <b>{{ cuando_compran.peor_dia|lower }}</b> son los más flojos: buen momento para renovar publicaciones o probar promociones.</div>
+    <div class="ux-dos-col" style="margin-top:14px;">
+        <div>
+            <div class="text-muted" style="font-size:0.82em; margin-bottom:6px;"><b>Por día de la semana</b></div>
+            {% for d in cuando_compran.dias %}
+            <div class="ux-dist-fila">
+                <span class="ux-dist-etq" style="width:84px;">{{ d.nombre }}</span>
+                <div class="ux-barra ux-{{ 'ok' if d.nombre == cuando_compran.mejor_dia else 'accion' }}" style="flex:1;"><span style="width:{{ d.pct }}%;"></span></div>
+                <span class="ux-dist-val" style="width:70px;"><b>{{ d.pct_total }}%</b> <span class="text-muted">({{ d.ordenes }})</span></span>
+            </div>
+            {% endfor %}
+        </div>
+        <div>
+            <div class="text-muted" style="font-size:0.82em; margin-bottom:6px;"><b>Por hora del día</b></div>
+            <div class="ux-horas" role="img" aria-label="Ventas por hora del día">
+                {% for h in cuando_compran.horas %}<span class="ux-hora" title="{{ h.hora }} h: {{ h.ordenes }} venta{{ 's' if h.ordenes != 1 }}"><i style="height:{{ h.alto }}%;"></i></span>{% endfor %}
+            </div>
+            <div class="ux-horas-eje"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>23 h</span></div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% if ventas_por_provincia %}
 <div class="panel">
     <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-map-pin"/></svg> Ventas por provincia <span class="text-muted" style="font-weight:500; font-size:0.78em;">últimos 30 días, según el destino del envío</span></div>

@@ -980,9 +980,14 @@ def dashboard_personalizable():
         ventas_por_provincia = dashboard_mod.obtener_ventas_por_provincia(g.usuario_id, g.cuenta_id)
     except Exception as e:
         print(f"[Dashboard] ⚠️ Error calculando ventas por provincia: {e}")
+    cuando_compran = None
+    try:
+        cuando_compran = dashboard_mod.obtener_cuando_compran(g.usuario_id, g.cuenta_id)
+    except Exception as e:
+        print(f"[Dashboard] ⚠️ Error calculando cuándo te compran: {e}")
     return render_template(
         "dashboard_personalizable.html", active_nav="dashboard", mono=mono,
-        ventas_por_provincia=ventas_por_provincia,
+        ventas_por_provincia=ventas_por_provincia, cuando_compran=cuando_compran,
     )
 
 
