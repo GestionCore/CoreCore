@@ -8,6 +8,35 @@
     </div>
 </div>
 
+{% if mis_catalogo %}
+<!-- ── Tus publicaciones de catálogo: quién tiene el puesto principal y a qué precio se gana ─────── -->
+<div class="ux-seccion {{ 'ux-warn' if mis_catalogo.perdiendo else 'ux-ok' }}" style="margin-top:0;">Tus publicaciones en catálogo
+    <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ mis_catalogo.ganando }} con el puesto principal · {{ mis_catalogo.perdiendo }} compitiendo</span></div>
+<div class="panel" data-mostrar-mas-scope>
+    {% if mis_catalogo.conviene_bajar %}
+    <div class="text-muted" style="font-size:0.85em; margin-bottom:8px; line-height:1.5;"><b>{{ mis_catalogo.conviene_bajar }}</b> {{ 'publicación puede' if mis_catalogo.conviene_bajar == 1 else 'publicaciones pueden' }} ganar el puesto principal bajando el precio y seguir dejándote ganancia. Se calcula con tu comisión, tu envío y tu costo de fabricación.</div>
+    {% endif %}
+    {% for i in mis_catalogo['items'] %}
+    <div class="ux-rank-fila ux-{{ i.tono }} {% if loop.index > 8 %}oculto-mostrar-mas{% endif %}">
+        {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+        <div class="ux-rank-info">
+            <div class="ux-rank-titulo">{% if i.permalink %}<a href="{{ i.permalink }}" target="_blank" rel="noopener" style="color:var(--text-primary); text-decoration:none;">{{ i.titulo }} ↗</a>{% else %}{{ i.titulo }}{% endif %}</div>
+            <div class="text-muted" style="font-size:0.8em;">
+                <span class="ux-pill ux-{{ i.tono }}">{{ i.texto }}</span>
+                {% if i.para_ganar %}
+                    · Para ganarlo: <b>{{ i.para_ganar|plata }}</b> ({{ i.diferencia_pct|string|replace('.', ',') }}% menos que hoy)
+                    {% if i.conviene is true %}· <span class="text-success"><b>te quedan {{ i.neto_para_ganar|plata }} por venta</b></span>
+                    {% elif i.conviene is false %}· <span class="text-danger"><b>perderías {{ i.neto_para_ganar|abs|plata }} por venta</b>: no conviene</span>{% endif %}
+                {% endif %}
+            </div>
+        </div>
+        <div class="ux-rank-valor"><b>{{ i.precio|plata }}</b><div class="text-muted" style="font-size:0.75em;">tu precio</div></div>
+    </div>
+    {% endfor %}
+    {% if mis_catalogo['items']|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ mis_catalogo['items']|length - 8 }} restantes</button>{% endif %}
+</div>
+{% endif %}
+
 <div class="panel">
     <div class="panel-title">Seguir un producto</div>
     <form id="form-seguir-producto" class="filter-row">

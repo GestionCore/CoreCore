@@ -18,15 +18,11 @@ import meli_http
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 
-PALABRAS_CLAVE_RUBRO = [
-    "campera", "jean", "denim", "abrigo", "buzo", "hombre", "ropa", "indumentaria",
-    "jacket", "chaleco", "oversize", "corderoy", "gabardina", "cargo", "nevado",
-    "prelavado", "rigido", "trucker", "biker", "borrego", "vintage"
-]
-PALABRAS_GENERICAS_RUBRO = {
-    "de", "hombre", "mujer", "jean", "denim", "campera", "chaleco", "buzo", "talle",
-    "premium", "clasica", "clásica", "rigido", "rígido", "excelent", "excelente", "calce",
-    "lisa", "liso", "inflable", "especial", "super", "súper", "grande", "moda", "temporada"
+# Palabras que no distinguen un producto de otro en ningún rubro (para comparar títulos entre sí)
+PALABRAS_GENERICAS = {
+    "de", "para", "con", "sin", "talle", "premium", "clasica", "clásica", "original", "nuevo", "nueva", "excelente", "excelent",
+    "calidad", "super", "súper", "grande", "chico", "especial", "oferta", "importado", "envio", "envío", "gratis", "pack", "combo",
+    "hombre", "mujer", "unisex", "niño", "niña", "kit", "set",
 }
 PALABRAS_RELLENO_TITULO = {"de", "para", "con", "el", "la", "los", "las", "un", "una", "y", "en"}
 
@@ -853,7 +849,16 @@ def detectar_movimiento_categoria_principal(cursor, cuenta_id, umbral_pct=15):
     return {"categoria": etiqueta, "variacion_pct": round(variacion, 1), "subio": variacion > 0}
 
 
-def obtener_tendencias(access_token, site_id="MLA", category_id=None):
+def palabras_del_catalogo(cursor):
+    """Las palabras de los títulos de las publicaciones activas de la cuenta: es lo que define "su rubro" cuando MeLi no da categoría."""
+    cursor.execute("SELECT titulo FROM productos_padre WHERE estado = 'active' AND titulo IS NOT NULL")
+    palabras = set()
+    for (titulo,) in cursor.fetchall():
+        palabras.update(p for p in re.findall(r"[a-záéíóúñ]+", titulo.lower()) if len(p) > 3 and p not in PALABRAS_GENERICAS)
+    return palabras
+
+
+def obtener_tendencias(access_token, site_id="MLA", category_id=None, palabras_del_rubro=None):
     headers = {"Authorization": f"Bearer {access_token}"}
     url = f"https://api.mercadolibre.com/trends/{site_id}"
     if category_id:
@@ -866,7 +871,8 @@ def obtener_tendencias(access_token, site_id="MLA", category_id=None):
         lista = resp.json()
         for idx, t in enumerate(lista):
             kw = t.get("keyword", "").lower()
-            t["relevante"] = True if category_id else any(p in kw for p in PALABRAS_CLAVE_RUBRO)
+            # Con la categoría de la cuenta todo lo que devuelve MeLi es del rubro; sin ella, solo lo que comparte palabras con su catálogo
+            t["relevante"] = True if category_id else any(p in kw for p in (palabras_del_rubro or ()))
             t["posicion"] = idx + 1
             t["es_top"] = idx < 20 and t["relevante"]
         return lista
@@ -905,13 +911,14 @@ def obtener_calendario_estacional(anio=None):
     if anio is None:
         anio = datetime.now().year
     eventos = [
-        {"nombre": "Vuelta al cole", "fecha": date(anio, 2, 25), "categoria_sugerida": "buzos, abrigos livianos"},
-        {"nombre": "Día de la Primavera / Amistad", "fecha": date(anio, 9, 21), "categoria_sugerida": "prendas de entretiempo"},
-        {"nombre": "Día del Padre", "fecha": _enesimo_domingo_del_mes(anio, 6, 3), "categoria_sugerida": "camperas, ropa de abrigo para hombre"},
-        {"nombre": "Día de la Madre", "fecha": _enesimo_domingo_del_mes(anio, 10, 3), "categoria_sugerida": "indumentaria en general"},
-        {"nombre": "Día del Niño", "fecha": _enesimo_domingo_del_mes(anio, 8, 2), "categoria_sugerida": "ropa infantil si aplica"},
+        {"nombre": "Vuelta al cole", "fecha": date(anio, 2, 25), "categoria_sugerida": "útiles, mochilas, tecnología y ropa escolar"},
+        {"nombre": "Día de la Primavera", "fecha": date(anio, 9, 21), "categoria_sugerida": "productos de temporada, regalos y salidas al aire libre"},
+        {"nombre": "Día del Padre", "fecha": _enesimo_domingo_del_mes(anio, 6, 3), "categoria_sugerida": "regalos para papá: tecnología, herramientas, indumentaria"},
+        {"nombre": "Día del Amigo", "fecha": date(anio, 7, 20), "categoria_sugerida": "regalos económicos y packs para compartir"},
+        {"nombre": "Día de las Infancias", "fecha": _enesimo_domingo_del_mes(anio, 8, 3), "categoria_sugerida": "juguetes, juegos y artículos infantiles"},
+        {"nombre": "Día de la Madre", "fecha": _enesimo_domingo_del_mes(anio, 10, 3), "categoria_sugerida": "regalos para mamá: hogar, belleza, indumentaria"},
         {"nombre": "Black Friday", "fecha": _enesimo_dia_semana_del_mes(anio, 11, 3, 4) + timedelta(days=1), "categoria_sugerida": "todo el catálogo — el pico de ventas más grande del año"},
-        {"nombre": "Navidad", "fecha": date(anio, 12, 25), "categoria_sugerida": "regalos, indumentaria de temporada"},
+        {"nombre": "Navidad", "fecha": date(anio, 12, 25), "categoria_sugerida": "regalos de todo tipo y productos de temporada"},
     ]
     hoy = date.today()
     for e in eventos:
@@ -971,16 +978,6 @@ def calcular_seo_score_titulo(titulo, palabras_tendencia_actuales):
         score -= resta
         razones.append(f"-{resta}: título de {longitud} caracteres — MeLi lo trunca en la búsqueda a partir de los 60")
 
-    tiene_rubro = any(p in PALABRAS_CLAVE_RUBRO for p in palabras_titulo)
-    if not tiene_rubro:
-        resta = 20
-        score -= resta
-        razones.append(f"-{resta}: no menciona ninguna palabra clave típica del rubro")
-
-    tiene_talle = any(t in titulo.upper().split() for t in ["S", "M", "L", "XL", "XXL", "XXXL"])
-    if not tiene_talle:
-        razones.append("Tip: agregar el talle en el título no suma puntos de SEO en sí, pero ayuda a la conversión")
-
     palabras_tendencia_en_titulo = palabras_titulo & palabras_tendencia_actuales
     if palabras_tendencia_en_titulo:
         bonus = min(len(palabras_tendencia_en_titulo) * 10, 20)
@@ -1022,8 +1019,16 @@ def detectar_canibalismo(cursor):
     for id_meli, titulo in filas:
         clave = limpiar_titulo_modelo_local(titulo)
         if clave not in modelos:
-            palabras = {p for p in clave.lower().split() if len(p) > 2 and p not in PALABRAS_GENERICAS_RUBRO}
-            modelos[clave] = {"id_referencia": id_meli, "palabras": palabras}
+            modelos[clave] = {"id_referencia": id_meli, "palabras": {p for p in clave.lower().split() if len(p) > 2 and p not in PALABRAS_GENERICAS}}
+    # Una palabra que está en la mayoría de los modelos de la cuenta ("termo", "campera") es el rubro, no un parecido entre dos modelos
+    if len(modelos) >= 5:
+        frecuencia = {}
+        for m in modelos.values():
+            for p in m["palabras"]:
+                frecuencia[p] = frecuencia.get(p, 0) + 1
+        comunes = {p for p, n in frecuencia.items() if n / len(modelos) >= 0.6}
+        for m in modelos.values():
+            m["palabras"] -= comunes
 
     claves = list(modelos.keys())
     pares_sospechosos = []

@@ -1010,15 +1010,18 @@ const ATAJOS_COMANDO = [
     { alias: ['fac', 'facturacion'], texto: 'Ir a Facturación', url: '/facturacion' },
     { alias: ['cos', 'costos'], texto: 'Ir a Costos', url: '/costos' },
     { alias: ['full', 'logistica', 'comparador'], texto: 'Ir a Propia vs FULL', url: '/comparador_logistica' },
-    { alias: ['hist', 'precios', 'historial'], texto: 'Ir a Historial de Precios', url: '/historial_precios' },
+    { alias: ['hist', 'historial'], texto: 'Ir a Historial de Precios', url: '/historial_precios' },
+    { alias: ['precios', 'minimo', 'pmin'], texto: 'Ir a Precios (mínimo por publicación)', url: '/precios' },
+    { alias: ['calc', 'calculadora', 'comision'], texto: 'Ir a Calculadora', url: '/calculadora' },
+    { alias: ['cal', 'calidad'], texto: 'Ir a Calidad de publicaciones', url: '/calidad' },
     { alias: ['mono', 'monotributo'], texto: 'Ir a Monotributo', url: '/monotributo' },
     { alias: ['manual', 'mostrador', 'directo'], texto: 'Ir a Ventas fuera de MeLi', url: '/ventas_manuales' },
     { alias: ['prom', 'promo', 'promociones'], texto: 'Ir a Promociones', url: '/promociones' },
     { alias: ['tend', 'tendencias'], texto: 'Ir a Tendencias', url: '/tendencias' },
-    { alias: ['comp', 'competencia', 'espia'], texto: 'Ir a Competencia', url: '/competencia' },
+    { alias: ['comp', 'competencia', 'espia'], texto: 'Ir a Competencia', url: '/competencia', requiere: 'catalogo' },
     { alias: ['embudo', 'conversion'], texto: 'Ir a Embudo de Conversión', url: '/embudo_conversion' },
     { alias: ['rep', 'reputacion'], texto: 'Ir a Reputación', url: '/reputacion' },
-    { alias: ['ads', 'publicidad'], texto: 'Ir a Publicidad', url: '/publicidad' },
+    { alias: ['ads', 'publicidad'], texto: 'Ir a Publicidad', url: '/publicidad', requiere: 'ads' },
     { alias: ['log', 'logros', 'misiones'], texto: 'Ir a Logros', url: '/logros' },
 ];
 const ACCIONES_COMANDO = [
@@ -1091,7 +1094,7 @@ function inicializarComando() {
         const q = e.target.value.trim().toLowerCase();
         clearTimeout(comandoDebounce);
         if (!q) { renderizarResultadosComando([]); return; }
-        const secciones = ATAJOS_COMANDO.filter(a => a.alias.some(al => al.includes(q) || q.includes(al))).map(a => ({ texto: a.texto, url: a.url, tag: 'Sección' }));
+        const secciones = ATAJOS_COMANDO.filter(a => !a.requiere || (window.CAPACIDADES || {})[a.requiere] !== false).filter(a => a.alias.some(al => al.includes(q) || q.includes(al))).map(a => ({ texto: a.texto, url: a.url, tag: 'Sección' }));
         const acciones = ACCIONES_COMANDO.filter(a => a.alias.some(al => al.includes(q) || q.includes(al))).map(a => ({ texto: a.texto, accion: a.accion, tag: 'Acción' }));
         renderizarResultadosComando([...acciones, ...secciones]);
         comandoDebounce = setTimeout(async () => {

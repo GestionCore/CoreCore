@@ -47,6 +47,7 @@ import monotributo
 import costos_chat
 import calidad as calidad_mod
 import precios as precios_mod
+import catalogo_ganar
 import full_stock
 import flex
 import chat_ia
@@ -1257,7 +1258,7 @@ def tendencias_vista():
             cursor = conexion.cursor()
             category_id, categoria_nombre = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
 
-            lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id)
+            lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id, palabras_del_rubro=None if category_id else tendencias_mod.palabras_del_catalogo(cursor))
             relevantes = [t for t in lista if t.get("relevante")]
             resto = [] if category_id else [t for t in lista if not t.get("relevante")]
 
@@ -1513,8 +1514,9 @@ def competencia_vista():
         cursor = conexion.cursor()
         productos = espia_competencia.obtener_panorama_competencia(cursor, g.cuenta_id)
         ids_propios = espia_competencia.ids_publicaciones_propias(cursor)
+        mis_catalogo = catalogo_ganar.obtener(cursor, g.cuenta_id)
     sugerencias = espia_competencia.sugerir_productos_propios(access_token, ids_propios, {p["id_producto"] for p in productos})
-    return render_template("competencia.html", productos=productos, sugerencias=sugerencias, active_nav="competencia")
+    return render_template("competencia.html", productos=productos, sugerencias=sugerencias, mis_catalogo=mis_catalogo, active_nav="competencia")
 
 
 @app.route("/api/competencia/agregar", methods=["POST"])
@@ -1638,7 +1640,7 @@ def api_oportunidades_seo():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         category_id, _ = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
-        lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id)
+        lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id, palabras_del_rubro=None if category_id else tendencias_mod.palabras_del_catalogo(cursor))
         relevantes = [t for t in lista if t.get("relevante")]
         oportunidades = tendencias_mod.cruzar_tendencias_con_catalogo(relevantes, cursor)
     return jsonify(oportunidades)
@@ -3149,7 +3151,7 @@ def api_preguntas_sugerir():
     if not texto_pregunta:
         return jsonify({"ok": False, "error": "Falta el texto de la pregunta"}), 400
     prompt = (
-        "Sos el vendedor de una tienda de ropa en Mercado Libre Argentina. "
+        "Sos el vendedor de una tienda en Mercado Libre Argentina. "
         "Respondé la siguiente pregunta de un comprador de forma breve, cordial y profesional. "
         "La respuesta debe ser directa (máximo 2 oraciones). No uses emojis.\n\n"
     )

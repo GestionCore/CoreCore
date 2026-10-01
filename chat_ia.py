@@ -14,7 +14,7 @@ import dashboard
 import analisis_stock
 import ia_asistente
 
-PROMPT_SISTEMA = """Sos el Asistente de Operaciones de CoreLux, una app de gestión para vendedores de indumentaria en Mercado Libre. Respondés preguntas del vendedor sobre SU negocio usando ÚNICAMENTE los datos reales de abajo — nunca inventás un número que no esté ahí.
+PROMPT_SISTEMA = """Sos el Asistente de Operaciones de CoreLux, una app de gestión para vendedores de Mercado Libre. Respondés preguntas del vendedor sobre SU negocio usando ÚNICAMENTE los datos reales de abajo — nunca inventás un número que no esté ahí.
 
 Hoy es {fecha_hoy}. Datos actuales del negocio:
 {contexto_json}
@@ -62,8 +62,8 @@ def _armar_contexto(usuario_id, cuenta_id=None):
         "inventario": {
             "variantes_publicadas": variantes_totales,
             "stock_total_deposito_propio": stock_propio_total, "stock_total_full": stock_full_total,
-            "talles_en_riesgo_de_quiebre": [
-                {"producto": v["titulo"], "talle": v["talle"], "stock_restante": v["stock_total"], "dias_restantes": v["dias_restantes"]}
+            "variantes_en_riesgo_de_quiebre": [
+                {"producto": v["titulo"], "variante": v["talle"], "stock_restante": v["stock_total"], "dias_restantes": v["dias_restantes"]}
                 for v in en_riesgo[:8]
             ] if en_riesgo else "ninguno detectado ahora mismo",
         },
