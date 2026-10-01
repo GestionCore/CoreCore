@@ -204,42 +204,42 @@ async function cargarAlertasPendientes() {
 }
 
 // ---------- Sincronizar Todo (botón global en la barra superior) ----------
-function ejecutarSincronizarTodo() {
-    const btn = document.getElementById('btn-sincronizar-todo');
-    if (btn.disabled) return;
+// La sincronización corre en segundo plano en el servidor: se la pide con POST (responde enseguida) y se consulta
+// /api/estado_sincronizacion cada 2 s hasta que `en_curso` es false.
+function ejecutarSincronizarTodo(btn, alTerminar) {
+    btn = btn || document.getElementById('btn-sincronizar-todo');
+    if (!btn || btn.disabled) return;
     const textoOriginal = btn.innerHTML;
     const _spin = '<svg class="icon spin-anim" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg>';
+    const liberar = () => { btn.disabled = false; btn.innerHTML = textoOriginal; };
     btn.disabled = true;
     btn.innerHTML = _spin + '<span class="btn-sync-texto">Sincronizando...</span>';
-    fetch('/sincronizar_todo')
+    fetch('/sincronizar_todo', { method: 'POST' })
         .then(r => r.json())
         .then(data => {
-            if (data.status === 'ya_en_curso') {
-                mostrarToast('Ya hay una sincronización en curso.', 'info');
-                btn.disabled = false;
-                btn.innerHTML = textoOriginal;
-                return;
-            }
-            // Sincronización iniciada: esperamos y mostramos progreso
+            if (data.status === 'ya_en_curso') mostrarToast('Ya hay una sincronización en curso: esperamos a que termine.', 'info');
             let intentos = 0;
-            const maxIntentos = 60; // 2 minutos máx
+            const maxIntentos = 90;   // 3 minutos como máximo
             const poll = setInterval(() => {
                 intentos++;
                 fetch('/api/estado_sincronizacion')
                     .then(r => r.json())
                     .then(est => {
-                        if (est.lista || intentos >= maxIntentos) {
+                        if (!est.en_curso || intentos >= maxIntentos) {
                             clearInterval(poll);
-                            btn.disabled = false;
-                            btn.innerHTML = textoOriginal;
+                            liberar();
                             mostrarToast('Sincronización completada.', 'success');
+                            if (alTerminar) alTerminar();
                         }
                     })
-                    .catch(() => { clearInterval(poll); btn.disabled = false; btn.innerHTML = textoOriginal; });
+                    .catch(() => { clearInterval(poll); liberar(); });
             }, 2000);
         })
-        .catch(() => { btn.disabled = false; btn.innerHTML = textoOriginal; mostrarToast('Error al iniciar sincronización.', 'error'); });
+        .catch(() => { liberar(); mostrarToast('Error al iniciar sincronización.', 'error'); });
 }
+
+// "Traer ventas nuevas" (Despacho): sincroniza y recarga la página cuando termina
+function sincronizarYRecargar(btn) { ejecutarSincronizarTodo(btn, () => window.location.reload()); }
 
 function mostrarPanelConAnimacion(elemento) {
     if (!elemento) return;

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ titulo }} · CoreLux</title>
+<style>
+    :root { --fondo: #f4f3f8; --tarjeta: #ffffff; --texto: #1c1b25; --suave: #6b6a7a; --acento: #7c3aed; --borde: #e4e2ee; }
+    @media (prefers-color-scheme: dark) { :root { --fondo: #0f0f14; --tarjeta: #17171f; --texto: #f1f0f7; --suave: #9a99ab; --acento: #8b5cf6; --borde: #262633; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--fondo); color: var(--texto); font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { width: 100%; max-width: 480px; background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 18px; padding: 36px 32px; text-align: center; }
+    .codigo { font-size: 3.4rem; font-weight: 800; color: var(--acento); line-height: 1; margin-bottom: 10px; }
+    h1 { font-size: 1.35rem; margin: 0 0 10px; text-wrap: balance; }
+    p { color: var(--suave); line-height: 1.55; margin: 0 0 24px; }
+    .acciones { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    a { display: inline-block; padding: 11px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+    .primario { background: var(--acento); color: #fff; }
+    .secundario { border: 1px solid var(--borde); color: var(--texto); }
+</style>
+</head>
+<body>
+<main>
+    <div class="codigo">{{ codigo }}</div>
+    <h1>{{ titulo }}</h1>
+    <p>{{ detalle }}</p>
+    <div class="acciones">
+        <a class="primario" href="/">{{ 'Ir al inicio' if logueado else 'Volver a CoreLux' }}</a>
+        <a class="secundario" href="javascript:history.back()">Volver atrás</a>
+    </div>
+</main>
+</body>
+</html>

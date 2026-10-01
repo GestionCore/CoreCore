@@ -14,6 +14,10 @@ primary_region = 'gru'
   # Conexiones por proceso: 2 máquinas x 2 workers x 3 = 12 de las 15 que admite el pooler de Supabase (ver db.py)
   DB_POOL_MAX = '3'
 
+[deploy]
+  # Aplica las migraciones pendientes antes de arrancar la versión nueva (idempotentes; si fallan, el deploy se frena)
+  release_command = 'python migrate.py'
+
 [http_service]
   internal_port = 8080
   force_https = true
@@ -26,7 +30,7 @@ primary_region = 'gru'
     timeout = '5s'
     grace_period = '15s'
     method = 'GET'
-    path = '/planes'
+    path = '/healthz'
 
 [[vm]]
   size = 'shared-cpu-1x'

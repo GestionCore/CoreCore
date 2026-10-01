@@ -33,12 +33,12 @@
         {% if cantidad_shipments > 0 %}
         <a href="/despacho/etiquetas_pdf?fecha={{ fecha }}" class="btn btn-primary btn-lg"><svg class="icon"><use href="#icon-download"/></svg>Descargar {{ cantidad_shipments }} etiqueta{{ 's' if cantidad_shipments > 1 }} en PDF</a>
         {% endif %}
-        <a href="/sincronizar_hoy" class="btn btn-secondary"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Traer ventas nuevas</a>
+        <button type="button" class="btn btn-secondary" onclick="sincronizarYRecargar(this)"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Traer ventas nuevas</button>
     </div>
 </div>
 {% else %}
 <div class="flex-gap no-imprimir" style="margin-bottom:16px;">
-    <a href="/sincronizar_hoy" class="btn btn-primary"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Traer ventas nuevas</a>
+    <button type="button" class="btn btn-primary" onclick="sincronizarYRecargar(this)"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Traer ventas nuevas</button>
 </div>
 {% endif %}
 
@@ -54,7 +54,7 @@
 </form>
 
 {% if not paquetes %}
-{{ vacio("No hay paquetes para despachar", "No hay ventas propias o Flex en esta ventana. Si esperabas alguna, probá traer las ventas nuevas.", "package", "info", "Traer ventas nuevas", "/sincronizar_hoy") }}
+{{ vacio("No hay paquetes para despachar", "No hay ventas propias o Flex en esta ventana. Si esperabas alguna, probá traer las ventas nuevas con el botón de arriba.", "package", "info") }}
 {% else %}
 <!-- ── 2. LOS PAQUETES: tarjetas grandes, un toque para marcar ─────────────── -->
 <div id="lista-despacho">

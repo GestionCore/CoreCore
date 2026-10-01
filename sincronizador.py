@@ -405,7 +405,30 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
         candado.release()
 
 
+_sincronizando = set()
+_candado_sincronizando = threading.Lock()
+
+
+def sincronizacion_en_curso(cuenta_id):
+    """¿Hay una sincronización completa corriendo AHORA para esta cuenta (en este proceso)?"""
+    return cuenta_id in _sincronizando
+
+
 def sincronizar_todo(usuario_id, cuenta_id):
+    """Corre la sincronización completa de la cuenta; si ya hay una en curso no arranca otra (devuelve False)."""
+    with _candado_sincronizando:
+        if cuenta_id in _sincronizando:
+            return False
+        _sincronizando.add(cuenta_id)
+    try:
+        _sincronizar_todo_interno(usuario_id, cuenta_id)
+        return True
+    finally:
+        with _candado_sincronizando:
+            _sincronizando.discard(cuenta_id)
+
+
+def _sincronizar_todo_interno(usuario_id, cuenta_id):
     """
     Catálogo + Ventas en una sola pasada — esto es lo que corre el botón
     "Sincronizar Todo", el arranque automático de la primera vez, y la

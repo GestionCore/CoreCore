@@ -105,7 +105,7 @@
                 </button>
                 <div class="nav-dropdown-menu">
                     {% for c in cuentas_disponibles %}
-                    <a href="{{ url_for('cambiar_cuenta', cuenta_id=c.id) }}" class="nav-dropdown-item {% if cuenta_actual and c.id == cuenta_actual.id %}active{% endif %}">{{ c.nickname or c.nombre_negocio or ('Cuenta #' ~ c.id) }}</a>
+                    <form method="post" action="{{ url_for('cambiar_cuenta', cuenta_id=c.id) }}" style="margin:0;"><button type="submit" class="nav-dropdown-item {% if cuenta_actual and c.id == cuenta_actual.id %}active{% endif %}" style="width:100%; text-align:left; background:none; border:0; font:inherit; color:inherit; cursor:pointer;">{{ c.nickname or c.nombre_negocio or ('Cuenta #' ~ c.id) }}</button></form>
                     {% endfor %}
                 </div>
             </div>

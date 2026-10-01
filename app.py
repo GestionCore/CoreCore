@@ -188,6 +188,9 @@ def _trackear_navegacion(response):
 from flask_compress import Compress
 Compress(app)
 
+import seguridad
+seguridad.iniciar(app)
+
 
 @app.route("/")
 def landing():
@@ -630,7 +633,7 @@ def logout():
     return redirect(url_for("landing"))
 
 
-@app.route("/cambiar_cuenta/<int:cuenta_id>")
+@app.route("/cambiar_cuenta/<int:cuenta_id>", methods=["POST"])
 @login_requerido
 def cambiar_cuenta(cuenta_id):
     """Plan Elite: cambiar cuál cuenta de MeLi conectada está viendo el usuario."""
@@ -1604,10 +1607,13 @@ def publicidad_vista():
     )
 
 
-@app.route("/sincronizar_todo", methods=["GET", "POST"])
+@app.route("/sincronizar_todo", methods=["POST"])
 @login_requerido
 def sincronizar_manual():
-    sincronizador.sincronizar_todo(g.usuario_id, g.cuenta_id)
+    """Arranca la sincronización en segundo plano y responde enseguida; el front consulta /api/estado_sincronizacion hasta que termina."""
+    if sincronizador.sincronizacion_en_curso(g.cuenta_id):
+        return jsonify({"status": "ya_en_curso"})
+    _en_segundo_plano("tasks.sync_tasks", "sincronizar_todo_task", sincronizador.sincronizar_todo, g.usuario_id, g.cuenta_id)
     return jsonify({"status": "iniciado"})
 
 
@@ -1710,12 +1716,13 @@ def api_onboarding_checklist():
 @app.route("/api/estado_sincronizacion")
 @login_requerido
 def api_estado_sincronizacion():
+    en_curso = sincronizador.sincronizacion_en_curso(g.cuenta_id)
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT sincronizacion_inicial_completa FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
         fila = cursor.fetchone()
         if fila and fila[0]:
-            return jsonify({"lista": True})
+            return jsonify({"lista": True, "en_curso": en_curso})
         cursor.execute("SELECT COUNT(*) FROM productos_padre WHERE cuenta_id = %s", (g.cuenta_id,))
         n_productos = cursor.fetchone()[0] or 0
         cursor.execute("SELECT COUNT(*) FROM ventas WHERE cuenta_id = %s", (g.cuenta_id,))
@@ -1726,7 +1733,7 @@ def api_estado_sincronizacion():
         etapa = "ventas"
     else:
         etapa = "calculando"
-    return jsonify({"lista": False, "productos": n_productos, "ventas": n_ventas, "etapa": etapa})
+    return jsonify({"lista": False, "en_curso": en_curso, "productos": n_productos, "ventas": n_ventas, "etapa": etapa})
 
 
 @app.route("/publicacion/<id_meli>/timeline")
@@ -2259,21 +2266,6 @@ def despacho_vista():
         cantidad_shipments=cantidad_shipments, hora_corte=hora_corte,
         flex_habilitado=flex_habilitado, umbrales_flex=umbrales_flex, active_nav="despacho"
     )
-
-
-@app.route("/sincronizar_hoy")
-@login_requerido
-def sincronizar_hoy():
-    """
-    "Sincronizar ventas de hoy" en Despacho — nunca tuvo backend (el
-    link apuntaba a una URL que no existía). En la práctica dispara la
-    misma sincronización completa que "Sincronizar Todo" del navbar
-    (ya es incremental por cuenta, no reprocesa desde cero) — separarla
-    en una sync "solo de hoy" pelearía contra el bookmark de
-    ultima_sincronizacion_ventas y podría dejar huecos entre syncs.
-    """
-    sincronizador.sincronizar_todo(g.usuario_id, g.cuenta_id)
-    return redirect(url_for("despacho_vista", fecha=request.args.get("fecha")))
 
 
 @app.route("/despacho/etiquetas_pdf")

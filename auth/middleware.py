@@ -132,6 +132,7 @@ def admin_requerido(vista):
 
 
 def iniciar_sesion(usuario_id, cuenta_id):
+    session.permanent = True      # vence a los 14 días (PERMANENT_SESSION_LIFETIME, ver seguridad.py)
     session["usuario_id"] = usuario_id
     session["cuenta_id"] = cuenta_id
 
