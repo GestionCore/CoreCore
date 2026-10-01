@@ -12,7 +12,37 @@ DIAS_VISTA = 30          # los próximos depósitos se agrupan hasta 30 días; l
 DIAS_ACREDITADO = 30
 
 
-def obtener_datos(cursor, cuenta_id, hoy=None):
+def _fecha(iso):
+    """2026-09-09 -> 09/09/2026 (lo que no tenga ese formato se deja como viene)."""
+    try:
+        return date.fromisoformat(str(iso)[:10]).strftime("%d/%m/%Y")
+    except ValueError:
+        return iso
+
+
+def resumen_factura(periodos):
+    """
+    La factura de Mercado Libre del período en curso, con lo que informa la API: lo acumulado hasta hoy, lo que ya se descontó de tus
+    acreditaciones (acumulado - pendiente) y lo que falta. La fecha de vencimiento solo se conoce cuando el período cierra; si hay un período
+    cerrado con deuda, se avisa con su vencimiento. Devuelve None si no hay períodos.
+    """
+    if not periodos:
+        return None
+    actual = periodos[0]
+    periodo = actual.get("period") or {}
+    total = float(actual.get("amount") or 0)
+    pendiente = float(actual.get("unpaid_amount") or 0)
+    vencida = next((p for p in periodos[1:] if float(p.get("unpaid_amount") or 0) > 0 and p.get("period_status") == "CLOSED"), None)
+    return {
+        "desde": _fecha(periodo.get("date_from")), "hasta": _fecha(periodo.get("date_to")), "abierto": actual.get("period_status") == "OPEN",
+        "total": round(total, 2), "pendiente": round(pendiente, 2), "descontado": round(max(total - pendiente, 0), 2),
+        "pct_descontado": round(max(total - pendiente, 0) / total * 100) if total else 0,
+        "deuda_cerrada": ({"monto": round(float(vencida["unpaid_amount"]), 2), "vence": _fecha(vencida.get("expiration_date")),
+                           "desde": _fecha((vencida.get("period") or {}).get("date_from")), "hasta": _fecha((vencida.get("period") or {}).get("date_to"))} if vencida else None),
+    }
+
+
+def obtener_datos(cursor, cuenta_id, hoy=None, periodos_factura=None):
     hoy = hoy or date.today()
     cursor.execute("""
         SELECT fecha_liberacion, COUNT(*), COALESCE(SUM(monto_liberacion), 0)
@@ -60,4 +90,5 @@ def obtener_datos(cursor, cuenta_id, hoy=None):
         "proximo": dias[0] if dias else None, "acreditado": round(float(acreditado), 2), "dias_acreditado": DIAS_ACREDITADO,
         "ventas_acreditadas": int(ventas_acreditadas or 0), "sin_fecha": int(sin_fecha),
         "retenidos": retenidos, "retenido_total": round(sum(r["monto"] for r in retenidos), 2), "dias_vista": DIAS_VISTA,
+        "factura": resumen_factura(periodos_factura),
     }

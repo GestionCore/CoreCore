@@ -3061,8 +3061,14 @@ def precios_vista():
 @app.route("/cobros")
 @login_requerido
 def cobros_vista():
+    periodos = []
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        periodos = facturacion.obtener_periodos(access_token, g.cuenta_id)   # con caché; si Mercado Libre no responde, la pantalla sigue sin el cuadro de la factura
+    except Exception as e:
+        print(f"[Cobros] ⚠️ No se pudo traer la factura de Mercado Libre: {e}")
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        datos = cobros_mod.obtener_datos(conexion.cursor(), g.cuenta_id)
+        datos = cobros_mod.obtener_datos(conexion.cursor(), g.cuenta_id, periodos_factura=periodos)
     return render_template("cobros.html", active_nav="cobros", **datos)
 
 
