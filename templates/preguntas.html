@@ -14,6 +14,9 @@
 <!-- Mensajes de compradores sin leer (si los hay): se contestan en Mercado Libre -->
 <div id="aviso-mensajes"></div>
 
+<!-- Cuánto tardás en responder: pesa en la conversión y en la reputación -->
+<div id="tiempo-respuesta"></div>
+
 <!-- Estado de la bandeja, en una frase -->
 <div id="estado-preguntas"></div>
 
@@ -53,7 +56,28 @@ async function cargarMensajes() {
     } catch (e) { /* sin aviso: las preguntas siguen funcionando */ }
 }
 
+function textoMinutos(min) {
+    if (min < 1) return 'menos de 1 min';
+    if (min < 60) return min + ' min';
+    const h = min / 60;
+    return h < 24 ? (Math.round(h * 10) / 10).toString().replace('.', ',') + ' h' : Math.round(h / 24) + ' días';
+}
+
+async function cargarTiempoRespuesta() {
+    try {
+        const d = await (await fetch('/api/preguntas/tiempo_respuesta')).json();
+        if (!d || !d.muestra) return;
+        const sub = d.tono === 'ok' ? 'Respondés rápido: eso ayuda a vender.' : (d.tono === 'warn' ? 'Respondé más rápido: el comprador suele decidir en la misma conversación.' : 'Tardás demasiado: muchas ventas se pierden por esto.');
+        $('tiempo-respuesta').innerHTML = UX.banner({
+            tono: d.tono, icono: 'bolt',
+            tituloHtml: `Respondés en <b>${UX.esc(textoMinutos(d.mediana_min))}</b> <span class="text-muted" style="font-weight:600;">(típico, sobre tus últimas ${d.muestra} respuestas)</span>`,
+            detalle: `${d.pct_en_1h}% de tus respuestas salió en la primera hora. ${sub}`,
+        });
+    } catch (e) { /* sin dato: no se muestra nada */ }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    cargarTiempoRespuesta();
     cargarMensajes();
     cargarPreguntas();
     $('btn-actualizar').addEventListener('click', cargarPreguntas);

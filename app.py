@@ -50,6 +50,7 @@ import precios as precios_mod
 import catalogo_ganar
 import mensajes as mensajes_mod
 import opiniones as opiniones_mod
+import tiempo_respuesta as tiempo_respuesta_mod
 import full_stock
 import flex
 import chat_ia
@@ -3092,6 +3093,26 @@ def api_mensajes_sin_leer():
         datos = mensajes_mod.sin_leer(access_token) or {"total": 0, "conversaciones": []}
         cache.set(clave, datos, timeout=60)
     return jsonify(datos)
+
+
+@app.route("/api/preguntas/tiempo_respuesta")
+@login_requerido
+def api_preguntas_tiempo_respuesta():
+    """Cuánto tardás en responder (mediana de las últimas respondidas). Caché de 30 minutos por cuenta."""
+    clave = construir_key("tiempo_respuesta", g.cuenta_id)
+    datos = cache.get(clave)
+    if datos is None:
+        try:
+            access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+            with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+                cursor = conexion.cursor()
+                cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
+                fila = cursor.fetchone()
+        except token_manager.CuentaDesconectada:
+            return jsonify(None)
+        datos = (tiempo_respuesta_mod.calcular(access_token, fila[0]) if fila else None) or {}
+        cache.set(clave, datos, timeout=1800)
+    return jsonify(datos or None)
 
 
 @app.route("/api/preguntas/lista")
