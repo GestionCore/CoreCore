@@ -518,16 +518,7 @@ def callback():
             msg = "Esa cuenta de Mercado Libre ya estaba conectada a tu usuario — no se agregó ninguna nueva. Para sumar una cuenta distinta, primero cerrá sesión en mercadolibre.com (o usá una ventana privada) y volvé a intentar."
             return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': 'info'})}")
 
-        try:
-            from tasks.sync_tasks import sincronizar_todo_task
-            sincronizar_todo_task.delay(usuario_id_actual, cuenta_id)
-        except Exception:
-            import threading
-            threading.Thread(
-                target=sincronizador.sincronizar_todo,
-                args=(usuario_id_actual, cuenta_id),
-                daemon=True,
-            ).start()
+        _en_segundo_plano("tasks.sync_tasks", "sincronizar_todo_task", sincronizador.sincronizar_todo, usuario_id_actual, cuenta_id)
         msg = f"¡Cuenta {datos_meli.get('nickname') or ''} conectada! Ya podés cambiar entre tus cuentas desde el selector del menú.".replace("  ", " ")
         return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': 'success'})}")
 
@@ -558,18 +549,32 @@ def callback():
     # Sync inicial en background: si Celery está disponible lo encola
     # (persistente, con reintentos). Si no, cae a un thread de Python
     # como antes — la app funciona igual, solo sin garantía ante reinicios.
-    try:
-        from tasks.sync_tasks import sincronizar_todo_task
-        sincronizar_todo_task.delay(usuario_id, cuenta_id)
-    except Exception:
-        import threading
-        threading.Thread(
-            target=sincronizador.sincronizar_todo,
-            args=(usuario_id, cuenta_id),
-            daemon=True,
-        ).start()
+    _en_segundo_plano("tasks.sync_tasks", "sincronizar_todo_task", sincronizador.sincronizar_todo, usuario_id, cuenta_id)
 
     return redirect(url_for("landing"))
+
+
+_celery_disponible = None
+
+
+def _en_segundo_plano(modulo_tarea, nombre_tarea, funcion, *args):
+    """
+    Corre `funcion(*args)` sin bloquear el pedido: la encola en Celery si hay broker (reintentos, sobrevive a reinicios) y si no, en un hilo.
+    Redis se comprueba UNA vez: sin Redis, cada `.delay()` tardaba ~0,7 s en fallar, y el webhook de Mercado Libre espera una respuesta casi
+    inmediata (si responde lento seguido, MeLi deja de mandar las notificaciones).
+    """
+    global _celery_disponible
+    if _celery_disponible is None:
+        _celery_disponible = scheduler._redis_disponible()
+    if _celery_disponible:
+        try:
+            import importlib
+            getattr(importlib.import_module(modulo_tarea), nombre_tarea).delay(*args)
+            return
+        except Exception:
+            pass
+    import threading
+    threading.Thread(target=funcion, args=args, daemon=True).start()
 
 
 @app.route("/notificaciones_meli", methods=["POST"])
@@ -602,16 +607,7 @@ def notificaciones_meli():
         return "", 200
 
     if topic and meli_user_id:
-        try:
-            from tasks.webhook_tasks import procesar_webhook_task
-            procesar_webhook_task.delay(topic, resource, meli_user_id)
-        except Exception:
-            import threading
-            threading.Thread(
-                target=sincronizador.procesar_notificacion_webhook,
-                args=(topic, resource, meli_user_id),
-                daemon=True,
-            ).start()
+        _en_segundo_plano("tasks.webhook_tasks", "procesar_webhook_task", sincronizador.procesar_notificacion_webhook, topic, resource, meli_user_id)
 
     return "", 200
 
@@ -3569,6 +3565,8 @@ def webhook_mercadopago():
 # solo si usa APScheduler o se lo cede a Celery Beat (según haya Redis
 # disponible), así que es seguro llamarlo siempre, una vez por proceso.
 scheduler.iniciar_scheduler()
+# Se resuelve al arrancar para que ni el primer webhook de Mercado Libre pague el chequeo (ver _en_segundo_plano)
+_celery_disponible = scheduler._redis_disponible()
 
 if __name__ == "__main__":
     if config.DEBUG:

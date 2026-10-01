@@ -270,6 +270,12 @@ scopeado por cuenta_id antes de confiar en él.
   talle, `family_id` no — es la clave de "modelo" que no depende del título ni del
   rubro (el sincronizador la guarda en `productos_padre.family_id`): usarla si
   alguna vez se reemplaza el agrupado por título.
+- **Trabajo en segundo plano: `app._en_segundo_plano`** (Celery si hay Redis, si no
+  un hilo). Producción NO tiene Redis: antes cada `.delay()` tardaba ~0,7 s en
+  fallar y el webhook de MeLi (`POST /notificaciones_meli`, ya está recibiendo
+  notificaciones) respondía en 771 ms; MeLi pide respuesta casi inmediata y deja de
+  mandar notificaciones si falla seguido. Ahora Redis se comprueba una sola vez al
+  arrancar (1-2 ms por webhook). No volver a llamar `.delay()` directo en una ruta.
 - **Cobros (`/cobros`, `cobros.py`) y dinero retenido**: calendario de acreditación
   con `ventas.fecha_liberacion`/`monto_liberacion` (lo que Mercado Pago deposita de
   verdad) y la plata retenida por reclamos. `incidencias_posventa.monto_retenido`
