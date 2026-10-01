@@ -1,6 +1,7 @@
 """Score de Salud de Cuenta — portado de Santi Mens."""
 from datetime import datetime, timedelta
 import analisis_stock
+from utils import SQL_RECLAMO_AFECTA
 
 
 def calcular_score_salud(cursor):
@@ -8,7 +9,7 @@ def calcular_score_salud(cursor):
     detalle = []
 
     # Solo los reclamos reales ('claim') restan: una devolución o una cancelación no afectan la reputación
-    cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved') AND tipo = 'claim'")
+    cursor.execute(f"SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved') AND tipo = 'claim' AND {SQL_RECLAMO_AFECTA}")
     reclamos_activos = cursor.fetchone()[0] or 0
     if reclamos_activos > 0:
         resta = min(reclamos_activos * 15, 45)

@@ -11,7 +11,7 @@ import db
 import analisis_stock
 import salud_cuenta
 import resumen_semanal
-from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle
+from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle, SQL_RECLAMO_AFECTA
 
 
 def _detalle_venta(titulo):
@@ -123,11 +123,15 @@ def obtener_ticker(usuario_id, cuenta_id=None):
         # Reclamos y devoluciones se cuentan POR SEPARADO (lo pidió el usuario: una devolución simple no es un
         # reclamo). Solo un reclamo real ('claim') puede afectar la reputación; una devolución es gestión del día a día.
         # Las cancelaciones no son nada que el vendedor tenga que resolver.
-        cursor.execute("""
-            SELECT COALESCE(SUM((tipo = 'claim')::int), 0), COALESCE(SUM((tipo = 'return')::int), 0)
+        # "Reclamo activo" = el que Mercado Libre dice que afecta la reputación (o que todavía no se sabe). Los que MeLi marca como
+        # "no afecta" (p. ej. un "no lo quiero" en mediación) y las devoluciones van aparte, como gestión del día a día.
+        cursor.execute(f"""
+            SELECT COALESCE(SUM((tipo = 'claim' AND {SQL_RECLAMO_AFECTA})::int), 0),
+                   COALESCE(SUM((tipo = 'return')::int), 0),
+                   COALESCE(SUM((tipo = 'claim' AND NOT {SQL_RECLAMO_AFECTA})::int), 0)
             FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved')
         """)
-        incidencias_activas, devoluciones_activas = (int(x or 0) for x in cursor.fetchone())
+        incidencias_activas, devoluciones_activas, reclamos_sin_impacto = (int(x or 0) for x in cursor.fetchone())
 
         salud = salud_cuenta.calcular_score_salud(cursor)
 
@@ -146,7 +150,7 @@ def obtener_ticker(usuario_id, cuenta_id=None):
         "ventas_hoy": ord_hoy, "facturado_hoy": formatear_moneda(fact_hoy),
         "liberacion_manana": formatear_moneda(liberacion_manana), "proxima_liberacion": proxima_liberacion,
         "a_liberar_total": formatear_moneda(a_liberar_total), "hay_liberaciones": a_liberar_total > 0, "bridge_activo": False,
-        "incidencias_activas": incidencias_activas, "devoluciones_activas": devoluciones_activas, "salud_score": salud["score"], "racha_dias": racha_dias,
+        "incidencias_activas": incidencias_activas, "devoluciones_activas": devoluciones_activas, "reclamos_sin_impacto": reclamos_sin_impacto, "salud_score": salud["score"], "racha_dias": racha_dias,
         "salud_etiqueta": salud["etiqueta"], "salud_detalle": salud["detalle"],
         "ventas_hoy_detalle": ventas_hoy_detalle
     }
@@ -205,9 +209,9 @@ def obtener_reclamos_resumen(usuario_id, cuenta_id=None):
         # (botón de arrepentimiento) y 'cancelacion' ni siquiera es eso.
         # Antes solo se excluía 'cancelacion', así que toda devolución
         # sin resolver se mostraba acá como si fuera un reclamo grave.
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa
-            WHERE estado NOT IN ('closed','resolved') AND tipo = 'claim'
+            WHERE estado NOT IN ('closed','resolved') AND tipo = 'claim' AND {SQL_RECLAMO_AFECTA}
         """)
         cantidad, monto = cursor.fetchone()
     return {"cantidad": cantidad, "monto_formateado": formatear_moneda(monto)}

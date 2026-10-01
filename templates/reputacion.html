@@ -53,12 +53,13 @@
     {% if rep.cancelaciones_metrica.tasa is not none %}{{ kpi("Cancelaciones (métrica de nivel)", (rep.cancelaciones_metrica.tasa * 100)|pct(2), "info", "x", "métrica que arma tu nivel") }}{% endif %}
 </div>
 
-{% if incidencias_por_tipo.devoluciones or incidencias_por_tipo.reclamos or incidencias_por_tipo.cancelaciones %}
+{% if incidencias_por_tipo.devoluciones or incidencias_por_tipo.reclamos or incidencias_por_tipo.reclamos_sin_impacto or incidencias_por_tipo.cancelaciones %}
 <div class="ux-seccion ux-warn">Desglose real de lo que registramos</div>
 <div class="text-muted" style="font-size:0.88em; margin:-6px 0 12px;">Mercado Libre junta cancelaciones, devoluciones y ventas no completadas en un solo número. Acá ves cada tipo por separado, con lo que CoreLux sincronizó de tu cuenta.</div>
 <div class="ux-kpis">
     {{ kpi("Devoluciones", incidencias_por_tipo.devoluciones, "warn", "refresh") }}
-    {{ kpi("Reclamos", incidencias_por_tipo.reclamos, "danger", "alert") }}
+    {{ kpi("Reclamos que afectan tu reputación", incidencias_por_tipo.reclamos, "danger" if incidencias_por_tipo.reclamos else "ok", "alert", "según Mercado Libre") }}
+    {% if incidencias_por_tipo.reclamos_sin_impacto %}{{ kpi("Reclamos sin impacto", incidencias_por_tipo.reclamos_sin_impacto, "info", "info", "no afectan tu reputación") }}{% endif %}
     {{ kpi("Cancelaciones", incidencias_por_tipo.cancelaciones, "neutral", "x") }}
 </div>
 {% endif %}

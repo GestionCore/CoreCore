@@ -490,8 +490,9 @@
         }
         if (ticker.status === 'fulfilled' && ticker.value) {
             const d = ticker.value;
-            const inc = d.incidencias_activas || 0, dev = d.devoluciones_activas || 0;
-            const notaDev = dev > 0 ? ` · ${dev} ${dev === 1 ? 'devolución' : 'devoluciones'} por gestionar` : '';
+            // inc = reclamos que Mercado Libre dice que afectan la reputación; dev = devoluciones y reclamos que no la afectan
+            const inc = d.incidencias_activas || 0, dev = (d.devoluciones_activas || 0) + (d.reclamos_sin_impacto || 0);
+            const notaDev = dev > 0 ? ` · ${dev} por gestionar, sin impacto en tu reputación` : '';
             _pintarKpi('kpi-reclamos', {
                 tono: inc > 0 ? 'danger' : (dev > 0 ? 'warn' : 'ok'), valor: String(inc),
                 subHtml: inc > 0 ? `<b>Resolvelos</b> para proteger tu reputación${notaDev}` : (dev > 0 ? `Sin reclamos abiertos${notaDev}` : 'Sin reclamos ni devoluciones abiertas'),

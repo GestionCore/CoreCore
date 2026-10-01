@@ -60,7 +60,7 @@ import scheduler
 import ventas_manuales
 import pagos
 import utils
-from utils import formatear_moneda, formatear_moneda_entera
+from utils import formatear_moneda, formatear_moneda_entera, SQL_RECLAMO_AFECTA
 from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__)
@@ -1497,14 +1497,20 @@ def reputacion_vista():
     # por tipo desde que arrancamos a sincronizarlo (devoluciones_sync.py)
     # — se muestra como un panel aparte, no mezclado con el número
     # oficial de MeLi, porque cubren ventanas de tiempo distintas.
-    incidencias_por_tipo = {"devoluciones": 0, "reclamos": 0, "cancelaciones": 0}
+    incidencias_por_tipo = {"devoluciones": 0, "reclamos": 0, "reclamos_sin_impacto": 0, "cancelaciones": 0}
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("SELECT tipo, COUNT(*) FROM incidencias_posventa GROUP BY tipo")
-        conteo_tipo = dict(cursor.fetchall())
-    incidencias_por_tipo["devoluciones"] = conteo_tipo.get("return", 0)
-    incidencias_por_tipo["reclamos"] = conteo_tipo.get("claim", 0)
-    incidencias_por_tipo["cancelaciones"] = conteo_tipo.get("cancelacion", 0)
+        # Los reclamos se separan según Mercado Libre: los que afectan la reputación y los que no (p. ej. un "no lo quiero" en mediación)
+        cursor.execute(f"""
+            SELECT tipo, COUNT(*), COUNT(*) FILTER (WHERE NOT {SQL_RECLAMO_AFECTA})
+            FROM incidencias_posventa GROUP BY tipo
+        """)
+        conteo_tipo = {tipo: (total, sin_impacto) for tipo, total, sin_impacto in cursor.fetchall()}
+    incidencias_por_tipo["devoluciones"] = conteo_tipo.get("return", (0, 0))[0]
+    reclamos_total, reclamos_sin = conteo_tipo.get("claim", (0, 0))
+    incidencias_por_tipo["reclamos"] = reclamos_total - reclamos_sin
+    incidencias_por_tipo["reclamos_sin_impacto"] = reclamos_sin
+    incidencias_por_tipo["cancelaciones"] = conteo_tipo.get("cancelacion", (0, 0))[0]
 
     return render_template("reputacion.html", rep=datos, incidencias_por_tipo=incidencias_por_tipo, active_nav="reputacion")
 

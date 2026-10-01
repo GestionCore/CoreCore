@@ -250,6 +250,19 @@ scopeado por cuenta_id antes de confiar en él.
   ⚠️ Falta, del lado del usuario, tildar esos temas y poner la Notification URL
   `https://corelux.app/notificaciones_meli` en el panel de MeLi Developers
   (no se puede hacer desde acá). Mientras tanto el scheduler (4 min) cubre todo.
+- **Reclamos: solo es grave el que afecta la reputación (migración 0025)**:
+  `incidencias_posventa.afecta_reputacion` guarda lo que dice MeLi
+  (`GET /post-purchase/v1/claims/{id}/affects-reputation` → `affected` /
+  `not_affected`; NULL = todavía no se consultó y se trata como "podría afectar").
+  `utils.SQL_RECLAMO_AFECTA` es el fragmento SQL para contar solo esos: lo usan el
+  ticker, Salud de cuenta (antes 4 "no lo quiero" en mediación restaban 45
+  puntos), Logros, resumen semanal, Ganancia Real y Reputación. Lo que MeLi marca
+  `not_affected` + las devoluciones se muestran como "por gestionar, sin impacto
+  en tu reputación". `devoluciones_sync` lo refresca en cada sync de reclamos.
+- ⚠️ **Pooler de Supabase = 15 conexiones de sesión para TODO el proyecto**
+  (rol `app_backend`). Producción usa hasta ~13 (ver `db.py`); si localmente da
+  `EMAXCONNSESSION`/`PoolTimeout`, no hay lugar: esperar, o revisar si
+  producción las está agotando (`pg_stat_activity`, `usename='app_backend'`).
 - **Talle, centralizado (2026-10-01)**: `utils.extraer_talle(titulo, talle_real)` es
   la ÚNICA forma de obtener el talle (antes un regex repetido en 8 módulos que
   tomaba cualquier número del título: "Combo 2 Termos" quedó con "talle 2").
@@ -408,7 +421,7 @@ MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones corridas hasta `0024_capacidades_y_enriquecimiento.sql` — 
+- Migraciones corridas hasta `0025_afecta_reputacion.sql` — 
   verificá `migrate.py --status` contra Supabase real antes de asumir
   cuál es la última aplicada, el número más alto en `migrations/` no
   siempre coincide con lo corrido de verdad.

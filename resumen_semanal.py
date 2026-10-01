@@ -1,7 +1,7 @@
 """Resumen de período estructurado — portado de Santi Mens (solo la parte de datos, sin el texto libre de IA que no se usa en el widget del dashboard)."""
 from datetime import datetime, timedelta
 import analisis_stock
-from utils import formatear_moneda
+from utils import formatear_moneda, SQL_RECLAMO_AFECTA
 
 
 def generar_resumen_periodo(cursor, dias=7):
@@ -45,7 +45,7 @@ def generar_resumen_periodo(cursor, dias=7):
     # el HUD "Reclamos abiertos" (ver global.js), así que solo debe contar
     # tipo='claim' — una devolución simple (tipo='return') no es un
     # reclamo y no debería sumar acá, aunque siga sin resolver.
-    cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved') AND tipo = 'claim'")
+    cursor.execute(f"SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed', 'resolved') AND tipo = 'claim' AND {SQL_RECLAMO_AFECTA}")
     incidencias_abiertas = cursor.fetchone()[0] or 0
 
     return {

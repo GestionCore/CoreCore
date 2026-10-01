@@ -25,6 +25,7 @@ Nota de confianza, para ser honesto sobre el riesgo de cada mitad:
   mejora futura, no algo que haya que inventar.
 """
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import meli_http
 import db
@@ -223,8 +224,44 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
             if cursor.rowcount:
                 print(f"[DevolucionesSync] Cuenta {cuenta_id}: {cursor.rowcount} reclamo(s)/devolución(es) ya cerrados en MeLi se cerraron acá también.")
 
+    _actualizar_impacto_en_reputacion(usuario_id, cuenta_id, headers, ids_abiertos)
     _completar_motivos_viejos(usuario_id, cuenta_id, headers)
     return filas_totales
+
+
+def _impacto_en_reputacion(headers, id_reclamo):
+    """GET /post-purchase/v1/claims/{id}/affects-reputation → "affected" | "not_affected" | otro valor de MeLi, o None si no respondió."""
+    try:
+        resp = meli_http.get(f"https://api.mercadolibre.com/post-purchase/v1/claims/{id_reclamo}/affects-reputation", headers=headers, timeout=10)
+        if resp.status_code == 200:
+            valor = (resp.json().get("affects_reputation") or "").strip().lower()
+            return valor or None
+    except Exception as e:
+        print(f"[DevolucionesSync] ⚠️ No se pudo consultar el impacto en reputación del reclamo {id_reclamo}: {e}")
+    return None
+
+
+def _actualizar_impacto_en_reputacion(usuario_id, cuenta_id, headers, ids_abiertos, tope_viejos=15):
+    """
+    Si cada reclamo cuenta contra la reputación, según Mercado Libre. Los abiertos se vuelven a consultar siempre (puede cambiar
+    mientras siguen abiertos); de los cerrados solo se completan los que nunca se consultaron, de a pocos por sincronización.
+    """
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT id_reclamo FROM incidencias_posventa
+            WHERE cuenta_id = %s AND afecta_reputacion IS NULL AND NOT (id_reclamo = ANY(%s)) ORDER BY fecha DESC LIMIT %s
+        """, (cuenta_id, ids_abiertos, tope_viejos))
+        ids = list(ids_abiertos) + [r[0] for r in cursor.fetchall()]
+    if not ids:
+        return
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        resultados = list(zip(ids, pool.map(lambda i: _impacto_en_reputacion(headers, i), ids)))
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        for id_reclamo, valor in resultados:
+            if valor:
+                cursor.execute("UPDATE incidencias_posventa SET afecta_reputacion = %s WHERE cuenta_id = %s AND id_reclamo = %s", (valor, cuenta_id, id_reclamo))
 
 
 def _completar_motivos_viejos(usuario_id, cuenta_id, headers, tope=15):

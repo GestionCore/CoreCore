@@ -12,6 +12,11 @@ ESTADOS_INCIDENCIA_LEGIBLES = {
 }
 
 
+# Un reclamo es "grave" (cuenta en el ticker, resta puntos de Salud, es una misión urgente) solo si Mercado Libre dice que afecta la
+# reputación. Mientras no se sabe (NULL) se cuenta igual, por prudencia. Para usar dentro de un WHERE sobre incidencias_posventa.
+SQL_RECLAMO_AFECTA = "(afecta_reputacion IS NULL OR afecta_reputacion = 'affected')"
+
+
 def formatear_estado_incidencia(estado):
     return ESTADOS_INCIDENCIA_LEGIBLES.get((estado or "").lower(), (estado or "Sin dato").capitalize())
 

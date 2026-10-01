@@ -234,7 +234,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         thumbnails_por_item = {r["id_meli"]: r["thumbnail"] for r in filas_productos}
 
         cursor.execute("""
-            SELECT tipo, motivo, estado, id_orden, fecha, COALESCE(monto_retenido, 0.0) AS monto_retenido
+            SELECT tipo, motivo, estado, id_orden, fecha, COALESCE(monto_retenido, 0.0) AS monto_retenido, afecta_reputacion
             FROM incidencias_posventa WHERE fecha BETWEEN %s AND %s ORDER BY fecha DESC
         """, (fecha_desde, fecha_hasta))
         incidencias_db = cursor.fetchall()
@@ -355,7 +355,14 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
 
     total_devoluciones = sum(1 for inc in incidencias_db if inc["tipo"] in ("returns", "return") or "devol" in (inc["tipo"] or "").lower())
     total_cancelaciones = sum(1 for inc in incidencias_db if "cancel" in (inc["tipo"] or "").lower())
-    total_reclamos = sum(1 for inc in incidencias_db if inc["tipo"] in ("claim", "mediation") or "reclamo" in (inc["tipo"] or "").lower())
+    def _es_reclamo(inc):
+        return inc["tipo"] in ("claim", "mediation") or "reclamo" in (inc["tipo"] or "").lower()
+
+    def _afecta_reputacion(inc):
+        # Mercado Libre dice si cuenta contra la reputación; mientras no se sabe (NULL) se trata como que sí, por prudencia
+        return inc["afecta_reputacion"] in (None, "affected")
+    total_reclamos = sum(1 for inc in incidencias_db if _es_reclamo(inc) and _afecta_reputacion(inc))
+    reclamos_sin_impacto = sum(1 for inc in incidencias_db if _es_reclamo(inc) and not _afecta_reputacion(inc))
     total_dinero_retenido = sum(float(inc["monto_retenido"]) for inc in incidencias_db)
 
     conteo_motivos = {}
@@ -369,12 +376,13 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
     )[:5]
 
     resumen_posventa = {
-        "devoluciones": total_devoluciones, "cancelaciones": total_cancelaciones, "reclamos": total_reclamos,
+        "devoluciones": total_devoluciones, "cancelaciones": total_cancelaciones, "reclamos": total_reclamos, "reclamos_sin_impacto": reclamos_sin_impacto,
         "dinero_retenido": formatear_moneda(total_dinero_retenido),
         "ranking_motivos_devolucion": ranking_motivos_devolucion,
         "lista": [
             {
                 "tipo": "DEVOLUCIÓN" if (inc["tipo"] in ("returns", "return") or "devol" in (inc["tipo"] or "").lower()) else ("CANCELACIÓN" if "cancel" in (inc["tipo"] or "").lower() else "RECLAMO"),
+                "sin_impacto": not _afecta_reputacion(inc),
                 "motivo": inc["motivo"], "estado": formatear_estado_incidencia(inc["estado"]), "id_orden": inc["id_orden"],
                 "fecha": inc["fecha"].strftime("%Y-%m-%d") if hasattr(inc["fecha"], "strftime") else inc["fecha"],
                 "monto_retenido": formatear_moneda(inc["monto_retenido"]),

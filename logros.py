@@ -13,6 +13,7 @@ import time
 from datetime import datetime, timedelta, timezone
 import analisis_stock
 import embudo_conversion
+from utils import SQL_RECLAMO_AFECTA
 import tendencias as tendencias_mod
 import promociones as promociones_mod
 import ia_asistente
@@ -72,7 +73,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
         _rollback_seguro(cursor)
 
     try:
-        cursor.execute("SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND tipo = 'claim'")
+        cursor.execute(f"SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND tipo = 'claim' AND {SQL_RECLAMO_AFECTA}")
         cant_reclamos, monto_retenido = cursor.fetchone()
         if cant_reclamos > 0:
             monto_retenido_fmt = f"{float(monto_retenido):,.0f}".replace(",", ".")
@@ -87,13 +88,14 @@ def _detectar_misiones_base(cursor, cuenta_id):
         _rollback_seguro(cursor)
 
     try:
-        cursor.execute("SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND tipo = 'return'")
+        # Devoluciones y reclamos que Mercado Libre marca como "no afecta tu reputación": gestión del día a día, nunca urgente
+        cursor.execute(f"SELECT COUNT(*) FROM incidencias_posventa WHERE estado NOT IN ('closed','resolved') AND (tipo = 'return' OR (tipo = 'claim' AND NOT {SQL_RECLAMO_AFECTA}))")
         cant_devoluciones = cursor.fetchone()[0] or 0
         if cant_devoluciones > 0:
             misiones.append({
                 "id": "devoluciones_abiertas", "categoria": "reclamos", "icono": "↩️", "prioridad": "importante" if cant_devoluciones >= 3 else "opcional",
-                "titulo": f"{cant_devoluciones} devolución(es) por gestionar",
-                "descripcion": "Por sí solas no cuentan como un reclamo, pero conviene resolverlas a tiempo: una devolución sin gestionar puede terminar en reclamo.",
+                "titulo": f"{cant_devoluciones} devolución(es) o reclamo(s) por gestionar",
+                "descripcion": "Mercado Libre indica que no afectan tu reputación, pero conviene resolverlos a tiempo para que no se compliquen.",
                 "link": "/metricas#seccion-reclamos", "link_texto": "Ver devoluciones"
             })
     except Exception as e:
