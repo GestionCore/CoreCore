@@ -46,6 +46,7 @@ import onboarding
 import monotributo
 import costos_chat
 import calidad as calidad_mod
+import precios as precios_mod
 import full_stock
 import flex
 import chat_ia
@@ -3028,6 +3029,15 @@ def api_drawer_salud(id_meli):
 
 
 # ── Preguntas de compradores ──────────────────────────────────────────────
+
+@app.route("/precios")
+@login_requerido
+def precios_vista():
+    margen, publicidad = precios_mod.parametros(request.args.get("margen"), request.args.get("publicidad"))
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        datos = precios_mod.obtener_datos(conexion.cursor(), g.cuenta_id, margen, publicidad)
+    return render_template("precios.html", active_nav="precios", **datos)
+
 
 @app.route("/calidad")
 @login_requerido

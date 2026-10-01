@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
+{% block title %}Precios · CoreLux{% endblock %}
+{% block content %}
+{% macro fila(i) %}
+<div class="ux-precio-fila ux-{{ 'danger' if i.estado == 'pierde' else ('warn' if i.estado == 'justo' else 'ok') }}">
+    <div class="ux-precio-pub">
+        {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+        <div class="ux-precio-titulo">
+            <div>{% if i.permalink %}<a href="{{ i.permalink }}" target="_blank" rel="noopener"><b>{{ i.titulo }}</b> ↗</a>{% else %}<b>{{ i.titulo }}</b>{% endif %}</div>
+            <div class="text-muted" style="font-size:0.8em;">{{ i.unidades }} venta{{ 's' if i.unidades != 1 }} en {{ ventana_dias }} días · comisión {{ i.comision_pct|string|replace('.', ',') }}% · envío {{ i.envio|plata }}{% if i.estimado %} <span class="ux-pill ux-neutral ux-pill-suave" title="Con menos de 3 ventas el cálculo es orientativo">pocas ventas</span>{% endif %}</div>
+        </div>
+    </div>
+    <div class="ux-precio-regla-caja">
+        {% if i.pos_minimo is not none and i.pos_recomendado is not none %}
+        <div class="ux-regla" role="img" aria-label="Precio actual comparado con el mínimo y el recomendado">
+            <span class="ux-regla-mal" style="width:{{ i.pos_minimo }}%;"></span>
+            <span class="ux-regla-justo" style="left:{{ i.pos_minimo }}%; width:{{ i.pos_recomendado - i.pos_minimo }}%;"></span>
+            <span class="ux-regla-bien" style="left:{{ i.pos_recomendado }}%;"></span>
+            <span class="ux-regla-marca" style="left:{{ i.pos_actual }}%;" title="Precio actual"></span>
+        </div>
+        <div class="ux-regla-etiquetas"><span>Mínimo <b>{{ i.minimo|plata }}</b></span><span>Recomendado <b>{{ i.recomendado|plata }}</b></span></div>
+        {% else %}
+        <div class="text-muted" style="font-size:0.82em;">Con la comisión y la publicidad indicadas no hay un precio que deje ese margen.</div>
+        {% endif %}
+    </div>
+    <div class="ux-precio-estado">
+        <div class="ux-precio-actual">{{ i.precio|plata }}</div>
+        <span class="ux-pill ux-{{ 'danger' if i.estado == 'pierde' else ('warn' if i.estado == 'justo' else 'ok') }}">{{ i.margen_actual|string|replace('.', ',') }}% de margen</span>
+        {% if i.estado != 'ok' and i.recomendado %}<div class="ux-precio-accion">Subilo a <b>{{ i.recomendado|plata }}</b></div>
+        {% elif i.recomendado %}<div class="text-muted" style="font-size:0.78em;">Cubrís tu margen hasta {{ i.recomendado|plata }}</div>{% endif %}
+    </div>
+</div>
+{% endmacro %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-tag"/></svg>Precios</h1>
+        <div class="page-subtitle">El precio mínimo para <strong>no perder plata</strong> y el recomendado para tu margen — con la comisión y el envío reales de cada publicación</div>
+    </div>
+</div>
+
+{% if not total_activas %}
+{{ vacio("Todavía no hay publicaciones activas para analizar", "Sincronizá tu catálogo y acá aparece el precio mínimo de cada una.", "refresh", "info", "Ir a Stock", "/stock") }}
+{% else %}
+
+<!-- ── 1. CÓMO ESTÁN ─────────────────────────────────────────────────────── -->
+{% set tono = 'danger' if pierden else ('warn' if justos else ('ok' if items else 'info')) %}
+<div class="ux-hero ux-{{ tono }}">
+    <div class="ux-hero-etiqueta">{% if pierden %}Publicaciones que hoy pierden plata{% elif justos %}Publicaciones por debajo de tu margen objetivo{% elif items %}Todos tus precios cubren tu margen{% else %}Todavía no hay con qué calcular{% endif %}</div>
+    <div class="ux-hero-numero">{% if pierden %}{{ pierden|length }}{% elif justos %}{{ justos|length }}{% elif items %}✓{% else %}—{% endif %}</div>
+    <div class="ux-hero-frase">
+        {% if pierden %}Cada venta de {{ 'esta publicación' if pierden|length == 1 else 'estas publicaciones' }} deja pérdida{% if perdida_mensual %}: <b>unos {{ perdida_mensual|plata }} por mes</b> al ritmo de venta actual{% endif %}. Subir el precio hasta el mínimo ya la saca de pérdida.
+        {% elif justos %}<b>{{ justos|length }}</b> {{ 'publicación gana' if justos|length == 1 else 'publicaciones ganan' }} menos que el <b>{{ margen_objetivo|round|int }}%</b> que buscás.
+        {% elif items %}Las <b>{{ items|length }}</b> publicaciones analizadas dejan al menos el <b>{{ margen_objetivo|round|int }}%</b> de margen.
+        {% else %}Para calcular el precio mínimo hace falta el <b>costo de fabricación</b> de cada publicación y al menos una venta.{% endif %}
+    </div>
+    <div class="ux-hero-nota">Calculado con la comisión y el envío que pagó cada publicación en los últimos {{ ventana_dias }} días.</div>
+</div>
+
+<!-- ── 2. QUÉ HACER ───────────────────────────────────────────────────── -->
+{% if sin_costo %}
+<div class="ux-acciones-titulo">Para completar el análisis <span class="ux-contador">1</span></div>
+<div class="ux-lista-acciones">
+    <div class="ux-item-accion ux-warn">
+        <div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-wallet"/></svg></div>
+        <div class="ux-item-accion-cuerpo">
+            <div class="ux-item-accion-titulo">Cargá el costo de fabricación de {{ sin_costo|length }} {{ 'publicación' if sin_costo|length == 1 else 'publicaciones' }}</div>
+            <div class="ux-item-accion-detalle">Sin el costo no se puede saber cuál es el precio mínimo — ni cuánto ganás de verdad.</div>
+        </div>
+        <a class="btn btn-alerta" href="/costos">Cargar costos</a>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── 3. NÚMEROS ─────────────────────────────────────────────────────── -->
+<div class="ux-kpis">
+    {{ kpi("Pierden plata", pierden|length, "danger" if pierden else "ok", "alert", "al precio actual" if pierden else "ninguna, por ahora") }}
+    {{ kpi("Margen justo", justos|length, "warn" if justos else "ok", "percent", "por debajo del " ~ (margen_objetivo|round|int) ~ "%") }}
+    {{ kpi("Cubren tu margen", bien|length, "ok", "check", "de " ~ items|length ~ " analizadas") }}
+    {{ kpi("Sin calcular", (sin_costo|length) + (sin_ventas|length), "neutral", "info", "sin costo cargado o sin ventas todavía") }}
+</div>
+
+<!-- ── Ajustes del cálculo ──────────────────────────────────────────────── -->
+<form method="get" class="panel ux-precios-ajustes" action="/precios">
+    <div class="field-group">
+        <label class="field-label" for="p-margen"><b>Margen objetivo</b> <span class="text-muted" style="font-weight:400;">(% del precio)</span></label>
+        <input type="number" id="p-margen" name="margen" min="0" max="60" step="1" inputmode="numeric" value="{{ margen_objetivo|round|int }}">
+    </div>
+    <div class="field-group">
+        <label class="field-label" for="p-pub"><b>Publicidad</b> <span class="text-muted" style="font-weight:400;">(% del precio, opcional)</span></label>
+        <input type="number" id="p-pub" name="publicidad" min="0" max="40" step="1" inputmode="numeric" value="{{ publicidad_pct|round|int }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Recalcular</button>
+</form>
+
+<!-- ── 4. LISTA: primero lo que pierde plata ─────────────────────────────── -->
+{% if pierden or justos %}
+<div class="ux-seccion {{ 'ux-danger' if pierden else 'ux-warn' }}" id="revisar">Para revisar <span class="text-muted" style="font-weight:600; font-size:0.8em;">las que más pierden, primero</span></div>
+<div class="panel" data-mostrar-mas-scope>
+    {% for i in (pierden + justos) %}
+    <div class="{% if loop.index > 8 %}oculto-mostrar-mas{% endif %}">{{ fila(i) }}</div>
+    {% endfor %}
+    {% if (pierden|length + justos|length) > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ pierden|length + justos|length - 8 }} restantes</button>{% endif %}
+</div>
+{% elif items %}
+{{ banner("ok", "check", "<b>Todos tus precios cubren el margen que buscás</b>", "Si querés ser más competitivo, el precio recomendado de cada publicación es el piso hasta donde podés bajar sin salirte de tu objetivo.") }}
+{% endif %}
+
+<!-- ── 5. DETALLE ──────────────────────────────────────────────────────── -->
+{% if bien %}
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--success);"><use href="#icon-check"/></svg> Las que cubren tu margen <span class="ux-detalle-nota">{{ bien|length }} · hasta dónde podés bajar el precio</span></summary>
+    <div class="ux-detalle-cuerpo">
+        {% for i in bien %}{{ fila(i) }}{% endfor %}
+    </div>
+</details>
+{% endif %}
+
+{% if sin_ventas or sin_costo %}
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--text-faint);"><use href="#icon-info"/></svg> Todavía sin calcular <span class="ux-detalle-nota">{{ (sin_costo|length) + (sin_ventas|length) }}</span></summary>
+    <div class="ux-detalle-cuerpo">
+        {% if sin_costo %}
+        <div class="text-muted" style="font-size:0.85em; margin-bottom:6px;">Sin costo de fabricación cargado — <a href="/costos">cargalo en Costos</a>:</div>
+        {% for i in sin_costo %}
+        <div class="ux-rank-fila ux-neutral">
+            {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}</div></div>
+            <div class="ux-rank-valor"><b>{{ i.precio|plata }}</b></div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% if sin_ventas %}
+        <div class="text-muted" style="font-size:0.85em; margin:14px 0 6px;">Todavía sin ventas en {{ ventana_dias }} días — con la primera venta se calcula con su comisión y envío reales:</div>
+        {% for i in sin_ventas %}
+        <div class="ux-rank-fila ux-neutral">
+            {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}</div></div>
+            <div class="ux-rank-valor"><b>{{ i.precio|plata }}</b></div>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</details>
+{% endif %}
+
+<div class="text-muted" style="font-size:0.8em; margin-top:18px; line-height:1.5;">Antes de cambiar un precio, confirmalo en la <a href="/calculadora">Calculadora</a>: la comisión y el envío pueden variar con el precio, la logística y las cuotas que ofrezcas.</div>
+{% endif %}
+{% endblock %}

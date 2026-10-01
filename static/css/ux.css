@@ -414,6 +414,32 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-calidad-accion .btn { padding: 5px 12px; font-size: 0.85em; flex-shrink: 0; }
 @media (max-width: 640px) { .ux-calidad-acciones { margin-left: 0; } .ux-calidad-accion { flex-direction: column; align-items: flex-start; } }
 
+/* Precios: la regla (mínimo → recomendado) con el precio actual marcado */
+.ux-precios-ajustes { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-top: 18px; }
+.ux-precios-ajustes .field-group { flex: 1; min-width: 170px; margin: 0; }
+.ux-precio-fila { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) auto; align-items: center; gap: 22px; padding: 14px 0; border-top: 1px solid var(--border-soft); }
+.ux-precio-fila:first-child { border-top: 0; }
+.ux-precio-pub { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.ux-precio-pub .thumb-sm { flex-shrink: 0; }
+.ux-precio-titulo { min-width: 0; line-height: 1.35; }
+.ux-precio-titulo a { color: var(--text-primary); text-decoration: none; }
+.ux-precio-titulo a:hover { color: var(--accent-primary); }
+.ux-regla { position: relative; height: 12px; border-radius: 99px; overflow: visible; background: var(--border-soft); }
+.ux-regla > span { position: absolute; top: 0; bottom: 0; }
+.ux-regla-mal { left: 0; border-radius: 99px 0 0 99px; background: color-mix(in srgb, var(--danger) 60%, transparent); }
+.ux-regla-justo { background: color-mix(in srgb, var(--semantic-warning) 60%, transparent); }
+.ux-regla-bien { right: 0; border-radius: 0 99px 99px 0; background: color-mix(in srgb, var(--success) 60%, transparent); }
+.ux-regla-marca { top: 50% !important; bottom: auto !important; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--ux-c); border: 3px solid var(--bg-surface, #0e0e12); box-shadow: 0 0 0 2px var(--ux-c); }
+.ux-regla-etiquetas { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 0.74em; color: var(--text-faint); }
+.ux-regla-etiquetas b { color: var(--text-primary); }
+.ux-precio-estado { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; min-width: 150px; }
+.ux-precio-actual { font-family: var(--font-data); font-weight: 800; font-size: 1.05em; }
+.ux-precio-accion { font-size: 0.82em; color: var(--ux-c); }
+@media (max-width: 860px) {
+    .ux-precio-fila { grid-template-columns: 1fr; gap: 12px; }
+    .ux-precio-estado { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; text-align: left; }
+}
+
 /* Título de publicación con su miniatura al lado (celdas de tabla, preguntas) */
 .ux-titulo-thumb { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ux-titulo-thumb .thumb-sm { flex-shrink: 0; }
