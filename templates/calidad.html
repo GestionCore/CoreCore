@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio, delta %}
+{% block title %}Calidad de publicaciones · CoreLux{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-star"/></svg>Calidad de publicaciones</h1>
+        <div class="page-subtitle">El puntaje que Mercado Libre le da a cada publicación — <strong>más calidad, más exposición y más ventas</strong></div>
+    </div>
+</div>
+
+{% if not total_activas %}
+{{ vacio("Todavía no hay publicaciones activas para revisar", "Sincronizá tu catálogo y en un rato acá aparece el puntaje de cada una.", "refresh", "info", "Ir a Stock", "/stock") }}
+{% else %}
+
+<!-- ── 1. CÓMO ESTÁN ─────────────────────────────────────────────────────── -->
+<div class="ux-hero ux-{{ tono_promedio }}">
+    <div class="ux-hero-etiqueta">Calidad promedio de tus publicaciones activas</div>
+    <div class="ux-hero-numero">{% if promedio is not none %}{{ promedio }}<span style="font-size:0.45em; color:var(--text-secondary);"> / 100</span>{% else %}—{% endif %}</div>
+    <div class="ux-hero-frase">
+        {% if promedio is none %}Estamos revisando tus publicaciones con Mercado Libre — en unos minutos aparece el puntaje.
+        {% elif con_mejoras %}<b>{{ al_cien }} de {{ con_dato }}</b> están al 100%. <b>{{ con_mejoras|length }}</b> tienen mejoras pendientes: con ellas Mercado Libre las muestra más arriba.
+        {% else %}<b>Todas tus publicaciones están al 100%.</b> No hay nada para mejorar por ahora.{% endif %}
+    </div>
+    {% if sin_revisar %}<div class="ux-hero-nota">Faltan revisar {{ sin_revisar }} {{ 'publicación' if sin_revisar == 1 else 'publicaciones' }}: se completan solas en las próximas sincronizaciones.</div>{% endif %}
+</div>
+
+<!-- ── 2. QUÉ HACER ───────────────────────────────────────────────────── -->
+{% if top_acciones %}
+<div class="ux-acciones-titulo">Lo que más se repite <span class="ux-contador">{{ top_acciones|length }}</span></div>
+<div class="ux-lista-acciones">
+    {% for a in top_acciones %}
+    <div class="ux-item-accion ux-warn">
+        <div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-alert"/></svg></div>
+        <div class="ux-item-accion-cuerpo">
+            <div class="ux-item-accion-titulo">{{ a.texto }}</div>
+            <div class="ux-item-accion-detalle">Pendiente en <b>{{ a.cantidad }} {{ 'publicación' if a.cantidad == 1 else 'publicaciones' }}</b></div>
+        </div>
+        <a class="btn btn-alerta" href="#mejoras">Ver cuáles</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ── 3. NÚMEROS ─────────────────────────────────────────────────────── -->
+<div class="ux-kpis">
+    {{ kpi("Al 100%", al_cien ~ " de " ~ con_dato, "ok" if al_cien == con_dato and con_dato else "info", "check", "publicaciones sin nada pendiente") }}
+    {{ kpi("Mejoras pendientes", total_acciones, "warn" if total_acciones else "ok", "alert", "en " ~ con_mejoras|length ~ " " ~ ("publicación" if con_mejoras|length == 1 else "publicaciones") ) }}
+    {{ kpi("Visitas · 14 días", total_visitas|numero, "accion", "eye", (delta(tendencia_visitas) ~ " vs. los 14 días anteriores") if tendencia_visitas is not none else "todas tus publicaciones") }}
+    {{ kpi("Conversión", (conversion|string|replace('.', ',') ~ "%") if conversion is not none else "—", "info", "percent", total_unidades|string ~ " ventas sobre " ~ total_visitas|numero ~ " visitas") }}
+</div>
+
+<!-- ── 4. MEJORAS PENDIENTES: primero lo que más visitas recibe ──────────── -->
+{% if con_mejoras %}
+<div class="ux-seccion ux-warn" id="mejoras">Mejoras pendientes <span class="text-muted" style="font-weight:600; font-size:0.8em;">las que más visitas reciben, primero</span></div>
+<div class="panel" data-mostrar-mas-scope>
+    {% for i in con_mejoras %}
+    <div class="ux-calidad-item {% if loop.index > 6 %}oculto-mostrar-mas{% endif %}">
+        <div class="ux-calidad-cab">
+            {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div class="ux-calidad-titulo">
+                <div>{% if i.permalink %}<a href="{{ i.permalink }}" target="_blank" rel="noopener"><b>{{ i.titulo }}</b> ↗</a>{% else %}<b>{{ i.titulo }}</b>{% endif %}</div>
+                <div class="text-muted" style="font-size:0.8em;">{{ i.visitas|numero }} visitas · {{ i.unidades }} venta{{ 's' if i.unidades != 1 }}{% if i.tendencia is not none %} · <span class="{{ 'text-danger' if i.tendencia < 0 else 'text-success' }}">{{ '▲' if i.tendencia >= 0 else '▼' }} {{ i.tendencia|abs }}%</span> visitas{% endif %}</div>
+            </div>
+            <span class="ux-pill ux-{{ i.tono }}">{{ i.score }}/100</span>
+        </div>
+        <div class="ux-calidad-acciones">
+            {% for a in i.acciones %}
+            <div class="ux-calidad-accion">
+                <span>{{ a.texto }}</span>
+                {% if a.link %}<a class="btn btn-secondary" href="{{ a.link }}" target="_blank" rel="noopener">{{ a.boton or 'Resolver' }} ↗</a>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    {% if con_mejoras|length > 6 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ con_mejoras|length - 6 }} restantes</button>{% endif %}
+</div>
+{% elif con_dato %}
+{{ banner("ok", "check", "<b>Todas tus publicaciones están al 100%</b>", "Mercado Libre no te pide mejorar nada por ahora. Volvé a mirar cuando publiques algo nuevo.") }}
+{% endif %}
+
+<!-- ── 5. VISITAS: quién atrae, quién se está apagando ─────────────────── -->
+{% if mas_visitadas %}
+<div class="ux-seccion ux-accion">Visitas de los últimos 14 días</div>
+<div class="ux-dos-col" style="margin-top:0;">
+    <div class="panel">
+        <div class="panel-title">Las más visitadas</div>
+        {% for i in mas_visitadas %}
+        <div class="ux-rank-fila ux-accion">
+            {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}</div><div class="ux-rank-barra"><span style="width:{{ i.pct_visitas }}%;"></span></div></div>
+            <div class="ux-rank-valor"><b>{{ i.visitas|numero }}</b><div class="text-muted" style="font-size:0.75em;">{{ i.conversion|string|replace('.', ',') ~ '% conv.' if i.conversion is not none else '' }}</div></div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="panel">
+        {% if perdiendo_visitas %}
+        <div class="panel-title">Perdieron visitas <span class="ux-pill ux-danger">{{ perdiendo_visitas|length }}</span></div>
+        <div class="text-muted" style="font-size:0.85em; margin-bottom:8px;">Recibieron mucho menos que en los 14 días anteriores: revisá precio, stock y fotos.</div>
+        {% for i in perdiendo_visitas %}
+        <div class="ux-rank-fila ux-danger">
+            {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}</div><div class="text-muted" style="font-size:0.8em;">{{ i.visitas_previas|numero }} → {{ i.visitas|numero }} visitas</div></div>
+            <div class="ux-rank-valor"><span class="ux-pill ux-danger">▼ {{ i.tendencia|abs }}%</span></div>
+        </div>
+        {% endfor %}
+        {% elif visitas_sin_ventas %}
+        <div class="panel-title">Muchas visitas y ninguna venta <span class="ux-pill ux-warn">{{ visitas_sin_ventas|length }}</span></div>
+        <div class="text-muted" style="font-size:0.85em; margin-bottom:8px;">Atraen compradores pero no cierran: puede ser el precio, el costo de envío o las fotos.</div>
+        {% for i in visitas_sin_ventas %}
+        <div class="ux-rank-fila ux-warn">
+            {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}</div></div>
+            <div class="ux-rank-valor"><b>{{ i.visitas|numero }}</b><div class="text-muted" style="font-size:0.75em;">0 ventas</div></div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="panel-title">Tendencia de visitas</div>
+        {{ vacio("Ninguna perdió visitas", "Ninguna publicación recibe mucho menos que en los 14 días anteriores.", "check", "ok") }}
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ── 6. DETALLE ──────────────────────────────────────────────────────── -->
+<details class="ux-detalle">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-chart"/></svg> Todas las publicaciones activas <span class="ux-detalle-nota">{{ total_activas }} · puntaje, visitas y ventas</span></summary>
+    <div class="ux-detalle-cuerpo" style="overflow-x:auto;">
+        <table class="data-table">
+            <thead><tr><th>Publicación</th><th class="num">Calidad</th><th class="num">Visitas 14 d</th><th class="num">Ventas 14 d</th><th class="num">Conversión</th></tr></thead>
+            <tbody>
+                {% for i in items %}
+                <tr>
+                    <td class="ux-col-titulo"><div class="ux-titulo-thumb">{% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<span>{{ i.titulo }}</span></div></td>
+                    <td class="num">{% if i.score is not none %}<span class="ux-pill ux-{{ i.tono }}">{{ i.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td class="num">{{ i.visitas|numero }}{% if i.tendencia is not none %} <span class="{{ 'text-danger' if i.tendencia < 0 else 'text-success' }}" style="font-size:0.8em;">{{ '▲' if i.tendencia >= 0 else '▼' }}{{ i.tendencia|abs }}%</span>{% endif %}</td>
+                    <td class="num">{{ i.unidades }}</td>
+                    <td class="num">{{ (i.conversion|string|replace('.', ',') ~ '%') if i.conversion is not none else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</details>
+{% endif %}
+{% endblock %}

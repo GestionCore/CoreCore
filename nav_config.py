@@ -19,6 +19,7 @@ GRUPOS_NAV = {
             {"nav_key": "stock_masivo", "label": "Stock Masivo", "href": "/stock_masivo", "endpoint": "stock_masivo_vista"},
             {"nav_key": "despacho", "label": "Despacho", "href": "/despacho", "endpoint": "despacho_vista"},
             {"nav_key": "preguntas", "label": "Preguntas", "href": "/preguntas", "endpoint": "preguntas_vista"},
+            {"nav_key": "calidad", "label": "Calidad", "href": "/calidad", "endpoint": "calidad_vista"},
         ],
     },
     "finanzas": {
@@ -41,7 +42,7 @@ GRUPOS_NAV = {
             {"nav_key": "competencia", "label": "Competencia", "href": "/competencia", "endpoint": "competencia_vista"},
             {"nav_key": "embudo_conversion", "label": "Embudo de Conversión", "href": "/embudo_conversion", "endpoint": "embudo_conversion_vista"},
             {"nav_key": "reputacion", "label": "Reputación", "href": "/reputacion", "endpoint": "reputacion_vista"},
-            {"nav_key": "publicidad", "label": "Publicidad", "href": "/publicidad", "endpoint": "publicidad_vista"},
+            {"nav_key": "publicidad", "label": "Publicidad", "href": "/publicidad", "endpoint": "publicidad_vista", "requiere": "ads"},
             {"nav_key": "logros", "label": "Logros", "href": "/logros", "endpoint": "logros_vista"},
         ],
     },

@@ -79,7 +79,7 @@
     <div class="ux-item-accion ux-warn">
         <div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-alert"/></svg></div>
         <div class="ux-item-accion-cuerpo">
-            <div class="ux-item-accion-titulo">{{ items_sin_ventas_n }} publicación{{ 'es' if items_sin_ventas_n != 1 }} gastaron <b>${{ items_sin_ventas_costo_formateado }}</b> en Ads sin vender</div>
+            <div class="ux-item-accion-titulo">{{ items_sin_ventas_n }} {{ 'publicación' if items_sin_ventas_n == 1 else 'publicaciones' }} gastaron <b>${{ items_sin_ventas_costo_formateado }}</b> en Ads sin vender</div>
             <div class="ux-item-accion-detalle">Revisá si les falta stock, tienen el precio fuera de mercado o conviene sacarlas de la pauta.</div>
         </div>
         <a class="btn btn-alerta" href="#ranking-ads">Ver cuáles</a>

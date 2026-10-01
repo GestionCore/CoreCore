@@ -45,6 +45,8 @@ import analisis_stock
 import onboarding
 import monotributo
 import costos_chat
+import calidad as calidad_mod
+import full_stock
 import flex
 import chat_ia
 import db
@@ -221,7 +223,13 @@ def landing():
         return redirect(url_for("metricas_vista", **request.args))
 
     productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id, g.cuenta_id)
-    return render_template("index.html", productos=productos, stats=stats, active_nav="stock")
+    full_no_disponible = {"total": 0, "items": []}
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            full_no_disponible = full_stock.unidades_no_disponibles(conexion.cursor(), g.cuenta_id)
+    except Exception as e:
+        print(f"[Stock] ⚠️ No se pudo leer el stock no disponible de FULL: {e}")
+    return render_template("index.html", productos=productos, stats=stats, full_no_disponible=full_no_disponible, active_nav="stock")
 
 
 @app.route("/stock")
@@ -241,7 +249,13 @@ def stock_vista():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
     productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id, g.cuenta_id)
-    return render_template("index.html", productos=productos, stats=stats, active_nav="stock")
+    full_no_disponible = {"total": 0, "items": []}
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            full_no_disponible = full_stock.unidades_no_disponibles(conexion.cursor(), g.cuenta_id)
+    except Exception as e:
+        print(f"[Stock] ⚠️ No se pudo leer el stock no disponible de FULL: {e}")
+    return render_template("index.html", productos=productos, stats=stats, full_no_disponible=full_no_disponible, active_nav="stock")
 
 
 @app.route("/exportar_planilla_stock")
@@ -3014,6 +3028,14 @@ def api_drawer_salud(id_meli):
 
 
 # ── Preguntas de compradores ──────────────────────────────────────────────
+
+@app.route("/calidad")
+@login_requerido
+def calidad_vista():
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        datos = calidad_mod.obtener_datos(conexion.cursor(), g.cuenta_id)
+    return render_template("calidad.html", active_nav="calidad", **datos)
+
 
 @app.route("/preguntas")
 @login_requerido

@@ -29,6 +29,24 @@
     {{ kpi("Sin stock", sin_stock|length, "danger" if sin_stock else "ok", "alert", "<b>publicaciones activas</b> sin una unidad" if sin_stock else "ninguna publicación activa agotada") }}
 </div>
 
+<!-- ── 2b. FULL: unidades que están en la bodega de Mercado Libre pero no se pueden vender ─────── -->
+{% if capacidades.get('full') is not false and full_no_disponible.total %}
+<div class="ux-seccion ux-warn">Unidades de FULL que no se pueden vender <span class="ux-pill ux-warn">{{ full_no_disponible.total }} u.</span></div>
+<div class="panel">
+    <div class="text-muted" style="font-size:0.85em; margin-bottom:8px; line-height:1.5;">Están en las bodegas de Mercado Libre pero no figuran como disponibles. Según el motivo (perdidas, dañadas, en proceso...) conviene revisar el detalle en tu panel de FULL.</div>
+    {% for i in full_no_disponible['items'] %}
+    <div class="ux-rank-fila ux-warn">
+        {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+        <div class="ux-rank-info">
+            <div class="ux-rank-titulo">{% if i.permalink %}<a href="{{ i.permalink }}" target="_blank" rel="noopener" style="color:var(--text-primary); text-decoration:none;">{{ i.titulo }} ↗</a>{% else %}{{ i.titulo }}{% endif %}{% if i.estado != 'active' %} <span class="ux-pill ux-neutral ux-pill-suave">Pausada</span>{% endif %}</div>
+            <div class="text-muted" style="font-size:0.8em;">{% for m in i.motivos %}<b>{{ m.cantidad }}</b> {{ m.texto }}{{ ' · ' if not loop.last }}{% endfor %}</div>
+        </div>
+        <div class="ux-rank-valor"><b>{{ i.cantidad }} u.</b></div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- ── 3. QUÉ REPONER: los talles que se agotan, ordenados por urgencia ─────── -->
 <div id="bloque-reponer" style="display:none;">
     <div class="ux-acciones-titulo">Lo que tenés que reponer <span class="ux-contador" id="contador-riesgo-stock">0</span></div>

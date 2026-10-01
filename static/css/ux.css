@@ -401,6 +401,19 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-conc-sello b { font-family: var(--font-data); font-size: 1.6em; color: var(--ux-c); }
 .ux-conc-sello span { font-size: 0.72em; color: var(--text-secondary); line-height: 1.3; }
 
+/* Calidad de publicaciones */
+.ux-calidad-item { padding: 14px 0; border-top: 1px solid var(--border-soft); }
+.ux-calidad-item:first-of-type { border-top: 0; }
+.ux-calidad-cab { display: flex; align-items: center; gap: 14px; }
+.ux-calidad-cab .thumb-sm { flex-shrink: 0; }
+.ux-calidad-titulo { flex: 1; min-width: 0; line-height: 1.35; }
+.ux-calidad-titulo a { color: var(--text-primary); text-decoration: none; }
+.ux-calidad-titulo a:hover { color: var(--accent-primary); }
+.ux-calidad-acciones { margin: 10px 0 0 58px; display: flex; flex-direction: column; gap: 8px; }
+.ux-calidad-accion { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--semantic-warning) 10%, transparent); font-size: 0.85em; line-height: 1.4; }
+.ux-calidad-accion .btn { padding: 5px 12px; font-size: 0.85em; flex-shrink: 0; }
+@media (max-width: 640px) { .ux-calidad-acciones { margin-left: 0; } .ux-calidad-accion { flex-direction: column; align-items: flex-start; } }
+
 /* Título de publicación con su miniatura al lado (celdas de tabla, preguntas) */
 .ux-titulo-thumb { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ux-titulo-thumb .thumb-sm { flex-shrink: 0; }
