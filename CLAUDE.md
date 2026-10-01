@@ -288,9 +288,11 @@ scopeado por cuenta_id antes de confiar en él.
   Real muestra "Ventas reembolsadas". No agregar filtros de cancelación en las
   ~80 consultas que leen `ventas`: la tabla ya no las contiene.
 - ⚠️ **Pooler de Supabase = 15 conexiones de sesión para TODO el proyecto**
-  (rol `app_backend`). Producción usa hasta ~13 (ver `db.py`); si localmente da
-  `EMAXCONNSESSION`/`PoolTimeout`, no hay lugar: esperar, o revisar si
-  producción las está agotando (`pg_stat_activity`, `usename='app_backend'`).
+  (rol `app_backend`). Cada worker de cada máquina tiene su propio pool:
+  **workers × máquinas × `DB_POOL_MAX` ≤ 12** (hoy 2 máquinas × 2 workers × 3 en
+  `fly.toml`; antes eran 4 por proceso = hasta 16 → `EMAXCONNSESSION` en producción).
+  Si se agregan máquinas o workers, bajar `DB_POOL_MAX`. Si localmente da
+  `EMAXCONNSESSION`/`PoolTimeout`, revisar `pg_stat_activity` (`usename='app_backend'`).
 - **Talle, centralizado (2026-10-01)**: `utils.extraer_talle(titulo, talle_real)` es
   la ÚNICA forma de obtener el talle (antes un regex repetido en 8 módulos que
   tomaba cualquier número del título: "Combo 2 Termos" quedó con "talle 2").

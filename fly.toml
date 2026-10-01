@@ -11,6 +11,8 @@ primary_region = 'gru'
 [env]
   FLASK_DEBUG = 'false'
   PORT = '8080'
+  # Conexiones por proceso: 2 máquinas x 2 workers x 3 = 12 de las 15 que admite el pooler de Supabase (ver db.py)
+  DB_POOL_MAX = '3'
 
 [http_service]
   internal_port = 8080

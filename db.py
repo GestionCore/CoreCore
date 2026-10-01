@@ -23,8 +23,15 @@ normal a propósito, así que los tokens solo se tocan desde acá. Usalo
 import psycopg
 from psycopg_pool import ConnectionPool
 import atexit
+import os
 import threading
 import config
+
+# Tamaño máximo de cada pool POR PROCESO. El pooler de Supabase en modo sesión admite 15 conexiones por rol para TODO el proyecto, y
+# cada worker de gunicorn de cada máquina tiene su propio pool: workers × máquinas × DB_POOL_MAX tiene que quedar en 12 o menos
+# (fly.toml fija el valor de producción; con 2 máquinas × 2 workers, 3). Los scripts y el desarrollo local usan lo que sobra.
+POOL_MAX = max(1, int(os.getenv("DB_POOL_MAX", "4")))
+POOL_ADMIN_MAX = max(1, int(os.getenv("DB_POOL_ADMIN_MAX", "2")))
 
 _pool = None
 _pool_admin = None
@@ -65,7 +72,7 @@ def _crear_pool():
     # Presupuesto actual: (4 + 2) × 2 workers = 12, más la conexión
     # fija que scheduler.py mantiene abierta para el advisory lock =
     # 13, dejando 2 de margen bajo el tope de 15.
-    return ConnectionPool(config.DATABASE_URL, min_size=1, max_size=4, open=True)
+    return ConnectionPool(config.DATABASE_URL, min_size=1, max_size=POOL_MAX, open=True)
 
 
 def _obtener_pool_admin():
@@ -86,7 +93,7 @@ def _crear_pool_admin():
     # en vez de 0 (evita abrir una conexión nueva en el camino
     # caliente de cada pedido), pero max_size se recortó fuerte para
     # no volver a pisar el tope de 15 de Supabase.
-    return ConnectionPool(config.DATABASE_URL_ADMIN, min_size=1, max_size=2, open=True)
+    return ConnectionPool(config.DATABASE_URL_ADMIN, min_size=1, max_size=POOL_ADMIN_MAX, open=True)
 
 
 @atexit.register
