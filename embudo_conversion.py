@@ -31,8 +31,8 @@ def _obtener_visitas_un_item(headers, id_item, date_from, date_to):
         if isinstance(data, list) and data:
             visitas = data[0].get("total_visits") or data[0].get("visits") or data[0].get("quantity") or 0
             return id_item, visitas
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[Embudo] ⚠️ No se pudieron traer las visitas de {id_item}: {e}")
     return id_item, 0
 
 
@@ -46,8 +46,8 @@ def obtener_visitas_items(headers, ids_lista, date_from, date_to):
             try:
                 id_item, visitas = futuro.result()
                 resultado[id_item] = visitas
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[Embudo] ⚠️ Error procesando visitas: {e}")
     return resultado
 
 

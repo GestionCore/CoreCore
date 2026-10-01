@@ -82,12 +82,22 @@ def _obtener_cuentas_activas():
         return cursor.fetchall()
 
 
+SYNC_CUENTAS_EN_PARALELO = 2     # con el tope de conexiones de la base (db.POOL_MAX) no conviene más
+
+
+def _sincronizar_una(par):
+    cuenta_id, usuario_id = par
+    try:
+        sincronizador.sincronizar_todo(usuario_id, cuenta_id)
+    except Exception as e:
+        print(f"[Scheduler APScheduler] ❌ Error cuenta {cuenta_id}: {e}")
+
+
 def _tarea_sincronizar_todo():
-    for cuenta_id, usuario_id in _obtener_cuentas_activas():
-        try:
-            sincronizador.sincronizar_todo(usuario_id, cuenta_id)
-        except Exception as e:
-            print(f"[Scheduler APScheduler] ❌ Error cuenta {cuenta_id}: {e}")
+    """Sincroniza todas las cuentas activas, de a SYNC_CUENTAS_EN_PARALELO a la vez (en serie, con muchas cuentas el ciclo de 4 min no alcanzaba)."""
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=SYNC_CUENTAS_EN_PARALELO) as pool:
+        list(pool.map(_sincronizar_una, _obtener_cuentas_activas()))
 
 
 def _tarea_relevar_competencia():
@@ -156,9 +166,35 @@ def iniciar_scheduler():
         return
 
     if not _tiene_el_lock_del_scheduler():
-        print("[Scheduler] ℹ️  Otro worker de este mismo proceso ya tiene el scheduler — no arranca acá.")
+        print("[Scheduler] ℹ️  Otro worker ya tiene el scheduler — este queda vigilando por si ese cae.")
+        import threading
+        threading.Thread(target=_vigilar_el_lock, daemon=True, name="vigilante-scheduler").start()
         return
 
+    _arrancar_apscheduler()
+
+
+def _vigilar_el_lock(cada_segundos=60):
+    """
+    Si el worker que tiene el scheduler se cae, su conexión se cierra y el lock se libera, pero los demás ya habían decidido "lo tiene otro"
+    al arrancar y no volvían a mirar: la sincronización se frenaba hasta el próximo reinicio. Este hilo reintenta cada minuto.
+    """
+    import time
+    while _scheduler_apscheduler is None:
+        time.sleep(cada_segundos)
+        try:
+            if _tiene_el_lock_del_scheduler():
+                print("[Scheduler] ♻️  El scheduler anterior ya no está: este worker lo toma.")
+                _arrancar_apscheduler()
+                return
+        except Exception as e:
+            print(f"[Scheduler] ⚠️ Vigilante: {e}")
+
+
+def _arrancar_apscheduler():
+    global _scheduler_apscheduler
+    if _scheduler_apscheduler is not None:
+        return
     print(
         "[Scheduler] ⚠️  Redis no disponible — usando APScheduler como fallback.\n"
         "            Las tareas periódicas corren en este mismo proceso de Flask.\n"
@@ -166,7 +202,7 @@ def iniciar_scheduler():
     )
 
     _scheduler_apscheduler = BackgroundScheduler(daemon=True)
-    _scheduler_apscheduler.add_job(_tarea_sincronizar_todo, "interval", minutes=4, id="sync_todo")
+    _scheduler_apscheduler.add_job(_tarea_sincronizar_todo, "interval", minutes=4, id="sync_todo", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_relevar_competencia, "interval", hours=24, id="relevar")
     _scheduler_apscheduler.add_job(_tarea_relevar_tendencias, "interval", hours=24, id="relevar_tendencias")
     _scheduler_apscheduler.add_job(_tarea_analizar_combos, "interval", days=7, id="combos")

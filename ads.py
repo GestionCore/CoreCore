@@ -168,19 +168,37 @@ def obtener_serie_diaria_ads(access_token, advertiser_id, fecha_desde, fecha_has
     return por_dia
 
 
+DIAS_HISTORIA_ADS = 89      # la API de Product Ads solo da métricas de los últimos 90 días (más atrás responde 400)
+
+
 def obtener_gasto_ads_total_periodo(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id="MLA"):
-    headers = {"Authorization": f"Bearer {access_token}", "api-version": "2"}
-    url = (
-        f"https://api.mercadolibre.com/advertising/{site_id}/advertisers/{advertiser_id}/product_ads/campaigns/search"
-        f"?limit=50&offset=0&date_from={fecha_desde}&date_to={fecha_hasta}&metrics=cost"
-    )
+    """
+    Gasto total de Product Ads del período, recorriendo todas las páginas de campañas. Si el período empieza antes de lo que la API
+    guarda (90 días atrás) devuelve None sin consultar: un total parcial se vería como si fuera el gasto completo.
+    """
+    from datetime import date, timedelta
     try:
-        resp = meli_http.get(url, headers=headers, timeout=15)
-        if resp.status_code != 200:
-            print(f"[Ads] ⚠️ Error consultando gasto total: {resp.status_code} - {resp.text[:300]}")
+        if date.fromisoformat(str(fecha_desde)[:10]) < date.today() - timedelta(days=DIAS_HISTORIA_ADS):
             return None
-        data = resp.json()
-        total = sum(float(c.get("metrics", {}).get("cost") or 0) for c in data.get("results", []))
+    except ValueError:
+        return None
+    headers = {"Authorization": f"Bearer {access_token}", "api-version": "2"}
+    total, offset = 0.0, 0
+    try:
+        while offset < 1000:
+            url = (
+                f"https://api.mercadolibre.com/advertising/{site_id}/advertisers/{advertiser_id}/product_ads/campaigns/search"
+                f"?limit=50&offset={offset}&date_from={fecha_desde}&date_to={fecha_hasta}&metrics=cost"
+            )
+            resp = meli_http.get(url, headers=headers, timeout=15)
+            if resp.status_code != 200:
+                print(f"[Ads] ⚠️ Error consultando gasto total: {resp.status_code} - {resp.text[:300]}")
+                return None
+            resultados = resp.json().get("results", [])
+            total += sum(float(c.get("metrics", {}).get("cost") or 0) for c in resultados)
+            if len(resultados) < 50:
+                break
+            offset += 50
         return round(total, 2)
     except Exception as e:
         print(f"[Ads] ❌ Error de conexión trayendo gasto total: {e}")

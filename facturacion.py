@@ -86,32 +86,22 @@ def obtener_costo_almacenamiento_full(access_token, cuenta_id, period_key, group
     if cacheado and (ahora - cacheado["timestamp"]) < TTL_SEGUNDOS:
         return cacheado["data"]
 
-    headers = {"Authorization": f"Bearer {access_token}"}
+    # El resumen de la factura (ya cacheado) trae cada cargo con su código: "CFWA" = "Cargo por servicio de almacenamiento Full".
+    # El detalle por transacción (/details) sirve para otra cosa y tiene un límite de pedidos muy bajo (429 al paginar).
+    CODIGOS_ALMACENAMIENTO = {"CFWA"}
     palabras_clave = ["almacenamiento", "storage", "stock antiguo", "bodega"]
-    total = 0.0
-    cantidad = 0
-    try:
-        resp = meli_http.get(
-            f"{BASE_URL}/periods/key/{period_key}/group/{group}/details",
-            headers=headers, params={"document_type": "BILL", "detail_type": "charge", "limit": 100}, timeout=15
-        )
-        if resp.status_code != 200:
-            print(f"[Facturación] ⚠️ No se pudo traer el detalle de conciliación: {resp.status_code} - {resp.text[:300]}")
-            return cacheado["data"] if cacheado else (None, 0)
-        data = resp.json()
-        resultados = data if isinstance(data, list) else data.get("results", [])
-        for detalle in resultados:
-            info = detalle.get("charge_info", {}) or {}
-            texto = (info.get("transaction_detail") or "").lower()
-            if any(palabra in texto for palabra in palabras_clave):
-                total += float(info.get("detail_amount", 0) or 0)
-                cantidad += 1
-        resultado = (round(total, 2), cantidad)
-        _cache_almacenamiento[clave] = {"data": resultado, "timestamp": ahora}
-        return resultado
-    except Exception as e:
-        print(f"[Facturación] ❌ Error buscando costo de almacenamiento: {e}")
+    resumen = obtener_resumen_periodo(access_token, cuenta_id, period_key, group)
+    if not resumen:
         return cacheado["data"] if cacheado else (None, 0)
+    total, cantidad = 0.0, 0
+    for cargo in (resumen.get("bill_includes") or {}).get("charges", []):
+        etiqueta = (cargo.get("label") or "").lower()
+        if cargo.get("type") in CODIGOS_ALMACENAMIENTO or any(p in etiqueta for p in palabras_clave):
+            total += float(cargo.get("amount") or 0)
+            cantidad += 1
+    resultado = (round(total, 2), cantidad)
+    _cache_almacenamiento[clave] = {"data": resultado, "timestamp": ahora}
+    return resultado
 
 
 def resumen_condensado_periodo_actual(access_token, cuenta_id, group="ML"):

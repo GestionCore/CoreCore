@@ -192,6 +192,12 @@ import seguridad
 seguridad.iniciar(app)
 
 
+def _detalle_error(e):
+    """Mensaje para el usuario cuando algo falla: genérico; el detalle técnico va al log (y a Sentry), no a la pantalla."""
+    print(f"[Error] {type(e).__name__}: {e}")
+    return "No se pudo completar la acción. Probá de nuevo en un momento."
+
+
 @app.route("/")
 def landing():
     if not session.get("usuario_id"):
@@ -545,8 +551,8 @@ def callback():
                             "INSERT INTO referrals (referrer_id, referred_id, codigo, convertido_en) VALUES (%s, %s, %s, now()) ON CONFLICT (referred_id) DO NOTHING",
                             (ref_row[0], usuario_id, ref_code)
                         )
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[Referidos] ⚠️ No se pudo registrar el referido: {e}")
 
     iniciar_sesion(usuario_id, cuenta_id)
 
@@ -575,8 +581,8 @@ def _en_segundo_plano(modulo_tarea, nombre_tarea, funcion, *args):
             import importlib
             getattr(importlib.import_module(modulo_tarea), nombre_tarea).delay(*args)
             return
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[SegundoPlano] ⚠️ No se pudo encolar {nombre_tarea} en Celery ({e}); se ejecuta en un hilo.")
     import threading
     threading.Thread(target=funcion, args=args, daemon=True).start()
 
@@ -1783,8 +1789,8 @@ def exportar_publicacion_red(id_meli):
             fotos = resp.json().get("pictures", [])
             if fotos:
                 url_foto = fotos[0].get("url", url_foto)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[Exportador] ⚠️ No se pudo traer la foto de la publicación: {e}")
 
     if not url_foto:
         return "Esta publicación no tiene foto disponible para exportar.", 400
@@ -1872,7 +1878,8 @@ def facturacion_vista():
     try:
         periodos = facturacion.obtener_periodos(access_token, g.cuenta_id)
     except Exception as e:
-        return f"No se pudo traer tus períodos de facturación de MeLi ahora mismo ({e}). Probá de nuevo en un rato.", 502
+        print(f"[Facturación] ❌ {type(e).__name__}: {e}")
+        return "No se pudo traer tus períodos de facturación de Mercado Libre ahora mismo. Probá de nuevo en un rato.", 502
 
     key_seleccionada = request.args.get("key") or (periodos[0].get("key") if periodos else None)
     periodo_actual = next((p for p in periodos if p.get("key") == key_seleccionada), None)
@@ -2313,7 +2320,8 @@ def despacho_etiquetas_pdf():
         if resp.status_code != 200:
             return f"MeLi no pudo generar las etiquetas ahora mismo ({resp.status_code}). Probá de nuevo en un rato.", 502
     except Exception as e:
-        return f"Error consultando MeLi: {e}", 502
+        print(f"[Calculadora] ❌ {type(e).__name__}: {e}")
+        return "No se pudo consultar Mercado Libre ahora mismo. Probá de nuevo en un rato.", 502
 
     return send_file(BytesIO(resp.content), mimetype="application/pdf", as_attachment=True, download_name=f"etiquetas_{fecha}.pdf")
 
@@ -2649,7 +2657,7 @@ def api_alerta_marcar_leida(id_alerta):
             )
         return jsonify({"ok": True})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": _detalle_error(e)}), 500
 
 
 # ─────────────────── Calculadora MeLi ───────────────────
@@ -2757,8 +2765,8 @@ def api_drawer_info(id_meli):
             r2 = meli_http.get(f"https://api.mercadolibre.com/items/{id_meli}/description", headers=headers)
             if r2.status_code == 200:
                 descripcion = r2.json().get("plain_text", "")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Exportador] ⚠️ No se pudo traer la descripción: {e}")
 
     return jsonify({
         "titulo": titulo, "precio": precio, "estado": estado,
@@ -2803,7 +2811,7 @@ def api_drawer_guardar(id_meli):
     except token_manager.CuentaDesconectada:
         return jsonify({"ok": False, "detalle": "La cuenta de MeLi está desconectada — reconectala primero."})
     except Exception as e:
-        return jsonify({"ok": False, "detalle": str(e)})
+        return jsonify({"ok": False, "detalle": _detalle_error(e)})
 
     return jsonify({"ok": True})
 
@@ -2825,7 +2833,7 @@ def api_drawer_guardar_descripcion(id_meli):
     except token_manager.CuentaDesconectada:
         return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
     except Exception as e:
-        return jsonify({"ok": False, "detalle": str(e)})
+        return jsonify({"ok": False, "detalle": _detalle_error(e)})
     return jsonify({"ok": True})
 
 
@@ -2849,7 +2857,7 @@ def api_drawer_guardar_atributos(id_meli):
     except token_manager.CuentaDesconectada:
         return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
     except Exception as e:
-        return jsonify({"ok": False, "detalle": str(e)})
+        return jsonify({"ok": False, "detalle": _detalle_error(e)})
     return jsonify({"ok": True})
 
 
@@ -2876,7 +2884,7 @@ def api_drawer_resenas(id_meli):
     except token_manager.CuentaDesconectada:
         return jsonify({"rating_average": None, "reviews": []})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": _detalle_error(e)}), 500
 
 
 @app.route("/api/drawer/preguntas/<id_meli>")
@@ -2925,7 +2933,7 @@ def api_drawer_responder_pregunta():
     except token_manager.CuentaDesconectada:
         return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
     except Exception as e:
-        return jsonify({"ok": False, "detalle": str(e)})
+        return jsonify({"ok": False, "detalle": _detalle_error(e)})
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -3183,7 +3191,7 @@ def api_preguntas_responder():
     except token_manager.CuentaDesconectada:
         return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
     except Exception as e:
-        return jsonify({"ok": False, "detalle": str(e)})
+        return jsonify({"ok": False, "detalle": _detalle_error(e)})
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
@@ -3230,7 +3238,7 @@ def api_preguntas_sugerir():
         respuesta = ia_asistente.preguntar_ia(prompt)
         return jsonify({"ok": True, "respuesta": respuesta.strip()})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+        return jsonify({"ok": False, "error": _detalle_error(e)})
 
 # ── /Preguntas ────────────────────────────────────────────────────────────
 
@@ -3371,8 +3379,8 @@ def planes_vista():
                 fila = cursor.fetchone()
             if fila:
                 plan_actual, trial_termina_en = fila
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Planes] ⚠️ No se pudo leer el plan del usuario: {e}")
     dias_trial = None
     if plan_actual == "trial" and trial_termina_en:
         delta = trial_termina_en - datetime.now(timezone.utc)

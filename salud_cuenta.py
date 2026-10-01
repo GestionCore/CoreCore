@@ -41,8 +41,8 @@ def calcular_score_salud(cursor):
             resta = min(modelos_con_curva_rota * 10, 20)
             score -= resta
             detalle.append(f"-{resta} por {modelos_con_curva_rota} modelo(s) con curva de talles rota")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[Salud] ⚠️ No se pudo evaluar la curva de talles: {e}")
 
     hoy = datetime.now().strftime("%Y-%m-%d")
     hace_7 = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
