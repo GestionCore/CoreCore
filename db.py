@@ -148,8 +148,11 @@ def obtener_conexion_usuario(usuario_id, cuenta_id=None):
     # paso se limpia solo al hacer commit, sin arriesgar que quede un
     # valor viejo pegado si la misma conexión física se reutiliza
     # después para otro usuario.
-    cursor.execute("SELECT set_config('app.usuario_actual', %s, true)", (str(usuario_id),))
-    cursor.execute("SELECT set_config('app.cuenta_actual', %s, true)", (str(cuenta_id) if cuenta_id is not None else "",))
+    # Las dos variables en UNA sentencia: un viaje de ida y vuelta menos por cada bloque `with` (hay 5-7 por página).
+    cursor.execute(
+        "SELECT set_config('app.usuario_actual', %s, true), set_config('app.cuenta_actual', %s, true)",
+        (str(usuario_id), str(cuenta_id) if cuenta_id is not None else ""),
+    )
     cursor.close()
     return conexion
 

@@ -1494,8 +1494,10 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarOportunidadesSeo();
     inicializarDropdownsNav();
     inicializarProtectorInactividad();
-    setInterval(actualizarTicker, 30000);
+    // El ticker (varias consultas a la base) se actualiza cada 60 s y SOLO con la pestaña a la vista; al volver a mirarla se refresca enseguida.
+    setInterval(() => { if (!document.hidden) actualizarTicker(); }, 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) actualizarTicker(); });
     cargarAlertasPendientes();
-    setInterval(cargarAlertasPendientes, 300000); // cada 5 minutos
+    setInterval(() => { if (!document.hidden) cargarAlertasPendientes(); }, 300000); // cada 5 minutos, con la pestaña a la vista
     if (document.body.dataset.mostrarTutorial) { setTimeout(iniciarTutorial, 500); }
 });

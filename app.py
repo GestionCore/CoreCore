@@ -141,7 +141,12 @@ def _inyectar_cuentas_usuario():
     if not getattr(g, "usuario_id", None):
         # Rutas públicas (/planes, /suscripcion/retorno...): base.html igual arma el menú si hay sesión y llama capacidades.get(...)
         return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None}
-    cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
+    # Se pedía a la base en CADA página; cambia muy poco (al vincular una cuenta o refrescar capacidades): 60 s de caché, con el usuario en la clave
+    clave_cuentas = construir_key("cuentas_usuario", g.usuario_id)
+    cuentas = cache.get(clave_cuentas)
+    if cuentas is None:
+        cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
+        cache.set(clave_cuentas, cuentas, timeout=60)
     cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
     # Qué usa esta cuenta (ads, flex, full, catalogo): las pantallas esconden solo lo que se confirmó que no aplica (ver capacidades.py)
     return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual, "capacidades": (cuenta_actual or {}).get("capacidades") or {}}
