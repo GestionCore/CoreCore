@@ -99,3 +99,22 @@ if _faltantes:
         "Revisá que el archivo se llame exactamente '.env' (no '.env.txt') y esté en la misma carpeta que app.py, "
         "y que cada variable tenga un valor real después del '=' (sin comillas, sin espacios extra)."
     )
+
+
+# --- Validación al arrancar ---
+VARIABLES_OBLIGATORIAS = ("DATABASE_URL", "DATABASE_URL_ADMIN", "MELI_CLIENT_ID", "MELI_CLIENT_SECRET", "MELI_REDIRECT_URI",
+                          "FLASK_SECRET_KEY", "TOKEN_ENCRYPTION_KEY")
+VARIABLES_RECOMENDADAS = {
+    "SENTRY_DSN": "sin esto no te enterás de los errores en producción",
+    "MP_ACCESS_TOKEN": "sin esto no se pueden cobrar las suscripciones",
+    "IA_API_KEY": "sin esto no funcionan el chat, los costos por chat ni las respuestas sugeridas",
+    "ADMIN_EMAIL": "sin esto nadie puede entrar a /admin",
+}
+
+
+def validar():
+    """(faltan, recomendadas_faltantes): variables obligatorias vacías y recomendadas vacías con el motivo."""
+    g = globals()
+    faltan = [v for v in VARIABLES_OBLIGATORIAS if not g.get(v)]
+    recomendadas = {v: motivo for v, motivo in VARIABLES_RECOMENDADAS.items() if not g.get(v)}
+    return faltan, recomendadas

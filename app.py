@@ -69,6 +69,16 @@ from datetime import datetime, timedelta, timezone
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
 
+# Validación al arrancar: en producción, si falta una variable obligatoria no se arranca (mejor caer al desplegar que fallar a medias).
+_faltan, _recomendadas = config.validar()
+if _faltan:
+    _mensaje = "[Config] ❌ Faltan variables obligatorias: " + ", ".join(_faltan)
+    if os.getenv("FLY_APP_NAME"):
+        raise RuntimeError(_mensaje)
+    print(_mensaje + " (en desarrollo se sigue, pero parte de la app no va a funcionar)")
+for _var, _motivo in _recomendadas.items():
+    print(f"[Config] ⚠️ {_var} no está configurada: {_motivo}.")
+
 # ── Sentry: monitoreo de errores en producción ──────────────────────────────
 # Solo se activa si SENTRY_DSN está configurado en .env. En desarrollo local
 # sin la variable, Sentry simplemente no se inicializa — sin efecto.
