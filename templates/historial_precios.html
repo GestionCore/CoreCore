@@ -43,7 +43,7 @@
         <tbody>
             {% for c in cambios %}
             <tr class="{% if c.variacion_pct is not none and c.variacion_pct < 0 %}ux-fila-danger{% elif c.variacion_pct is not none %}ux-fila-ok{% endif %} {% if loop.index > 8 %}oculto-mostrar-mas{% endif %}">
-                <td class="ux-col-titulo"><b>{{ c.titulo }}</b></td>
+                <td class="ux-col-titulo"><div class="ux-titulo-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<b>{{ c.titulo }}</b></div></td>
                 <td style="white-space:nowrap;">
                     {{ c.precio_anterior|plata }} → <b>{{ c.precio_nuevo|plata }}</b>
                     <span class="ux-pill {{ 'ux-warn' if c.direccion == 'subió' else 'ux-ok' }}">{{ c.direccion }}</span>

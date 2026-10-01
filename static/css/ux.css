@@ -306,6 +306,10 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-opcion-doble span { line-height: 1.35; }
 .ux-opcion-msg { padding: 10px 14px; color: var(--text-secondary); font-size: 0.85em; }
 
+/* Título de publicación con su miniatura al lado (celdas de tabla, preguntas) */
+.ux-titulo-thumb { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ux-titulo-thumb .thumb-sm { flex-shrink: 0; }
+
 /* Zona de entrega Flex: 3 botones, la elegida en color */
 .ux-zonas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .ux-zona { border: 1px solid var(--border-soft); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 5px 12px; font-size: 0.78em; font-weight: 700; font-family: var(--font-ui); cursor: pointer; }

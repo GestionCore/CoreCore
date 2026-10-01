@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 def obtener_historial_con_impacto(cursor, dias_ventana=7, limite=40):
     cursor.execute("""
-        SELECT hp.id_meli, hp.precio_anterior, hp.precio_nuevo, hp.fecha_cambio, p.titulo
+        SELECT hp.id_meli, hp.precio_anterior, hp.precio_nuevo, hp.fecha_cambio, p.titulo, p.thumbnail
         FROM historial_precios hp
         LEFT JOIN productos_padre p ON p.id_meli = hp.id_meli
         ORDER BY hp.fecha_cambio DESC LIMIT %s
@@ -19,7 +19,7 @@ def obtener_historial_con_impacto(cursor, dias_ventana=7, limite=40):
     cambios = cursor.fetchall()
 
     resultado = []
-    for id_meli, precio_anterior, precio_nuevo, fecha_cambio, titulo in cambios:
+    for id_meli, precio_anterior, precio_nuevo, fecha_cambio, titulo, thumbnail in cambios:
         fecha_cambio_dt = fecha_cambio if hasattr(fecha_cambio, "date") else datetime.strptime(str(fecha_cambio)[:10], "%Y-%m-%d")
         fecha_cambio_date = fecha_cambio_dt.strftime("%Y-%m-%d")
 
@@ -43,7 +43,7 @@ def obtener_historial_con_impacto(cursor, dias_ventana=7, limite=40):
             variacion_pct = round(((unidades_despues - unidades_antes) / unidades_antes) * 100, 1)
 
         resultado.append({
-            "id_meli": id_meli, "titulo": titulo or id_meli,
+            "id_meli": id_meli, "titulo": titulo or id_meli, "thumbnail": thumbnail,
             "precio_anterior": precio_anterior, "precio_nuevo": precio_nuevo,
             "direccion": "subió" if precio_nuevo > precio_anterior else "bajó",
             "fecha_cambio": fecha_cambio_date,

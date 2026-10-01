@@ -170,7 +170,7 @@
             <thead><tr><th>Publicación</th><th class="num">Invertido</th></tr></thead>
             <tbody>
                 {% for item in costo_ads_por_publicacion %}
-                <tr class="{% if loop.index > 8 %}oculto-mostrar-mas{% endif %}"><td class="ux-col-titulo">{{ item.titulo }}</td><td class="num text-danger"><b>${{ item.costo_formateado }}</b></td></tr>
+                <tr class="{% if loop.index > 8 %}oculto-mostrar-mas{% endif %}"><td class="ux-col-titulo"><div class="ux-titulo-thumb">{% if item.thumbnail %}<img src="{{ item.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<span>{{ item.titulo }}</span></div></td><td class="num text-danger"><b>${{ item.costo_formateado }}</b></td></tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -1106,11 +1106,11 @@ def promociones_vista():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
-            SELECT id_meli, titulo, precio, precio_original FROM productos_padre
+            SELECT id_meli, titulo, precio, precio_original, thumbnail FROM productos_padre
             WHERE estado = 'active' AND precio_original IS NOT NULL AND precio_original > precio
         """)
         con_descuento = [
-            {"id": r[0], "titulo": r[1], "precio_formateado": formatear_moneda(r[2]),
+            {"id": r[0], "titulo": r[1], "thumbnail": r[4], "precio_formateado": formatear_moneda(r[2]),
              "precio_original_formateado": formatear_moneda(r[3]), "descuento_pct": round((1 - float(r[2]) / float(r[3])) * 100)}
             for r in cursor.fetchall()
         ]
@@ -2962,7 +2962,7 @@ def api_preguntas_lista():
         sql = """
             SELECT p.id, p.question_id, p.item_id, p.texto_pregunta,
                    p.respuesta_sugerida, p.estado, p.creado_en,
-                   COALESCE(pp.titulo, p.item_id) AS titulo_item
+                   COALESCE(pp.titulo, p.item_id) AS titulo_item, pp.thumbnail
             FROM preguntas_pendientes p
             LEFT JOIN productos_padre pp ON pp.id_meli = p.item_id
             WHERE p.cuenta_id = %s
@@ -2987,6 +2987,7 @@ def api_preguntas_lista():
             "fecha": f[6].strftime("%Y-%m-%d %H:%M") if f[6] and hasattr(f[6], "strftime") else str(f[6] or ""),
             "creado_en_iso": f[6].isoformat() if f[6] and hasattr(f[6], "isoformat") else None,
             "titulo_item": f[7] or f[2] or "—",
+            "thumbnail": f[8],
         })
     return jsonify(preguntas)
 

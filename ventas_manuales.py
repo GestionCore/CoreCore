@@ -87,14 +87,15 @@ def obtener_ventas_manuales_recientes(usuario_id, cuenta_id, limite=25):
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("""
-            SELECT id, id_orden, titulo, id_variante, cantidad, precio_venta, fecha_venta, comprador_nombre
-            FROM ventas WHERE cuenta_id = %s AND origen = 'manual'
-            ORDER BY id DESC LIMIT %s
+            SELECT v.id, v.id_orden, v.titulo, v.id_variante, v.cantidad, v.precio_venta, v.fecha_venta, v.comprador_nombre, p.thumbnail
+            FROM ventas v LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            WHERE v.cuenta_id = %s AND v.origen = 'manual'
+            ORDER BY v.id DESC LIMIT %s
         """, (cuenta_id, limite))
         filas = cursor.fetchall()
 
     return [{
-        "id": f["id"], "titulo": f["titulo"], "id_variante": f["id_variante"], "cantidad": f["cantidad"],
+        "id": f["id"], "titulo": f["titulo"], "thumbnail": f["thumbnail"], "id_variante": f["id_variante"], "cantidad": f["cantidad"],
         "total": float(f["precio_venta"]) * f["cantidad"],
         "precio_formateado": formatear_moneda(float(f["precio_venta"]) * f["cantidad"]),
         "fecha": f["fecha_venta"].strftime("%Y-%m-%d") if hasattr(f["fecha_venta"], "strftime") else f["fecha_venta"],

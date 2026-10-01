@@ -67,7 +67,7 @@
             {% for v in ventas %}
             <tr>
                 <td class="text-muted">{{ v.fecha }}</td>
-                <td class="ux-col-titulo"><b>{{ v.titulo }}</b></td>
+                <td class="ux-col-titulo"><div class="ux-titulo-thumb">{% if v.thumbnail %}<img src="{{ v.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<b>{{ v.titulo }}</b></div></td>
                 <td>{{ v.comprador_nombre or '—' }}</td>
                 <td class="num">{{ v.cantidad }}</td>
                 <td class="num"><b>${{ v.precio_formateado }}</b></td>

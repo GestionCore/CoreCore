@@ -49,14 +49,16 @@ def cerrar_promocion_activa(cursor, id_meli):
 
 def obtener_impacto_promociones(cursor):
     cursor.execute("""
-        SELECT id, id_meli, titulo, precio_original, precio_promo, fecha_inicio, fecha_fin, promedio_diario_previo, activo
-        FROM historial_promociones ORDER BY fecha_inicio DESC LIMIT 30
+        SELECT h.id, h.id_meli, h.titulo, h.precio_original, h.precio_promo, h.fecha_inicio, h.fecha_fin, h.promedio_diario_previo, h.activo, p.thumbnail
+        FROM historial_promociones h
+        LEFT JOIN productos_padre p ON p.id_meli = h.id_meli AND p.cuenta_id = h.cuenta_id
+        ORDER BY h.fecha_inicio DESC LIMIT 30
     """)
     filas = cursor.fetchall()
     hoy = datetime.now().date()
 
     resultados = []
-    for id_hist, id_meli, titulo, precio_orig, precio_promo, fecha_inicio, fecha_fin, promedio_previo, activo in filas:
+    for id_hist, id_meli, titulo, precio_orig, precio_promo, fecha_inicio, fecha_fin, promedio_previo, activo, thumbnail in filas:
         fecha_inicio_dt = _a_fecha(fecha_inicio)
         fecha_hasta_calculo_dt = _a_fecha(fecha_fin) if fecha_fin else hoy
         dias_transcurridos = max((fecha_hasta_calculo_dt - fecha_inicio_dt).days, 1)
@@ -71,7 +73,7 @@ def obtener_impacto_promociones(cursor):
             variacion_pct = round(((promedio_durante - float(promedio_previo)) / float(promedio_previo)) * 100, 1)
 
         resultados.append({
-            "id_meli": id_meli, "titulo": titulo, "precio_original": precio_orig, "precio_promo": precio_promo,
+            "id_meli": id_meli, "titulo": titulo, "thumbnail": thumbnail, "precio_original": precio_orig, "precio_promo": precio_promo,
             "fecha_inicio": fecha_inicio_dt.strftime("%Y-%m-%d"), "fecha_fin": _a_fecha(fecha_fin).strftime("%Y-%m-%d") if fecha_fin else None,
             "activo": bool(activo), "promedio_previo": float(promedio_previo or 0), "promedio_durante": promedio_durante,
             "variacion_pct": variacion_pct, "unidades_durante": unidades_durante,
@@ -85,11 +87,11 @@ def sugerir_candidatos_promocion(cursor, umbral_dias_sin_rotar=20):
 
     cursor.execute("""
         SELECT p.id_meli, p.titulo, p.precio, p.precio_costo,
-               SUM(COALESCE(v.stock_propio,0) + COALESCE(v.stock_full,0)) as stock_total
+               SUM(COALESCE(v.stock_propio,0) + COALESCE(v.stock_full,0)) as stock_total, p.thumbnail
         FROM productos_padre p
         JOIN productos_variantes v ON v.id_padre = p.id
         WHERE p.estado = 'active'
-        GROUP BY p.id_meli, p.titulo, p.precio, p.precio_costo
+        GROUP BY p.id_meli, p.titulo, p.precio, p.precio_costo, p.thumbnail
         HAVING SUM(COALESCE(v.stock_propio,0) + COALESCE(v.stock_full,0)) >= 4
     """)
     candidatos_potenciales = cursor.fetchall()
@@ -101,14 +103,14 @@ def sugerir_candidatos_promocion(cursor, umbral_dias_sin_rotar=20):
     ya_en_promo = {r[0] for r in cursor.fetchall()}
 
     sugeridos = []
-    for id_meli, titulo, precio, precio_costo, stock_total in candidatos_potenciales:
+    for id_meli, titulo, precio, precio_costo, stock_total, thumbnail in candidatos_potenciales:
         if id_meli in ya_en_promo:
             continue
         unidades_14d = ventas_recientes.get(id_meli, 0)
         dias_para_agotar_a_este_ritmo = (stock_total / (unidades_14d / 14)) if unidades_14d > 0 else 999
         if dias_para_agotar_a_este_ritmo >= umbral_dias_sin_rotar:
             sugeridos.append({
-                "id_meli": id_meli, "titulo": titulo, "precio": float(precio or 0), "precio_costo": float(precio_costo or 0),
+                "id_meli": id_meli, "titulo": titulo, "thumbnail": thumbnail, "precio": float(precio or 0), "precio_costo": float(precio_costo or 0),
                 "stock_total": stock_total, "unidades_14d": unidades_14d,
                 "capital_inmovilizado": round(float(precio or 0) * stock_total, 2),
             })

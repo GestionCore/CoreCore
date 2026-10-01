@@ -37,6 +37,8 @@ def calcular_datos_publicidad(usuario_id, cuenta_id, access_token, fecha_desde, 
 
         cursor.execute("SELECT DISTINCT id_meli, titulo FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (fecha_desde, fecha_hasta))
         items_con_ventas = cursor.fetchall()
+        cursor.execute("SELECT id_meli, thumbnail FROM productos_padre WHERE thumbnail IS NOT NULL")
+        thumbnails_por_id = dict(cursor.fetchall())
 
     tacos = round((costo_total / facturacion_total_negocio) * 100, 1) if facturacion_total_negocio > 0 else None
 
@@ -80,7 +82,8 @@ def calcular_datos_publicidad(usuario_id, cuenta_id, access_token, fecha_desde, 
         costos_por_item = ads.obtener_costos_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_hasta, ids_relevantes)
         items_ordenados = sorted(costos_por_item.items(), key=lambda x: -x[1])
         for id_meli, costo in items_ordenados:
-            costo_ads_por_publicacion.append({"id_meli": id_meli, "titulo": titulos_por_id.get(id_meli, id_meli), "costo_formateado": formatear_moneda(costo)})
+            costo_ads_por_publicacion.append({"id_meli": id_meli, "titulo": titulos_por_id.get(id_meli, id_meli), "thumbnail": thumbnails_por_id.get(id_meli),
+                                              "costo_formateado": formatear_moneda(costo)})
 
     for c in campanas:
         c["costo_formateado"] = formatear_moneda(c["costo"])

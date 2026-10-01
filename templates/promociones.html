@@ -27,7 +27,7 @@
 <div class="ux-lista-acciones" data-mostrar-mas-scope>
     {% for s in sugerencias_promocion %}
     <div class="ux-item-accion ux-warn {% if loop.index > 4 %}oculto-mostrar-mas{% endif %}">
-        <div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-tag"/></svg></div>
+        {% if s.thumbnail %}<img src="{{ s.thumbnail }}" class="thumb-sm" alt="" loading="lazy" style="flex-shrink:0;">{% else %}<div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-tag"/></svg></div>{% endif %}
         <div class="ux-item-accion-cuerpo">
             <div class="ux-item-accion-titulo">{{ s.titulo }}</div>
             <div class="ux-item-accion-detalle"><b>{{ s.capital_inmovilizado|plata }}</b> inmovilizados · {{ s.stock_total }} u. en stock · solo {{ s.unidades_14d }} vendidas en 14 días</div>
@@ -80,7 +80,7 @@
         <tbody>
             {% for p in con_descuento %}
             <tr class="{% if loop.index > 6 %}oculto-mostrar-mas{% endif %}">
-                <td class="ux-col-titulo"><b>{{ p.titulo }}</b></td>
+                <td class="ux-col-titulo"><div class="ux-titulo-thumb">{% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<b>{{ p.titulo }}</b></div></td>
                 <td class="num text-muted" style="text-decoration:line-through;">${{ p.precio_original_formateado }}</td>
                 <td class="num"><b>${{ p.precio_formateado }}</b></td>
                 <td class="num"><span class="ux-pill ux-ok">-{{ p.descuento_pct }}%</span></td>
@@ -110,7 +110,7 @@
         <tbody>
             {% for imp in impacto_promociones %}
             <tr class="{% if imp.variacion_pct is not none and imp.variacion_pct < -10 %}ux-fila-danger{% elif imp.variacion_pct is not none and imp.variacion_pct > 10 %}ux-fila-ok{% endif %} {% if loop.index > 6 %}oculto-mostrar-mas{% endif %}">
-                <td class="ux-col-titulo"><b>{{ imp.titulo }}</b></td>
+                <td class="ux-col-titulo"><div class="ux-titulo-thumb">{% if imp.thumbnail %}<img src="{{ imp.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<b>{{ imp.titulo }}</b></div></td>
                 <td class="text-muted">{{ imp.fecha_inicio }}{% if imp.fecha_fin %} → {{ imp.fecha_fin }}{% endif %}</td>
                 <td class="num">{{ imp.promedio_previo }}</td>
                 <td class="num">{{ imp.promedio_durante }}</td>
