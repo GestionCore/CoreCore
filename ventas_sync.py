@@ -579,6 +579,54 @@ def _completar_datos_de_pago(usuario_id, cuenta_id, access_token, dias=DIAS_COMP
         return 0
 
 
+def _ids_ordenes_canceladas(access_token, seller_id, desde=None):
+    """
+    IDs de las órdenes canceladas en Mercado Libre. Con `desde`, solo las que CAMBIARON desde esa fecha (order.date_last_updated):
+    el sync pide las órdenes por fecha de creación, así que una orden creada hace 8 días y cancelada hoy no se volvía a ver nunca.
+    Devuelve None si Mercado Libre no respondió (no se sabe: no se retira nada).
+    """
+    headers = {"Authorization": f"Bearer {access_token}"}
+    ids, offset = [], 0
+    while True:
+        params = {"seller": seller_id, "order.status": "cancelled", "sort": "date_desc", "offset": offset, "limit": TAMANO_PAGINA}
+        if desde:
+            params["order.date_last_updated.from"] = _iso(desde)
+        try:
+            resp = meli_http.get("https://api.mercadolibre.com/orders/search", headers=headers, params=params, timeout=15)
+        except Exception as e:
+            print(f"[VentasSync] ⚠️ No se pudo consultar las órdenes canceladas: {e}")
+            return None
+        if resp.status_code != 200:
+            print(f"[VentasSync] ⚠️ Órdenes canceladas: {resp.status_code} - {resp.text[:200]}")
+            return None
+        resultados = resp.json().get("results") or []
+        ids += [str(o["id"]) for o in resultados if o.get("id")]
+        offset += TAMANO_PAGINA
+        if len(resultados) < TAMANO_PAGINA or offset >= LIMITE_OFFSET_MELI:
+            return ids
+
+
+def retirar_ventas_canceladas(usuario_id, cuenta_id, access_token, seller_id, desde=None):
+    """
+    Saca de `ventas` las filas de órdenes que Mercado Libre ya tiene canceladas o reembolsadas (el sync nunca guarda una orden
+    cancelada, pero una que estaba paga y se cancela después seguía sumando a facturación y ganancia). La fila completa queda
+    archivada en `ventas_retiradas` (JSON), así que no se pierde nada. Devuelve cuántas filas retiró.
+    """
+    ids = _ids_ordenes_canceladas(access_token, seller_id, desde)
+    if not ids:
+        return 0
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            WITH retiradas AS (
+                DELETE FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND id_orden = ANY(%s) RETURNING *
+            )
+            INSERT INTO ventas_retiradas (cuenta_id, id_orden, motivo, monto, fila)
+            SELECT cuenta_id, id_orden, 'cancelada', precio_venta * cantidad, to_jsonb(retiradas) FROM retiradas
+        """, (cuenta_id, ids))
+        return cursor.rowcount
+
+
 def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor()
@@ -593,6 +641,16 @@ def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
         fecha_desde = ahora - timedelta(days=365)
 
     ordenes_procesadas, filas_insertadas = _sincronizar_rango(usuario_id, cuenta_id, access_token, seller_id, fecha_desde, ahora)
+
+    # Órdenes que se cancelaron o reembolsaron desde la última sincronización: dejan de contar como venta. En la primera
+    # sincronización no hay nada que retirar (las canceladas nunca se guardan).
+    if ultima_sync:
+        try:
+            retiradas = retirar_ventas_canceladas(usuario_id, cuenta_id, access_token, seller_id, desde=fecha_desde)
+            if retiradas:
+                print(f"[VentasSync] ↩️ Cuenta {cuenta_id}: {retiradas} venta(s) cuya orden se canceló o reembolsó se retiraron del cálculo.")
+        except Exception as e:
+            print(f"[VentasSync] ⚠️ No se pudieron retirar las ventas canceladas: {e}")
 
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor()

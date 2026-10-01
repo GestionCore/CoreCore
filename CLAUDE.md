@@ -259,6 +259,15 @@ scopeado por cuenta_id antes de confiar en él.
   puntos), Logros, resumen semanal, Ganancia Real y Reputación. Lo que MeLi marca
   `not_affected` + las devoluciones se muestran como "por gestionar, sin impacto
   en tu reputación". `devoluciones_sync` lo refresca en cada sync de reclamos.
+- **Ventas canceladas/reembolsadas después de sincronizarlas (migración 0026)**:
+  el sync pide órdenes por fecha de CREACIÓN y nunca guarda las canceladas, pero
+  una orden paga que se cancela días después (devolución con reembolso) seguía en
+  `ventas` y sumaba a facturación y ganancia. `ventas_sync.retirar_ventas_canceladas`
+  busca las canceladas que CAMBIARON desde la última sincronización
+  (`order.status=cancelled` + `order.date_last_updated.from`), las borra de `ventas`
+  y archiva la fila completa (JSON) en `ventas_retiradas` — reversible. Ganancia
+  Real muestra "Ventas reembolsadas". No agregar filtros de cancelación en las
+  ~80 consultas que leen `ventas`: la tabla ya no las contiene.
 - ⚠️ **Pooler de Supabase = 15 conexiones de sesión para TODO el proyecto**
   (rol `app_backend`). Producción usa hasta ~13 (ver `db.py`); si localmente da
   `EMAXCONNSESSION`/`PoolTimeout`, no hay lugar: esperar, o revisar si
@@ -422,7 +431,7 @@ MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones corridas hasta `0025_afecta_reputacion.sql` — 
+- Migraciones corridas hasta `0026_ventas_retiradas.sql` — 
   verificá `migrate.py --status` contra Supabase real antes de asumir
   cuál es la última aplicada, el número más alto en `migrations/` no
   siempre coincide con lo corrido de verdad.

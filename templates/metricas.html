@@ -298,6 +298,7 @@
         <div class="ux-kpis">
             {{ kpi("Devoluciones", posventa.devoluciones, "warn" if posventa.devoluciones else "ok", "refresh") }}
             {{ kpi("Reclamos que afectan tu reputación", posventa.reclamos, "danger" if posventa.reclamos else "ok", "alert", "según Mercado Libre") }}
+            {% if posventa.ventas_retiradas %}{{ kpi("Ventas reembolsadas", posventa.ventas_retiradas, "neutral", "refresh", "$" ~ posventa.monto_retirado ~ " · ya no cuentan en tu facturación") }}{% endif %}
             {% if posventa.reclamos_sin_impacto %}{{ kpi("Reclamos sin impacto", posventa.reclamos_sin_impacto, "info", "info", "no afectan tu reputación") }}{% endif %}
             {{ kpi("Cancelaciones", posventa.cancelaciones, "neutral", "x") }}
             {{ kpi("Dinero retenido", "$" ~ posventa.dinero_retenido, "warn", "lock") }}

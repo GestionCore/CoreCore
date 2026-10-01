@@ -239,6 +239,13 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         """, (fecha_desde, fecha_hasta))
         incidencias_db = cursor.fetchall()
 
+        # Ventas cuya orden se canceló o reembolsó después de sincronizarla: ya no cuentan (ver ventas_sync.retirar_ventas_canceladas)
+        cursor.execute("""
+            SELECT COUNT(DISTINCT id_orden) AS ordenes, COALESCE(SUM(monto), 0) AS monto
+            FROM ventas_retiradas WHERE (fila->>'fecha_venta')::date BETWEEN %s AND %s
+        """, (fecha_desde, fecha_hasta))
+        retiradas = cursor.fetchone()
+
     unidades_por_item = {}
     for v in ventas_db:
         unidades_por_item[v["id_meli"]] = unidades_por_item.get(v["id_meli"], 0) + v["cantidad"]
@@ -377,6 +384,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
 
     resumen_posventa = {
         "devoluciones": total_devoluciones, "cancelaciones": total_cancelaciones, "reclamos": total_reclamos, "reclamos_sin_impacto": reclamos_sin_impacto,
+        "ventas_retiradas": int(retiradas["ordenes"] or 0), "monto_retirado": formatear_moneda(retiradas["monto"]),
         "dinero_retenido": formatear_moneda(total_dinero_retenido),
         "ranking_motivos_devolucion": ranking_motivos_devolucion,
         "lista": [
