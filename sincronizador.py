@@ -26,7 +26,11 @@ import enriquecimiento
 
 LOTE_MULTIGET_MELI = 20
 import devoluciones_sync
+from antirrebote import Antirrebote
 from auth import token_manager
+
+# Una venta dispara varias notificaciones seguidas: se juntan en una sola sincronización por cuenta cada 15 segundos
+_antirrebote_webhook = Antirrebote(15)
 
 _candados_por_cuenta = {}
 _candado_de_candados = threading.Lock()
@@ -254,19 +258,27 @@ def procesar_notificacion_webhook(topic, resource, meli_user_id):
             if not id_item:
                 return
             headers = {"Authorization": f"Bearer {access_token}"}
-            with db.conexion_usuario(usuario_id) as conexion:
-                cursor = conexion.cursor()
-                sincronizar_item_individual(cuenta_id, id_item, headers, cursor)
 
-        elif topic in ("orders_v2", "orders"):
+            def _item():
+                with db.conexion_usuario(usuario_id) as conexion:
+                    sincronizar_item_individual(cuenta_id, id_item, headers, conexion.cursor())
+            _antirrebote_webhook.ejecutar((cuenta_id, "item", id_item), _item)
+
+        elif topic in ("orders_v2", "orders", "shipments"):
             # Reusa el mismo sync incremental que corre cada 4 minutos —
             # trae desde ultima_sincronizacion_ventas con su colchón de 2hs,
             # así que llamarlo de más (webhook + scheduler solapados) es
             # seguro, no duplica nada gracias al ON CONFLICT DO UPDATE.
-            ventas_sync.sincronizar_ventas(usuario_id, cuenta_id, access_token, meli_user_id)
+            # Los cambios de un envío (despachado, entregado) llegan por esta misma vía.
+            _antirrebote_webhook.ejecutar((cuenta_id, "ventas"), lambda: ventas_sync.sincronizar_ventas(usuario_id, cuenta_id, access_token, meli_user_id))
 
-        # Otros topics (questions, shipments, payments, etc.) todavía no
-        # tienen sync propio — se ignoran a propósito en vez de fallar.
+        elif topic == "questions":
+            _antirrebote_webhook.ejecutar((cuenta_id, "preguntas"), lambda: devoluciones_sync.sincronizar_preguntas(usuario_id, cuenta_id, access_token, meli_user_id))
+
+        elif topic in ("claims", "post_purchase"):
+            _antirrebote_webhook.ejecutar((cuenta_id, "reclamos"), lambda: devoluciones_sync.sincronizar_reclamos(usuario_id, cuenta_id, access_token, meli_user_id))
+
+        # Otros topics (payments, messages, etc.) no tienen sync propio — se ignoran a propósito en vez de fallar.
 
     except Exception as e:
         print(f"❌ [Webhook] Error procesando notificación (topic={topic}, resource={resource}): {e}")

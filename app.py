@@ -48,6 +48,7 @@ import costos_chat
 import calidad as calidad_mod
 import precios as precios_mod
 import catalogo_ganar
+import mensajes as mensajes_mod
 import full_stock
 import flex
 import chat_ia
@@ -89,7 +90,7 @@ if config.SENTRY_DSN:
             _sdk.set_user({"id": str(_g.usuario_id)})
 
 # ── Flask-Caching ─────────────────────────────────────────────────────────
-from cache import cache
+from cache import cache, construir_key
 
 _cache_config = {
     "CACHE_TYPE": config.CACHE_TYPE,
@@ -590,6 +591,12 @@ def notificaciones_meli():
     topic = datos.get("topic")
     resource = datos.get("resource")
     meli_user_id = datos.get("user_id")
+
+    # Las notificaciones de otra aplicación (o una inventada) no disparan nada: el contenido tampoco se toma como dato,
+    # solo avisa QUÉ volver a pedirle a Mercado Libre para esa cuenta.
+    application_id = datos.get("application_id")
+    if application_id is not None and config.MELI_CLIENT_ID and str(application_id) != str(config.MELI_CLIENT_ID):
+        return "", 200
 
     if topic and meli_user_id:
         try:
@@ -3054,6 +3061,22 @@ def calidad_vista():
 @login_requerido
 def preguntas_vista():
     return render_template("preguntas.html", active_nav="preguntas")
+
+
+@app.route("/api/mensajes/sin_leer")
+@login_requerido
+def api_mensajes_sin_leer():
+    """Mensajes de compradores sin leer (se consulta a Mercado Libre como mucho 1 vez por minuto por cuenta)."""
+    clave = construir_key("mensajes_sin_leer", g.cuenta_id)
+    datos = cache.get(clave)
+    if datos is None:
+        try:
+            access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        except token_manager.CuentaDesconectada:
+            return jsonify({"total": 0, "conversaciones": []})
+        datos = mensajes_mod.sin_leer(access_token) or {"total": 0, "conversaciones": []}
+        cache.set(clave, datos, timeout=60)
+    return jsonify(datos)
 
 
 @app.route("/api/preguntas/lista")

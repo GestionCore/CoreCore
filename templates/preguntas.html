@@ -11,6 +11,9 @@
     </button>
 </div>
 
+<!-- Mensajes de compradores sin leer (si los hay): se contestan en Mercado Libre -->
+<div id="aviso-mensajes"></div>
+
 <!-- Estado de la bandeja, en una frase -->
 <div id="estado-preguntas"></div>
 
@@ -35,7 +38,23 @@ let _preguntas = [];
 
 const $ = id => document.getElementById(id);
 
+async function cargarMensajes() {
+    try {
+        const d = await (await fetch('/api/mensajes/sin_leer')).json();
+        if (!d.total) { $('aviso-mensajes').innerHTML = ''; return; }
+        const links = (d.conversaciones || []).map(c => `<a class="btn btn-secondary" style="padding:5px 12px; font-size:0.85em;" href="${UX.esc(c.link)}" target="_blank" rel="noopener">Orden #${UX.esc(c.id)}${c.cantidad > 1 ? ` · ${c.cantidad}` : ''} ↗</a>`).join(' ');
+        $('aviso-mensajes').innerHTML = `<div class="ux-banner ux-accion" role="status">
+            <div class="ux-banner-icono">${UX.icono('chat')}</div>
+            <div class="ux-banner-cuerpo">
+                <div class="ux-banner-titulo"><b>${d.total} mensaje${d.total > 1 ? 's' : ''} de compradores sin leer</b></div>
+                <div class="ux-banner-detalle">Se responden desde Mercado Libre: tocá la orden para abrir la conversación.</div>
+                ${links ? `<div class="flex-gap" style="margin-top:10px; flex-wrap:wrap; gap:8px;">${links}</div>` : ''}
+            </div></div>`;
+    } catch (e) { /* sin aviso: las preguntas siguen funcionando */ }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    cargarMensajes();
     cargarPreguntas();
     $('btn-actualizar').addEventListener('click', cargarPreguntas);
     document.querySelectorAll('.filtro-btn').forEach(btn => btn.addEventListener('click', () => {
