@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_ux.html" import banner %}
+{% from "_ux.html" import banner, kpi, delta %}
 {% block title %}Dashboard · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -120,6 +120,22 @@
 </details>
 
 <div id="grid-widgets-dashboard" class="grid-dashboard"></div>
+
+{% if proyeccion %}
+<div class="panel">
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-trend"/></svg> Cómo viene {{ proyeccion.mes_nombre }} <span class="text-muted" style="font-weight:500; font-size:0.78em;">día {{ proyeccion.dia }} de {{ proyeccion.dias_mes }}</span></div>
+    <div class="ux-barra ux-accion" style="height:10px; margin-bottom:14px;"><span style="width:{{ proyeccion.avance_pct }}%;"></span></div>
+    <div class="ux-kpis" style="margin-top:0;">
+        {{ kpi("Facturado en el mes", "$" ~ proyeccion.facturado, "accion", "coin", proyeccion.unidades ~ " unidades vendidas") }}
+        {% if proyeccion.proyectado %}
+        {{ kpi("A este ritmo cerrás en", "$" ~ proyeccion.proyectado, "ok" if (proyeccion.vs_mes_anterior or 0) >= 0 else "warn", "trend", ((delta(proyeccion.vs_mes_anterior) ~ " vs. " ~ proyeccion.mes_anterior_nombre) if proyeccion.vs_mes_anterior is not none else "estimado con el ritmo diario")) }}
+        {% endif %}
+        {{ kpi("Mismo punto de " ~ proyeccion.mes_anterior_nombre, "$" ~ proyeccion.mismo_punto, "info", "calendar", ((delta(proyeccion.vs_mismo_punto) ~ " hoy contra entonces") if proyeccion.vs_mismo_punto is not none else "sin ventas en ese período")) }}
+        {{ kpi(proyeccion.mes_anterior_nombre|capitalize ~ " completo", "$" ~ proyeccion.mes_anterior, "neutral", "chart", "mes cerrado") }}
+    </div>
+    <div class="text-muted" style="font-size:0.78em;">{% if proyeccion.pocos_dias %}Todavía hay pocos días para proyectar el mes con sentido.{% else %}La proyección multiplica tu ritmo diario por los días del mes: es una referencia, no una promesa.{% endif %}</div>
+</div>
+{% endif %}
 
 {% if cuando_compran %}
 <div class="panel">

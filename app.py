@@ -1003,9 +1003,14 @@ def dashboard_personalizable():
         cuando_compran = dashboard_mod.obtener_cuando_compran(g.usuario_id, g.cuenta_id)
     except Exception as e:
         print(f"[Dashboard] ⚠️ Error calculando cuándo te compran: {e}")
+    proyeccion = None
+    try:
+        proyeccion = dashboard_mod.obtener_proyeccion_mes(g.usuario_id, g.cuenta_id)
+    except Exception as e:
+        print(f"[Dashboard] ⚠️ Error calculando la proyección del mes: {e}")
     return render_template(
         "dashboard_personalizable.html", active_nav="dashboard", mono=mono,
-        ventas_por_provincia=ventas_por_provincia, cuando_compran=cuando_compran,
+        ventas_por_provincia=ventas_por_provincia, cuando_compran=cuando_compran, proyeccion=proyeccion,
     )
 
 

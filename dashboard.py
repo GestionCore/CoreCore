@@ -132,6 +132,52 @@ def obtener_cuando_compran(usuario_id, cuenta_id=None, dias=90):
     }
 
 
+MIN_DIAS_PROYECCION = 3      # con menos días de datos el ritmo no dice nada
+
+
+def obtener_proyeccion_mes(usuario_id, cuenta_id=None, hoy=None):
+    """
+    Cómo viene el mes: lo facturado hasta hoy, a cuánto llegaría con el mismo ritmo y cómo se compara con el mes anterior (completo y
+    en el mismo punto del mes). La proyección es lineal (ritmo diario actual x días del mes): un orden de magnitud, no una promesa.
+    """
+    import calendar
+    hoy = hoy or (datetime.now(timezone.utc) - timedelta(hours=3)).date()      # hoy en Argentina
+    inicio = hoy.replace(day=1)
+    dias_mes = calendar.monthrange(hoy.year, hoy.month)[1]
+    fin_anterior = inicio - timedelta(days=1)
+    inicio_anterior = fin_anterior.replace(day=1)
+    mismo_punto = inicio_anterior + timedelta(days=min(hoy.day, fin_anterior.day) - 1)
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT COALESCE(SUM(precio_venta * cantidad) FILTER (WHERE fecha_venta >= %(i)s), 0),
+                   COALESCE(SUM(cantidad) FILTER (WHERE fecha_venta >= %(i)s), 0),
+                   COALESCE(SUM(precio_venta * cantidad) FILTER (WHERE fecha_venta BETWEEN %(ia)s AND %(fa)s), 0),
+                   COALESCE(SUM(precio_venta * cantidad) FILTER (WHERE fecha_venta BETWEEN %(ia)s AND %(mp)s), 0),
+                   COALESCE(SUM(cantidad) FILTER (WHERE fecha_venta BETWEEN %(ia)s AND %(fa)s), 0)
+            FROM ventas WHERE origen = 'meli' AND eliminado_en IS NULL AND fecha_venta >= %(ia)s
+        """, {"i": inicio, "ia": inicio_anterior, "fa": fin_anterior, "mp": mismo_punto})
+        facturado, unidades, anterior, anterior_mismo_punto, unidades_anterior = cursor.fetchone()
+    facturado, anterior, anterior_mismo_punto = float(facturado), float(anterior), float(anterior_mismo_punto)
+    if facturado <= 0 and anterior <= 0:
+        return None
+    proyectado = facturado / hoy.day * dias_mes if hoy.day >= MIN_DIAS_PROYECCION else None
+
+    def variacion(a, b):
+        return round((a - b) / b * 100, 1) if b > 0 else None
+    return {
+        "dia": hoy.day, "dias_mes": dias_mes, "avance_pct": round(hoy.day / dias_mes * 100),
+        "facturado": formatear_moneda(facturado), "facturado_raw": round(facturado, 2), "unidades": int(unidades),
+        "proyectado": formatear_moneda(proyectado) if proyectado is not None else None, "proyectado_raw": round(proyectado, 2) if proyectado is not None else None,
+        "mes_anterior": formatear_moneda(anterior), "mes_anterior_raw": round(anterior, 2), "mismo_punto": formatear_moneda(anterior_mismo_punto),
+        "vs_mismo_punto": variacion(facturado, anterior_mismo_punto), "vs_mes_anterior": variacion(proyectado, anterior) if proyectado is not None else None,
+        "mes_nombre": MESES[hoy.month - 1], "mes_anterior_nombre": MESES[inicio_anterior.month - 1], "pocos_dias": hoy.day < MIN_DIAS_PROYECCION,
+    }
+
+
+MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+
 def obtener_ticker(usuario_id, cuenta_id=None):
     # Mismo criterio que obtener_ventas_hoy: "hoy" es el día en Argentina
     # (UTC-3), no el del reloj del sistema donde corra el proceso — si
