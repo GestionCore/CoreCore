@@ -209,7 +209,8 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         comparacion_anterior = _obtener_comparacion_periodo_anterior(cursor, fecha_desde, fecha_hasta)
 
         cursor.execute("""
-            SELECT id_orden, id_meli, titulo, cantidad, precio_venta, cargo_venta, costo_envio, fecha_venta, id_variante, envio_estado
+            SELECT id_orden, id_meli, titulo, cantidad, precio_venta, cargo_venta, costo_envio, fecha_venta, id_variante, envio_estado,
+                   COALESCE(costo_flex, 0) AS costo_flex, retenciones, neto_recibido
             FROM ventas WHERE fecha_venta BETWEEN %s AND %s ORDER BY fecha_venta DESC
         """, (fecha_desde, fecha_hasta))
         ventas_db = cursor.fetchall()
@@ -265,6 +266,9 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
     total_costo_ads = 0.0
     total_comision = 0.0
     total_envio_real = 0.0
+    total_retenciones = 0.0
+    # Conciliación: contra lo que Mercado Libre DEPOSITÓ de verdad (solo las ventas de las que ya tenemos el pago)
+    conc_ventas = conc_facturado = conc_depositado = conc_esperado = 0.0
     consolidado_dict = {}
 
     for v in ventas_db:
@@ -292,6 +296,14 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         total_costo_ads += costo_ads_fila
         total_comision += cargo_venta
         total_envio_real += costo_envio
+        retenciones_fila = float(v["retenciones"] or 0.0)
+        total_retenciones += retenciones_fila
+        if v["neto_recibido"] is not None:
+            # Lo que MeLi descuenta al depositar: comisión y cupones, envío (sin el costo Flex, que lo cobra la logística propia) y retenciones
+            conc_ventas += 1
+            conc_facturado += ingreso_bruto_operacion
+            conc_depositado += float(v["neto_recibido"])
+            conc_esperado += ingreso_bruto_operacion - cargo_venta - (costo_envio - float(v["costo_flex"])) - retenciones_fila
 
         talle_real, color_real = info_variantes.get(id_var, ("Único", "Único"))
         talle_str = talle_real if (not color_real or color_real == "Único") else f"{talle_real} / {color_real}"
@@ -399,6 +411,14 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
                 "facturado": round(total_facturado, 2), "ganancia_neta": round(total_ganancia_neta_real, 2),
                 "comision": round(total_comision, 2), "envios": round(total_envio_real, 2),
                 "costo_ads": round(total_costo_ads, 2), "costo_fabricacion": round(total_costo_fabricacion, 2),
+                # Retenciones de impuestos (IIBB, SIRTAC...): MeLi las descuenta al depositar; NO restan de la ganancia (se descuentan después de tus impuestos)
+                "retenciones": round(total_retenciones, 2),
+                "conciliacion": {
+                    "ventas": int(conc_ventas), "cobertura_pct": round(conc_ventas / len(ventas_db) * 100) if ventas_db else 0,
+                    "facturado": round(conc_facturado, 2), "depositado": round(conc_depositado, 2), "esperado": round(conc_esperado, 2),
+                    "diferencia": round(conc_depositado - conc_esperado, 2),
+                    "coincide_pct": round(100 - abs(conc_depositado - conc_esperado) / conc_depositado * 100, 1) if conc_depositado else None,
+                },
             }
         }
     }

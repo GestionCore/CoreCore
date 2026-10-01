@@ -134,7 +134,8 @@ def _inyectar_cuentas_usuario():
         return {}
     cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
     cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
-    return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual}
+    # Qué usa esta cuenta (ads, flex, full, catalogo): las pantallas esconden solo lo que se confirmó que no aplica (ver capacidades.py)
+    return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual, "capacidades": (cuenta_actual or {}).get("capacidades") or {}}
 
 
 @app.context_processor

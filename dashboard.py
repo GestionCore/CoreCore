@@ -102,6 +102,15 @@ def obtener_ticker(usuario_id, cuenta_id=None):
 
         cursor.execute("SELECT COALESCE(SUM(monto_liberacion), 0) FROM ventas WHERE fecha_liberacion = %s", (manana,))
         liberacion_manana = cursor.fetchone()[0] or 0.0
+        # Próxima acreditación y total que todavía falta acreditar (monto_liberacion = lo que MeLi deposita de verdad, ya sin comisiones ni envío)
+        cursor.execute("""
+            SELECT fecha_liberacion, SUM(monto_liberacion) FROM ventas WHERE fecha_liberacion >= %s AND monto_liberacion IS NOT NULL
+            GROUP BY fecha_liberacion ORDER BY fecha_liberacion LIMIT 1
+        """, (hoy,))
+        fila_proxima = cursor.fetchone()
+        proxima_liberacion = {"fecha": fila_proxima[0].strftime("%d/%m"), "monto": formatear_moneda(fila_proxima[1] or 0)} if fila_proxima else None
+        cursor.execute("SELECT COALESCE(SUM(monto_liberacion), 0) FROM ventas WHERE fecha_liberacion >= %s", (hoy,))
+        a_liberar_total = cursor.fetchone()[0] or 0.0
 
         cursor.execute("""
             SELECT titulo, cantidad, precio_venta, hora_venta FROM ventas
@@ -136,7 +145,8 @@ def obtener_ticker(usuario_id, cuenta_id=None):
 
     return {
         "ventas_hoy": ord_hoy, "facturado_hoy": formatear_moneda(fact_hoy),
-        "liberacion_manana": formatear_moneda(liberacion_manana), "bridge_activo": False,
+        "liberacion_manana": formatear_moneda(liberacion_manana), "proxima_liberacion": proxima_liberacion,
+        "a_liberar_total": formatear_moneda(a_liberar_total), "hay_liberaciones": a_liberar_total > 0, "bridge_activo": False,
         "incidencias_activas": incidencias_activas, "devoluciones_activas": devoluciones_activas, "salud_score": salud["score"], "racha_dias": racha_dias,
         "salud_etiqueta": salud["etiqueta"], "salud_detalle": salud["detalle"],
         "ventas_hoy_detalle": ventas_hoy_detalle

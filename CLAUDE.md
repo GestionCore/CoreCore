@@ -178,6 +178,48 @@ scopeado por cuenta_id antes de confiar en él.
   no se pudo reconciliar. Tampoco se modeló el caso de productos < $33.000
   (ahí paga el comprador): el vendedor de prueba no tiene ventas Flex así.
 
+- **Lo que MeLi realmente cobra (migraciones 0022–0023, 2026-10-01)**: se
+  verificó contra el depósito real (`GET /collections/{payment_id}` →
+  `net_received_amount`; `https://api.mercadopago.com/v1/payments/{id}` →
+  `charges_details` con cada cargo y su dirección). `ventas.costo_envio` NO es
+  `shipping_option.cost` (eso lo paga el comprador, 0 si es gratis): es el
+  costo real del vendedor, `GET /shipments/{id}/costs` → `senders[0].cost`
+  (FULL ≈ 15% de la venta), repartido entre todas las filas que comparten
+  envío (`envio_shipment_total` → `costo_envio_meli`, `_repartir_envios`; los
+  packs comparten un envío) + `costo_flex`. Flex: MeLi no cobra envío (0).
+  `costo_envio_original` conserva el valor viejo de cada fila corregida.
+  `cargo_venta` = comisión + financiación (`sale_fee`) + cupones que financia
+  el vendedor (`coupon_fee`, de collector a ml; los cupones de MeLi al
+  comprador no cuestan nada). `retenciones` (cargos de tipo `tax`: IIBB,
+  SIRTAC) se muestran APARTE y NO restan de la ganancia (son pago anticipado
+  de impuestos). `neto_recibido`, `fecha_liberacion`, `monto_liberacion`
+  (antes nunca se llenaban: el ticker "Disponible mañana" era siempre $0) salen
+  del pago. Con todo esto el cálculo coincide con el depósito real al 0,31%
+  (1.062 ventas, $56,6 M; Flex 0,00%). Ganancia Real muestra la conciliación.
+  El relleno de ventas viejas es gradual (`_completar_datos_de_envio` /
+  `_completar_datos_de_pago`, 540 días). Antes de esto la ganancia salía ~12-15%
+  de la facturación por encima de la real.
+- **Capacidades por cuenta** (`capacidades.py`, `cuentas_meli.capacidades`):
+  CoreLux lo usan vendedores de TODOS los rubros, no solo indumentaria ni solo
+  el dueño. Cada cuenta tiene `ads / flex / full / catalogo` en True/False/
+  ausente; solo un False confirmado esconde una pantalla o sección (ausente
+  nunca esconde). Disponible en templates como `capacidades`. No escribir
+  textos ni lógica específicos de un rubro (talles, indumentaria) ni de una
+  región: Flex hoy ubica destinos solo en AMBA (`flex_zonas.py`), el resto cae
+  en "resto de las zonas".
+- **Enriquecimiento de publicaciones** (`enriquecimiento.py`): de a un lote
+  chico por sync completa en `productos_padre` calidad (`/item/{id}/performance`,
+  con el link directo para resolver cada acción), visitas 14d vs 14d previos
+  (`/items/{id}/visits/time_window`), stock no disponible en FULL
+  (`/inventories/{id}/stock/fulfillment`) y precio para ganar el catálogo
+  (`/items/{id}/price_to_win`, solo publicaciones de catálogo). Las pantallas
+  leen de la base, nunca esperan a la API.
+- ⚠️ **Bug de producción corregido 2026-10-01**: MeLi limita
+  `GET /items?ids=` a **20 ids**; el sync de catálogo pedía 50 → 400 en
+  silencio → no se actualizaba NINGUNA publicación ("0/83 ítems
+  sincronizados"; probablemente era el "no me muestra todas las publicaciones"
+  de `cosas.txt`). Mientras producción corra el código viejo sigue roto.
+
 ## Lo que NO existe todavía (no asumas que sí)
 - Puente de WhatsApp (Baileys) — comentado en `iniciar_corelux.bat`
 - Auditoría automática de devoluciones/cancelaciones más allá de lo
@@ -324,7 +366,7 @@ MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones corridas hasta `0021_flex_umbrales.sql` — 
+- Migraciones corridas hasta `0024_capacidades_y_enriquecimiento.sql` — 
   verificá `migrate.py --status` contra Supabase real antes de asumir
   cuál es la última aplicada, el número más alto en `migrations/` no
   siempre coincide con lo corrido de verdad.

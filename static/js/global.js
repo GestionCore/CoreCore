@@ -847,7 +847,12 @@ async function actualizarTicker() {
         elVentas.classList.remove('skeleton');
         elLiberacion.classList.remove('skeleton');
         elVentas.textContent = `Hoy: ${data.ventas_hoy} venta(s) ($${data.facturado_hoy})`;
-        elLiberacion.textContent = `Disponible mañana: $${data.liberacion_manana}`;
+        // Lo que MeLi va a acreditar: mañana si hay algo, y si no el próximo depósito (las acreditaciones caen en pocos días sueltos)
+        const sinCentavos = (s) => String(s).split(',')[0];
+        if (data.hay_liberaciones && data.liberacion_manana && sinCentavos(data.liberacion_manana) !== '0') elLiberacion.textContent = `Mañana te acreditan: $${sinCentavos(data.liberacion_manana)}`;
+        else if (data.proxima_liberacion) elLiberacion.textContent = `Próximo depósito: $${sinCentavos(data.proxima_liberacion.monto)} · ${data.proxima_liberacion.fecha}`;
+        else elLiberacion.textContent = `Disponible mañana: $${data.liberacion_manana}`;
+        elLiberacion.title = data.hay_liberaciones ? `En total te falta acreditar $${sinCentavos(data.a_liberar_total)}` : '';
 
 
         const pillInc = document.getElementById('ticker-incidencias-pill');

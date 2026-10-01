@@ -75,6 +75,9 @@
         <div class="ux-reparto-item"><i style="background:var(--accent-primary);"></i><span>Fabricación</span><b>{{ rs.costo_fabricacion|plata }}</b><em>{{ (rs.costo_fabricacion / rs.facturado * 100)|pct }}</em></div>
         <div class="ux-reparto-item ux-reparto-ganancia"><i style="background:var(--success);"></i><span>Te queda</span><b>{{ rs.ganancia_neta|plata }}</b><em>{{ margen_pct|pct }}</em></div>
     </div>
+    {% if rs.retenciones %}
+    <div class="ux-hero-nota" style="margin-top:14px;">Además, Mercado Libre te retuvo <b>{{ rs.retenciones|plata }}</b> en impuestos (IIBB y otras retenciones). <b>No están descontadas de tu ganancia</b>: son un pago anticipado de tus impuestos.</div>
+    {% endif %}
 </div>
 
 <!-- ── 2. QUÉ REVISAR: avisos que cambian cómo leer el número ──────────────── -->
@@ -111,6 +114,31 @@
     {% endif %}
     {{ kpi("Margen neto", margen_pct|pct, tono, "percent", "ganancia sobre lo facturado") }}
 </div>
+
+<!-- ── 3b. LO QUE MERCADO LIBRE DEPOSITÓ DE VERDAD: la prueba de que los números cierran ─────── -->
+{% set cc = rs.conciliacion %}
+{% if cc and cc.ventas %}
+<div class="ux-seccion ux-ok">Lo que Mercado Libre te depositó</div>
+<div class="panel ux-conc">
+    <div class="ux-conc-fila">
+        <div>
+            <div class="text-muted" style="font-size:0.8em; text-transform:uppercase; letter-spacing:0.05em; font-weight:700;">Depositado en tu cuenta</div>
+            <div class="ux-conc-num">{{ cc.depositado|plata }}</div>
+            <div class="text-muted" style="font-size:0.85em;">por {{ cc.ventas }} venta{{ 's' if cc.ventas != 1 }} que facturaron <b>{{ cc.facturado|plata }}</b> · ya descontadas comisiones, cupones, envío e impuestos retenidos</div>
+        </div>
+        {% if cc.coincide_pct is not none %}
+        <div class="ux-conc-sello ux-{{ 'ok' if cc.coincide_pct >= 98 else 'warn' }}">
+            <b>{{ cc.coincide_pct|string|replace('.', ',') }}%</b>
+            <span>de coincidencia entre nuestro cálculo y el depósito real</span>
+        </div>
+        {% endif %}
+    </div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:10px; line-height:1.5;">
+        A eso le restamos lo que Mercado Libre no descuenta del depósito —<b>publicidad y costo de fabricación</b>— para llegar a tu ganancia neta real.
+        {% if cc.cobertura_pct < 100 %}<br>Ya tenemos el pago del <b>{{ cc.cobertura_pct }}%</b> de las ventas de este período; el resto se va completando solo.{% endif %}
+    </div>
+</div>
+{% endif %}
 
 <!-- ── 4. QUÉ MODELOS DEJAN PLATA Y CUÁLES NO ──────────────────────────── -->
 {% if consolidados %}

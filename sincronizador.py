@@ -21,6 +21,10 @@ import meli_http
 import validacion_meli
 import db
 import ventas_sync
+import capacidades
+import enriquecimiento
+
+LOTE_MULTIGET_MELI = 20
 import devoluciones_sync
 from auth import token_manager
 
@@ -144,17 +148,21 @@ def _escribir_item_en_db(cuenta_id, datos, cursor):
         """, (cuenta_id, id_item, precio_anterior, precio_actual))
 
     cursor.execute("""
-        INSERT INTO productos_padre (cuenta_id, id_meli, titulo, precio, estado, tipo_logistica, thumbnail, precio_original, recibis_estimado, cuotas_cantidad, cuotas_monto)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO productos_padre (cuenta_id, id_meli, titulo, precio, estado, tipo_logistica, thumbnail, precio_original, recibis_estimado, cuotas_cantidad, cuotas_monto,
+                                     catalog_product_id, inventory_id, permalink, category_id, listing_type_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (cuenta_id, id_meli) DO UPDATE SET
             titulo = excluded.titulo, precio = excluded.precio,
             estado = excluded.estado, tipo_logistica = excluded.tipo_logistica,
             thumbnail = excluded.thumbnail, precio_original = excluded.precio_original,
             recibis_estimado = excluded.recibis_estimado,
-            cuotas_cantidad = excluded.cuotas_cantidad, cuotas_monto = excluded.cuotas_monto
+            cuotas_cantidad = excluded.cuotas_cantidad, cuotas_monto = excluded.cuotas_monto,
+            catalog_product_id = excluded.catalog_product_id, inventory_id = excluded.inventory_id, permalink = excluded.permalink,
+            category_id = excluded.category_id, listing_type_id = excluded.listing_type_id
         RETURNING id
     """, (cuenta_id, id_item, titulo, precio_actual, nuevo_estado, p.get("shipping", {}).get("logistic_type"),
-          thumbnail, datos["precio_original"], datos["recibis_estimado"], cuotas_cantidad, cuotas_monto))
+          thumbnail, datos["precio_original"], datos["recibis_estimado"], cuotas_cantidad, cuotas_monto,
+          p.get("catalog_product_id"), p.get("inventory_id"), p.get("permalink"), p.get("category_id"), p.get("listing_type_id")))
     id_padre_interno = cursor.fetchone()[0]
 
     variantes = p.get("variations", [])
@@ -320,7 +328,9 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
 
         items_procesados = []
         pendientes_convivencia = []  # (índice en items_procesados, user_product_id)
-        lote_size = 50
+        # MeLi limita GET /items?ids= a 20 ids por pedido (con más responde 400 "only allows 20 elements"). Con lotes de 50 el sync
+        # de catálogo fallaba entero y en silencio: no se actualizaba ningún precio, stock ni estado ("0/83 ítems sincronizados").
+        lote_size = LOTE_MULTIGET_MELI
 
         for i in range(0, len(lista_ids), lote_size):
             lote = lista_ids[i:i + lote_size]
@@ -328,6 +338,7 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
 
             resp_batch = meli_http.get(f"https://api.mercadolibre.com/items?ids={ids_param}", headers=headers, timeout=10)
             if resp_batch.status_code != 200:
+                print(f"[Sincronizador] ⚠️ Cuenta {cuenta_id}: MeLi rechazó un lote de {len(lote)} ítems ({resp_batch.status_code}): {resp_batch.text[:160]}")
                 continue
 
             for res in resp_batch.json():
@@ -410,6 +421,15 @@ def sincronizar_todo(usuario_id, cuenta_id):
     # Cada mitad ya maneja sus propios errores adentro, así que un
     # problema acá nunca debe frenar el resto de sincronizar_todo.
     devoluciones_sync.sincronizar_posventa(usuario_id, cuenta_id, access_token, seller_id)
+
+    # Qué usa esta cuenta (FULL, Flex, catálogo, publicidad) y los datos extra de cada publicación (calidad, visitas, FULL, catálogo).
+    # Es un extra: ningún error de acá puede frenar el resto del sync.
+    try:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            capacidades_cuenta = capacidades.refrescar_si_hace_falta(conexion.cursor(), cuenta_id, access_token, seller_id)
+        enriquecimiento.refrescar_todo(usuario_id, cuenta_id, access_token, capacidades_cuenta)
+    except Exception as e:
+        print(f"❌ [Capacidades/Enriquecimiento] cuenta {cuenta_id}: {e}")
 
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor()
