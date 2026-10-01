@@ -7,8 +7,7 @@ gasto recurrente de $150.000/mes cuenta como $150.000 * 14/30, no el
 mes entero ni $0. Esto se decidió así a propósito en vez de contar el
 mes completo siempre, para que el número tenga sentido en períodos
 cortos como "últimos 7 días"."""
-import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from psycopg.rows import dict_row
 import db
 from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle

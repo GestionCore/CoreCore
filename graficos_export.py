@@ -13,7 +13,6 @@ Pensado para reusarse: cualquier gráfico de barras nuevo llama
 import os
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-from utils import formatear_moneda
 
 FUENTE_BOLD = os.path.join(os.path.dirname(__file__), "static", "fonts", "DejaVuSans-Bold.ttf")
 FUENTE_NORMAL = os.path.join(os.path.dirname(__file__), "static", "fonts", "DejaVuSans.ttf")

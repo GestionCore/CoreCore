@@ -14,7 +14,7 @@ Cada una es best-effort: un error no frena el sync ni toca lo que ya había.
 """
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 import db
 import meli_http
 

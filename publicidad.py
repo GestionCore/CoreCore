@@ -1,5 +1,4 @@
 """Publicidad (página propia) — portado de Santi Mens."""
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 import db
 import ads

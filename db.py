@@ -20,7 +20,6 @@ de esa tabla bloquea CUALQUIER operación (hasta el INSERT) desde el rol
 normal a propósito, así que los tokens solo se tocan desde acá. Usalo
 ÚNICAMENTE en token_manager.py — no lo importes en otro lado.
 """
-import psycopg
 from psycopg_pool import ConnectionPool
 import atexit
 import os

@@ -13,10 +13,8 @@ Cambios reales (no cosméticos):
    ese id recién obtenido para las variantes.
 3. Los avisos por WhatsApp quedan comentados (sin puente todavía).
 """
-import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 import meli_http
 import validacion_meli
 import db

@@ -1,5 +1,4 @@
 """Stock Masivo — portado de Santi Mens."""
-import re
 import db
 from utils import limpiar_titulo_modelo, extraer_talle
 

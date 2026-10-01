@@ -5,7 +5,6 @@ sintaxis de fechas de SQLite (date(datetime(...), '+N hours')). En
 Postgres se arma sumando un INTERVAL directamente sobre el timestamp
 combinado de fecha_venta + hora_venta.
 """
-import re
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from psycopg.rows import dict_row

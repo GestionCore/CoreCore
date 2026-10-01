@@ -74,7 +74,6 @@ def esperar_slot(identificador: str, categoria: str = "general", timeout: float 
 
     while time.monotonic() < deadline:
         pipe = r.pipeline()
-        ahora = time.time()
         try:
             pipe.execute_command("CL.THROTTLE", key, max_tokens - 1, max_tokens, 60)
             # CL.THROTTLE de Redis es parte del módulo RedisCell.

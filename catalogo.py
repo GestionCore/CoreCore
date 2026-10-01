@@ -10,7 +10,6 @@ Postgres multi-tenant. Los cambios reales son mínimos gracias a RLS:
   nuevo (ver 01_schema_multitenant.sql).
 """
 from datetime import datetime, timedelta
-import re
 import db
 from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle
 

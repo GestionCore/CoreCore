@@ -13,7 +13,7 @@ import secrets
 import requests
 import config
 
-BASE_AUTH_URL = f"https://auth.mercadolibre.com.ar/authorization"
+BASE_AUTH_URL = "https://auth.mercadolibre.com.ar/authorization"
 BASE_API_URL = "https://api.mercadolibre.com"
 
 

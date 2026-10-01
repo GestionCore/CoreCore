@@ -23,7 +23,6 @@ importan directamente los módulos de negocio (sincronizador, db, etc.)
 que no tienen dependencia de Flask.
 """
 from celery import Celery
-from celery.schedules import crontab
 import config
 
 celery = Celery(

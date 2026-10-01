@@ -1,0 +1,4 @@
+# Reglas mínimas pero útiles: nombres indefinidos, imports sin usar, variables sin usar (pyflakes).
+exclude = ["venv", "schema", "deploy", "__pycache__"]
+[lint]
+select = ["F"]

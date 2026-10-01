@@ -16,7 +16,6 @@ Reglas que respeta (según lo que confirmó MeLi):
 """
 from datetime import datetime, timezone, timedelta
 import requests
-import config
 import crypto_utils
 import db
 from auth import oauth_meli

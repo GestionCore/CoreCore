@@ -16,7 +16,7 @@ for _stream in (sys.stdout, sys.stderr):
         except Exception:
             pass
 
-from flask import Flask, request, session, redirect, url_for, render_template, g, jsonify, send_file, stream_with_context, Response
+from flask import Flask, request, session, redirect, url_for, render_template, g, jsonify, send_file
 import config
 from auth import oauth_meli, registro, token_manager
 from auth.middleware import login_requerido, admin_requerido, iniciar_sesion, cerrar_sesion, cambiar_cuenta_activa
@@ -2642,7 +2642,7 @@ def api_alertas_pendientes():
                 for a in alertas
             ],
         })
-    except Exception as e:
+    except Exception:
         # La tabla puede no existir todavía si las migraciones están pendientes
         return jsonify({"total": 0, "alertas": []})
 
@@ -3307,7 +3307,6 @@ def admin_panel():
         """)
         filas = cursor.fetchall()
 
-    from utils import formatear_moneda
     usuarios_lista = []
     for f in filas:
         usuarios_lista.append({

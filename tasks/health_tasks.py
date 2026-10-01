@@ -15,7 +15,6 @@ La tabla `alertas_usuario` la crea la migración 0001 — tiene que estar
 aplicada antes de que esta tarea empiece a correr.
 """
 from celery_app import celery
-from datetime import datetime, timezone
 import db
 from auth import token_manager
 

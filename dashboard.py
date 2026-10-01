@@ -6,7 +6,6 @@ texto. Acá fecha_venta es un DATE limpio (sin hora), así que un simple
 `= %s` alcanza y es más correcto.
 """
 from datetime import datetime, timedelta, timezone
-import re
 import db
 import analisis_stock
 import salud_cuenta

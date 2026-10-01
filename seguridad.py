@@ -12,7 +12,7 @@ Seguridad y errores de la app web, en un solo lugar (se activa con seguridad.ini
 import os
 from datetime import timedelta
 from urllib.parse import urlparse
-from flask import request, jsonify, render_template, g
+from flask import request, jsonify, render_template
 
 METODOS_QUE_ESCRIBEN = {"POST", "PUT", "PATCH", "DELETE"}
 RUTAS_EXENTAS = {"/notificaciones_meli", "/webhook", "/webhook/mercadopago"}
