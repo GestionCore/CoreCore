@@ -116,9 +116,13 @@ def obtener_campanas_con_metricas(access_token, advertiser_id, fecha_desde, fech
                 "id": c.get("id"), "nombre": c.get("name", "Sin nombre"), "estado": c.get("status", "unknown"),
                 "presupuesto": presupuesto,
                 "clicks": metricas.get("clicks", 0), "prints": metricas.get("prints", 0),
-                "ctr": round((metricas.get("ctr") or 0) * 100, 2), "costo": metricas.get("cost", 0) or 0,
+                # CTR y CVR se calculan acá: el que manda MeLi viene en escalas distintas según la campaña (una con 8 clics
+                # figuraba con 230%). Mismo criterio que el embudo de Publicidad: clics / impresiones y unidades / clics.
+                "ctr": round((metricas.get("clicks") or 0) / metricas["prints"] * 100, 2) if metricas.get("prints") else 0,
+                "costo": metricas.get("cost", 0) or 0,
                 "cpc": metricas.get("cpc", 0) or 0, "roas": metricas.get("roas"), "acos": metricas.get("acos"),
-                "cvr": round((metricas.get("cvr") or 0) * 100, 2), "unidades": metricas.get("units_quantity", 0),
+                "cvr": round((metricas.get("units_quantity") or 0) / metricas["clicks"] * 100, 2) if metricas.get("clicks") else 0,
+                "unidades": metricas.get("units_quantity", 0),
                 "ventas_atribuidas": metricas.get("total_amount", 0) or 0,
                 # direct = vendiste el ítem que anunciaste; indirect = el
                 # comprador llegó por el anuncio pero terminó comprando
@@ -181,6 +185,56 @@ def obtener_gasto_ads_total_periodo(access_token, advertiser_id, fecha_desde, fe
     except Exception as e:
         print(f"[Ads] ❌ Error de conexión trayendo gasto total: {e}")
         return None
+
+
+_metricas_item_cache = {}
+
+
+def obtener_metricas_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_hasta, ids_relevantes, site_id="MLA"):
+    """
+    {id_meli: {costo, ventas, unidades, clicks, prints, titulo, thumbnail}} de cada publicación que gastó o tuvo impresiones
+    en Product Ads en el período (las que no están en Ads se omiten). Es lo que permite ver el retorno POR PUBLICACIÓN y
+    detectar las que gastan sin vender. Una consulta por publicación, en paralelo.
+    """
+    clave_cache = (advertiser_id, fecha_desde, fecha_hasta, tuple(sorted(ids_relevantes)))
+    cacheado = _metricas_item_cache.get(clave_cache)
+    if cacheado and (time.time() - cacheado["timestamp"]) < TTL_COSTOS_SEGUNDOS:
+        return cacheado["data"]
+
+    headers = {"Authorization": f"Bearer {access_token}", "Api-Version": "2"}
+
+    def _consultar_uno(item_id):
+        url = (
+            f"https://api.mercadolibre.com/marketplace/advertising/{site_id}/product_ads/ads/{item_id}"
+            f"?date_from={fecha_desde}&date_to={fecha_hasta}&metrics=cost,total_amount,units_quantity,clicks,prints"
+        )
+        try:
+            resp = meli_http.get(url, headers=headers, timeout=8)
+            if resp.status_code != 200:
+                return item_id, None
+            data = resp.json()
+            m = data.get("metrics", {}) or {}
+            costo = float(m.get("cost") or 0.0)
+            prints = int(m.get("prints") or 0)
+            if costo <= 0 and prints <= 0:
+                return item_id, None
+            return item_id, {
+                "costo": costo, "ventas": float(m.get("total_amount") or 0.0), "unidades": int(m.get("units_quantity") or 0),
+                "clicks": int(m.get("clicks") or 0), "prints": prints,
+                "titulo": data.get("title"), "thumbnail": (data.get("thumbnail") or "").replace("http://", "https://") or None,
+            }
+        except Exception as e:
+            print(f"[Ads] ⚠️ Error consultando métricas de {item_id}: {e}")
+            return item_id, None
+
+    resultado = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        for item_id, datos in executor.map(_consultar_uno, ids_relevantes):
+            if datos is not None:
+                resultado[item_id] = datos
+
+    _metricas_item_cache[clave_cache] = {"data": resultado, "timestamp": time.time()}
+    return resultado
 
 
 def obtener_costos_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_hasta, ids_relevantes, site_id="MLA"):
