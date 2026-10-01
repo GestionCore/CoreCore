@@ -38,7 +38,7 @@ def limpiar_titulo_modelo_local(titulo):
         return ""
     t = re.sub(r'\b(talle|size)\s*[:#]?\s*(xxxl|xxl|xl|l|m|s|\d+)\b', '', titulo, flags=re.IGNORECASE)
     t = re.sub(r'\b(xxxl|xxl|xl|l|m|s)\b', '', t, flags=re.IGNORECASE)
-    t = re.sub(r'\s+\d+\s*$', '', t)
+    t = re.sub(r'\s+\d{1,2}\s*$', '', t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 

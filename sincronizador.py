@@ -23,6 +23,7 @@ import db
 import ventas_sync
 import capacidades
 import enriquecimiento
+from utils import extraer_talle
 
 LOTE_MULTIGET_MELI = 20
 import devoluciones_sync
@@ -43,7 +44,12 @@ def _obtener_candado(cuenta_id):
         return _candados_por_cuenta[cuenta_id]
 
 
-def _extraer_talle_color(variante_data, titulo=""):
+def _extraer_talle_color(variante_data, titulo="", atributos_item=None):
+    """
+    Talle y color de una variante. Para el talle, de más a menos confiable: el atributo de la variación, el atributo SIZE del ítem
+    (lo que Mercado Libre trae para ropa, calzado, etc.) y por último lo que parece un talle en el título (utils.extraer_talle).
+    Un ítem de un rubro sin talles queda en "Único".
+    """
     talle = "Único"
     color = "Único"
     for attr in variante_data.get("attribute_combinations", []):
@@ -56,10 +62,9 @@ def _extraer_talle_color(variante_data, titulo=""):
         elif nombre_attr == "Color":
             color = valor_attr
 
-    if talle == "Único" and titulo:
-        match_talle = re.search(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', titulo, re.IGNORECASE)
-        if match_talle:
-            talle = match_talle.group(0).upper()
+    if talle == "Único":
+        talle_item = next((a.get("value_name") for a in (atributos_item or []) if a.get("id") == "SIZE" and a.get("value_name")), None)
+        talle = extraer_talle(titulo, talle_item)
 
     return talle, color
 
@@ -181,7 +186,7 @@ def _escribir_item_en_db(cuenta_id, datos, cursor):
     for v in lista_vars:
         id_var = str(v.get("id"))
         qty_meli = int(v.get("available_quantity", 0))
-        talle_var, color_var = _extraer_talle_color(v, titulo=titulo)
+        talle_var, color_var = _extraer_talle_color(v, titulo=titulo, atributos_item=p.get("attributes"))
 
         cursor.execute("SELECT stock_propio, stock_full FROM productos_variantes WHERE cuenta_id = %s AND id_variante = %s", (cuenta_id, id_var))
         stock_anterior = cursor.fetchone()

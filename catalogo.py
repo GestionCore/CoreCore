@@ -12,7 +12,7 @@ Postgres multi-tenant. Los cambios reales son mínimos gracias a RLS:
 from datetime import datetime, timedelta
 import re
 import db
-from utils import formatear_moneda, limpiar_titulo_modelo
+from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle
 
 
 def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
@@ -60,11 +60,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
         (id_meli, titulo, precio, estado, thumbnail, precio_original,
          recibis_estimado, cuotas_cantidad, cuotas_monto, stock_propio, stock_full, talle_real) = item
 
-        if talle_real and talle_real != "Único":
-            talle_detectado = talle_real
-        else:
-            match_talle = re.search(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', titulo or "", re.IGNORECASE)
-            talle_detectado = match_talle.group(0).upper() if match_talle else "Único"
+        talle_detectado = extraer_talle(titulo, talle_real)
         modelo_clave = limpiar_titulo_modelo(titulo)
 
         if modelo_clave not in modelos_agrupados:

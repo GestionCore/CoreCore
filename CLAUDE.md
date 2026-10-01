@@ -250,14 +250,17 @@ scopeado por cuenta_id antes de confiar en él.
   ⚠️ Falta, del lado del usuario, tildar esos temas y poner la Notification URL
   `https://corelux.app/notificaciones_meli` en el panel de MeLi Developers
   (no se puede hacer desde acá). Mientras tanto el scheduler (4 min) cubre todo.
-- ⚠️ **Generalización pendiente (grande)**: agrupar publicaciones por
-  "modelo + talle" parseando el TÍTULO con un regex de talles (`XXXL|XXL|XL|L|M|S|\d+`)
-  está repetido en `catalogo.py`, `stock_masivo.py`, `analisis_stock.py`,
-  `dashboard.py`, `despacho.py`, `sincronizador.py`, `costos.py`, `publicidad.py`.
-  Para un rubro sin talles puede inventar uno ("Pack 12" → "Talle 12"). La salida
-  limpia es agrupar por `user_product_id`/`family_id` de MeLi o por los atributos
-  SIZE/COLOR de la variante, en vez del título. Los textos y prompts de IA, el
-  calendario estacional y Tendencias ya no asumen indumentaria.
+- **Talle, centralizado (2026-10-01)**: `utils.extraer_talle(titulo, talle_real)` es
+  la ÚNICA forma de obtener el talle (antes un regex repetido en 8 módulos que
+  tomaba cualquier número del título: "Combo 2 Termos" quedó con "talle 2").
+  Orden: atributo de la variación → atributo `SIZE` del ítem de MeLi (el
+  sincronizador lo guarda en `productos_variantes.talle`) → título, donde solo
+  vale una letra (S/M/L/XL/XXL/XXXL), "talle N" explícito o 1-2 dígitos AL FINAL
+  ("… Inflable 7"); un número en el medio no es talle. `limpiar_titulo_modelo`
+  usa el mismo criterio para la clave de modelo. Se verificó contra todos los
+  títulos reales: 0 claves de modelo distintas y solo 3 talles cambian (los 3
+  eran errores). No agregar regex de talle nuevos: llamar a `extraer_talle`.
+  Los textos y prompts de IA, el calendario estacional y Tendencias tampoco asumen indumentaria.
 
 ## Lo que NO existe todavía (no asumas que sí)
 - Puente de WhatsApp (Baileys) — comentado en `iniciar_corelux.bat`

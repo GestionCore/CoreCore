@@ -11,7 +11,7 @@ import re
 from datetime import datetime, timedelta
 from psycopg.rows import dict_row
 import db
-from utils import formatear_moneda, limpiar_titulo_modelo
+from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle
 
 DIAS_MES_REFERENCIA = 30  # para prorratear "monto mensual" a días
 
@@ -22,12 +22,8 @@ def _dias_de_solapamiento(fecha_inicio_gasto, fecha_fin_gasto, fecha_desde_perio
     return max((fin - inicio).days + 1, 0)
 
 
-_RE_TALLE = re.compile(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', re.IGNORECASE)
-
-
 def _talle_de_titulo(titulo):
-    m = _RE_TALLE.search(titulo or "")
-    return m.group(0).upper() if m else "Único"
+    return extraer_talle(titulo)
 
 
 def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):

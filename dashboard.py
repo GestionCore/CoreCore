@@ -11,14 +11,13 @@ import db
 import analisis_stock
 import salud_cuenta
 import resumen_semanal
-from utils import formatear_moneda, limpiar_titulo_modelo
+from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle
 
 
 def _detalle_venta(titulo):
     modelo = limpiar_titulo_modelo(titulo)
-    match_talle = re.search(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', titulo, re.IGNORECASE)
-    talle = match_talle.group(0).upper() if match_talle else "Único"
-    return f"{modelo} (Talle {talle})"
+    talle = extraer_talle(titulo)
+    return modelo if talle == "Único" else f"{modelo} (Talle {talle})"
 
 
 def obtener_ventas_hoy(usuario_id, cuenta_id=None):

@@ -12,6 +12,7 @@ que consumen las páginas y APIs del dashboard.
 """
 import re
 from datetime import datetime, timedelta
+from utils import extraer_talle
 
 VENTANA_DIAS = 14
 UMBRAL_DIAS_RESTANTES = 5
@@ -101,11 +102,7 @@ def evaluar_curva_talles(cursor):
     modelos = {}
     for id_meli, titulo, talle_variante, stock_total in filas:
         clave = _limpiar_titulo_modelo_local(titulo)
-        if talle_variante and talle_variante != "Único":
-            talle = talle_variante.upper()
-        else:
-            match_talle = re.search(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', titulo, re.IGNORECASE)
-            talle = match_talle.group(0).upper() if match_talle else "Único"
+        talle = extraer_talle(titulo, talle_variante)
         if clave not in modelos:
             modelos[clave] = {"titulo": clave, "talles": {}, "id_referencia": id_meli}
         modelos[clave]["talles"][talle] = modelos[clave]["talles"].get(talle, 0) + stock_total

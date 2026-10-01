@@ -1,7 +1,7 @@
 """Stock Masivo — portado de Santi Mens."""
 import re
 import db
-from utils import limpiar_titulo_modelo
+from utils import limpiar_titulo_modelo, extraer_talle
 
 ORDEN_LETRAS = {"S": 1, "M": 2, "L": 3, "XL": 4, "XXL": 5, "XXXL": 6}
 ORDEN_ESTADO = {"active": 0, "paused": 1, "closed": 2}
@@ -24,8 +24,7 @@ def obtener_modelos_agrupados(usuario_id, cuenta_id=None):
     modelos = {}
     for id_meli, titulo, estado, thumbnail, propio, full in todos:
         clave = limpiar_titulo_modelo(titulo)
-        match_talle = re.search(r'\b(XXXL|XXL|XL|L|M|S|\d+)\b', titulo, re.IGNORECASE)
-        talle = match_talle.group(0).upper() if match_talle else "Único"
+        talle = extraer_talle(titulo)
         if clave not in modelos:
             modelos[clave] = {"titulo": clave, "thumbnail": thumbnail, "propio": 0, "full": 0, "variantes": []}
         m = modelos[clave]

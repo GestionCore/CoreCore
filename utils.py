@@ -38,6 +38,25 @@ def formatear_moneda_entera(valor):
         return "0"
 
 
+# Talle: la fuente confiable es el atributo SIZE que Mercado Libre trae en cada ítem (el sincronizador lo guarda en
+# productos_variantes.talle). El título es solo el respaldo, y como CoreLux lo usan vendedores de cualquier rubro, ahí solo se
+# acepta lo que parece un talle: letras (S, M, L, XL, XXL, XXXL), "talle N" explícito o un número de 1-2 dígitos AL FINAL del título
+# ("... Inflable 7"). Un número en el medio ("Combo 2 Termos", "Perfume 50 ml") no es un talle.
+_RE_TALLE_EXPLICITO = re.compile(r'\b(?:talle|size)\s*[:#]?\s*(XXXL|XXL|XL|L|M|S|\d+)\b', re.IGNORECASE)
+_RE_TALLE_LETRAS = re.compile(r'\b(XXXL|XXL|XL|L|M|S)\b', re.IGNORECASE)
+_RE_TALLE_AL_FINAL = re.compile(r'\s(\d{1,2})\s*$')
+
+
+def extraer_talle(titulo, talle_real=None):
+    """El talle de una publicación: el real (atributo de MeLi) si se conoce; si no, el que se deduce del título; si no, "Único"."""
+    if talle_real and str(talle_real).strip() and talle_real != "Único":
+        return str(talle_real).strip().upper()
+    if not titulo:
+        return "Único"
+    m = _RE_TALLE_EXPLICITO.search(titulo) or _RE_TALLE_LETRAS.search(titulo) or _RE_TALLE_AL_FINAL.search(titulo)
+    return m.group(1).upper() if m else "Único"
+
+
 def limpiar_titulo_modelo(titulo):
     # titulo puede llegar None (venta sincronizada antes de tener el título
     # cacheado, publicación borrada del lado de MeLi, etc.) — re.sub explota
@@ -49,7 +68,7 @@ def limpiar_titulo_modelo(titulo):
         return ""
     t = re.sub(r'\b(talle|size)\s*[:#]?\s*(xxxl|xxl|xl|l|m|s|\d+)\b', '', titulo, flags=re.IGNORECASE)
     t = re.sub(r'\b(xxxl|xxl|xl|l|m|s)\b', '', t, flags=re.IGNORECASE)
-    t = re.sub(r'\s+\d+\s*$', '', t)
+    t = re.sub(r'\s+\d{1,2}\s*$', '', t)
     t = re.sub(r'\s+', ' ', t).strip()
     return t
 
