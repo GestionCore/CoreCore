@@ -16,13 +16,14 @@ import nav_config
 # ni que el propio JS de esa pantalla consulte si ya terminó.
 _PERMITIDAS_DURANTE_SINCRONIZACION = {
     "logout", "reconectar", "conectar", "callback", "landing",
-    "api_estado_sincronizacion", "sincronizar_todo", "onboarding_vista", "onboarding_guardar", "onboarding_tutorial_visto",
+    "api_estado_sincronizacion", "sincronizar_manual", "onboarding_vista", "onboarding_guardar", "onboarding_tutorial_visto",
+    "legal.cuenta_eliminar",
 }
-_PERMITIDAS_DURANTE_ONBOARDING = {"logout", "reconectar", "conectar", "callback", "onboarding_vista", "onboarding_guardar"}
+_PERMITIDAS_DURANTE_ONBOARDING = {"logout", "reconectar", "conectar", "callback", "onboarding_vista", "onboarding_guardar", "legal.cuenta_eliminar"}
 _PERMITIDAS_SIN_SUSCRIPCION = {
     "logout", "landing", "planes_vista", "suscripcion_iniciar", "suscripcion_retorno",
     "suscripcion_vista", "suscripcion_cancelar", "webhook_mercadopago", "admin_panel",
-    "admin_usuarios", "admin_cambiar_plan",
+    "admin_usuarios", "admin_cambiar_plan", "legal.cuenta_eliminar",
 }
 
 

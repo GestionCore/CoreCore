@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ titulo }} · CoreLux</title>
+<meta name="robots" content="index,follow">
+<style>
+    :root { --fondo: #f4f3f8; --tarjeta: #ffffff; --texto: #1c1b25; --suave: #5d5c6c; --acento: #7c3aed; --borde: #e4e2ee; }
+    @media (prefers-color-scheme: dark) { :root { --fondo: #0f0f14; --tarjeta: #17171f; --texto: #f1f0f7; --suave: #a3a2b4; --acento: #8b5cf6; --borde: #262633; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--fondo); color: var(--texto); font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.65; }
+    header, main, footer { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+    header { padding-top: 28px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    header a.marca { font-weight: 800; color: var(--texto); text-decoration: none; font-size: 1.15rem; }
+    nav a { color: var(--suave); text-decoration: none; margin-left: 16px; font-size: 0.92rem; }
+    nav a.activa, nav a:hover { color: var(--acento); }
+    main { padding-top: 22px; padding-bottom: 40px; }
+    article { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 16px; padding: 30px 28px; }
+    h1 { margin: 0 0 4px; font-size: 1.7rem; text-wrap: balance; }
+    h2 { margin: 28px 0 8px; font-size: 1.1rem; }
+    p, li { color: var(--suave); }
+    p { margin: 0 0 12px; }
+    ul { padding-left: 20px; margin: 0 0 12px; }
+    .fecha { font-size: 0.85rem; color: var(--suave); margin-bottom: 18px; }
+    a { color: var(--acento); }
+    footer { padding-bottom: 36px; color: var(--suave); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<header>
+    <a class="marca" href="/">CoreLux</a>
+    <nav><a href="/terminos" class="{{ 'activa' if pagina == 'terminos' }}">Términos</a><a href="/privacidad" class="{{ 'activa' if pagina == 'privacidad' }}">Privacidad</a><a href="/planes">Planes</a></nav>
+</header>
+<main>
+<article>
+<h1>{{ titulo }}</h1>
+<div class="fecha">Última actualización: {{ actualizado }}</div>
+
+{% if pagina == 'terminos' %}
+<h2>1. Qué es CoreLux</h2>
+<p>CoreLux es una aplicación web para vendedores de Mercado Libre que reúne en un solo lugar sus ventas, costos, stock, publicidad y cobros, y calcula la ganancia real de su negocio. CoreLux es un servicio independiente: <b>no es un producto de Mercado Libre ni de Mercado Pago, ni está afiliado a ellos</b>.</p>
+
+<h2>2. Tu cuenta y la conexión con Mercado Libre</h2>
+<p>Para usar CoreLux conectás tu cuenta de Mercado Libre con su sistema de autorización (OAuth). Vos elegís qué permisos darnos y podés revocarlos en cualquier momento desde tu cuenta de Mercado Libre. Sos responsable de la actividad que se haga con tu cuenta de CoreLux y de mantener tus credenciales seguras.</p>
+
+<h2>3. Planes, prueba y pagos</h2>
+<p>CoreLux ofrece una prueba gratuita de 14 días y planes de suscripción mensual, con los precios publicados en la página de <a href="/planes">planes</a>. Los pagos se procesan a través de Mercado Pago y se renuevan cada mes hasta que canceles. Podés cancelar cuando quieras desde la sección de suscripción: seguís con acceso hasta el fin del período ya pagado. Podemos modificar los precios avisando con anticipación razonable.</p>
+
+<h2>4. Lo que CoreLux hace y lo que no</h2>
+<ul>
+    <li>CoreLux muestra y calcula información a partir de los datos que Mercado Libre nos entrega y de los costos que cargás vos. <b>Los números son una ayuda para decidir, no asesoramiento contable, fiscal ni legal.</b> Para temas impositivos (por ejemplo, Monotributo) conviene confirmar con tu contador.</li>
+    <li>Algunas acciones modifican tu cuenta de Mercado Libre (por ejemplo, actualizar stock o precios, o responder preguntas). Solo se hacen cuando vos las pedís y las confirmás.</li>
+    <li>Los resultados dependen de la disponibilidad y de los datos de Mercado Libre, que puede cambiar o limitar su API.</li>
+</ul>
+
+<h2>5. Uso aceptable</h2>
+<p>No podés usar CoreLux para actividades ilegales, para intentar acceder a datos de otras cuentas, para sobrecargar el servicio ni para copiar o revender la aplicación. Podemos suspender cuentas que incumplan estos términos.</p>
+
+<h2>6. Disponibilidad y responsabilidad</h2>
+<p>Hacemos lo posible por mantener el servicio disponible y tus datos protegidos, pero no podemos garantizar que funcione sin interrupciones ni errores. En la medida permitida por la ley, CoreLux no responde por pérdidas indirectas, lucro cesante ni por decisiones comerciales tomadas a partir de la información mostrada.</p>
+
+<h2>7. Baja y eliminación de datos</h2>
+<p>Podés eliminar tu cuenta y todos tus datos en cualquier momento desde <a href="/cuenta/eliminar">Eliminar mi cuenta</a>. Se cancela tu suscripción y se borra toda tu información.</p>
+
+<h2>8. Cambios y ley aplicable</h2>
+<p>Podemos actualizar estos términos; los cambios importantes se avisan dentro de la aplicación. Se rigen por las leyes de la República Argentina.</p>
+
+<h2>9. Contacto</h2>
+<p>Escribinos a <a href="mailto:{{ contacto }}">{{ contacto }}</a>.</p>
+
+{% else %}
+<h2>1. Qué datos tratamos</h2>
+<ul>
+    <li><b>De tu cuenta:</b> email, nombre y apodo de Mercado Libre, identificadores de la cuenta y el plan que tengas.</li>
+    <li><b>De tu negocio, traídos de Mercado Libre y Mercado Pago:</b> publicaciones, stock, precios, ventas, cobros, comisiones, envíos, preguntas, reclamos y devoluciones, opiniones y publicidad.</li>
+    <li><b>De los compradores, lo mínimo necesario:</b> apodo, nombre, y provincia y localidad de destino del envío, para armar el despacho y las estadísticas de ventas. No guardamos datos de pago ni documentos de los compradores.</li>
+    <li><b>Lo que cargás vos:</b> costos de fabricación, gastos del negocio, preferencias de uso.</li>
+    <li><b>Credenciales de acceso a Mercado Libre:</b> las guardamos <b>cifradas</b> y solo se usan para consultar tu cuenta en tu nombre.</li>
+</ul>
+
+<h2>2. Para qué los usamos</h2>
+<p>Únicamente para darte el servicio: calcular tu ganancia, mostrar tus ventas y cobros, avisarte de lo que requiere tu atención y ejecutar las acciones que pidas. <b>No vendemos tus datos ni los usamos para publicidad de terceros.</b></p>
+
+<h2>3. Con quién los compartimos</h2>
+<p>Usamos proveedores que procesan datos por nuestra cuenta:</p>
+<ul>
+    <li><b>Supabase</b> (base de datos, región São Paulo) y <b>Fly.io</b> (alojamiento, región São Paulo).</li>
+    <li><b>Mercado Libre y Mercado Pago</b>: origen de los datos y procesamiento de los pagos de la suscripción.</li>
+    <li><b>Un proveedor de inteligencia artificial</b>, solo cuando pedís una función de IA (por ejemplo, sugerir la respuesta a una pregunta o cargar costos por chat): se envía el texto de esa consulta, sin tus credenciales.</li>
+    <li><b>Un servicio de registro de errores</b> (Sentry), si está activado, sin cookies ni dirección IP.</li>
+    <li><b>Google Fonts</b>, para mostrar las tipografías de la página.</li>
+</ul>
+
+<h2>4. Seguridad y aislamiento</h2>
+<p>Cada cuenta ve únicamente sus propios datos: el aislamiento está aplicado en la base de datos y se verifica con pruebas automáticas. Las conexiones usan HTTPS y las credenciales se almacenan cifradas.</p>
+
+<h2>5. Cookies</h2>
+<p>Usamos una cookie de sesión, imprescindible para mantenerte conectado, y guardamos en tu navegador algunas preferencias (tema, modo privacidad). No usamos cookies de seguimiento publicitario.</p>
+
+<h2>6. Cuánto tiempo los conservamos y tus derechos</h2>
+<p>Conservamos tus datos mientras tengas la cuenta. Tenés derecho a acceder a tus datos, corregirlos y <b>eliminarlos</b>: desde <a href="/cuenta/eliminar">Eliminar mi cuenta</a> borramos toda tu información de inmediato. Las copias de respaldo de la infraestructura pueden conservar los datos por un tiempo limitado, según la política de cada proveedor. Si querés revocar el acceso, también podés hacerlo desde tu cuenta de Mercado Libre.</p>
+<p>El titular de los datos personales tiene la facultad de ejercer el derecho de acceso en forma gratuita a intervalos no inferiores a seis meses (Ley 25.326). La Agencia de Acceso a la Información Pública, órgano de control de esa ley, atiende denuncias y reclamos por incumplimientos.</p>
+
+<h2>7. Cambios y contacto</h2>
+<p>Si cambiamos esta política, lo avisaremos dentro de la aplicación. Para consultas o para ejercer tus derechos: <a href="mailto:{{ contacto }}">{{ contacto }}</a>.</p>
+{% endif %}
+</article>
+</main>
+<footer>© CoreLux · <a href="/terminos">Términos</a> · <a href="/privacidad">Privacidad</a> · <a href="mailto:{{ contacto }}">{{ contacto }}</a></footer>
+</body>
+</html>

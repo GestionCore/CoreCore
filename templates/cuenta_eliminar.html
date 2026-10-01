@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_ux.html" import banner %}
+{% block title %}Eliminar mi cuenta · CoreLux{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Eliminar mi cuenta</h1>
+        <div class="page-subtitle">Borramos tu cuenta y <strong>todos tus datos de CoreLux</strong>. No se puede deshacer.</div>
+    </div>
+</div>
+
+{% for m in get_flashed_messages() %}{{ banner("danger", "alert", m|e) }}{% endfor %}
+
+{% if es_dueno %}
+{{ banner("info", "lock", "<b>Esta es la cuenta del administrador</b>", "No se elimina desde acá. Escribinos a " ~ contacto ~ " si necesitás hacerlo.") }}
+{% else %}
+<div class="panel">
+    <div class="panel-title">Qué se borra</div>
+    <ul style="line-height:1.7; padding-left:20px; margin:0 0 14px;">
+        <li>Tu usuario ({{ email }}) y las cuentas de Mercado Libre conectadas.</li>
+        <li>Tus ventas, publicaciones, costos, gastos, reclamos, preguntas y todo lo calculado.</li>
+        <li>Las credenciales de acceso a Mercado Libre que guardamos.</li>
+        {% if con_suscripcion %}<li><b>Tu suscripción paga se cancela</b> en Mercado Pago antes de borrar.</li>{% endif %}
+    </ul>
+    <div class="text-muted" style="font-size:0.88em; margin-bottom:16px;">Tus ventas y publicaciones siguen estando en Mercado Libre: eso no se toca. Si querés revocar también el permiso, hacelo desde tu cuenta de Mercado Libre.</div>
+    <form method="post" action="{{ url_for('legal.cuenta_eliminar') }}">
+        <label class="field-label" for="confirmacion"><b>Para confirmar, escribí {{ frase }}</b></label>
+        <div class="flex-gap" style="margin-top:8px;">
+            <input type="text" id="confirmacion" name="confirmacion" autocomplete="off" required style="max-width:260px;" placeholder="{{ frase }}">
+            <button type="submit" class="btn btn-danger btn-lg">Eliminar todo</button>
+            <a class="btn btn-secondary" href="/">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

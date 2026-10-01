@@ -40,6 +40,10 @@ def _origen_permitido():
 
 
 def iniciar(app):
+    if EN_PRODUCCION:
+        # Detrás del proxy de Fly el pedido llega por http: sin esto, request.url_root/is_secure y los enlaces absolutos saldrían con http://
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",

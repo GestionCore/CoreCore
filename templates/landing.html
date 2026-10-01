@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CoreLux — Gestión profesional para Mercado Libre</title>
     <meta name="description" content="Ganancia real, stock, publicidad y más para tu negocio en Mercado Libre Argentina. 14 días gratis.">
+    <link rel="canonical" href="{{ request.url_root.rstrip('/') }}/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="CoreLux">
+    <meta property="og:locale" content="es_AR">
+    <meta property="og:title" content="CoreLux — Gestión profesional para Mercado Libre">
+    <meta property="og:description" content="Ganancia real, stock, publicidad y cobros de tu negocio en Mercado Libre, en un solo lugar. 14 días gratis.">
+    <meta property="og:url" content="{{ request.url_root.rstrip('/') }}/">
+    <meta property="og:image" content="{{ request.url_root.rstrip('/') }}{{ url_for('static', filename='icons/icon-512.png') }}">
+    <meta name="twitter:card" content="summary">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -653,6 +662,8 @@
 <footer class="lp-footer">
     <div>© {{ anio_actual }} CoreLux. Para vendedores de Mercado Libre Argentina.</div>
     <div style="display:flex; gap:20px;">
+        <a href="/terminos">Términos</a>
+        <a href="/privacidad">Privacidad</a>
         <a href="mailto:soporte@corelux.app">Soporte</a>
     </div>
 </footer>
