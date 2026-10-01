@@ -139,7 +139,8 @@ def _inyectar_cuentas_usuario():
     acordarse de pasarla; el navbar solo la muestra si hay más de una.
     """
     if not getattr(g, "usuario_id", None):
-        return {}
+        # Rutas públicas (/planes, /suscripcion/retorno...): base.html igual arma el menú si hay sesión y llama capacidades.get(...)
+        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None}
     cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
     cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
     # Qué usa esta cuenta (ads, flex, full, catalogo): las pantallas esconden solo lo que se confirmó que no aplica (ver capacidades.py)
