@@ -270,6 +270,14 @@ scopeado por cuenta_id antes de confiar en él.
   talle, `family_id` no — es la clave de "modelo" que no depende del título ni del
   rubro (el sincronizador la guarda en `productos_padre.family_id`): usarla si
   alguna vez se reemplaza el agrupado por título.
+- **Cobros (`/cobros`, `cobros.py`) y dinero retenido**: calendario de acreditación
+  con `ventas.fecha_liberacion`/`monto_liberacion` (lo que Mercado Pago deposita de
+  verdad) y la plata retenida por reclamos. `incidencias_posventa.monto_retenido`
+  estaba siempre en 0: ahora `devoluciones_sync._actualizar_dinero_retenido` suma el
+  pago de la orden en estado `in_mediation` mientras el reclamo sigue abierto (una
+  sola vez por orden). Un reclamo que "no afecta la reputación" igual retiene la plata.
+- **Facturación: los períodos del 9 al 8 son el ciclo REAL de MeLi** (se verificó con
+  `GET /billing/integration/monthly/periods`: `2026-09-09 → 2026-10-08`). No es un bug.
 - **Costo de ofrecer cuotas (migración 0028, `ventas.financiacion`)**: el cargo
   `financing_add_on_fee` (collector → ml) del pago. ⚠️ Se cobra **por publicación,
   como un % casi fijo del precio, en CADA venta aunque el comprador pague de
@@ -434,9 +442,8 @@ sin confirmar en vivo: el resumen de números de hoy en Stock, un campo
 para cargar el costo de entrega Flex por zona (HECHO, ver Entrega Flex), el
 motivo real de reclamos (HECHO: el texto sale de
 `/post-purchase/v1/claims/reasons/{id}`) y cuáles afectan la reputación (HECHO,
-ver Reclamos arriba), si los períodos de Facturación
-(9 al 8 del mes siguiente) están realmente mal o es el ciclo real de
-MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
+ver Reclamos arriba), los períodos de Facturación (HECHO: el 9 al 8 es el ciclo real de
+MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
 
 ## Datos de entorno
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de

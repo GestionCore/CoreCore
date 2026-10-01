@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
+{% block title %}Cobros · CoreLux{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-calendar"/></svg>Cobros</h1>
+        <div class="page-subtitle">Cuándo te acredita Mercado Libre <strong>lo que ya vendiste</strong> y cuánta plata está retenida por reclamos</div>
+    </div>
+</div>
+
+{% if not total and not retenido_total and not acreditado %}
+{{ vacio("Todavía no hay cobros para mostrar", "Cuando tus ventas tengan fecha de acreditación, acá ves cuánto te va a depositar Mercado Libre y cuándo.", "calendar", "info", "Ir a Ganancia Real", "/metricas") }}
+{% else %}
+
+<!-- ── 1. CÓMO VAS ───────────────────────────────────────────────────────── -->
+<div class="ux-hero ux-{{ 'ok' if total else 'neutral' }}">
+    <div class="ux-hero-etiqueta">Plata que todavía te tienen que acreditar</div>
+    <div class="ux-hero-numero">{{ total|plata }}</div>
+    <div class="ux-hero-frase">
+        {% if proximo %}Lo próximo: <b>{{ proximo.monto|plata }}</b> {{ 'hoy' if proximo.cuando == 'hoy' else ('mañana' if proximo.cuando == 'mañana' else (proximo.cuando ~ ', el ' ~ proximo.fecha.strftime('%d/%m'))) }}.
+        {% else %}No hay depósitos pendientes por ahora.{% endif %}
+        {% if acreditado %}En los últimos {{ dias_acreditado }} días te acreditaron <b>{{ acreditado|plata }}</b>.{% endif %}
+    </div>
+    <div class="ux-hero-nota">Es lo que Mercado Pago deposita de verdad: ya sin comisiones, envíos ni impuestos retenidos.{% if sin_fecha %} {{ sin_fecha }} venta{{ 's' if sin_fecha != 1 }} reciente{{ 's' if sin_fecha != 1 }} todavía sin fecha de acreditación.{% endif %}</div>
+</div>
+
+{% if retenido_total %}
+{{ banner("warn", "lock", "<b>" ~ (retenido_total|plata) ~ " retenidos</b> por " ~ retenidos|length ~ " reclamo" ~ ("s" if retenidos|length != 1) ~ " abierto" ~ ("s" if retenidos|length != 1), "Mercado Pago no lo acredita hasta que el reclamo se resuelve. Mirá abajo cuáles son.") }}
+{% endif %}
+
+<!-- ── 2. NÚMEROS ─────────────────────────────────────────────────────── -->
+<div class="ux-kpis">
+    {{ kpi("Mañana", manana|plata, "ok" if manana else "neutral", "calendar", "te acreditan") }}
+    {{ kpi("Próximos 7 días", semana|plata, "info", "coin", "incluye hoy y mañana") }}
+    {{ kpi("Próximos " ~ dias_vista ~ " días", mes|plata, "accion", "chart", ("más " ~ (mas_adelante|plata) ~ " después") if mas_adelante else "") }}
+    {{ kpi("Retenido por reclamos", retenido_total|plata, "warn" if retenido_total else "ok", "lock", (retenidos|length ~ " reclamo" ~ ("s" if retenidos|length != 1)) if retenidos else "nada retenido") }}
+</div>
+
+<!-- ── 3. PRÓXIMOS DEPÓSITOS ───────────────────────────────────────────── -->
+{% if dias %}
+<div class="ux-seccion ux-ok">Próximos depósitos <span class="text-muted" style="font-weight:600; font-size:0.8em;">por día de acreditación</span></div>
+<div class="panel" data-mostrar-mas-scope>
+    {% for d in dias %}
+    <div class="ux-dist-fila {% if loop.index > 10 %}oculto-mostrar-mas{% endif %}">
+        <span class="ux-dist-etq" style="width:130px;"><b>{{ d.fecha.strftime('%d/%m') }}</b> <span class="text-muted" style="font-weight:500;">{{ d.cuando }}</span></span>
+        <div class="ux-barra ux-ok" style="flex:1;"><span style="width:{{ d.pct }}%;"></span></div>
+        <span class="ux-dist-val" style="width:150px;"><b>{{ d.monto|plata }}</b> <span class="text-muted">({{ d.ventas }} venta{{ 's' if d.ventas != 1 }})</span></span>
+    </div>
+    {% endfor %}
+    {% if dias|length > 10 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver los {{ dias|length - 10 }} días restantes</button>{% endif %}
+    {% if mas_adelante %}<div class="text-muted" style="font-size:0.85em; margin-top:10px;">Y <b>{{ mas_adelante|plata }}</b> más con fechas posteriores a los próximos {{ dias_vista }} días.</div>{% endif %}
+</div>
+{% endif %}
+
+<!-- ── 4. RETENIDO POR RECLAMOS ─────────────────────────────────────────── -->
+{% if retenidos %}
+<div class="ux-seccion ux-warn">Retenido por reclamos abiertos</div>
+<div class="panel">
+    <div class="text-muted" style="font-size:0.85em; margin-bottom:8px; line-height:1.5;">Es el pago de la venta, que queda en mediación hasta que el reclamo se cierra. Si se resuelve a favor del comprador se le devuelve; si no, se te acredita.</div>
+    {% for r in retenidos %}
+    <div class="ux-rank-fila ux-{{ 'info' if r.sin_impacto else 'warn' }}">
+        <div class="ux-rank-info">
+            <div class="ux-rank-titulo"><a href="{{ r.link }}" target="_blank" rel="noopener" style="color:var(--text-primary); text-decoration:none;">Orden #{{ r.id_orden }} ↗</a></div>
+            <div class="text-muted" style="font-size:0.8em;">{{ r.motivo or 'Sin motivo informado' }}{% if r.fecha %} · desde el {{ r.fecha }}{% endif %}{% if r.sin_impacto %} · <b>no afecta tu reputación</b>{% endif %}</div>
+        </div>
+        <div class="ux-rank-valor"><b>{{ r.monto|plata }}</b></div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

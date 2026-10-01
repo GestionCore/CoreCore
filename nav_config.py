@@ -28,6 +28,7 @@ GRUPOS_NAV = {
         "paginas": [
             {"nav_key": "metricas", "label": "Ganancia Real", "href": "/metricas", "endpoint": "metricas_vista"},
             {"nav_key": "facturacion", "label": "Facturación", "href": "/facturacion", "endpoint": "facturacion_vista"},
+            {"nav_key": "cobros", "label": "Cobros", "href": "/cobros", "endpoint": "cobros_vista"},
             {"nav_key": "costos", "label": "Costos", "href": "/costos", "endpoint": "costos_vista"},
             {"nav_key": "ventas_manuales", "label": "Ventas fuera de MeLi", "href": "/ventas_manuales", "endpoint": "ventas_manuales_vista"},
             {"nav_key": "historial_precios", "label": "Historial de Precios", "href": "/historial_precios", "endpoint": "historial_precios_vista"},

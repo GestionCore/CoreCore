@@ -1008,6 +1008,7 @@ const ATAJOS_COMANDO = [
     { alias: ['dash', 'dashboard', 'resumen'], texto: 'Ir a Dashboard', url: '/dashboard' },
     { alias: ['gan', 'ganancia', 'metricas'], texto: 'Ir a Ganancia Real', url: '/metricas' },
     { alias: ['fac', 'facturacion'], texto: 'Ir a Facturación', url: '/facturacion' },
+    { alias: ['cobros', 'cobrar', 'acreditacion', 'liquidez', 'retenido'], texto: 'Ir a Cobros (cuándo te acreditan)', url: '/cobros' },
     { alias: ['cos', 'costos'], texto: 'Ir a Costos', url: '/costos' },
     { alias: ['full', 'logistica', 'comparador'], texto: 'Ir a Propia vs FULL', url: '/comparador_logistica' },
     { alias: ['hist', 'historial'], texto: 'Ir a Historial de Precios', url: '/historial_precios' },

@@ -19,10 +19,9 @@ Nota de confianza, para ser honesto sobre el riesgo de cada mitad:
   a fallar de forma RUIDOSA en la consola (no en silencio) para que se
   note enseguida — revisar la consola después del primer
   "Sincronizar Todo" que corra con este cambio, y ajustar acá si hace
-  falta. El monto_retenido queda en 0.0 a propósito: la lista de
-  reclamos no lo trae, haría falta un pedido extra por reclamo a
-  /post-purchase/v1/claims/{id} para tenerlo — queda pendiente como
-  mejora futura, no algo que haya que inventar.
+  falta. El monto_retenido se completa aparte (_actualizar_dinero_retenido): es lo
+  que Mercado Pago tiene retenido de verdad, o sea el pago de la orden en estado
+  "in_mediation" mientras el reclamo sigue abierto.
 """
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -225,8 +224,52 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
                 print(f"[DevolucionesSync] Cuenta {cuenta_id}: {cursor.rowcount} reclamo(s)/devolución(es) ya cerrados en MeLi se cerraron acá también.")
 
     _actualizar_impacto_en_reputacion(usuario_id, cuenta_id, headers, ids_abiertos)
+    _actualizar_dinero_retenido(usuario_id, cuenta_id, headers)
     _completar_motivos_viejos(usuario_id, cuenta_id, headers)
     return filas_totales
+
+
+def _actualizar_dinero_retenido(usuario_id, cuenta_id, headers):
+    """
+    Plata que Mercado Pago tiene retenida por reclamos abiertos: el pago de la orden pasa a "in_mediation" y no se acredita hasta que se
+    resuelve. Se suma el monto de esos pagos; si una orden tiene más de un reclamo se cuenta una sola vez. Los reclamos cerrados no retienen nada.
+    """
+    try:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            cursor.execute("""
+                SELECT id_reclamo, id_orden FROM incidencias_posventa
+                WHERE cuenta_id = %s AND estado NOT IN ('closed', 'resolved') AND id_orden IS NOT NULL AND id_orden <> '' ORDER BY id_reclamo
+            """, (cuenta_id,))
+            abiertos = cursor.fetchall()
+            cursor.execute("UPDATE incidencias_posventa SET monto_retenido = 0 WHERE cuenta_id = %s AND estado IN ('closed', 'resolved') AND monto_retenido <> 0", (cuenta_id,))
+        if not abiertos:
+            return
+
+        def _retenido(id_orden):
+            try:
+                resp = meli_http.get(f"https://api.mercadolibre.com/orders/{id_orden}", headers=headers, timeout=10)
+                if resp.status_code != 200:
+                    return None
+                return sum(float(p.get("transaction_amount") or 0) for p in (resp.json().get("payments") or []) if p.get("status") == "in_mediation")
+            except Exception:
+                return None
+
+        ordenes = list(dict.fromkeys(o for _, o in abiertos))
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            por_orden = dict(zip(ordenes, pool.map(_retenido, ordenes)))
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            ya_contadas = set()
+            for id_reclamo, id_orden in abiertos:
+                monto = por_orden.get(id_orden)
+                if monto is None:
+                    continue       # MeLi no respondió: se conserva lo que había
+                monto_fila = 0.0 if id_orden in ya_contadas else monto
+                ya_contadas.add(id_orden)
+                cursor.execute("UPDATE incidencias_posventa SET monto_retenido = %s WHERE cuenta_id = %s AND id_reclamo = %s", (monto_fila, cuenta_id, id_reclamo))
+    except Exception as e:
+        print(f"[DevolucionesSync] ⚠️ No se pudo calcular el dinero retenido por reclamos: {e}")
 
 
 def _impacto_en_reputacion(headers, id_reclamo):

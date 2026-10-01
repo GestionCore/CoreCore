@@ -50,6 +50,7 @@ import precios as precios_mod
 import catalogo_ganar
 import mensajes as mensajes_mod
 import opiniones as opiniones_mod
+import cobros as cobros_mod
 import tiempo_respuesta as tiempo_respuesta_mod
 import full_stock
 import flex
@@ -3055,6 +3056,14 @@ def precios_vista():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         datos = precios_mod.obtener_datos(conexion.cursor(), g.cuenta_id, margen, publicidad)
     return render_template("precios.html", active_nav="precios", **datos)
+
+
+@app.route("/cobros")
+@login_requerido
+def cobros_vista():
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        datos = cobros_mod.obtener_datos(conexion.cursor(), g.cuenta_id)
+    return render_template("cobros.html", active_nav="cobros", **datos)
 
 
 @app.route("/opiniones")
