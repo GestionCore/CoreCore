@@ -1930,87 +1930,100 @@ def costos_vista():
           "sin_costo": sum(1 for x in it if x["estado"] == "active" and not x["precio_costo"])} for m, it in grupos.items()),
         key=lambda gr: (not gr["activo"], -gr["sin_costo"], gr["modelo"])
     )
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        tarifas_flex = flex.obtener_tarifas(cursor, g.cuenta_id)
-        flex_regla = flex.obtener_regla_distancia(cursor, g.cuenta_id)
-        flex_pendientes = flex.pendientes_de_zona(cursor, g.cuenta_id, (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d"))
-        flex_vista_previa = flex.vista_previa_automatica(cursor, g.cuenta_id)
-        cursor.execute("SELECT COUNT(*) FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND tipo_logistica = 'self_service'", (g.cuenta_id,))
-        hay_flex = (cursor.fetchone()[0] or 0) > 0
+    flex_config, flex_vista_previa, hay_flex, flex_pendientes_n = {"umbrales": [], "info": None}, {"umbrales": [], "ordenes": 0, "costo_total": 0, "sin_precio": 0}, False, 0
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            cursor.execute("SELECT COUNT(*) FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND tipo_logistica = 'self_service'", (g.cuenta_id,))
+            hay_flex = (cursor.fetchone()[0] or 0) > 0
+            flex_config = flex.obtener_config(cursor, g.cuenta_id)
+            # Con Flex y sin zonas sincronizadas todavía: se traen solas de Mercado Libre (la primera vez que se abre esto)
+            if hay_flex and flex_config["info"] is None:
+                try:
+                    access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+                    cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
+                    flex.sincronizar_con_meli(cursor, g.cuenta_id, access_token, cursor.fetchone()[0])
+                    flex_config = flex.obtener_config(cursor, g.cuenta_id)
+                except token_manager.CuentaDesconectada:
+                    pass
+            flex_vista_previa = flex.vista_previa(cursor, g.cuenta_id)
+            flex_pendientes_n = flex.contar_pendientes(cursor, g.cuenta_id)
+    except Exception as e:
+        print(f"[Costos] ⚠️ Error armando el panel de Flex: {e}")
+    flex_data = {"umbrales": flex.umbrales_para_vista(flex_config), "zonas": (flex_config["info"] or {}).get("zonas", []),
+                 "origen": (flex_config["info"] or {}).get("origen"), "reintegro_pct": int(round(flex.REINTEGRO_MELI * 100)),
+                 "vista_previa": flex_vista_previa}
     return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, modelos=modelos, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta,
-                           tarifas_flex=tarifas_flex, flex_regla=flex_regla, flex_pendientes=flex_pendientes, flex_vista_previa=flex_vista_previa, hay_flex=hay_flex, active_nav="costos")
+                           flex_data=flex_data, flex_pendientes_n=flex_pendientes_n, hay_flex=hay_flex, active_nav="costos")
 
 
-@app.route("/api/flex/configuracion", methods=["POST"])
+def _config_flex_json(cursor):
+    config = flex.obtener_config(cursor, g.cuenta_id)
+    return {"umbrales": flex.umbrales_para_vista(config), "zonas": (config["info"] or {}).get("zonas", []), "origen": (config["info"] or {}).get("origen")}
+
+
+@app.route("/api/flex/sincronizar", methods=["POST"])
 @login_requerido
-def api_flex_configuracion():
-    """
-    Precios de las 3 zonas de entrega Flex + (opcional) la regla de distancia: código postal de salida y hasta cuántos
-    km llega la Zona 1 y la Zona 2. Todo o nada. Con recalcular=true reaplica los precios nuevos a los envíos que ya
-    tienen zona. Con los precios nuevos resuelve también los envíos cuya zona ya se sabe (recordada o por distancia).
-    """
-    datos = request.get_json(silent=True) or {}
-    crudas = datos.get("tarifas") or {}
-    tarifas = {z: crudas.get(str(z)) for z in flex.ZONAS}
+def api_flex_sincronizar():
+    """Trae de Mercado Libre las zonas de cobertura Flex del vendedor y su domicilio de salida."""
     try:
         access_token = token_manager.asegurar_token_valido(g.cuenta_id)
     except token_manager.CuentaDesconectada:
         return jsonify({"ok": False, "error": "Tu cuenta de Mercado Libre está desconectada. Reconectala para seguir."}), 401
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        ok, error = flex.guardar_tarifas(cursor, g.cuenta_id, tarifas)
-        if ok:
-            ok, error = flex.guardar_regla_distancia(cursor, g.cuenta_id, access_token, datos.get("origen_cp"), datos.get("km_zona1"), datos.get("km_zona2"))
+        cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
+        ok, error = flex.sincronizar_con_meli(cursor, g.cuenta_id, access_token, cursor.fetchone()[0])
         if not ok:
-            conexion.rollback()   # todo o nada: si la regla está mal no queda guardada ni la mitad
             return jsonify({"ok": False, "error": error}), 400
-        recalculadas = flex.recalcular_zonas_asignadas(cursor, g.cuenta_id) if datos.get("recalcular") else 0
-        vista_previa = flex.vista_previa_automatica(cursor, g.cuenta_id)
-    return jsonify({"ok": True, "recalculadas": recalculadas, "vista_previa": vista_previa})
+        return jsonify({"ok": True, **_config_flex_json(cursor), "vista_previa": flex.vista_previa(cursor, g.cuenta_id)})
+
+
+@app.route("/api/flex/umbrales", methods=["POST"])
+@login_requerido
+def api_flex_umbrales():
+    """Guarda los umbrales (precio + zonas que cubre cada uno). No toca ninguna venta: devuelve la vista previa de lo que aplicaría."""
+    datos = request.get_json(silent=True) or {}
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        ok, error = flex.guardar_umbrales(cursor, g.cuenta_id, datos.get("umbrales"))
+        if not ok:
+            return jsonify({"ok": False, "error": error}), 400
+        return jsonify({"ok": True, **_config_flex_json(cursor), "vista_previa": flex.vista_previa(cursor, g.cuenta_id, bool(datos.get("incluir_valuadas")))})
+
+
+@app.route("/api/flex/vista_previa")
+@login_requerido
+def api_flex_vista_previa():
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        return jsonify(flex.vista_previa(conexion.cursor(), g.cuenta_id, request.args.get("incluir_valuadas") == "1"))
 
 
 @app.route("/api/flex/aplicar", methods=["POST"])
 @login_requerido
 def api_flex_aplicar():
-    """Aplica a los envíos Flex sin zona la que les corresponde (lo recordado o la regla de distancia). Lo confirma el usuario tras ver la vista previa."""
+    """Aplica los umbrales a los envíos Flex (los sin costo cargado y, si el usuario lo pide, también los ya valuados). Lo confirma el usuario tras ver la vista previa."""
+    datos = request.get_json(silent=True) or {}
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        aplicadas = flex.aplicar_zonas_automaticas(conexion.cursor(), g.cuenta_id)
+        aplicadas = flex.aplicar_automatico(conexion.cursor(), g.cuenta_id, bool(datos.get("incluir_valuadas")))
     return jsonify({"ok": True, "aplicadas": aplicadas})
 
 
 @app.route("/api/flex/zona", methods=["POST"])
 @login_requerido
 def api_flex_zona():
-    """
-    Zona de entrega de UNA orden Flex (1 a 3; 0 = sin costo). Mueve el costo de entrega de esa venta, recuerda la zona
-    para su código postal y la aplica a las otras órdenes sin zona del mismo lugar.
-    """
+    """Elige a mano el umbral de UNA orden Flex (0 = sin costo). Mueve el costo de entrega de esa venta."""
     datos = request.get_json(silent=True) or {}
     try:
-        zona = int(datos.get("zona"))
+        umbral = int(datos.get("umbral"))
     except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "Zona inválida."}), 400
+        return jsonify({"ok": False, "error": "Umbral inválido."}), 400
     id_orden = str(datos.get("id_orden") or "").strip()
     if not id_orden:
         return jsonify({"ok": False, "error": "Falta la orden."}), 400
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        ok, error, otras = flex.asignar_zona_recordando(conexion.cursor(), g.cuenta_id, id_orden, zona)
-    return jsonify({"ok": ok, "error": error, "otras": otras}), (200 if ok else 400)
-
-
-@app.route("/api/flex/zona_localidad", methods=["POST"])
-@login_requerido
-def api_flex_zona_localidad():
-    """Zona para TODOS los envíos Flex sin zona de una localidad; queda recordada para los que lleguen después."""
-    datos = request.get_json(silent=True) or {}
-    try:
-        zona = int(datos.get("zona"))
-    except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "Zona inválida."}), 400
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        ok, error, cantidad = flex.asignar_zona_a_localidad(conexion.cursor(), g.cuenta_id, datos.get("provincia"), datos.get("localidad"), zona)
-    return jsonify({"ok": ok, "error": error, "ordenes": cantidad}), (200 if ok else 400)
+        ok, error = flex.asignar_manual(conexion.cursor(), g.cuenta_id, id_orden, umbral)
+    return jsonify({"ok": ok, "error": error}), (200 if ok else 400)
 
 
 @app.route("/ventas_manuales")
@@ -2145,15 +2158,15 @@ def despacho_vista():
     # que la respuesta de esa API: es evidencia directa de que sí lo tiene.
     flex_habilitado = flex_habilitado or tiene_flex
 
-    tarifas_flex = {}
+    umbrales_flex = []
     if tiene_flex:
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-            tarifas_flex = flex.obtener_tarifas(conexion.cursor(), g.cuenta_id)
+            umbrales_flex = flex.umbrales_para_vista(flex.obtener_config(conexion.cursor(), g.cuenta_id))
 
     return render_template(
         "despacho.html", paquetes=paquetes, fecha=fecha, total=total, listos=listos,
         cantidad_shipments=cantidad_shipments, hora_corte=hora_corte,
-        flex_habilitado=flex_habilitado, tarifas_flex=tarifas_flex, active_nav="despacho"
+        flex_habilitado=flex_habilitado, umbrales_flex=umbrales_flex, active_nav="despacho"
     )
 
 

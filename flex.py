@@ -1,388 +1,285 @@
 """
-Costo de entrega de Flex por zona.
+Costo de entrega de Flex.
 
-En Flex el vendedor entrega con su propia logística y esa logística le cobra
-según la distancia: 3 zonas con precio distinto. Mercado Libre no conoce ese
-costo (las ventas Flex vienen con costo_envio = 0), así que lo carga el usuario:
-3 precios por cuenta (cuentas_meli.flex_tarifa_zona1..3) y la zona de cada venta
-(ventas.flex_zona: 1 a 3, o 0 = "sin costo", por ejemplo si entrega el mismo).
+En Flex el vendedor entrega con su propia logística y MeLi reporta costo_envio = 0: el costo real lo cobra esa logística
+por zona. Las zonas las define Mercado Libre (ver flex_zonas.py), así que el usuario solo carga lo que le cobra su
+logística: "umbrales", cada uno con un precio y las zonas que cubre. Las zonas que no mueve a ningún umbral caen en el
+umbral "resto" (siempre existe). cuentas_meli.flex_umbrales guarda los umbrales y cuentas_meli.flex_info lo que se
+sincronizó de MeLi (servicio, domicilio de salida y zonas de cobertura).
 
-ventas.costo_envio es "el envío total que te cuesta": lo que informa MeLi más
-ventas.costo_flex. Por eso Ganancia Real, Dashboard, Facturación y el reporte
-fiscal lo incluyen sin tocar cada cálculo, y por eso toda asignación de zona mueve
-costo_flex y costo_envio juntos. Una vez asignada, la venta queda valuada al
-precio de ese momento: cambiar las tarifas no reescribe el pasado salvo que el
-usuario lo pida (recalcular_zonas_asignadas).
+MeLi le reintegra al vendedor el 10% del envío, así que el costo que se descuenta de la ganancia es el precio del
+umbral menos ese 10% (REINTEGRO_MELI). La pantalla lo explica.
 
-Elegir la zona de cada envío a mano no escala (una cuenta puede tener 100+ envíos
-Flex por mes), así que la zona que el usuario elige para una localidad (o un
-código postal puntual, que tiene prioridad) queda recordada en
-cuentas_meli.flex_zonas_memoria y se aplica sola a los envíos nuevos.
-
-Mejor todavía: la logística cobra por distancia desde el domicilio de salida, y
-MeLi trae las coordenadas exactas del destino de cada envío. Con el código postal
-de salida y hasta cuántos km llega cada zona (regla de distancia, opcional) la
-zona se calcula sola. Prioridad al aplicar: lo que el usuario eligió a mano para
-un código postal o localidad > la regla de distancia.
+ventas.costo_envio es "el envío total que te cuesta": lo que informa MeLi más ventas.costo_flex. Por eso Ganancia Real,
+Dashboard, Facturación y el reporte fiscal lo incluyen sin tocar cada cálculo, y por eso toda asignación mueve
+costo_flex y costo_envio juntos. ventas.flex_zona es el id del umbral aplicado (0 = sin costo, NULL = pendiente) y
+ventas.flex_zona_meli la zona de MeLi donde se ubicó el envío ('*manual' si el usuario eligió el umbral a mano: las
+asignaciones manuales y "sin costo" no se tocan al recalcular). Una venta ya valuada conserva su precio salvo que el
+usuario pida recalcular.
 """
+from datetime import datetime, timezone
 import json
-import math
-import re
-import unicodedata
 import meli_http
+import flex_zonas as fz
 
-ZONAS = (1, 2, 3)
+REINTEGRO_MELI = 0.10
+TOPE_PRECIO = 10_000_000
+MAX_UMBRALES = 8
 ZONA_SIN_COSTO = 0
-TOPE_TARIFA = 10_000_000
+MANUAL = "*manual"
+SITE_ID = "MLA"
+
+_DONDE_PENDIENTES = "flex_zona IS NULL"
+_DONDE_VALUADAS = "flex_zona IS NOT NULL AND flex_zona <> 0 AND COALESCE(flex_zona_meli, '') <> '*manual'"
 
 
-# ── Tarifas ────────────────────────────────────────────────────────────────
+def neto(precio):
+    """Lo que de verdad cuesta un envío: el precio de la logística menos el reintegro de MeLi."""
+    return None if precio is None else round(float(precio) * (1 - REINTEGRO_MELI), 2)
 
-def obtener_tarifas(cursor, cuenta_id):
-    """{1: precio|None, 2: ..., 3: ...} — None es "todavía no cargó ese precio"."""
-    cursor.execute("SELECT flex_tarifa_zona1, flex_tarifa_zona2, flex_tarifa_zona3 FROM cuentas_meli WHERE id = %s", (cuenta_id,))
+
+# ── Configuración ──────────────────────────────────────────────────────────
+
+def _umbral_resto():
+    return {"id": 1, "nombre": None, "precio": None, "zonas": [], "resto": True}
+
+
+def obtener_config(cursor, cuenta_id):
+    """{"umbrales": [...], "info": {...}|None}. El umbral "resto" existe siempre y va primero."""
+    cursor.execute("SELECT flex_umbrales, flex_info FROM cuentas_meli WHERE id = %s", (cuenta_id,))
     fila = cursor.fetchone()
-    return {z: (float(fila[z - 1]) if fila and fila[z - 1] is not None else None) for z in ZONAS}
+    umbrales = fila[0] if fila and isinstance(fila[0], list) else []
+    info = fila[1] if fila and isinstance(fila[1], dict) else None
+    if not any(u.get("resto") for u in umbrales):
+        umbrales = [_umbral_resto()] + umbrales
+    umbrales.sort(key=lambda u: (not u.get("resto"), u.get("id", 0)))
+    return {"umbrales": umbrales, "info": info}
 
 
-def guardar_tarifas(cursor, cuenta_id, tarifas):
-    """
-    `tarifas`: {1: valor, 2: valor, 3: valor}; un valor vacío/None deja esa zona sin precio.
-    Se valida todo antes de escribir. Devuelve (ok, error).
-    """
-    limpias = {}
-    for z in ZONAS:
-        crudo = tarifas.get(z)
-        if crudo is None or (isinstance(crudo, str) and not crudo.strip()):
-            limpias[z] = None
-            continue
-        try:
-            valor = float(str(crudo).replace(",", "."))
-        except ValueError:
-            return False, f"El precio de la Zona {z} no es un número válido."
-        if not (0 <= valor < TOPE_TARIFA):
-            return False, f"El precio de la Zona {z} tiene que estar entre $0 y $10.000.000."
-        limpias[z] = round(valor, 2)
-    cursor.execute(
-        "UPDATE cuentas_meli SET flex_tarifa_zona1 = %s, flex_tarifa_zona2 = %s, flex_tarifa_zona3 = %s WHERE id = %s",
-        (limpias[1], limpias[2], limpias[3], cuenta_id),
-    )
+def etiqueta(umbral, nombres_zona):
+    """Nombre para mostrar: el que puso el usuario, o la primera zona (+N), o "Resto de las zonas"."""
+    if umbral.get("nombre"):
+        return umbral["nombre"]
+    if umbral.get("resto"):
+        return "Resto de las zonas"
+    zonas = sorted(nombres_zona.get(z, fz.nombre_zona(z)) for z in umbral.get("zonas", []))
+    if not zonas:
+        return "Umbral sin zonas"
+    return zonas[0] + (f" +{len(zonas) - 1}" if len(zonas) > 1 else "")
+
+
+def _nombres_de_zona(info):
+    return {z["id"]: z["nombre"] for z in (info or {}).get("zonas", [])}
+
+
+def umbrales_para_vista(config):
+    """Umbrales con etiqueta y costo neto ya calculados, para las pantallas."""
+    nombres = _nombres_de_zona(config["info"])
+    return [{**u, "etiqueta": etiqueta(u, nombres), "neto": neto(u.get("precio"))} for u in config["umbrales"]]
+
+
+def guardar_umbrales(cursor, cuenta_id, umbrales):
+    """Valida todo antes de escribir. Devuelve (ok, error). Los ids nuevos (null) se asignan acá."""
+    if not isinstance(umbrales, list) or len(umbrales) > MAX_UMBRALES:
+        return False, f"Se pueden tener hasta {MAX_UMBRALES} umbrales."
+    info = obtener_config(cursor, cuenta_id)["info"]
+    conocidas = {z["id"] for z in (info or {}).get("zonas", [])}
+    limpios, ids_usados, zonas_usadas = [], set(), set()
+    for u in umbrales:
+        if not isinstance(u, dict):
+            return False, "Umbral inválido."
+        precio = u.get("precio")
+        if precio is None or (isinstance(precio, str) and not precio.strip()):
+            precio = None
+        else:
+            try:
+                precio = round(float(str(precio).replace(",", ".")), 2)
+            except ValueError:
+                return False, "Un precio no es un número válido."
+            if not (0 <= precio < TOPE_PRECIO):
+                return False, "Los precios tienen que estar entre $0 y $10.000.000."
+        nombre = str(u.get("nombre") or "").strip()[:40] or None
+        zonas = [] if u.get("resto") else [z for z in (u.get("zonas") or []) if isinstance(z, str)]
+        for z in zonas:
+            if conocidas and z not in conocidas:
+                return False, f"La zona {fz.nombre_zona(z)} no está en tu cobertura de Mercado Libre. Sincronizá las zonas."
+            if z in zonas_usadas:
+                return False, f"La zona {fz.nombre_zona(z)} está en dos umbrales."
+            zonas_usadas.add(z)
+        uid = u.get("id")
+        uid = int(uid) if isinstance(uid, (int, float)) and 1 <= int(uid) <= 99 and int(uid) not in ids_usados else None
+        if uid is not None:
+            ids_usados.add(uid)
+        limpios.append({"id": uid, "nombre": nombre, "precio": precio, "zonas": zonas, "resto": bool(u.get("resto"))})
+    if sum(1 for u in limpios if u["resto"]) != 1:
+        return False, "Tiene que haber un umbral para el resto de las zonas."
+    siguiente = max(ids_usados | {1}) + 1
+    for u in limpios:
+        if u["id"] is None:
+            u["id"] = siguiente
+            siguiente += 1
+    cursor.execute("UPDATE cuentas_meli SET flex_umbrales = %s::jsonb WHERE id = %s", (json.dumps(limpios), cuenta_id))
     return True, None
 
 
-# ── Memoria de zonas por lugar ─────────────────────────────────────────────
-
-def _normalizar(texto):
-    t = unicodedata.normalize("NFKD", (texto or "").lower())
-    return re.sub(r"\s+", " ", "".join(c for c in t if not unicodedata.combining(c))).strip()
-
-
-def clave_cp(codigo_postal):
-    """"1405" y "C1405ABC" → "cp:1405"."""
-    digitos = re.sub(r"\D", "", codigo_postal or "")
-    return f"cp:{digitos[:4]}" if len(digitos) >= 4 else None
-
-
-def clave_localidad(provincia, localidad):
-    loc = _normalizar(localidad)
-    return f"loc:{_normalizar(provincia)}|{loc}" if loc else None
-
-
-def obtener_memoria(cursor, cuenta_id):
-    cursor.execute("SELECT flex_zonas_memoria FROM cuentas_meli WHERE id = %s", (cuenta_id,))
-    fila = cursor.fetchone()
-    memoria = fila[0] if fila and fila[0] else {}
-    return memoria if isinstance(memoria, dict) else {}
-
-
-def _recordar(cursor, cuenta_id, clave, zona):
-    if clave:
-        cursor.execute("UPDATE cuentas_meli SET flex_zonas_memoria = flex_zonas_memoria || %s::jsonb WHERE id = %s",
-                       (json.dumps({clave: zona}), cuenta_id))
-
-
-def _zona_recordada(memoria, codigo_postal, provincia, localidad):
-    """El código postal tiene prioridad sobre la localidad (es más preciso)."""
-    for clave in (clave_cp(codigo_postal), clave_localidad(provincia, localidad)):
-        if clave and clave in memoria:
-            return memoria[clave]
-    return None
-
-
-# ── Regla de distancia ─────────────────────────────────────────────────────
-
-def distancia_km(lat1, lon1, lat2, lon2):
-    """Distancia en línea recta entre dos puntos (haversine)."""
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
-    return 2 * 6371.0 * math.asin(math.sqrt(a))
-
-
-def zona_por_distancia(km, km_zona1, km_zona2):
-    return 1 if km <= km_zona1 else (2 if km <= km_zona2 else 3)
-
-
-def obtener_regla_distancia(cursor, cuenta_id):
-    """{origen_cp, origen_lat, origen_lon, km_zona1, km_zona2}, o None si no está configurada completa."""
-    cursor.execute("SELECT flex_origen_cp, flex_origen_lat, flex_origen_lon, flex_km_zona1, flex_km_zona2 FROM cuentas_meli WHERE id = %s", (cuenta_id,))
-    fila = cursor.fetchone()
-    if not fila or any(x is None for x in fila):
-        return None
-    return {"origen_cp": fila[0], "origen_lat": float(fila[1]), "origen_lon": float(fila[2]), "km_zona1": float(fila[3]), "km_zona2": float(fila[4])}
-
-
-def _coordenadas_de_cp(access_token, codigo_postal):
-    """(lat, lon) del centro de un código postal según MeLi, o None."""
+def sincronizar_con_meli(cursor, cuenta_id, access_token, seller_id):
+    """
+    Trae de MeLi el servicio Flex del vendedor, su domicilio de salida y las zonas de cobertura, y las guarda.
+    Las zonas que MeLi ya no cubre se sacan de los umbrales. Devuelve (ok, error).
+    """
+    headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = meli_http.get(f"https://api.mercadolibre.com/countries/AR/zip_codes/{codigo_postal}",
-                             headers={"Authorization": f"Bearer {access_token}"}, timeout=8)
+        resp = meli_http.get(f"https://api.mercadolibre.com/flex/sites/{SITE_ID}/users/{seller_id}/subscriptions/v1", headers=headers, timeout=10)
         if resp.status_code != 200:
-            return None
-        geo = resp.json().get("geo_information") or {}
-        return float(geo["latitude"]), float(geo["longitude"])
-    except Exception:
-        return None
-
-
-def guardar_regla_distancia(cursor, cuenta_id, access_token, origen_cp, km_zona1, km_zona2):
-    """
-    Guarda desde qué código postal sale el vendedor y hasta cuántos km llega la zona 1 y la 2 (la 3 es más lejos).
-    Los tres vacíos apagan la regla. Devuelve (ok, error).
-    """
-    def vacio(v):
-        return v is None or str(v).strip() == ""
-    if vacio(origen_cp) and vacio(km_zona1) and vacio(km_zona2):
-        cursor.execute("UPDATE cuentas_meli SET flex_origen_cp = NULL, flex_origen_lat = NULL, flex_origen_lon = NULL, "
-                       "flex_km_zona1 = NULL, flex_km_zona2 = NULL WHERE id = %s", (cuenta_id,))
-        return True, None
-    if vacio(origen_cp) or vacio(km_zona1) or vacio(km_zona2):
-        return False, "Para calcular la zona por distancia completá el código postal de salida y los km de la Zona 1 y la Zona 2."
-    digitos = re.sub(r"\D", "", str(origen_cp))
-    if len(digitos) < 4:
-        return False, "El código postal de salida tiene que tener 4 números."
-    try:
-        km1, km2 = float(str(km_zona1).replace(",", ".")), float(str(km_zona2).replace(",", "."))
-    except ValueError:
-        return False, "Los km tienen que ser números."
-    if not (0 < km1 < km2 < 1000):
-        return False, "Los km de la Zona 2 tienen que ser mayores que los de la Zona 1."
-    coordenadas = _coordenadas_de_cp(access_token, digitos[:4])
-    if not coordenadas:
-        return False, f"No encontré el código postal {digitos[:4]} en Mercado Libre. Revisalo."
-    cursor.execute("UPDATE cuentas_meli SET flex_origen_cp = %s, flex_origen_lat = %s, flex_origen_lon = %s, flex_km_zona1 = %s, flex_km_zona2 = %s WHERE id = %s",
-                   (digitos[:4], round(coordenadas[0], 6), round(coordenadas[1], 6), km1, km2, cuenta_id))
+            return False, "Mercado Libre no informó una suscripción Flex para tu cuenta."
+        flex = next((s for s in resp.json() if s.get("mode") == "FLEX"), None)
+        if not flex or flex.get("status") != "in":
+            return False, "Tu cuenta no tiene Mercado Envíos Flex activo."
+        service_id = flex["service_id"]
+        resp_zonas = meli_http.get(
+            f"https://api.mercadolibre.com/flex/sites/{SITE_ID}/users/{seller_id}/services/{service_id}/configurations/coverage/zones/v1",
+            headers=headers, timeout=10)
+        if resp_zonas.status_code != 200:
+            return False, "No pude traer tus zonas de cobertura de Mercado Libre. Probá de nuevo en un rato."
+        zonas = sorted(({"id": z["id"], "nombre": fz.nombre_zona(z["id"])} for z in resp_zonas.json().get("zones", [])),
+                       key=lambda z: z["nombre"])
+    except Exception as e:
+        print(f"[Flex] ⚠️ Error sincronizando zonas con MeLi: {e}")
+        return False, "No pude conectar con Mercado Libre. Probá de nuevo."
+    origen = flex.get("origin") or {}
+    info = {"service_id": service_id, "zonas": zonas, "sincronizado_en": datetime.now(timezone.utc).isoformat(),
+            "origen": {"direccion": origen.get("address_line"), "ciudad": (origen.get("city") or {}).get("name"), "cp": origen.get("zip_code")}}
+    cursor.execute("UPDATE cuentas_meli SET flex_info = %s::jsonb WHERE id = %s", (json.dumps(info), cuenta_id))
+    ids = {z["id"] for z in zonas}
+    umbrales = obtener_config(cursor, cuenta_id)["umbrales"]
+    for u in umbrales:
+        u["zonas"] = [z for z in u["zonas"] if z in ids]
+    cursor.execute("UPDATE cuentas_meli SET flex_umbrales = %s::jsonb WHERE id = %s", (json.dumps(umbrales), cuenta_id))
     return True, None
 
 
-# ── Asignación de zona ─────────────────────────────────────────────────────
+def sincronizacion_vieja(info, dias=7):
+    if not info or not info.get("sincronizado_en"):
+        return True
+    try:
+        return (datetime.now(timezone.utc) - datetime.fromisoformat(info["sincronizado_en"])).days >= dias
+    except ValueError:
+        return True
 
-def _aplicar_zona(cursor, cuenta_id, ids_orden, zona, tarifa):
+
+# ── Asignación ─────────────────────────────────────────────────────────────
+
+def _aplicar(cursor, cuenta_id, ids_orden, umbral_id, precio_neto, zona_meli):
     """
-    Pone `zona` y su costo a las ventas Flex de esas órdenes. Una sola sentencia para cualquier cantidad de órdenes.
-    Si la orden tiene varios ítems, el precio de la zona se reparte en proporción a lo facturado por cada uno (igual
-    que el envío de MeLi). costo_envio se corrige por la diferencia, así nunca se suma dos veces.
+    Pone el umbral y su costo a las ventas Flex de esas órdenes, en una sola sentencia para cualquier cantidad. Si la
+    orden tiene varios ítems el costo se reparte en proporción a lo facturado por cada uno (igual que el envío de
+    MeLi). costo_envio se corrige por la diferencia, así nunca se suma dos veces.
     """
     if not ids_orden:
         return
     cursor.execute("""
-        UPDATE ventas v SET flex_zona = %(zona)s,
-            costo_flex = COALESCE(ROUND(%(tarifa)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2), 0),
-            costo_envio = v.costo_envio - v.costo_flex + COALESCE(ROUND(%(tarifa)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2), 0)
+        UPDATE ventas v SET flex_zona = %(umbral)s, flex_zona_meli = %(zona_meli)s,
+            costo_flex = COALESCE(ROUND(%(precio)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2), 0),
+            costo_envio = v.costo_envio - v.costo_flex + COALESCE(ROUND(%(precio)s::numeric * (v.precio_venta * v.cantidad) / NULLIF(t.fact, 0), 2), 0)
         FROM (SELECT id_orden, SUM(precio_venta * cantidad) AS fact FROM ventas
               WHERE cuenta_id = %(cuenta)s AND id_orden = ANY(%(ids)s) GROUP BY id_orden) t
         WHERE v.cuenta_id = %(cuenta)s AND v.id_orden = t.id_orden AND v.origen = 'meli' AND v.tipo_logistica = 'self_service'
-    """, {"zona": zona, "tarifa": tarifa or 0, "cuenta": cuenta_id, "ids": list(ids_orden)})
+    """, {"umbral": umbral_id, "zona_meli": zona_meli, "precio": precio_neto or 0, "cuenta": cuenta_id, "ids": list(ids_orden)})
 
 
-def _tarifa_de(cursor, cuenta_id, zona):
-    """(tarifa, error): la zona 0 (sin costo) vale 0; 1 a 3 necesitan su precio cargado."""
-    if zona == ZONA_SIN_COSTO:
-        return 0.0, None
-    tarifa = obtener_tarifas(cursor, cuenta_id)[zona]
-    return tarifa, (None if tarifa is not None else f"Cargá primero el precio de la Zona {zona}.")
+def _ordenes(cursor, cuenta_id, donde):
+    # `donde` son las constantes de arriba, nunca texto del usuario
+    cursor.execute(f"""
+        SELECT id_orden, MAX(provincia), MAX(localidad), MAX(destino_lat), MAX(destino_lon)
+        FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND tipo_logistica = 'self_service' AND {donde}
+        GROUP BY id_orden
+    """, (cuenta_id,))
+    return [{"id_orden": r[0], "provincia": r[1], "localidad": r[2],
+             "lat": float(r[3]) if r[3] is not None else None, "lon": float(r[4]) if r[4] is not None else None} for r in cursor.fetchall()]
 
 
-def asignar_zona(cursor, cuenta_id, id_orden, zona):
+def umbral_de_familia(umbrales, familia):
+    """Umbral que corresponde a una familia de zona: el que la tiene entre sus zonas, y si no, el resto."""
+    for u in umbrales:
+        if not u.get("resto") and familia and any(fz.familia_de_zona(z) == familia for z in u["zonas"]):
+            return u
+    return next(u for u in umbrales if u.get("resto"))
+
+
+def _plan(cursor, cuenta_id, donde):
+    """({(umbral_id, familia): [ordenes]}, umbrales, sin_precio) — qué umbral le toca a cada orden, según las zonas de MeLi."""
+    umbrales = obtener_config(cursor, cuenta_id)["umbrales"]
+    por_grupo, sin_precio = {}, 0
+    for o in _ordenes(cursor, cuenta_id, donde):
+        familia = fz.familia_de_destino(o["provincia"], o["localidad"], o["lat"], o["lon"])
+        u = umbral_de_familia(umbrales, familia)
+        if u.get("precio") is None:
+            sin_precio += 1
+        else:
+            por_grupo.setdefault((u["id"], familia), []).append(o["id_orden"])
+    return por_grupo, umbrales, sin_precio
+
+
+def vista_previa(cursor, cuenta_id, incluir_valuadas=False):
+    """Qué pasaría al aplicar, sin escribir nada: envíos y costo por umbral."""
+    condiciones = [_DONDE_PENDIENTES] + ([_DONDE_VALUADAS] if incluir_valuadas else [])
+    conteo, sin_precio, umbrales = {}, 0, None
+    for donde in condiciones:
+        por_grupo, umbrales, sp = _plan(cursor, cuenta_id, donde)
+        sin_precio += sp
+        for (uid, _fam), ordenes in por_grupo.items():
+            conteo[uid] = conteo.get(uid, 0) + len(ordenes)
+    config = obtener_config(cursor, cuenta_id)
+    vista = umbrales_para_vista(config)
+    filas = [{"id": u["id"], "etiqueta": u["etiqueta"], "ordenes": conteo[u["id"]], "costo": round(conteo[u["id"]] * (u["neto"] or 0), 2)}
+             for u in vista if conteo.get(u["id"])]
+    return {"umbrales": filas, "ordenes": sum(f["ordenes"] for f in filas), "costo_total": round(sum(f["costo"] for f in filas), 2), "sin_precio": sin_precio}
+
+
+def aplicar_automatico(cursor, cuenta_id, incluir_valuadas=False):
     """
-    Pone (o saca, con zona=None) la zona de entrega de UNA orden Flex y mueve su costo.
-    zona: 1 a 3, 0 = sin costo, None = volver a "sin zona". Devuelve (ok, error).
+    Para el sync y cuando el usuario confirma: a cada orden Flex sin umbral se le aplica el que le corresponde según su
+    zona (si ese umbral tiene precio). Con incluir_valuadas también se recalculan las ya valuadas con precios viejos
+    (salvo las elegidas a mano y las "sin costo"). Devuelve cuántas órdenes se resolvieron.
     """
-    if zona is not None and zona not in (ZONA_SIN_COSTO,) + ZONAS:
-        return False, "Zona inválida."
+    total = 0
+    for donde in [_DONDE_PENDIENTES] + ([_DONDE_VALUADAS] if incluir_valuadas else []):
+        por_grupo, umbrales, _ = _plan(cursor, cuenta_id, donde)
+        precios = {u["id"]: u["precio"] for u in umbrales}
+        for (uid, familia), ordenes in por_grupo.items():
+            _aplicar(cursor, cuenta_id, ordenes, uid, neto(precios[uid]), familia or "")
+            total += len(ordenes)
+    return total
+
+
+def asignar_manual(cursor, cuenta_id, id_orden, umbral_id):
+    """Elige a mano el umbral de UNA orden Flex (0 = sin costo). Queda marcada como manual. Devuelve (ok, error)."""
     cursor.execute("SELECT tipo_logistica FROM ventas WHERE cuenta_id = %s AND id_orden = %s AND origen = 'meli'", (cuenta_id, str(id_orden)))
     tipos = [r[0] for r in cursor.fetchall()]
     if not tipos:
         return False, "No encontré esa venta."
-    if any(tipo != "self_service" for tipo in tipos):
+    if any(t != "self_service" for t in tipos):
         return False, "Esa venta no es de Flex."
-
-    tarifa = 0.0
-    if zona is not None:
-        tarifa, error = _tarifa_de(cursor, cuenta_id, zona)
-        if error:
-            return False, error
-    if zona is None:
-        cursor.execute("UPDATE ventas SET flex_zona = NULL, costo_envio = costo_envio - costo_flex, costo_flex = 0 "
-                       "WHERE cuenta_id = %s AND id_orden = %s AND origen = 'meli'", (cuenta_id, str(id_orden)))
+    if umbral_id == ZONA_SIN_COSTO:
+        precio_neto = 0.0
     else:
-        _aplicar_zona(cursor, cuenta_id, [str(id_orden)], zona, tarifa)
+        umbral = next((u for u in obtener_config(cursor, cuenta_id)["umbrales"] if u["id"] == umbral_id), None)
+        if not umbral:
+            return False, "Ese umbral no existe."
+        if umbral.get("precio") is None:
+            return False, "Cargá primero el precio de ese umbral en Costos."
+        precio_neto = neto(umbral["precio"])
+    _aplicar(cursor, cuenta_id, [str(id_orden)], umbral_id, precio_neto, MANUAL)
     return True, None
 
 
-def _ordenes_pendientes(cursor, cuenta_id, desde=None):
-    """Órdenes Flex sin zona: [{id_orden, provincia, localidad, codigo_postal, fecha, total}]."""
-    cursor.execute("""
-        SELECT id_orden, MAX(provincia), MAX(localidad), MAX(codigo_postal), MAX(fecha_venta), SUM(precio_venta * cantidad), MAX(titulo),
-               MAX(destino_lat), MAX(destino_lon)
-        FROM ventas
-        WHERE cuenta_id = %s AND origen = 'meli' AND tipo_logistica = 'self_service' AND flex_zona IS NULL
-          AND (%s::date IS NULL OR fecha_venta >= %s::date)
-        GROUP BY id_orden
-    """, (cuenta_id, desde, desde))
-    return [{"id_orden": r[0], "provincia": r[1], "localidad": r[2], "codigo_postal": r[3], "fecha": r[4],
-             "total": float(r[5] or 0), "titulo": r[6],
-             "lat": float(r[7]) if r[7] is not None else None, "lon": float(r[8]) if r[8] is not None else None} for r in cursor.fetchall()]
-
-
-def asignar_zona_recordando(cursor, cuenta_id, id_orden, zona):
-    """
-    Zona de una orden elegida a mano: además de valuarla, recuerda la zona para su código postal (o su localidad,
-    si MeLi no informó código postal) y la aplica a las otras órdenes Flex sin zona de ese mismo lugar.
-    Devuelve (ok, error, otras_ordenes_aplicadas).
-    """
-    ok, error = asignar_zona(cursor, cuenta_id, id_orden, zona)
-    if not ok:
-        return False, error, 0
-    if zona is None:
-        return True, None, 0
-    cursor.execute("SELECT MAX(provincia), MAX(localidad), MAX(codigo_postal) FROM ventas WHERE cuenta_id = %s AND id_orden = %s", (cuenta_id, str(id_orden)))
-    provincia, localidad, codigo_postal = cursor.fetchone()
-    clave = clave_cp(codigo_postal) or clave_localidad(provincia, localidad)
-    if not clave:
-        return True, None, 0
-    _recordar(cursor, cuenta_id, clave, zona)
-    tarifa, _ = _tarifa_de(cursor, cuenta_id, zona)
-    mismas = [o["id_orden"] for o in _ordenes_pendientes(cursor, cuenta_id)
-              if (clave_cp(o["codigo_postal"]) or clave_localidad(o["provincia"], o["localidad"])) == clave]
-    _aplicar_zona(cursor, cuenta_id, mismas, zona, tarifa)
-    return True, None, len(mismas)
-
-
-def asignar_zona_a_localidad(cursor, cuenta_id, provincia, localidad, zona):
-    """
-    Zona para TODOS los envíos Flex sin zona de una localidad, y queda recordada para los que lleguen después.
-    Devuelve (ok, error, cantidad_de_ordenes).
-    """
-    if zona not in (ZONA_SIN_COSTO,) + ZONAS:
-        return False, "Zona inválida.", 0
-    clave = clave_localidad(provincia, localidad)
-    if not clave:
-        return False, "Falta la localidad.", 0
-    tarifa, error = _tarifa_de(cursor, cuenta_id, zona)
-    if error:
-        return False, error, 0
-    ordenes = [o["id_orden"] for o in _ordenes_pendientes(cursor, cuenta_id) if clave_localidad(o["provincia"], o["localidad"]) == clave]
-    _aplicar_zona(cursor, cuenta_id, ordenes, zona, tarifa)
-    _recordar(cursor, cuenta_id, clave, zona)
-    return True, None, len(ordenes)
-
-
-def _zona_automatica(orden, memoria, regla):
-    """Zona que le corresponde a una orden sin zona, o None si no hay forma de saberlo: la memoria de lo que el usuario
-    eligió para ese lugar, y si no, la regla de distancia."""
-    zona = _zona_recordada(memoria, orden["codigo_postal"], orden["provincia"], orden["localidad"])
-    if zona is not None:
-        return zona
-    if regla and orden["lat"] is not None and orden["lon"] is not None:
-        return zona_por_distancia(distancia_km(regla["origen_lat"], regla["origen_lon"], orden["lat"], orden["lon"]), regla["km_zona1"], regla["km_zona2"])
-    return None
-
-
-def _resolver_pendientes(cursor, cuenta_id):
-    """({zona: [ordenes]}, sin_resolver, sin_precio, tarifas) para las órdenes Flex sin zona, según memoria y regla de distancia."""
-    memoria = obtener_memoria(cursor, cuenta_id)
-    regla = obtener_regla_distancia(cursor, cuenta_id)
-    tarifas = obtener_tarifas(cursor, cuenta_id)
-    por_zona, sin_resolver, sin_precio = {}, [], []
-    for o in _ordenes_pendientes(cursor, cuenta_id):
-        zona = _zona_automatica(o, memoria, regla)
-        if zona is None:
-            sin_resolver.append(o)
-        elif zona != ZONA_SIN_COSTO and tarifas.get(zona) is None:
-            sin_precio.append(o)
-        else:
-            por_zona.setdefault(zona, []).append(o)
-    return por_zona, sin_resolver, sin_precio, tarifas
-
-
-def aplicar_zonas_automaticas(cursor, cuenta_id):
-    """
-    Para el sync, al guardar precios y cuando el usuario confirma la regla: a cada orden Flex sin zona cuyo lugar ya tiene
-    zona recordada, o que entra en la regla de distancia (y cuyo precio está cargado), se le aplica. Devuelve cuántas se resolvieron.
-    """
-    por_zona, _, _, tarifas = _resolver_pendientes(cursor, cuenta_id)
-    for zona, ordenes in por_zona.items():
-        _aplicar_zona(cursor, cuenta_id, [o["id_orden"] for o in ordenes], zona, 0.0 if zona == ZONA_SIN_COSTO else tarifas[zona])
-    return sum(len(o) for o in por_zona.values())
-
-
-def vista_previa_automatica(cursor, cuenta_id):
-    """Qué pasaría al aplicar las zonas automáticas, sin escribir nada: envíos y costo por zona."""
-    por_zona, sin_resolver, sin_precio, tarifas = _resolver_pendientes(cursor, cuenta_id)
-    zonas = []
-    for zona in (1, 2, 3, ZONA_SIN_COSTO):
-        n = len(por_zona.get(zona, []))
-        if n:
-            zonas.append({"zona": zona, "ordenes": n, "costo": round(n * (tarifas.get(zona) or 0.0), 2)})
-    return {"zonas": zonas, "ordenes": sum(z["ordenes"] for z in zonas), "costo_total": round(sum(z["costo"] for z in zonas), 2),
-            "sin_resolver": len(sin_resolver), "sin_precio": len(sin_precio)}
-
-
-def recalcular_zonas_asignadas(cursor, cuenta_id):
-    """Reaplica las tarifas ACTUALES a todas las órdenes que ya tienen zona. Devuelve cuántas órdenes se recalcularon."""
-    tarifas = obtener_tarifas(cursor, cuenta_id)
-    cursor.execute("SELECT DISTINCT id_orden, flex_zona FROM ventas WHERE cuenta_id = %s AND flex_zona IS NOT NULL", (cuenta_id,))
-    por_zona = {}
-    for id_orden, zona in cursor.fetchall():
-        por_zona.setdefault(zona, []).append(id_orden)
-    recalculadas = 0
-    for zona, ordenes in por_zona.items():
-        if zona != ZONA_SIN_COSTO and tarifas.get(zona) is None:
-            continue   # esa zona ya no tiene precio: se deja como estaba en vez de inventar uno
-        _aplicar_zona(cursor, cuenta_id, ordenes, zona, 0.0 if zona == ZONA_SIN_COSTO else tarifas[zona])
-        recalculadas += len(ordenes)
-    return recalculadas
-
-
-# ── Para las pantallas ─────────────────────────────────────────────────────
-
-def pendientes_de_zona(cursor, cuenta_id, desde, limite_sin_ubicacion=30):
-    """
-    Envíos Flex sin zona desde `desde` (AAAA-MM-DD), listos para mostrar:
-      grupos: por localidad, del lugar con más envíos al que menos — una zona para todos los de ahí
-      sin_ubicacion: los que MeLi no informó de dónde son (hay que elegirles la zona uno por uno)
-    """
-    grupos, sin_ubicacion = {}, []
-    for o in sorted(_ordenes_pendientes(cursor, cuenta_id, desde), key=lambda x: (x["fecha"] or 0), reverse=True):
-        clave = clave_localidad(o["provincia"], o["localidad"])
-        if not clave:
-            sin_ubicacion.append({"id_orden": o["id_orden"], "titulo": o["titulo"], "total": o["total"],
-                                  "fecha": o["fecha"].strftime("%d/%m") if hasattr(o["fecha"], "strftime") else str(o["fecha"])})
-            continue
-        g = grupos.setdefault(clave, {"localidad": o["localidad"], "provincia": o["provincia"], "ordenes": 0, "total": 0.0, "codigos_postales": set()})
-        g["ordenes"] += 1
-        g["total"] += o["total"]
-        if o["codigo_postal"]:
-            g["codigos_postales"].add(o["codigo_postal"])
-    lista = sorted(grupos.values(), key=lambda g: (-g["ordenes"], g["localidad"] or ""))
-    for g in lista:
-        g["codigos_postales"] = sorted(g["codigos_postales"])
-    return {"grupos": lista, "sin_ubicacion": sin_ubicacion[:limite_sin_ubicacion], "total_sin_ubicacion": len(sin_ubicacion),
-            "total_ordenes": sum(g["ordenes"] for g in lista) + len(sin_ubicacion)}
+def contar_pendientes(cursor, cuenta_id):
+    cursor.execute("SELECT COUNT(DISTINCT id_orden) FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND tipo_logistica = 'self_service' AND flex_zona IS NULL", (cuenta_id,))
+    return int(cursor.fetchone()[0] or 0)
 
 
 def resumen_periodo(cursor, cuenta_id, desde, hasta):
-    """Para Ganancia Real: órdenes Flex del período, cuántas siguen sin zona y cuánto suma ya el costo Flex."""
+    """Para Ganancia Real: órdenes Flex del período, cuántas siguen sin costo de entrega y cuánto suma ya el costo Flex."""
     cursor.execute("""
         SELECT COUNT(DISTINCT id_orden),
                COUNT(DISTINCT id_orden) FILTER (WHERE flex_zona IS NULL),

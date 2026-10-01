@@ -81,9 +81,11 @@ def tiene_flex_habilitado(access_token, site_id, user_id):
 
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
-        resp = meli_http.get(f"https://api.mercadolibre.com/shipping/flex/sites/{site_id}/users/{user_id}/subscriptions/v1", headers=headers, timeout=8)
+        # OJO con la ruta: es /flex/sites/..., sin /shipping — con /shipping/flex/... MeLi responde 404 SIEMPRE, y este chequeo le
+        # decía "no tenés Flex" a vendedores que sí lo tienen.
+        resp = meli_http.get(f"https://api.mercadolibre.com/flex/sites/{site_id}/users/{user_id}/subscriptions/v1", headers=headers, timeout=8)
         if resp.status_code == 200:
-            habilitado = bool(resp.json())
+            habilitado = any(s.get("mode") == "FLEX" and s.get("status") == "in" for s in (resp.json() or []))
             _cache_flex_habilitado[user_id] = {"data": habilitado, "timestamp": ahora}
             return habilitado
         if resp.status_code == 404:

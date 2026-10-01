@@ -26,7 +26,7 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT v.id_orden, v.id_meli, v.id_variante, v.titulo, v.cantidad, v.despachado,
-                   v.comprador_nickname, v.comprador_nombre, p.thumbnail, v.shipment_id, v.tipo_logistica, v.flex_zona
+                   v.comprador_nickname, v.comprador_nombre, p.thumbnail, v.shipment_id, v.tipo_logistica, v.flex_zona, v.flex_zona_meli
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
             WHERE (v.fecha_venta + COALESCE(v.hora_venta, '00:00'::time) + (%s || ' hours')::interval)::date = %s
@@ -54,7 +54,7 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
                 "modelo": modelo, "talle": talle, "cantidad": cantidad, "despachado": bool(despachado),
                 "comprador_nickname": comprador_nickname, "comprador_nombre": comprador_nombre,
                 "thumbnail": thumbnail, "etiqueta_impresa": False, "tipo_envio": _tipo_envio_legible(tipo_logistica),
-                "flex_zona": fila["flex_zona"]
+                "flex_zona": fila["flex_zona"], "flex_zona_meli": fila["flex_zona_meli"]
             })
             if shipment_id and shipment_id not in shipment_ids_del_dia:
                 shipment_ids_del_dia.append(shipment_id)

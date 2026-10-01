@@ -69,14 +69,14 @@
                 <a href="https://www.mercadolibre.com.ar/ventas/{{ p.id_orden }}/detalle" target="_blank" rel="noopener" class="text-muted" style="font-size:0.78em; text-decoration:none;" onclick="event.stopPropagation();">Orden #{{ p.id_orden }} ↗</a>
             </div>
             {% if p.tipo_envio == 'Flex' %}
-            {# Lo que te cobra tu logística por entregar: depende de la zona. Se suma al costo de envío de la venta en Ganancia Real #}
+            {# Lo que te cobra tu logística: el umbral sale solo de la zona de Mercado Libre; acá se puede corregir. Se suma al costo de envío de la venta #}
             <div class="ux-zonas no-imprimir" style="margin-top:8px;" onclick="event.stopPropagation();" data-zonas-orden="{{ p.id_orden }}">
-                <span class="text-muted" style="font-size:0.78em;"><b>Zona de entrega:</b></span>
-                {% for z in [1, 2, 3] %}
-                <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == z }}" data-zona="{{ z }}" {% if tarifas_flex[z] is none %}disabled title="Cargá primero el precio de esta zona en Costos"{% endif %} onclick="elegirZonaFlex('{{ p.id_orden }}', {{ z }})">Zona {{ z }}{% if tarifas_flex[z] is not none %} · {{ tarifas_flex[z]|plata }}{% endif %}</button>
+                <span class="text-muted" style="font-size:0.78em;"><b>Entrega{% if p.flex_zona_meli and p.flex_zona_meli != '*manual' %} · zona {{ p.flex_zona_meli|title }}{% endif %}:</b></span>
+                {% for u in umbrales_flex %}
+                <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == u.id }}" data-zona="{{ u.id }}" {% if u.precio is none %}disabled title="Cargá primero el precio de este umbral en Costos"{% endif %} onclick="elegirZonaFlex('{{ p.id_orden }}', {{ u.id }})">{{ u.etiqueta }}{% if u.neto is not none %} · {{ u.neto|plata }}{% endif %}</button>
                 {% endfor %}
                 <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == 0 }}" data-zona="0" title="Sin costo de entrega (por ejemplo, entregás vos)" onclick="elegirZonaFlex('{{ p.id_orden }}', 0)">Sin costo</button>
-                {% if tarifas_flex.values()|select('none')|list|length == 3 %}<a href="/costos#entrega-flex" style="font-size:0.8em; font-weight:700; color:var(--semantic-warning);">Cargá los precios de las zonas →</a>{% endif %}
+                {% if umbrales_flex|selectattr('precio', 'none')|list|length == umbrales_flex|length %}<a href="/costos#entrega-flex" style="font-size:0.8em; font-weight:700; color:var(--semantic-warning);">Cargá lo que te cobra tu logística →</a>{% endif %}
             </div>
             {% endif %}
         </div>
@@ -144,21 +144,15 @@
         if (_filtroDespacho === 'pendientes') setTimeout(aplicarFiltroDespacho, 350);
     }
 
-    // Zona de entrega Flex. Una orden con varios ítems comparte zona en todas sus tarjetas; la zona queda recordada para ese
-    // código postal y se aplica a los otros envíos sin zona de ahí (si los hay, se recarga para verlos al día).
-    async function elegirZonaFlex(idOrden, zona) {
+    // Umbral de entrega Flex de un envío (lo elegido a mano queda marcado y el recálculo automático no lo toca).
+    // Una orden con varios ítems comparte umbral en todas sus tarjetas.
+    async function elegirZonaFlex(idOrden, umbral) {
         const actual = document.querySelector(`[data-zonas-orden="${idOrden}"] .ux-zona.activa`);
-        if (actual && Number(actual.dataset.zona) === zona) return;
-        const r = await asignarZonaFlex(idOrden, zona);
+        if (actual && Number(actual.dataset.zona) === umbral) return;
+        const r = await asignarZonaFlex(idOrden, umbral);
         if (!r.ok) { mostrarToast(r.error, 'error'); return; }
-        if (r.otras) {
-            const params = new URLSearchParams(window.location.search);
-            params.set('msg', `Zona guardada — también la apliqué a ${r.otras} envío${r.otras === 1 ? '' : 's'} más de ese código postal`); params.set('tipo', 'success');
-            window.location.search = params.toString();
-            return;
-        }
-        document.querySelectorAll(`[data-zonas-orden="${idOrden}"] .ux-zona`).forEach(b => b.classList.toggle('activa', Number(b.dataset.zona) === zona));
-        mostrarToast(zona === 0 ? 'Sin costo de entrega para este envío' : `Zona ${zona} guardada — el costo de entrega ya está en tu ganancia`, 'success');
+        document.querySelectorAll(`[data-zonas-orden="${idOrden}"] .ux-zona`).forEach(b => b.classList.toggle('activa', Number(b.dataset.zona) === umbral));
+        mostrarToast(umbral === 0 ? 'Sin costo de entrega para este envío' : 'Listo — el costo de entrega ya está en tu ganancia', 'success');
     }
 
     function toggleDespacho(elemento, idOrden, idMeli, idVariante) {

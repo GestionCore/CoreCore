@@ -145,31 +145,38 @@ scopeado por cuenta_id antes de confiar en él.
   Pago. El día que se implemente cobro real, ASEGURARSE de excluir
   estos `usuario_id` de cualquier proceso de facturación — no tienen
   (ni van a tener) una suscripción real de MP detrás.
-- **Entrega Flex por zona** (`flex.py`, migraciones 0018–0020): en Flex el
-  vendedor entrega con su propia logística y MeLi reporta `costo_envio = 0`;
-  el costo real lo cobra esa logística por distancia (3 zonas). El usuario
-  carga 3 precios (`cuentas_meli.flex_tarifa_zona1..3`) en Costos.
-  `ventas.costo_envio` = lo que informa MeLi + `ventas.costo_flex`, así
-  Ganancia Real/Dashboard/Facturación/Fiscal lo suman sin tocar sus
-  cálculos; `ventas_sync` conserva `costo_flex` al reprocesar una orden y
-  TODA asignación de zona mueve `costo_flex` y `costo_envio` juntos
-  (`flex._aplicar_zona`, una sola sentencia para cualquier cantidad de
-  órdenes). `ventas.flex_zona`: 1–3, o 0 = "sin costo" (entrega el propio
-  vendedor); NULL = pendiente. La zona se resuelve así, en este orden: lo que
-  el usuario eligió a mano para un código postal/localidad
-  (`cuentas_meli.flex_zonas_memoria`) > regla de distancia opcional (CP de
-  salida + hasta cuántos km llega cada zona; MeLi trae las coordenadas
-  exactas del destino en `/shipments/{id}` y resuelve el CP de salida en
-  `/countries/AR/zip_codes/{cp}`) > a mano (por localidad en Costos, por
-  envío en Despacho). Aplicar la regla siempre muestra una vista previa
-  (envíos y costo por zona) y el usuario confirma. Una venta ya asignada
-  queda valuada al precio de ese momento; cambiar tarifas solo la recalcula
-  si el usuario lo pide. Ganancia Real avisa cuántos Flex del período siguen
-  sin zona. `ventas_sync._completar_datos_de_envio` completa de a 40 por
-  pasada el tipo de logística y el destino de ventas viejas (60 días).
-  ⚠️ Los km de la regla son una estimación en línea recta desde el centro
-  del CP de salida: sugerirle al usuario contrastarlo con lo que le factura
-  su logística.
+- **Entrega Flex** (`flex.py`, `flex_zonas.py`, migraciones 0018–0021): en
+  Flex el vendedor entrega con su propia logística y MeLi reporta
+  `costo_envio = 0`; el costo real lo cobra esa logística por zona. Las zonas
+  las define MeLi, NO el usuario: `GET /flex/sites/MLA/users/{id}/subscriptions/v1`
+  (OJO: sin `/shipping/` — con esa ruta MeLi da 404 siempre; `logistica.py`
+  tenía ese bug y decía "no tenés Flex") trae el domicilio de salida y
+  `.../services/{service_id}/configurations/coverage/zones/v1` las zonas de
+  cobertura (45 en AMBA: partidos + CABA + algunas especiales). El envío NO
+  trae su zona, solo localidad/CP/coordenadas: `flex_zonas.py` ubica cada
+  destino en una zona (Capital Federal → CABA; lista de localidades por
+  partido; si no, el centro de zona más cercano ≤ 9 km). El usuario carga
+  "umbrales" (precio + zonas que cubre) en Costos, como en MargenFull; lo que
+  no mueve cae en el umbral "resto" (siempre existe). Guardado en
+  `cuentas_meli.flex_umbrales` / `flex_info`. MeLi reintegra el 10% del
+  envío (`REINTEGRO_MELI`): el costo que se descuenta es precio × 0.9, y la
+  pantalla lo explica. `ventas.costo_envio` = lo que informa MeLi +
+  `ventas.costo_flex`, así Ganancia Real/Dashboard/Facturación/Fiscal lo suman
+  sin tocar sus cálculos; `ventas_sync` conserva `costo_flex` al reprocesar y
+  TODA asignación mueve `costo_flex` y `costo_envio` juntos (`flex._aplicar`,
+  una sentencia para cualquier cantidad de órdenes). `ventas.flex_zona` = id
+  del umbral (0 = sin costo, NULL = pendiente), `flex_zona_meli` = zona donde
+  se ubicó ('*manual' si el usuario eligió a mano: el recálculo no lo toca).
+  El sync aplica solo a los envíos nuevos y refresca las zonas 1 vez por
+  semana; guardar umbrales NO toca ventas: muestra una vista previa
+  (envíos y costo por umbral) y el usuario confirma. Una venta ya valuada
+  queda con su precio salvo que el usuario tilde "incluir ya valuadas".
+  `ventas_sync._completar_datos_de_envio` completa de a 40 por pasada tipo de
+  logística y destino de ventas viejas (60 días).
+  ⚠️ Pendiente de contrastar con el usuario: para 09/09–01/10 MargenFull
+  muestra $378.250 de costo Flex y esta lógica da $326.110 bruto (39 envíos);
+  no se pudo reconciliar. Tampoco se modeló el caso de productos < $33.000
+  (ahí paga el comprador): el vendedor de prueba no tiene ventas Flex así.
 
 ## Lo que NO existe todavía (no asumas que sí)
 - Puente de WhatsApp (Baileys) — comentado en `iniciar_corelux.bat`
@@ -309,7 +316,7 @@ MeLi, y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones corridas hasta `0020_flex_distancia.sql` — 
+- Migraciones corridas hasta `0021_flex_umbrales.sql` — 
   verificá `migrate.py --status` contra Supabase real antes de asumir
   cuál es la última aplicada, el número más alto en `migrations/` no
   siempre coincide con lo corrido de verdad.

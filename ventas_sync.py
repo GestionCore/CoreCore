@@ -395,14 +395,21 @@ def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
     if completados:
         print(f"[VentasSync] 🚚 Cuenta {cuenta_id}: completé los datos de envío de {completados} venta(s) anteriores.")
 
-    # Flex: los envíos de un lugar cuya zona el usuario ya eligió quedan con su costo de entrega sin pedirle nada más.
+    # Flex: a cada envío nuevo se le aplica el umbral que le corresponde según su zona de Mercado Libre. Las zonas
+    # (y el domicilio de salida) se refrescan una vez por semana, solo en cuentas que ya usan Flex.
     try:
         with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
-            aplicadas = flex.aplicar_zonas_automaticas(conexion.cursor(), cuenta_id)
+            cursor = conexion.cursor()
+            config = flex.obtener_config(cursor, cuenta_id)
+            if flex.sincronizacion_vieja(config["info"]):
+                cursor.execute("SELECT COUNT(*) FROM ventas WHERE cuenta_id = %s AND tipo_logistica = 'self_service'", (cuenta_id,))
+                if (cursor.fetchone()[0] or 0) > 0:
+                    flex.sincronizar_con_meli(cursor, cuenta_id, access_token, seller_id)
+            aplicadas = flex.aplicar_automatico(cursor, cuenta_id)
         if aplicadas:
-            print(f"[VentasSync] 🚚 Cuenta {cuenta_id}: {aplicadas} envío(s) Flex con zona aplicada automáticamente.")
+            print(f"[VentasSync] 🚚 Cuenta {cuenta_id}: {aplicadas} envío(s) Flex con su costo de entrega aplicado.")
     except Exception as e:
-        print(f"[VentasSync] ⚠️ No se pudieron aplicar las zonas Flex automáticas: {e}")
+        print(f"[VentasSync] ⚠️ No se pudo aplicar el costo de entrega Flex: {e}")
 
     print(f"[VentasSync] ✨ Cuenta {cuenta_id}: {ordenes_procesadas} orden(es), {filas_insertadas} fila(s) de venta sincronizadas.")
     return ordenes_procesadas, filas_insertadas

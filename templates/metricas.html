@@ -92,7 +92,7 @@
 {{ banner("warn", "refresh", ("<b>%d devolución(es)</b> en este período"|format(posventa.devoluciones)) ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Por sí solas no afectan tu reputación, pero conviene gestionarlas a tiempo para que no terminen en reclamo.", "Ver detalle", "#seccion-reclamos") }}
 {% endif %}
 {% if flex_resumen and flex_resumen.sin_zona %}
-{{ banner("warn", "truck", "<b>" ~ flex_resumen.sin_zona ~ " envío" ~ ("s" if flex_resumen.sin_zona != 1) ~ " Flex sin zona</b> en este período — su costo de entrega todavía no está en tu ganancia", "Elegí la zona de cada envío para que la ganancia sea la real.", "Cargar zonas", "/costos#entrega-flex", "btn-alerta") }}
+{{ banner("warn", "truck", "<b>" ~ flex_resumen.sin_zona ~ " envío" ~ ("s" if flex_resumen.sin_zona != 1) ~ " Flex sin costo de entrega</b> en este período — todavía no está en tu ganancia", "Cargá lo que te cobra tu logística por zona para que la ganancia sea la real.", "Cargar costo de entrega", "/costos#entrega-flex", "btn-alerta") }}
 {% endif %}
 {% if punto_equilibrio %}
 {% if punto_equilibrio.superado %}
