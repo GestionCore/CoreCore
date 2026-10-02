@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from psycopg.rows import dict_row
 import db
 import meli_http
-from utils import limpiar_titulo_modelo, extraer_talle
+from utils import limpiar_titulo_modelo, extraer_talle, sql_momento_argentina
 
 
 def _tipo_envio_legible(tipo_logistica):
@@ -48,11 +48,11 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
                    v.comprador_nickname, v.comprador_nombre, p.thumbnail, v.shipment_id, v.tipo_logistica, v.flex_zona, v.flex_zona_meli
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
-            WHERE (v.fecha_venta + COALESCE(v.hora_venta, '00:00'::time) + (%s || ' hours')::interval)::date = %s
+            WHERE ({momento} + (%s || ' hours')::interval)::date = %s
               AND COALESCE(v.tipo_logistica, p.tipo_logistica, '') != 'fulfillment'
               AND v.origen = 'meli'
             ORDER BY v.despachado ASC, v.id ASC
-        """, (offset_horas, fecha))
+        """.format(momento=sql_momento_argentina("v")), (offset_horas, fecha))
         filas = cursor.fetchall()
 
         paquetes = []
@@ -163,9 +163,9 @@ def obtener_shipment_ids_del_dia(usuario_id, fecha, offset_horas, cuenta_id=None
             SELECT DISTINCT v.shipment_id
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
-            WHERE (v.fecha_venta + COALESCE(v.hora_venta, '00:00'::time) + (%s || ' hours')::interval)::date = %s
+            WHERE ({momento} + (%s || ' hours')::interval)::date = %s
               AND COALESCE(p.tipo_logistica, '') != 'fulfillment'
               AND v.origen = 'meli'
               AND v.shipment_id IS NOT NULL
-        """, (offset_horas, fecha))
+        """.format(momento=sql_momento_argentina("v")), (offset_horas, fecha))
         return [r[0] for r in cursor.fetchall()]

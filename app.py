@@ -65,7 +65,7 @@ import scheduler
 import ventas_manuales
 import pagos
 import utils
-from utils import formatear_moneda, formatear_moneda_entera, SQL_RECLAMO_AFECTA, hoy_argentina, ARGENTINA
+from utils import formatear_moneda, formatear_moneda_entera, SQL_RECLAMO_AFECTA, hoy_argentina, ARGENTINA, sql_momento_argentina
 from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__)
@@ -754,14 +754,14 @@ def api_metricas_heatmap_horario():
             cur = conn.cursor()
             cur.execute("""
                 SELECT
-                    EXTRACT(DOW FROM (fecha_venta + COALESCE(hora_venta, '12:00'::time)))::int AS dow,
-                    EXTRACT(HOUR FROM (fecha_venta + COALESCE(hora_venta, '12:00'::time)))::int AS hora,
+                    EXTRACT(DOW FROM {momento})::int AS dow,
+                    EXTRACT(HOUR FROM {momento})::int AS hora,
                     SUM(cantidad)::int AS unidades
                 FROM ventas
                 WHERE fecha_venta >= CURRENT_DATE - (%s || ' days')::interval
                   AND hora_venta IS NOT NULL
                 GROUP BY dow, hora
-            """, (dias,))
+            """.format(momento=sql_momento_argentina(por_defecto="12:00")), (dias,))
             filas = cur.fetchall()
         # dow: 0=Dom,1=Lun…6=Sab en Postgres EXTRACT(DOW) — reordenamos a Lun-Dom
         matriz = [[0] * 24 for _ in range(7)]

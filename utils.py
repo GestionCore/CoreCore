@@ -5,6 +5,20 @@ from datetime import datetime, timedelta, timezone
 ARGENTINA = timezone(timedelta(hours=-3))      # sin horario de verano
 
 
+def sql_momento_argentina(prefijo="", por_defecto="00:00"):
+    """
+    Fragmento SQL: el momento de la venta (fecha + hora) en HORA ARGENTINA. Las filas viejas guardan la hora de Mercado Libre tal cual (UTC-4, una hora
+    atrasada) y las nuevas ya vienen en hora argentina (ventas.hora_normalizada = true, ver ventas_sync y normalizar_horas.py): esta expresión da el
+    mismo resultado para unas y otras, así que el código es correcto antes y después de normalizar el histórico. Usarla para todo lo que dependa de la
+    HORA (mapa de horarios, "cuándo te compran", corte de despacho). `por_defecto` reemplaza una hora NULL.
+    """
+    if not re.fullmatch(r"\d{2}:\d{2}", por_defecto) or not re.fullmatch(r"\w*", prefijo):
+        raise ValueError("argumentos inválidos para sql_momento_argentina")
+    p = prefijo + "." if prefijo else ""
+    return (f"({p}fecha_venta + COALESCE({p}hora_venta, TIME '{por_defecto}') "
+            f"+ CASE WHEN {p}hora_normalizada THEN INTERVAL '0 hour' ELSE INTERVAL '1 hour' END)")
+
+
 def hoy_argentina():
     """La fecha de hoy en Argentina (el servidor corre en UTC: pasadas las 21 h, "hoy" ya sería mañana)."""
     return datetime.now(ARGENTINA).date()

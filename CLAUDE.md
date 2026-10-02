@@ -270,14 +270,16 @@ scopeado por cuenta_id antes de confiar en él.
   talle, `family_id` no — es la clave de "modelo" que no depende del título ni del
   rubro (el sincronizador la guarda en `productos_padre.family_id`): usarla si
   alguna vez se reemplaza el agrupado por título.
-- ⚠️ **Hora de las ventas = UTC−4, no hora argentina**: Mercado Libre informa
-  `date_created` como `…-04:00` (instante correcto, se verificó contra
-  `date_last_updated` en UTC) y `ventas_sync` guarda la parte local tal cual, así que
-  `fecha_venta`/`hora_venta` van **1 hora atrasadas** respecto de Argentina (UTC−3):
-  una venta de 00:30 ART queda en el día anterior. Efecto chico, no se tocó el
-  histórico (mezclar criterios sería peor). Para mostrar la hora del día se suma 1 h
-  (`dashboard.obtener_cuando_compran`, tarjeta "Cuándo te compran"). Si algún día
-  se corrige en el origen, hay que migrar también lo guardado.
+- ⚠️ **Hora de las ventas**: Mercado Libre informa `date_created` como `…-04:00` (instante
+  correcto) aunque Argentina es UTC−3. Hasta 2026-10-01 `ventas_sync` guardaba la parte local
+  tal cual, 1 hora atrasada (una venta de 00:30 ART caía en el día anterior). Ahora
+  `ventas_sync._fecha_hora_argentina` convierte al ingresar y marca `ventas.hora_normalizada`
+  (migración 0031). Las filas viejas (false) se corrigen con `normalizar_horas.py --aplicar`
+  (vista previa por defecto; pendiente del OK del dueño). Para todo lo que dependa de la HORA
+  (mapa de horarios, "cuándo te compran", corte de Despacho) usar
+  `utils.sql_momento_argentina()`: da lo mismo para filas viejas y nuevas, así el código es
+  correcto antes y después de normalizar. NO volver a sumar "+1 hora" a mano en una consulta.
+  Lo que agrupa por `fecha_venta` (ventas del día) solo se corrige con el script.
 - **Trabajo en segundo plano: `app._en_segundo_plano`** (Celery si hay Redis, si no
   un hilo). Producción NO tiene Redis: antes cada `.delay()` tardaba ~0,7 s en
   fallar y el webhook de MeLi (`POST /notificaciones_meli`, ya está recibiendo

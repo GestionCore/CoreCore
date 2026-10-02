@@ -45,3 +45,15 @@ def test_html_seguro_deja_el_formato_y_descarta_lo_peligroso():
     assert html_seguro('<a href="/stock">ir</a>') == '<a href="/stock">ir</a>'
     assert html_seguro("5 < 6 & 7 > 2") == "5 &lt; 6 &amp; 7 &gt; 2"
     assert html_seguro(None) == ""
+
+
+def test_el_momento_en_hora_argentina_unifica_filas_viejas_y_nuevas():
+    from utils import sql_momento_argentina
+    sql = sql_momento_argentina()
+    assert "CASE WHEN hora_normalizada THEN INTERVAL '0 hour' ELSE INTERVAL '1 hour' END" in sql
+    assert "COALESCE(hora_venta, TIME '00:00')" in sql
+    assert "v.hora_normalizada" in sql_momento_argentina("v") and "TIME '12:00'" in sql_momento_argentina(por_defecto="12:00")
+    with pytest.raises(ValueError):
+        sql_momento_argentina(por_defecto="12:00'; DROP TABLE ventas; --")
+    with pytest.raises(ValueError):
+        sql_momento_argentina(prefijo="v; --")

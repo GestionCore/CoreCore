@@ -10,7 +10,7 @@ import db
 import analisis_stock
 import salud_cuenta
 import resumen_semanal
-from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle, SQL_RECLAMO_AFECTA
+from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle, SQL_RECLAMO_AFECTA, sql_momento_argentina
 
 
 def _detalle_venta(titulo):
@@ -89,20 +89,20 @@ MIN_ORDENES_CUANDO_COMPRAN = 30     # con menos ventas el patrón no dice nada
 
 def obtener_cuando_compran(usuario_id, cuenta_id=None, dias=90):
     """
-    Cuándo te compran: ventas por día de la semana y por hora del día (hora argentina). `hora_venta` se guarda tal como la informa Mercado
-    Libre, en UTC-4; la hora de Argentina es UTC-3, o sea una hora más: se corrige acá, al mostrarla. Devuelve None si hay muy pocas ventas.
+    Cuándo te compran: ventas por día de la semana y por hora del día (hora argentina). Las ventas viejas guardan la hora de Mercado
+    Libre en UTC-4 y las nuevas ya en hora argentina: utils.sql_momento_argentina las unifica. Devuelve None si hay muy pocas ventas.
     """
     desde = (datetime.now(timezone.utc) - timedelta(days=dias)).strftime("%Y-%m-%d")
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
-            SELECT EXTRACT(ISODOW FROM (fecha_venta + hora_venta + interval '1 hour'))::int,
-                   EXTRACT(HOUR FROM (fecha_venta + hora_venta + interval '1 hour'))::int,
+            SELECT EXTRACT(ISODOW FROM {momento})::int,
+                   EXTRACT(HOUR FROM {momento})::int,
                    COUNT(DISTINCT id_orden), COALESCE(SUM(precio_venta * cantidad), 0)
             FROM ventas
             WHERE fecha_venta >= %s AND origen = 'meli' AND hora_venta IS NOT NULL AND eliminado_en IS NULL
             GROUP BY 1, 2
-        """, (desde,))
+        """.format(momento=sql_momento_argentina()), (desde,))
         filas = cursor.fetchall()
     total = sum(int(f[2]) for f in filas)
     if total < MIN_ORDENES_CUANDO_COMPRAN:
