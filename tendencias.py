@@ -940,7 +940,10 @@ def cruzar_tendencias_con_catalogo(tendencias_relevantes, cursor):
     oportunidades = []
     for t in tendencias_relevantes:
         termino = t.get("keyword", "").strip()
-        if not termino or termino.lower() in titulos_concatenados:
+        # Marca en cada tendencia si de verdad aparece en algún título: la pantalla mostraba como "ya cubierto" todo lo que no entraba
+        # en las 5 oportunidades de abajo (decía que cubrías "nike" o "lacoste" sin tenerlos en ningún título)
+        t["cubierta"] = bool(termino) and termino.lower() in titulos_concatenados
+        if not termino or t["cubierta"]:
             continue
         id_meli_sugerido, titulo_actual = activos[0]
         titulo_sugerido = f"{titulo_actual} {termino}"[:60]

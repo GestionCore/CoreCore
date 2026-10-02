@@ -112,3 +112,21 @@ def test_fechas_para_mostrar(monkeypatch):
     assert utils.cuando_corto(dt.datetime(2026, 10, 1, 21, 5)) == "Ayer 21:05"
     assert utils.cuando_corto(dt.datetime(2026, 9, 28, 9, 0)) == "28 sep 09:00"
     assert utils.cuando_corto(dt.datetime(2026, 9, 28, 0, 0), con_hora=False) == "28 sep"
+
+
+def test_una_tendencia_solo_esta_cubierta_si_aparece_en_algun_titulo():
+    """La pantalla mostraba como "ya cubierto" todo lo que no entraba en las 5 oportunidades (\"nike\" para quien vende camperas sin marca)."""
+    import tendencias
+
+    class Cursor:
+        def execute(self, *a):
+            pass
+
+        def fetchall(self):
+            return [("MLA1", "Campera De Jean Hombre Negra"), ("MLA2", "Medias Algodon Pack")]
+
+    tendencias_ = [{"keyword": k} for k in ("campera de jean", "medias", "nike", "lacoste", "gorras", "short", "bolso", "puma")]
+    oportunidades = tendencias.cruzar_tendencias_con_catalogo(tendencias_, Cursor())
+    cubiertas = {t["keyword"] for t in tendencias_ if t.get("cubierta")}
+    assert cubiertas == {"campera de jean", "medias"}
+    assert len(oportunidades) == 5 and not {o["termino"] for o in oportunidades} & cubiertas

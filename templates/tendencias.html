@@ -160,7 +160,7 @@
 
 {% if relevantes %}
 {% set oportunidades = relevantes|selectattr("es_oportunidad")|list %}
-{% set cubiertas = relevantes|rejectattr("es_oportunidad")|list %}
+{% set cubiertas = relevantes|selectattr("cubierta")|list %}
 
 <div class="stat-strip">
     <div class="stat-chip accent-denim">

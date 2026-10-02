@@ -135,13 +135,13 @@
 <script>
 var TIPS = [
   'CoreLux calcula tu <strong>ganancia neta real</strong> descontando comisiones, envíos, publicidad y costo de fabricación — no solo la facturación bruta.',
-  'La sección <strong>Competencia</strong> sigue productos de catálogo: cuántos vendedores los ofrecen y a qué precio, día a día.',
-  'Con <strong>Monotributo</strong> podés ver si estás cerca de cambiar de categoría y cuánto pagarías en cada una.',
-  'La <strong>Calculadora MeLi</strong> te dice exactamente cuánto tenés que cobrar para llegar al margen que querés.',
-  'Desde <strong>Publicidad</strong> podés ver el ACOS de cada campaña y detectar cuáles no están siendo rentables.',
-  '<strong>Tendencias y Mercado</strong> te muestra cuánta competencia hay en cualquier categoría de MeLi y qué precios maneja.',
-  'Con la vista de <strong>Reporte Fiscal</strong> podés exportar un resumen mensual listo para tu contador.',
-  'CoreLux sincroniza automáticamente cada 4 minutos, así tus números están siempre al día.'
+  'En <strong>Precios</strong> ves el precio mínimo de cada publicación para no perder plata, con su comisión y su envío reales.',
+  'En <strong>Cobros</strong> ves cuándo te acredita Mercado Pago y cuánta plata queda retenida por reclamos.',
+  'La <strong>Calculadora MeLi</strong> te dice cuánto te queda de una venta antes de publicar: comisión, cuotas y envío de cualquier categoría.',
+  'En <strong>Publicidad</strong> ves si cada campaña te deja ganancia o te la come, según tu propio margen.',
+  'Con <strong>Monotributo</strong> comparás tu facturación de los últimos 12 meses con las escalas vigentes.',
+  'El <strong>Reporte Fiscal</strong> arma un resumen mensual listo para compartir con tu contador.',
+  'CoreLux se actualiza solo cada 4 minutos: tus números están siempre al día.'
 ];
 var tipIdx = 0;
 function rotateTip() {
@@ -164,6 +164,7 @@ function marcarActivo(stepId) {
 }
 
 var prevProductos = 0, prevVentas = 0;
+function cuantos(n, uno, varios) { return n + ' ' + (n === 1 ? uno : varios); }
 
 async function chequearEstado() {
   try {
@@ -184,14 +185,14 @@ async function chequearEstado() {
 
     if (etapa === 'productos') {
       marcarActivo('step-productos');
-      if (nP > 0) document.getElementById('cnt-productos').textContent = nP + ' productos';
+      if (nP > 0) document.getElementById('cnt-productos').textContent = cuantos(nP, 'publicación', 'publicaciones');
     } else if (etapa === 'ventas') {
-      marcarHecho('step-productos', 'ico-productos', 'cnt-productos', nP + ' productos');
+      marcarHecho('step-productos', 'ico-productos', 'cnt-productos', cuantos(nP, 'publicación', 'publicaciones'));
       marcarActivo('step-ventas');
-      if (nV > 0) document.getElementById('cnt-ventas').textContent = nV + ' órdenes';
+      if (nV > 0) document.getElementById('cnt-ventas').textContent = cuantos(nV, 'orden', 'órdenes');
     } else {
-      marcarHecho('step-productos', 'ico-productos', 'cnt-productos', nP + ' productos');
-      marcarHecho('step-ventas', 'ico-ventas', 'cnt-ventas', nV + ' órdenes');
+      marcarHecho('step-productos', 'ico-productos', 'cnt-productos', cuantos(nP, 'publicación', 'publicaciones'));
+      marcarHecho('step-ventas', 'ico-ventas', 'cnt-ventas', cuantos(nV, 'orden', 'órdenes'));
       marcarActivo('step-calc');
     }
   } catch(e) { /* sigue intentando */ }

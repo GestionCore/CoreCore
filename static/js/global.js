@@ -250,7 +250,8 @@ function aplicarUltimosDias(dias, boton) {
     const hoy = new Date();
     const desde = new Date();
     desde.setDate(hoy.getDate() - (dias - 1));
-    const aISO = (d) => d.toISOString().split('T')[0];
+    // Fecha LOCAL: toISOString() es UTC y después de las 21 h de Argentina ya da el día siguiente
+    const aISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     form.querySelector('input[name="fecha_desde"]').value = aISO(desde);
     form.querySelector('input[name="fecha_hasta"]').value = aISO(hoy);
     // Feedback visual inmediato del botón tocado — el submit de abajo
@@ -282,10 +283,12 @@ function marcarUltimosDiasActivo() {
         const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
         const terminaHoy = Math.abs(hasta - hoy) < 86400000;
         const dias = Math.round((hasta - desde) / 86400000) + 1;
+        // Un día de tolerancia: el período por defecto del servidor ("hoy menos 30 días") abarca 31 días contando hoy, y el botón
+        // "30 días" nunca quedaba marcado. Con botones de 7, 14 y 30 no hay forma de confundir uno con otro.
         botones.forEach(b => {
             const m = b.getAttribute('onclick').match(/aplicarUltimosDias\((\d+)/);
             const n = m ? parseInt(m[1], 10) : null;
-            b.classList.toggle('active', terminaHoy && n === dias);
+            b.classList.toggle('active', terminaHoy && n !== null && Math.abs(n - dias) <= 1);
         });
     });
 }
@@ -834,7 +837,12 @@ async function actualizarTicker() {
         // Lo que MeLi va a acreditar: mañana si hay algo, y si no el próximo depósito (las acreditaciones caen en pocos días sueltos)
         const sinCentavos = (s) => String(s).split(',')[0];
         if (data.hay_liberaciones && data.liberacion_manana && sinCentavos(data.liberacion_manana) !== '0') elLiberacion.textContent = `Mañana te acreditan: $${sinCentavos(data.liberacion_manana)}`;
-        else if (data.proxima_liberacion) elLiberacion.textContent = `Próximo depósito: $${sinCentavos(data.proxima_liberacion.monto)} · ${data.proxima_liberacion.fecha}`;
+        else if (data.proxima_liberacion) {
+            // "04/10" → "4 oct", igual que el resto de las fechas de la app
+            const f = String(data.proxima_liberacion.fecha || '').match(/^(\d{1,2})\/(\d{1,2})/);
+            const fecha = f ? `${Number(f[1])} ${RangoFechas.MESES_CORTOS[Number(f[2]) - 1] || ''}`.trim() : data.proxima_liberacion.fecha;
+            elLiberacion.textContent = `Próximo depósito: $${sinCentavos(data.proxima_liberacion.monto)} · ${fecha}`;
+        }
         else elLiberacion.textContent = `Disponible mañana: $${data.liberacion_manana}`;
         elLiberacion.title = data.hay_liberaciones ? `En total te falta acreditar $${sinCentavos(data.a_liberar_total)}` : '';
 
