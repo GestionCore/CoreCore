@@ -292,6 +292,13 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-copiar-costo { display: flex; flex-direction: column; gap: 4px; }
 .ux-copiar-costo input { width: 150px; }
 .ux-filas-costo { padding: 4px 20px 10px; }
+.ux-filas-det > summary { list-style: none; cursor: pointer; padding: 12px 20px; font-size: 0.86em; font-weight: 700; color: var(--accent-texto); display: flex; align-items: center; gap: 6px; }
+.ux-filas-det > summary::-webkit-details-marker { display: none; }
+.ux-filas-det > summary::after { content: "▾"; margin-left: auto; color: var(--text-secondary); transition: transform var(--transition-base); }
+.ux-filas-det[open] > summary::after { transform: rotate(180deg); }
+.ux-filas-det > summary:hover { background: rgba(255,255,255,0.03); }
+.ux-filas-det[open] > summary { border-bottom: 1px solid var(--border-soft); }
+:root[data-theme="light"] .ux-filas-det > summary:hover { background: rgba(0,0,0,0.03); }
 .ux-fila-costo { display: grid; grid-template-columns: 110px 150px 140px 1fr; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
 .ux-fila-costo:last-child { border-bottom: 0; }
 .ux-fila-costo-input input { width: 130px; text-align: right; font-weight: 800; }

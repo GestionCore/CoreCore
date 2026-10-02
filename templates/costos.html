@@ -47,13 +47,15 @@
 <div id="lista-costos-productos">
     {% for gr in modelos %}
     {% set modelo = gr.modelo %}{% set items = gr.talles %}
-    {% set sin_c = items|selectattr('precio_costo', 'equalto', 0.0)|list %}
+    {# Solo las activas cuentan: una publicación pausada sin costo no infla ninguna ganancia #}
+    {% set activas_modelo = items|selectattr('estado', 'equalto', 'active')|list %}
+    {% set sin_c = activas_modelo|selectattr('precio_costo', 'equalto', 0.0)|list %}
     <div class="ux-modelo-costo panel" data-modelo="{{ modelo }}" style="padding:0; overflow:hidden;">
         <div class="ux-modelo-cabecera">
             {% if items[0].thumbnail %}<img src="{{ items[0].thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}
             <div style="flex:1; min-width:0;">
                 <div style="font-weight:800;">{{ modelo }}</div>
-                <div class="text-muted" style="font-size:0.8em;">{{ items|length }} {{ vocab.v1 }}{{ 's' if items|length != 1 }}{% if sin_c %} · <b style="color:var(--semantic-warning);">{{ sin_c|length }} sin costo</b>{% else %} · <b style="color:var(--success);">con costo cargado</b>{% endif %}</div>
+                <div class="text-muted" style="font-size:0.8em;">{{ items|length }} {{ vocab.v1 }}{{ 's' if items|length != 1 }}{% if sin_c %} · <b style="color:var(--semantic-warning);">{{ sin_c|length }} sin costo</b>{% elif activas_modelo %} · <b style="color:var(--success);">con costo cargado</b>{% else %} · <span class="text-muted">todas pausadas</span>{% endif %}</div>
             </div>
             <div class="ux-copiar-costo">
                 <label class="field-label" style="margin:0;">Mismo costo para todo el modelo</label>
@@ -63,6 +65,14 @@
                 </span>
             </div>
         </div>
+        {# Con varios talles las filas van plegadas: lo normal es cargar UN costo para todo el modelo (arriba). Se abren solas si el modelo está a medias o algún talle vende a pérdida #}
+        {% set colapsable = items|length > 1 %}
+        {% set costos_cargados = items|map(attribute='precio_costo')|select|list %}
+        {% set a_atender = (sin_c and costos_cargados) or (items|selectattr('ganancia_negativa')|list) %}
+        {% if colapsable %}
+        <details class="ux-filas-det" {% if a_atender %}open{% endif %}>
+            <summary>Costo distinto por {{ vocab.v1 }} <span class="text-muted">· {{ items|length }}{% if costos_cargados %} · {% if costos_cargados|min == costos_cargados|max %}{{ costos_cargados|max|plata }} en {{ 'todos los cargados' if sin_c else 'todos' }}{% else %}de {{ costos_cargados|min|plata }} a {{ costos_cargados|max|plata }}{% endif %}{% endif %}</span></summary>
+        {% endif %}
         <div class="ux-filas-costo">
             {% for p in items %}
             <div class="ux-fila-costo" data-precio="{{ p.precio }}" data-comision="{{ p.comision if p.comision is not none else '' }}" data-envio="{{ p.envio }}">
@@ -75,6 +85,7 @@
             </div>
             {% endfor %}
         </div>
+        {% if colapsable %}</details>{% endif %}
     </div>
     {% endfor %}
 </div>
@@ -303,6 +314,7 @@
         const valor = modelo.querySelector('.input-costo-modelo').value;
         if (valor === '' || parseFloat(valor) < 0) { mostrarToast('Escribí primero el costo por unidad', 'error'); return; }
         modelo.querySelectorAll('.input-costo-producto').forEach(i => { i.value = valor; alCambiarCosto(i); });
+        const detalle = modelo.querySelector('.ux-filas-det'); if (detalle) detalle.open = true;      // para ver cuánto deja cada talle con ese costo (y cuál queda a pérdida)
     }));
 
     function descartarCostos() {
