@@ -169,7 +169,7 @@ def evaluar_categoria(usuario_id, cuenta_id):
 def guardar_categoria_declarada(usuario_id, cuenta_id, categoria):
     if categoria and _indice_categoria(categoria) is None:
         return False
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("UPDATE cuentas_meli SET categoria_monotributo = %s WHERE id = %s", (categoria or None, cuenta_id))
     return True

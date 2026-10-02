@@ -167,7 +167,7 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
             lista_completa = True
             break
 
-        with db.conexion_usuario(usuario_id) as conexion:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
             for c in claims:
                 id_reclamo = c.get("id")
@@ -373,7 +373,7 @@ def sincronizar_preguntas(usuario_id, cuenta_id, access_token, seller_id):
         if not preguntas:
             break
 
-        with db.conexion_usuario(usuario_id) as conexion:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
             for p in preguntas:
                 qid = p.get("id")
@@ -393,7 +393,7 @@ def sincronizar_preguntas(usuario_id, cuenta_id, access_token, seller_id):
         if offset >= total or offset >= LIMITE_OFFSET:
             break
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT question_id FROM preguntas_pendientes WHERE cuenta_id = %s AND estado = 'pendiente'", (cuenta_id,))
         pendientes_en_db = {fila[0] for fila in cursor.fetchall()}

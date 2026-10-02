@@ -428,7 +428,7 @@ def _sincronizar_rango(usuario_id, cuenta_id, access_token, seller_id, fecha_des
         if not ordenes:
             break
 
-        with db.conexion_usuario(usuario_id) as conexion:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
             o, f = _escribir_pagina(cursor, cuenta_id, ordenes, access_token)
             ordenes_procesadas += o
@@ -676,7 +676,7 @@ def retirar_ventas_canceladas(usuario_id, cuenta_id, access_token, seller_id, de
 
 
 def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT ultima_sincronizacion_ventas FROM cuentas_meli WHERE id = %s", (cuenta_id,))
         fila = cursor.fetchone()
@@ -700,7 +700,7 @@ def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
         except Exception as e:
             print(f"[VentasSync] ⚠️ No se pudieron retirar las ventas canceladas: {e}")
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("UPDATE cuentas_meli SET ultima_sincronizacion_ventas = %s WHERE id = %s", (ahora, cuenta_id))
 

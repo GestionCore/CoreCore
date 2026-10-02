@@ -351,7 +351,7 @@ def actualizar_racha(usuario_id, cuenta_id):
     hoy_local = (datetime.now(timezone.utc) - timedelta(hours=3)).date()
     ayer_local = hoy_local - timedelta(days=1)
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT racha_dias, racha_ultimo_dia FROM cuentas_meli WHERE id = %s", (cuenta_id,))
         fila = cursor.fetchone()

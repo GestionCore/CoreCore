@@ -265,7 +265,7 @@ def procesar_notificacion_webhook(topic, resource, meli_user_id):
             headers = {"Authorization": f"Bearer {access_token}"}
 
             def _item():
-                with db.conexion_usuario(usuario_id) as conexion:
+                with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
                     sincronizar_item_individual(cuenta_id, id_item, headers, conexion.cursor())
             _antirrebote_webhook.ejecutar((cuenta_id, "item", id_item), _item)
 
@@ -301,7 +301,7 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
         except token_manager.CuentaDesconectada:
             return
 
-        with db.conexion_usuario(usuario_id) as conexion_lookup:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion_lookup:
             cursor_lookup = conexion_lookup.cursor()
             cursor_lookup.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (cuenta_id,))
             fila = cursor_lookup.fetchone()
@@ -386,14 +386,14 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
             for (indice, _), stock_convivencia in zip(pendientes_convivencia, resultados_convivencia):
                 items_procesados[indice]["stock_convivencia"] = stock_convivencia
 
-        with db.conexion_usuario(usuario_id) as conexion:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
             for datos in items_procesados:
                 _escribir_item_en_db(cuenta_id, datos, cursor)
 
         print(f"[Sincronizador] ✨ Cuenta {cuenta_id}: {len(items_procesados)}/{len(lista_ids)} ítems sincronizados.")
 
-        with db.conexion_usuario(usuario_id) as conexion:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
             cursor.execute("UPDATE cuentas_meli SET ultima_sincronizacion = now() WHERE id = %s", (cuenta_id,))
 
@@ -440,7 +440,7 @@ def _sincronizar_todo_interno(usuario_id, cuenta_id):
     except token_manager.CuentaDesconectada:
         return
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (cuenta_id,))
         fila = cursor.fetchone()
@@ -471,6 +471,6 @@ def _sincronizar_todo_interno(usuario_id, cuenta_id):
     except Exception as e:
         print(f"❌ [Capacidades/Enriquecimiento] cuenta {cuenta_id}: {e}")
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("UPDATE cuentas_meli SET sincronizacion_inicial_completa = true WHERE id = %s AND sincronizacion_inicial_completa = false", (cuenta_id,))

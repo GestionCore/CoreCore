@@ -38,7 +38,7 @@ def _crear_alerta(usuario_id, cuenta_id, tipo, titulo, mensaje, accion_url=None)
     del mismo tipo para la misma cuenta.
     """
     try:
-        with db.conexion_usuario(usuario_id) as conexion:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
             # Evitar duplicados: solo una alerta activa del mismo tipo por cuenta
             cursor.execute(

@@ -107,7 +107,7 @@ def _tarea_relevar_competencia():
         except token_manager.CuentaDesconectada:
             continue
         try:
-            with db.conexion_usuario(usuario_id) as conexion:
+            with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
                 cursor = conexion.cursor()
                 relevados = espia_competencia.relevar_competidores(cursor, cuenta_id, access_token)
                 if relevados:
@@ -126,7 +126,7 @@ def _tarea_relevar_tendencias():
             print(f"[Scheduler APScheduler] ⚠️ No se pudo refrescar el token de la cuenta {cuenta_id} para tendencias: {e}")
             continue
         try:
-            with db.conexion_usuario(usuario_id) as conexion:
+            with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
                 cursor = conexion.cursor()
                 relevados = tendencias_mod.relevar_snapshots_tendencias(access_token, cursor, cuenta_id)
                 if relevados:
@@ -138,7 +138,7 @@ def _tarea_relevar_tendencias():
 def _tarea_analizar_combos():
     for cuenta_id, usuario_id in _obtener_cuentas_activas():
         try:
-            with db.conexion_usuario(usuario_id) as conexion:
+            with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
                 cursor = conexion.cursor()
                 motor_combos.analizar_combos(cursor, cuenta_id)
         except Exception as e:
