@@ -8,7 +8,7 @@ sin `DATABASE_URL`, respaldos con datos de todos los usuarios que entraban en la
 
 ## Estado al 2026-10-02 (se actualiza al cerrar cada tanda; el detalle de cada cambio está en el historial de git)
 
-**Hechos**: 1 (código; falta mover el zip viejo) · 2 (código y runbook; falta programar la tarea semanal, del dueño) · 14 · 16 · 17 · 18 · 21 · 22 · 23 ·
+**Hechos**: 1 (código; falta mover el zip viejo) · 2 (código y runbook; falta programar la tarea semanal, del dueño) · 14 · 16 · 17 · 18 · 21 · 22 · 23 · 122 · 158 · 204 (parcial: preferencias y datos) · 208 (este mes y mes pasado) · 211 ·
 31 (aviso de permiso caído) · 36 · 38 · 39 · 41 · 49 · 53 · 54 · 107 · 108 · 109 · 111 · 113 · 114 · 115 · 144 (parcial: pruebas por vencer y activos) · 146 ·
 161 a 166 · 168 · 169 · 170 · 171 · 172 · 175 a 181 · 195 · 217 y 218 (menú de 7 secciones con pestañas) · 225 a 228 (cubiertos por las pestañas de cada sección) ·
 236 · 223 (parcial: Stock masivo plegado; falta fusionarlo con Stock).

@@ -514,6 +514,20 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
   (`dashboard.ganancia_de_ayer_hasta_la_hora`; cada venta de `calcular_ganancia_real` lleva `momento` en hora argentina), después con el promedio de 14 días.
 - **/admin**: `admin_usuarios.py` (días de prueba, activos en 7 días, `extender_prueba`); `POST /admin/usuario/<id>/extender_trial` está auditado. Los usuarios viejos con
   email `…@pendiente.corelux.app` no pueden entrar a /admin hasta que su email real se complete en el próximo login.
+- **Aislamiento por cuenta activa (RLS)**: TODA tabla con `cuenta_id` filtra también por `app.cuenta_actual` (política como la de `ventas`, migración 0010). Una migración
+  que "recree" una política (la 0014 de Tendencias lo hizo) la puede dejar solo por usuario y mezclar las cuentas de un usuario Elite: la 0036 lo restituyó y
+  `tests/test_rls_cuenta_activa.py` lo exige para toda tabla (salvo `alertas_usuario`, `auditoria`, `feedback`, `meli_tokens`, que son de la persona). Al escribir una
+  migración que toque políticas, copiar siempre la forma con `cuenta_actual` y comparar como TEXTO (castear '' a bigint explota).
+- **Migraciones y pruebas**: `predeploy.py` corre las pruebas contra la base REAL y falla si algo se omite; una prueba que dependa de una migración pendiente lo deja en
+  rojo. Dos salidas: el código tolera la columna ausente (`preferencias.py`) o se aplica `python migrate.py` ANTES (son aditivas e idempotentes). 0034-0036 ya están aplicadas.
+- **Preferencias por cuenta** (`/cuenta`, `preferencias.py`): hoy `cuentas_meli.margen_minimo` (0-60, 15 por defecto), expuesto como `margen_minimo` en Jinja y
+  `window.MARGEN_MINIMO` en JS. No hardcodear 15: es referencia visual, no cambia cálculos. "Descargar mis datos" (`mis_datos.py`) lee con la conexión del usuario (RLS), sin tokens.
+- **Sincronización: costo de régimen medido** (`python medir_sync.py <usuario_id> <cuenta_id>`, corre 2 syncs reales y cuenta llamadas): ~19 por ciclo y cuenta. No volver a pedir en cada
+  ciclo lo que casi no cambia: el stock de convivencia (`sincronizador.decidir_convivencia`, firma last_updated+sold_quantity+available_quantity; ojo: `available_quantity` es el
+  stock de FULL, no el propio), el impacto en reputación (2 h) y el dinero retenido (1 h) usan `cache_db`. Las escrituras de reclamos van SIEMPRE ordenadas por id (deadlock entre scheduler y webhook).
+- **Errores de MeLi**: `meli_errores.explicar_respuesta(r)` es la única forma de contarle un rechazo a la persona (sin códigos, JSON ni inglés). Toda escritura a MeLi tiene que mirar el
+  resultado: crear/eliminar descuentos lo ignoraban y parecía que había funcionado.
+- ⚠️ Al correr pruebas y commitear en el mismo comando: nunca con `;` ni detrás de un pipe (`| tail` esconde el código de salida): ya se subió un commit con pruebas en rojo.
 - **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real
