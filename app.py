@@ -814,6 +814,19 @@ def api_correlacion_precio_ventas():
         return jsonify({"puntos": []})
 
 
+@app.route("/api/dashboard/cobertura_costos")
+@login_requerido
+def api_dashboard_cobertura_costos():
+    """Qué parte de lo facturado en los últimos 14 días no tiene costo de fabricación cargado (la ganancia del Dashboard cubre esos 14 días)."""
+    hasta = hoy_argentina()
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            return jsonify(costos_mod.cobertura_de_costos(conexion.cursor(), hasta - timedelta(days=13), hasta))
+    except Exception as e:
+        print(f"[Dashboard] ⚠️ Error midiendo la cobertura de costos: {e}")
+        return jsonify({"avisar": False})
+
+
 @app.route("/api/dashboard/tendencia_ventas")
 @login_requerido
 def api_dashboard_tendencia_ventas():
@@ -1081,6 +1094,13 @@ def metricas_vista():
 
     datos = metricas_mod.calcular_ganancia_real(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
 
+    cobertura_costos = None
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            cobertura_costos = costos_mod.cobertura_de_costos(conexion.cursor(), fecha_desde, fecha_hasta)
+    except Exception as e:
+        print(f"[Métricas] ⚠️ Error midiendo la cobertura de costos: {e}")
+
     # Punto de equilibrio (B7): costos fijos del mismo período vs. el
     # margen de contribución real que ya salió del cálculo de arriba.
     # Ninguno de estos bloques nuevos puede tumbar la página entera si
@@ -1208,7 +1228,7 @@ def metricas_vista():
         print(f"[Métricas] ⚠️ Error calculando concentración de ganancia: {e}")
 
     return render_template(
-        "metricas.html", ventas=datos["ventas"], consolidados=datos["consolidados"],
+        "metricas.html", cobertura_costos=cobertura_costos, ventas=datos["ventas"], consolidados=datos["consolidados"],
         resumen=datos["resumen"], ads_disponible=datos["ads_disponible"],
         gasto_ads_total_periodo=datos["gasto_ads_total_periodo"], posventa=datos["posventa"],
         comparacion_anterior=datos["comparacion_anterior"],

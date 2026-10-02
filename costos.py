@@ -15,6 +15,30 @@ from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle
 DIAS_MES_REFERENCIA = 30  # para prorratear "monto mensual" a días
 
 
+UMBRAL_AVISO_SIN_COSTO = 5       # % de lo facturado sin costo de fabricación a partir del cual se avisa que la ganancia puede estar inflada
+
+
+def cobertura_de_costos(cursor, desde, hasta):
+    """
+    Qué parte de lo facturado en el período corresponde a publicaciones SIN costo de fabricación cargado. Es lo que infla la ganancia: cada venta de una
+    publicación sin costo cuenta como si fabricarla fuera gratis. Se mide por plata (no por cantidad de publicaciones): una publicación que casi no
+    vende y no tiene costo importa poco; la que más factura sin costo, mucho.
+    Devuelve {"facturado", "sin_costo", "pct_sin_costo", "publicaciones", "avisar"}.
+    """
+    cursor.execute("""
+        SELECT COALESCE(SUM(v.precio_venta * v.cantidad), 0),
+               COALESCE(SUM(v.precio_venta * v.cantidad) FILTER (WHERE COALESCE(p.precio_costo, 0) <= 0), 0),
+               COUNT(DISTINCT v.id_meli) FILTER (WHERE COALESCE(p.precio_costo, 0) <= 0)
+        FROM ventas v LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+        WHERE v.fecha_venta BETWEEN %s AND %s
+    """, (desde, hasta))
+    facturado, sin_costo, publicaciones = cursor.fetchone()
+    facturado, sin_costo = float(facturado or 0), float(sin_costo or 0)
+    pct = round(sin_costo / facturado * 100, 1) if facturado > 0 else 0.0
+    return {"facturado": facturado, "sin_costo": sin_costo, "pct_sin_costo": pct, "publicaciones": int(publicaciones or 0),
+            "avisar": facturado > 0 and pct >= UMBRAL_AVISO_SIN_COSTO}
+
+
 def _dias_de_solapamiento(fecha_inicio_gasto, fecha_fin_gasto, fecha_desde_periodo, fecha_hasta_periodo):
     inicio = max(fecha_inicio_gasto, fecha_desde_periodo)
     fin = min(fecha_fin_gasto or fecha_hasta_periodo, fecha_hasta_periodo)

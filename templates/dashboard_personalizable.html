@@ -502,11 +502,16 @@
             // Sin costo de fabricación cargado, la "ganancia neta real" de arriba es más alta que la verdadera:
             // es lo primero que hay que arreglar, así que va al frente de la lista.
             const p = ganancia && ganancia.periodo_14d;
-            if (p && p.facturado > 0 && p.costo_fabricacion === 0) {
+            const cob = await fetch('/api/dashboard/cobertura_costos').then(r => r.json()).catch(() => null);
+            if (cob && cob.avisar) {
+                const pct = String(cob.pct_sin_costo).replace('.0', '').replace('.', ',');
+                const sinNada = p && p.facturado > 0 && p.costo_fabricacion === 0;
                 d.acciones = [{
                     prioridad: 'importante', categoria: 'financiero',
-                    titulo: 'Tu ganancia no descuenta el costo de fabricación',
-                    detalle: 'Todavía no cargaste lo que te cuesta fabricar tus productos, así que la ganancia que ves es más alta que la real.',
+                    titulo: sinNada ? 'Tu ganancia no descuenta el costo de fabricación' : `Al ${pct}% de lo que facturaste le falta el costo de fabricación`,
+                    detalle: sinNada
+                        ? 'Todavía no cargaste lo que te cuesta fabricar tus productos, así que la ganancia que ves es más alta que la real.'
+                        : `${cob.publicaciones} publicación${cob.publicaciones === 1 ? '' : 'es'} sin costo cargado: la ganancia que ves es más alta que la real.`,
                     link: '/costos', link_texto: 'Cargar costos',
                 }].concat(d.acciones || []);
                 d.total = (d.total || 0) + 1;

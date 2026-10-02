@@ -83,6 +83,8 @@
 <!-- ── 2. QUÉ REVISAR: avisos que cambian cómo leer el número ──────────────── -->
 {% if falta_costo %}
 {{ banner("warn", "alert", "<b>Falta cargar el costo de fabricación</b> — la ganancia real es menor a la que ves", "Sin ese dato, cada venta parece tener el 100% de margen sobre el producto.", "Cargar costos", "/costos", "btn-alerta") }}
+{% elif cobertura_costos and cobertura_costos.avisar %}
+{{ banner("warn", "alert", "<b>Al " ~ (cobertura_costos.pct_sin_costo|string|replace('.0', '')|replace('.', ',')) ~ "% de lo que facturaste</b> le falta el costo de fabricación — la ganancia real es menor a la que ves", (cobertura_costos.publicaciones|string) ~ " publicación" ~ ("es" if cobertura_costos.publicaciones != 1) ~ " sin costo cargado. Esas ventas cuentan como si fabricarlas fuera gratis.", "Cargar costos", "/costos", "btn-alerta") }}
 {% endif %}
 {% if not ads_disponible %}
 {{ banner("info", "percent", "<b>No vemos gasto de publicidad</b> en este período", "Revisá que hayas dado acceso a tus campañas de Ads, o que tengas campañas activas.") }}
