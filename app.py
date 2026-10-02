@@ -85,25 +85,30 @@ for _var, _motivo in _recomendadas.items():
 # ── Sentry: monitoreo de errores en producción ──────────────────────────────
 # Solo se activa si SENTRY_DSN está configurado en .env. En desarrollo local
 # sin la variable, Sentry simplemente no se inicializa — sin efecto.
-if config.SENTRY_DSN:
-    import sentry_sdk
-    from sentry_sdk.integrations.flask import FlaskIntegration
-    sentry_sdk.init(
-        dsn=config.SENTRY_DSN,
-        integrations=[FlaskIntegration()],
-        traces_sample_rate=0.1,  # 10% de requests trazados para performance
-        profiles_sample_rate=0.1,
-        send_default_pii=False,  # No enviar cookies ni IP por defecto
-    )
-    # Añadir contexto de usuario a cada evento para poder filtrar errores
-    # por usuario específico en el dashboard de Sentry.
-    from flask import g as _g
-    import sentry_sdk as _sdk
+_dsn_sentry = (config.SENTRY_DSN or "").strip().strip("\"'")
+if _dsn_sentry:
+    # El monitoreo es un extra: un DSN mal pegado (sin https://, con comillas o con espacios) NO puede impedir que la app arranque.
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        sentry_sdk.init(
+            dsn=_dsn_sentry,
+            integrations=[FlaskIntegration()],
+            traces_sample_rate=0.1,  # 10% de requests trazados para performance
+            profiles_sample_rate=0.1,
+            send_default_pii=False,  # No enviar cookies ni IP por defecto
+        )
+        # Añadir contexto de usuario a cada evento para poder filtrar errores
+        # por usuario específico en el dashboard de Sentry.
+        from flask import g as _g
+        import sentry_sdk as _sdk
 
-    @app.before_request
-    def _sentry_set_user():
-        if getattr(_g, "usuario_id", None):
-            _sdk.set_user({"id": str(_g.usuario_id)})
+        @app.before_request
+        def _sentry_set_user():
+            if getattr(_g, "usuario_id", None):
+                _sdk.set_user({"id": str(_g.usuario_id)})
+    except Exception as _e:
+        print(f"[Sentry] ❌ SENTRY_DSN no es válida ({_e}): la app arranca igual, pero sin monitoreo de errores. Debe tener la forma https://<clave>@<algo>.ingest.sentry.io/<número>.")
 
 # ── Flask-Caching ─────────────────────────────────────────────────────────
 from cache import cache, construir_key, leer as cache_leer, guardar as cache_guardar
