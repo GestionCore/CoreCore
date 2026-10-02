@@ -161,9 +161,13 @@
         <tbody>
             {% for c in consolidados %}
             {% set m = ((c.raw.neto_total / c.raw.total_facturado * 100) if c.raw.total_facturado else 0) %}
+            {% set indice = loop.index %}
             <tr class="ux-fila-{{ 'ok' if m >= 15 else ('warn' if m >= 0 else 'danger') }} {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
                 <td style="width:50px; padding-right:0;">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="" class="thumb-sm" loading="lazy">{% endif %}</td>
-                <td class="ux-col-titulo"><strong>{{ c.titulo }}</strong>{% if m < 0 %} <span class="ux-pill ux-danger">Pierde plata</span>{% elif m < 15 %} <span class="ux-pill ux-warn">Al límite</span>{% endif %}</td>
+                <td class="ux-col-titulo"><strong>{{ c.titulo }}</strong>{% if m < 0 %} <span class="ux-pill ux-danger">Pierde plata</span>{% elif m < 15 %} <span class="ux-pill ux-warn">Al límite</span>{% endif %}
+                    {% if c.raw.costo_u == 0 %} <a class="ux-pill ux-warn" href="/costos" title="La ganancia de este modelo no descuenta lo que cuesta fabricarlo">Sin costo cargado</a>{% endif %}
+                    {% if c.variantes|length > 1 %}<div><button type="button" class="ux-toggle-variantes" data-variantes="{{ indice }}" aria-expanded="false">{{ c.variantes|length }} publicaciones · ver el detalle <span aria-hidden="true">▸</span></button></div>{% endif %}
+                </td>
                 <td class="num">{{ c.unidades }}</td>
                 <td class="num">${{ c.precio_promedio }}</td>
                 <td class="num costo">${{ c.cargo_u }}</td>
@@ -173,11 +177,27 @@
                 <td class="num {{ 'text-danger' if m < 0 else 'text-success' }}"><strong>${{ c.neto_u }}</strong></td>
                 <td class="num {{ 'text-danger' if m < 0 else 'text-success' }}"><strong>${{ c.neto_total }}</strong></td>
             </tr>
+            {% if c.variantes|length > 1 %}
+            {% for v in c.variantes %}
+            <tr class="ux-subfila" data-variantes-de="{{ indice }}" hidden>
+                <td></td>
+                <td class="ux-col-titulo"><span class="text-muted">└</span> {% if v.talle %}<b>{{ v.talle }}</b>{% else %}Publicación {{ v.id_meli }}{% endif %}{% if v.tipo %} <span class="text-muted">· {{ v.tipo }}</span>{% endif %}</td>
+                <td class="num">{{ v.unidades }}</td>
+                <td class="num">${{ v.precio_promedio }}</td>
+                <td class="num costo">${{ v.cargo_u }}</td>
+                <td class="num costo">${{ v.envio_u }}</td>
+                <td class="num costo">${{ v.ads_u }}</td>
+                <td class="num costo">${{ v.costo_u }}</td>
+                <td class="num {{ 'text-danger' if v.raw.neto_total < 0 else '' }}">${{ v.neto_u }}</td>
+                <td class="num {{ 'text-danger' if v.raw.neto_total < 0 else '' }}">${{ v.neto_total }}</td>
+            </tr>
+            {% endfor %}
+            {% endif %}
             {% endfor %}
         </tbody>
     </table>
     {% if consolidados|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver los {{ consolidados|length - 5 }} modelos restantes</button>
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">{{ ver_mas(consolidados|length - 5, "modelo", "modelos", "los") }}</button>
     {% endif %}
 </div>
 {% endif %}
@@ -607,5 +627,15 @@ function _iniciarHeatmap() {
         });
     }).catch(() => _sinDatos('canvas-heatmap', 'heatmap-empty', 'No se pudo cargar el gráfico. Revisá la conexión.'));
 }
+
+// Detalle por publicación (talle) de cada modelo de la tabla de márgenes: plegado hasta que se pide.
+document.addEventListener('click', (e) => {
+    const b = e.target.closest('.ux-toggle-variantes');
+    if (!b) return;
+    const abrir = b.getAttribute('aria-expanded') !== 'true';
+    b.setAttribute('aria-expanded', abrir);
+    b.querySelector('span').textContent = abrir ? '▾' : '▸';
+    document.querySelectorAll(`tr[data-variantes-de="${b.dataset.variantes}"]`).forEach(tr => { tr.hidden = !abrir; });
+});
 </script>
 {% endblock %}

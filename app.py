@@ -1121,16 +1121,8 @@ def metricas_vista():
     try:
         cons = datos["consolidados"]
 
-        # Por MODELO (los talles se suman): lo que importa es qué producto vende, no qué talle
-        from utils import limpiar_titulo_modelo
-        por_modelo = {}
-        for c in cons:
-            nombre = limpiar_titulo_modelo(c["titulo"]) or c["titulo"]
-            m = por_modelo.setdefault(nombre, {"titulo": nombre, "thumbnail": c.get("thumbnail"), "facturado": 0.0, "unidades": 0})
-            m["facturado"] += c["raw"]["total_facturado"]
-            m["unidades"] += c["unidades"]
-            m["thumbnail"] = m["thumbnail"] or c.get("thumbnail")
-        modelos = list(por_modelo.values())
+        # `consolidados` ya viene por MODELO (los talles sumados, metricas.consolidar_por_modelo): lo que importa es qué producto vende, no qué talle
+        modelos = [{"titulo": c["titulo"], "thumbnail": c.get("thumbnail"), "facturado": c["raw"]["total_facturado"], "unidades": c["unidades"]} for c in cons]
 
         def _top(clave, formato):
             ordenados = sorted(modelos, key=lambda c: -clave(c))[:6]

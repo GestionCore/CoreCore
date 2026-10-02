@@ -186,6 +186,14 @@ def corregir_plurales(texto):
     return _RE_PLURAL_VIEJO.sub(reemplazar, texto)
 
 
+TIPOS_PUBLICACION = {"gold_pro": "Premium", "gold_premium": "Premium", "gold_special": "Clásica", "gold": "Oro", "silver": "Plata", "bronze": "Bronce", "free": "Gratuita"}
+
+
+def nombre_tipo_publicacion(listing_type_id):
+    """'gold_special' → 'Clásica', 'gold_pro' → 'Premium'. None si no se conoce el tipo."""
+    return TIPOS_PUBLICACION.get(listing_type_id) if listing_type_id else None
+
+
 def ver_mas(n, uno, varios, articulo="las"):
     """Texto del botón de "ver más": 'Ver 1 publicación más' / 'Ver las 5 publicaciones restantes' (antes decía 'Ver las 1 restantes')."""
     n = int(n)

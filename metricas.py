@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 import db
 import ads
-from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina, sql_momento_argentina
+from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina, sql_momento_argentina, limpiar_titulo_modelo, extraer_talle, nombre_tipo_publicacion
 
 _NOMBRES_MES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
@@ -203,6 +203,57 @@ def _obtener_comparacion_periodo_anterior(cursor, fecha_desde, fecha_hasta):
     }
 
 
+def _fila_consolidada(cp):
+    """Una fila de la tabla de modelos a partir de sus TOTALES (unidades, facturado, costos): todo se calcula como total ÷ unidades (promedio ponderado)."""
+    u = cp["unidades"]
+    p_prom = cp["facturado"] / u if u > 0 else 0.0
+    c_com_u = cp["cargos_meli"] / u if u > 0 else 0.0
+    c_env_u = cp["envios"] / u if u > 0 else 0.0
+    c_ads_u = cp["ads"] / u if u > 0 else 0.0
+    c_fab_u = cp["costo_fab"] / u if u > 0 else 0.0
+    neto_u = p_prom - c_com_u - c_env_u - c_ads_u - c_fab_u
+    return {
+        "titulo": cp["titulo"], "thumbnail": cp["thumbnail"], "unidades": u, "facturado_raw": cp["facturado"],
+        "precio_promedio": formatear_moneda(p_prom), "total_facturado": formatear_moneda(cp["facturado"]),
+        "cargo_u": formatear_moneda(c_com_u), "envio_u": formatear_moneda(c_env_u), "ads_u": formatear_moneda(c_ads_u),
+        "costo_u": formatear_moneda(c_fab_u), "neto_u": formatear_moneda(neto_u), "neto_total": formatear_moneda(neto_u * u),
+        "raw": {
+            "precio_promedio": round(p_prom, 2), "total_facturado": round(cp["facturado"], 2),
+            "cargo_u": round(c_com_u, 2), "envio_u": round(c_env_u, 2), "ads_u": round(c_ads_u, 2),
+            "costo_u": round(c_fab_u, 2), "neto_u": round(neto_u, 2), "neto_total": round(neto_u * u, 2),
+        },
+    }
+
+
+def consolidar_por_modelo(por_publicacion):
+    """
+    Une las publicaciones de un mismo modelo (los talles/variantes son publicaciones distintas en Mercado Libre) en una sola fila, sumando TOTALES y
+    recién después sacando los promedios por unidad: es el promedio ponderado real que exige el proyecto, nunca un promedio simple de talles.
+    `por_publicacion` es {id_meli: {titulo, thumbnail, unidades, facturado, costo_fab, cargos_meli, envios, ads}}; `ads` es el total de publicidad de
+    esa publicación en el período. Devuelve las filas por modelo (la de mayor facturación primero), cada una con `variantes` (el detalle por publicación).
+    """
+    modelos = {}
+    for id_meli, p in por_publicacion.items():
+        nombre = limpiar_titulo_modelo(p["titulo"]) or p["titulo"] or "Sin nombre"
+        m = modelos.setdefault(nombre.lower(), {"titulo": nombre, "thumbnail": None, "mejor": -1.0, "unidades": 0, "facturado": 0.0, "costo_fab": 0.0,
+                                                "cargos_meli": 0.0, "envios": 0.0, "ads": 0.0, "variantes": []})
+        for campo in ("unidades", "facturado", "costo_fab", "cargos_meli", "envios", "ads"):
+            m[campo] += p[campo]
+        if p["facturado"] > m["mejor"]:                       # la foto es la de la publicación del modelo que más facturó
+            m["mejor"], m["thumbnail"] = p["facturado"], p["thumbnail"]
+        talle = extraer_talle(p["titulo"])
+        fila = _fila_consolidada(p)
+        fila.update({"id_meli": id_meli, "talle": None if talle == "Único" else talle, "tipo": nombre_tipo_publicacion(p.get("tipo"))})
+        m["variantes"].append(fila)
+    filas = []
+    for m in modelos.values():
+        fila = _fila_consolidada(m)
+        fila["variantes"] = sorted(m["variantes"], key=lambda v: -v["facturado_raw"])
+        filas.append(fila)
+    filas.sort(key=lambda c: -c["facturado_raw"])
+    return filas
+
+
 def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fecha_hasta):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
@@ -223,7 +274,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         # vacía (bloqueada por el bug de RLS sin política).
         info_variantes = {r["id_variante"]: (r["talle"], r["color"]) for r in cursor.fetchall()}
 
-        cursor.execute("SELECT id_meli, precio_costo, thumbnail FROM productos_padre")
+        cursor.execute("SELECT id_meli, precio_costo, thumbnail, listing_type_id FROM productos_padre")
         # dict(cursor.fetchall()) tampoco sirve con dict_row: cada fila ya es
         # un dict de 2 claves ("id_meli", "precio_costo"), y dict() sobre una
         # lista de esos termina interpretando cada fila como el PAR
@@ -233,6 +284,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         filas_productos = cursor.fetchall()
         costos_por_item = {r["id_meli"]: r["precio_costo"] for r in filas_productos}
         thumbnails_por_item = {r["id_meli"]: r["thumbnail"] for r in filas_productos}
+        tipos_por_item = {r["id_meli"]: r["listing_type_id"] for r in filas_productos}
 
         cursor.execute("""
             SELECT tipo, motivo, estado, id_orden, fecha, COALESCE(monto_retenido, 0.0) AS monto_retenido, afecta_reputacion
@@ -333,34 +385,14 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         })
 
         if id_meli not in consolidado_dict:
-            consolidado_dict[id_meli] = {"titulo": titulo, "thumbnail": thumbnails_por_item.get(id_meli), "unidades": 0, "facturado": 0.0, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": costo_ads_total_item}
+            consolidado_dict[id_meli] = {"titulo": titulo, "thumbnail": thumbnails_por_item.get(id_meli), "tipo": tipos_por_item.get(id_meli), "unidades": 0, "facturado": 0.0, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": costo_ads_total_item}
         consolidado_dict[id_meli]["unidades"] += cantidad
         consolidado_dict[id_meli]["facturado"] += ingreso_bruto_operacion
         consolidado_dict[id_meli]["costo_fab"] += costo_fabricacion_total
         consolidado_dict[id_meli]["cargos_meli"] += cargo_venta
         consolidado_dict[id_meli]["envios"] += costo_envio
 
-    lista_consolidados = []
-    for id_m, cp in consolidado_dict.items():
-        u = cp["unidades"]
-        p_prom = cp["facturado"] / u if u > 0 else 0.0
-        c_com_u = cp["cargos_meli"] / u if u > 0 else 0.0
-        c_env_u = cp["envios"] / u if u > 0 else 0.0
-        c_ads_u = cp["ads"] / u if u > 0 else 0.0
-        c_fab_u = cp["costo_fab"] / u if u > 0 else 0.0
-        neto_u = p_prom - c_com_u - c_env_u - c_ads_u - c_fab_u
-        lista_consolidados.append({
-            "titulo": cp["titulo"], "thumbnail": cp["thumbnail"], "unidades": u, "facturado_raw": cp["facturado"],
-            "precio_promedio": formatear_moneda(p_prom), "total_facturado": formatear_moneda(cp["facturado"]),
-            "cargo_u": formatear_moneda(c_com_u), "envio_u": formatear_moneda(c_env_u), "ads_u": formatear_moneda(c_ads_u),
-            "costo_u": formatear_moneda(c_fab_u), "neto_u": formatear_moneda(neto_u), "neto_total": formatear_moneda(neto_u * u),
-            "raw": {
-                "precio_promedio": round(p_prom, 2), "total_facturado": round(cp["facturado"], 2),
-                "cargo_u": round(c_com_u, 2), "envio_u": round(c_env_u, 2), "ads_u": round(c_ads_u, 2),
-                "costo_u": round(c_fab_u, 2), "neto_u": round(neto_u, 2), "neto_total": round(neto_u * u, 2),
-            }
-        })
-    lista_consolidados.sort(key=lambda c: -c["facturado_raw"])
+    lista_consolidados = consolidar_por_modelo(consolidado_dict)
 
     # Lo que cuesta ofrecer cuotas sin interés: Mercado Libre cobra un cargo de financiación POR PUBLICACIÓN (un % casi fijo del precio) en cada
     # venta, aunque el comprador pague de contado. Ya está dentro de los cargos de MeLi; acá se separa para poder decidir publicación por publicación.
