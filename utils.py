@@ -1,5 +1,14 @@
 """Utilidades compartidas entre páginas — portadas tal cual de Santi Mens."""
 import re
+from datetime import datetime, timedelta, timezone
+
+ARGENTINA = timezone(timedelta(hours=-3))      # sin horario de verano
+
+
+def hoy_argentina():
+    """La fecha de hoy en Argentina (el servidor corre en UTC: pasadas las 21 h, "hoy" ya sería mañana)."""
+    return datetime.now(ARGENTINA).date()
+
 
 ESTADOS_INCIDENCIA_LEGIBLES = {
     "open": "Abierto", "opened": "Abierto",

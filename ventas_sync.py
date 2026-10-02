@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 import meli_http
 import db
 import flex
+from utils import ARGENTINA
 
 TAMANO_PAGINA = 50
 COLCHON_INCREMENTAL_HORAS = 2
@@ -258,9 +259,6 @@ def _precargar_costos_envio(ordenes, access_token):
         ids_pagos = {p["id"] for o in ordenes if o.get("status") not in ("cancelled", "invalid") for p in (o.get("payments") or []) if p.get("id")} - set(_cache_pago)
         if ids_pagos:
             list(pool.map(lambda pid: _datos_de_pago(access_token, pid), ids_pagos))
-
-
-ARGENTINA = timezone(timedelta(hours=-3))      # sin horario de verano
 
 
 def _fecha_hora_argentina(fecha_iso):

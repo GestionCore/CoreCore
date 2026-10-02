@@ -14,19 +14,18 @@ base fallan, queda en el log y el usuario no se entera. Pantalla con el historia
 import json
 import logging
 import re
-from datetime import timedelta, timezone
 from functools import wraps
 
 from flask import Blueprint, Response, g, jsonify, render_template, request
 
 import db
 from auth.middleware import login_requerido
+from utils import ARGENTINA
 
 log = logging.getLogger("corelux.auditoria")
 bp = Blueprint("auditoria", __name__)
 
 TAMANO_MAXIMO = 3000
-ARGENTINA = timezone(timedelta(hours=-3))      # sin horario de verano
 _SECRETO = re.compile(r"token|password|contrase|clave|secret|authorization", re.IGNORECASE)
 
 ETIQUETAS = {
