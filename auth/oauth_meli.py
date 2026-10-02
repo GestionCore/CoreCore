@@ -99,6 +99,7 @@ def obtener_datos_usuario_meli(access_token):
         return True, {
             "meli_user_id": data.get("id"),
             "nickname": data.get("nickname"),
+            "email": data.get("email"),
             "site_id": data.get("site_id", config.MELI_SITE_ID),
         }
     except Exception as e:

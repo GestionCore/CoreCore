@@ -213,6 +213,8 @@ import legal
 app.register_blueprint(legal.bp)
 import auditoria
 app.register_blueprint(auditoria.bp)
+import salud_sistema
+app.register_blueprint(salud_sistema.bp)
 
 import costos_importar
 app.register_blueprint(costos_importar.bp)

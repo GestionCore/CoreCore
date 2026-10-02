@@ -12,8 +12,22 @@ de Row Level Security lo acepten (probado contra Postgres real):
    el paso 2 antes, esta inserción es rechazada por la base misma.
 """
 import secrets
+from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row
 import db
+
+SUFIJO_EMAIL_PENDIENTE = "@pendiente.corelux.app"
+
+
+def email_pendiente(meli_user_id):
+    """Email provisorio de un usuario cuyo email real todavía no conocemos."""
+    return f"meli-{meli_user_id}{SUFIJO_EMAIL_PENDIENTE}"
+
+
+def email_de_meli(datos_meli):
+    """El email que Mercado Libre informa para el vendedor, normalizado; None si no vino o no parece un email."""
+    email = (datos_meli.get("email") or "").strip().lower()
+    return email if "@" in email and "." in email.split("@")[-1] and not email.endswith(SUFIJO_EMAIL_PENDIENTE) else None
 
 
 def _generar_referral_code():
@@ -50,6 +64,7 @@ def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None):
                 "UPDATE cuentas_meli SET nickname = %s, activa = true, ultima_sincronizacion = now() WHERE id = %s",
                 (datos_meli.get("nickname"), cuenta_id)
             )
+        _completar_email_pendiente(usuario_id, datos_meli)
         return usuario_id, cuenta_id, False
 
     # Cuenta de MeLi nueva para nosotros — creamos usuario y cuenta. La
@@ -57,20 +72,28 @@ def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None):
     # alcanza para el INSERT inicial.
     from datetime import datetime, timedelta, timezone
     trial_termina_en = datetime.now(timezone.utc) + timedelta(days=14)
-    email = email_para_nuevo_usuario or f"meli-{meli_user_id}@pendiente.corelux.app"
+    # usuarios.email es único: si el email de Mercado Libre ya lo tiene otro usuario de CoreLux (la misma persona con dos cuentas de MeLi
+    # que no se vincularon), se arranca con el provisorio en vez de impedirle entrar.
+    candidatos = [e for e in (email_para_nuevo_usuario, email_de_meli(datos_meli)) if e] + [email_pendiente(meli_user_id)]
 
-    conexion = db._obtener_pool().getconn()
-    try:
-        cursor = conexion.cursor(row_factory=dict_row)
-        referral_code = _generar_referral_code()
-        cursor.execute(
-            "INSERT INTO usuarios (email, plan, trial_termina_en, referral_code) VALUES (%s, 'trial', %s, %s) RETURNING id",
-            (email, trial_termina_en, referral_code)
-        )
-        usuario_id = cursor.fetchone()["id"]
-        conexion.commit()
-    finally:
-        db.liberar_conexion(conexion)
+    usuario_id = None
+    for email in candidatos:
+        conexion = db._obtener_pool().getconn()
+        try:
+            cursor = conexion.cursor(row_factory=dict_row)
+            cursor.execute(
+                "INSERT INTO usuarios (email, plan, trial_termina_en, referral_code) VALUES (%s, 'trial', %s, %s) RETURNING id",
+                (email, trial_termina_en, _generar_referral_code())
+            )
+            usuario_id = cursor.fetchone()["id"]
+            conexion.commit()
+            break
+        except UniqueViolation:
+            conexion.rollback()
+        finally:
+            db.liberar_conexion(conexion)
+    if usuario_id is None:
+        raise RuntimeError("No se pudo crear el usuario: ni el email de Mercado Libre ni el provisorio estaban disponibles.")
 
     # Ahora que existe el usuario_id, recién acá entramos al canal con
     # RLS activo — esta es la secuencia que probamos contra Postgres
@@ -86,6 +109,27 @@ def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None):
         cuenta_id = cursor.fetchone()["id"]
 
     return usuario_id, cuenta_id, True
+
+
+def _completar_email_pendiente(usuario_id, datos_meli):
+    """
+    Los usuarios creados antes de leer el email de Mercado Libre quedaron con el provisorio (meli-<id>@pendiente...), y con ese no pueden
+    recibir avisos, cobrar una suscripción ni ser reconocidos como administrador. En el próximo inicio de sesión se reemplaza por el real,
+    salvo que otro usuario ya lo tenga. Nunca pisa un email que no sea provisorio.
+    """
+    email = email_de_meli(datos_meli)
+    if not email:
+        return
+    try:
+        with db.conexion_usuario(usuario_id) as conexion:
+            conexion.cursor().execute(
+                """UPDATE usuarios SET email = %s
+                   WHERE id = %s AND email LIKE %s
+                     AND NOT EXISTS (SELECT 1 FROM usuarios o WHERE lower(o.email) = %s)""",
+                (email, usuario_id, "%" + SUFIJO_EMAIL_PENDIENTE, email)
+            )
+    except Exception as e:
+        print(f"[Registro] ⚠️ No se pudo completar el email del usuario {usuario_id}: {e}")
 
 
 def vincular_cuenta_adicional(usuario_id, datos_meli):

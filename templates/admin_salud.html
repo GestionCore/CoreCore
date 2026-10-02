@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_ux.html" import banner, kpi %}
+{% block title %}Salud del sistema · CoreLux{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon" style="width:22px;height:22px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-settings"/></svg>Salud del sistema</h1>
+        <div class="page-subtitle">Si la base responde, si cada cuenta se sincroniza y qué configuración falta · <a href="/admin">Volver a usuarios</a></div>
+    </div>
+</div>
+
+{% if e.problemas %}
+{{ banner("danger", "alert", "<b>" ~ e.problemas ~ " cosa" ~ ("s" if e.problemas != 1) ~ " para atender</b>", "Mirá abajo cuáles son: están marcadas en rojo.") }}
+{% elif e.avisos %}
+{{ banner("warn", "info", "<b>Todo funciona, con " ~ e.avisos ~ " aviso" ~ ("s" if e.avisos != 1) ~ "</b>", "Nada urgente: son cosas para revisar.") }}
+{% else %}
+{{ banner("ok", "check", "<b>Todo en orden</b>", "La base responde, las cuentas están al día y no falta configuración.") }}
+{% endif %}
+
+<div class="ux-kpis">
+    {{ kpi("Base de datos", e.base_ms ~ " ms", "ok" if e.base_ms < 300 else "warn", "layers", "respuesta de un SELECT 1") }}
+    {{ kpi("Cuentas", e.cuentas|length, "info", "users", (e.cuentas|selectattr('tono', 'equalto', 'ok')|list|length) ~ " al día") }}
+    {{ kpi("Migraciones", e.migraciones.aplicadas ~ " de " ~ e.migraciones.en_disco, "ok" if not e.migraciones.pendientes else "danger", "file-text", "todas aplicadas" if not e.migraciones.pendientes else (e.migraciones.pendientes|length ~ " pendiente(s)")) }}
+    {{ kpi("Cambios en 24 h", e.actividad_24h|sum(attribute=1), "accion", "edit", "registrados en la actividad") }}
+</div>
+
+<div class="ux-seccion ux-info">Cuentas de Mercado Libre</div>
+<div class="panel">
+    <div style="overflow-x:auto;">
+        <table class="data-table ux-tabla-cards">
+            <thead><tr><th>Cuenta</th><th>Usuario</th><th>Estado</th><th>Ventas</th><th>Catálogo</th></tr></thead>
+            <tbody>
+            {% for c in e.cuentas %}
+                <tr>
+                    <td data-label="Cuenta"><b>{{ c.nickname or ('#' ~ c.id) }}</b> <span class="text-muted">#{{ c.id }}</span></td>
+                    <td data-label="Usuario">{{ c.email }} <span class="ux-pill ux-pill-suave ux-neutral">{{ c.plan }}</span></td>
+                    <td data-label="Estado"><span class="ux-pill ux-{{ c.tono }} ux-pill-suave">{{ c.texto }}</span></td>
+                    <td data-label="Ventas" class="text-muted">{{ c.ultima_ventas.strftime('%d/%m %H:%M') ~ ' UTC' if c.ultima_ventas else '—' }}</td>
+                    <td data-label="Catálogo" class="text-muted">{{ c.ultimo_catalogo.strftime('%d/%m %H:%M') ~ ' UTC' if c.ultimo_catalogo else '—' }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if e.migraciones.pendientes %}
+{{ banner("danger", "alert", "<b>Hay migraciones sin aplicar</b>", e.migraciones.pendientes|join(', ') ~ ". Corré python migrate.py (el deploy lo hace solo).") }}
+{% endif %}
+
+{% if e.config.faltan or e.config.recomendadas %}
+<div class="ux-seccion ux-warn">Configuración</div>
+<div class="panel">
+    {% for v in e.config.faltan %}<div class="ux-paso"><span class="ux-pill ux-danger">falta</span><div class="ux-paso-cuerpo"><b>{{ v }}</b> es obligatoria.</div></div>{% endfor %}
+    {% for v, motivo in e.config.recomendadas.items() %}<div class="ux-paso"><span class="ux-pill ux-warn">recomendada</span><div class="ux-paso-cuerpo"><b>{{ v }}</b> — {{ motivo }}.</div></div>{% endfor %}
+</div>
+{% endif %}
+
+<details class="ux-detalle">
+    <summary>Servidor, conexiones y scheduler</summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="ux-dist-fila"><span class="ux-dist-etq" style="width:200px;">App / región</span><b>{{ e.servidor.app }} · {{ e.servidor.region }}</b></div>
+        <div class="ux-dist-fila"><span class="ux-dist-etq" style="width:200px;">Máquina / versión</span><b>{{ e.servidor.maquina }} · {{ e.servidor.version }}</b></div>
+        {% for nombre, p in [('Pool de conexiones (usuario)', e.pools.usuario), ('Pool de conexiones (admin)', e.pools.admin)] %}
+        <div class="ux-dist-fila"><span class="ux-dist-etq" style="width:200px;">{{ nombre }}</span>
+            <b>{% if p %}{{ p.en_uso }} en uso de {{ p.maximo }}{% if p.esperando %} · <span class="text-danger">{{ p.esperando }} esperando</span>{% endif %}{% else %}sin abrir todavía{% endif %}</b></div>
+        {% endfor %}
+        <div class="ux-dist-fila"><span class="ux-dist-etq" style="width:200px;">Scheduler</span>
+            <b>{% if e.scheduler.redis %}Celery Beat (Redis disponible){% elif e.scheduler.este_proceso %}APScheduler en este proceso{% else %}APScheduler en otro proceso{% endif %}</b></div>
+        <div class="text-muted" style="font-size:0.85em; margin-top:10px;">Las conexiones y el scheduler son del proceso que atendió esta página; en producción hay 2 máquinas con 2 procesos cada una (tope en db.POOL_MAX = {{ e.pools.pool_max }}).</div>
+    </div>
+</details>
+
+{% if e.actividad_24h %}
+<details class="ux-detalle">
+    <summary>Qué se cambió en las últimas 24 horas</summary>
+    <div class="ux-detalle-cuerpo">
+        {% for accion, n in e.actividad_24h %}<div class="ux-dist-fila"><span class="ux-dist-etq" style="width:260px;">{{ accion }}</span><b>{{ n }}</b></div>{% endfor %}
+    </div>
+</details>
+{% endif %}
+{% endblock %}

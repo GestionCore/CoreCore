@@ -130,7 +130,7 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 95. 🟠 M · IMPLEMENTAR — **Comparador Clásica vs Premium por publicación** con la comisión real y el cargo de cuotas (ya se guarda el costo de financiación por publicación).
 96. 🟠 M · IMPLEMENTAR — **Reporte mensual para el contador** con percepciones y retenciones de IIBB ya guardadas (hoy el fiscal es anual).
 97. 🟠 M · IMPLEMENTAR — **Centro de notificaciones con historial** (nueva pregunta, reclamo, devolución, mensaje) alimentado por los webhooks que ya llegan.
-98. 🟠 M · IMPLEMENTAR — **Panel de salud del sistema para el dueño:** estado del sync por cuenta, errores recientes, cuentas desconectadas, versión desplegada.
+98. ✅ 🟠 M · IMPLEMENTAR — **Panel de salud del sistema para el dueño:** estado del sync por cuenta, errores recientes, cuentas desconectadas, versión desplegada.
 99. ✅ 🔴 M · IMPLEMENTAR — **Pruebas automáticas de aislamiento entre cuentas** (dos cuentas de prueba: ninguna pantalla ni API puede mostrar datos de la otra). Es el riesgo que más caro sale en un SaaS.
 100. 🟢 L · IMPLEMENTAR — **Abstraer el canal de venta** (hoy todo asume Mercado Libre) para sumar Tiendanube u otros más adelante.
 

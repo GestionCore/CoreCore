@@ -458,6 +458,9 @@ Estado de cada punto en ese archivo (✅/◐). Lo que hay que saber para no romp
 - Claves rotables sin cortar a nadie: `TOKEN_ENCRYPTION_KEY` (+ `_ANTERIOR`, `rotar_clave.py`) y `FLASK_SECRET_KEY` (+ `_ANTERIOR` → `SECRET_KEY_FALLBACKS`).
 - Los syncs/tareas abren `db.conexion_usuario(usuario_id, cuenta_id)` SIEMPRE con `cuenta_id` (RLS por cuenta activa, migración 0010).
 - Dependencias: rangos acotados en `requirements.txt` (no `==`), Dependabot semanal y `pip-audit` en CI; al subir Flask/cryptography/psycopg probar un sync real.
+- Email del usuario: se lee de `/users/me` de Mercado Libre al crear la cuenta; los usuarios viejos con `meli-<id>@pendiente.corelux.app` lo
+  completan en su próximo login (`registro._completar_email_pendiente`, nunca pisa un email real ni uno ya tomado: `usuarios.email` es único).
+  `ADMIN_EMAIL` tiene que ser ese mismo email para entrar a `/admin` y `/admin/salud` (panel de salud del sistema, `salud_sistema.py`).
 - `docs/RUNBOOK.md`: deploy, rollback, rotación de claves, tope de conexiones del pooler (`máquinas × workers × DB_POOL_MAX ≤ 12`), sync que no anda.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real
