@@ -6,6 +6,17 @@ Lista para armar el plan de acción. Cada ítem: **qué pasa → posible soluci�
 Ya hecho en esta ronda (no hay que hacer nada): verificación de deploy que seguía redirecciones, pruebas de RLS que se salteaban en terminales
 sin `DATABASE_URL`, respaldos con datos de todos los usuarios que entraban en la imagen de Docker.
 
+## Estado al 2026-10-02 (se actualiza al cerrar cada tanda; el detalle de cada cambio está en el historial de git)
+
+**Hechos**: 1 (código; falta mover el zip viejo) · 2 (código y runbook; falta programar la tarea semanal, del dueño) · 14 · 16 · 17 · 18 · 21 · 22 · 23 ·
+31 (aviso de permiso caído) · 36 · 38 · 39 · 41 · 49 · 53 · 54 · 107 · 108 · 109 · 111 · 113 · 114 · 115 · 144 (parcial: pruebas por vencer y activos) · 146 ·
+161 a 166 · 168 · 169 · 170 · 171 · 172 · 175 a 181 · 195 · 217 y 218 (menú de 7 secciones con pestañas) · 225 a 228 (cubiertos por las pestañas de cada sección) ·
+236 · 223 (parcial: Stock masivo plegado; falta fusionarlo con Stock).
+**Retiradas**: 167 (era una captura tomada a mitad de una animación; Ganancia Real y Logística no se contradicen).
+**Además se corrigió, sin estar en la lista**: el arranque de JavaScript roto por `cargarHud()`, el botón «ver más» de Publicidad que no ocultaba nada, la
+tabla de márgenes de Ganancia Real que contaba publicaciones como modelos, el top del Dashboard por talle, y un deadlock en la sincronización de reclamos.
+**Medido**: costo de régimen de la sincronización de una cuenta real, de ~95 a 19 llamadas por ciclo.
+
 ## A. Seguridad y operación
 1. [A·S] El respaldo del 1/10 vive dentro de la carpeta del proyecto (y viajó en las imágenes anteriores) → guardarlo fuera, cifrado; `respaldo.py` guarda por defecto fuera del repo.
 2. [A·M] Respaldos manuales → respaldo automático semanal a un almacenamiento privado y cifrado; confirmar que Supabase tenga backups diarios.
