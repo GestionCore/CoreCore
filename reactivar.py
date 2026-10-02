@@ -7,6 +7,7 @@ bloqueadas por moderación) y que tienen unidades, y se reactivan solo las que l
 
 Todo se vuelve a validar en el servidor: el pedido trae ids, nunca se confía en que sigan pausadas ni en que sean reactivables.
 """
+import meli_errores
 import meli_http
 
 MAXIMO_POR_PEDIDO = 50
@@ -49,11 +50,7 @@ def listar(cursor):
 
 
 def _mensaje_de_error(respuesta):
-    try:
-        cuerpo = respuesta.json()
-        return str(cuerpo.get("message") or cuerpo.get("error") or respuesta.status_code)[:160]
-    except Exception:
-        return f"Mercado Libre respondió {respuesta.status_code}"
+    return meli_errores.explicar_respuesta(respuesta)
 
 
 def reactivar(cursor, cuenta_id, access_token, ids):
@@ -72,7 +69,8 @@ def reactivar(cursor, cuenta_id, access_token, ids):
         try:
             r = meli_http.put(URL_ITEM.format(id_meli), headers=headers, json={"status": "active"})
         except Exception as e:
-            resultados.append({"id": id_meli, "ok": False, "detalle": f"No se pudo conectar con Mercado Libre: {e}"[:160]})
+            print(f"[Cambio en MeLi] ⚠️ Sin conexión al tocar {id_meli}: {e}")
+            resultados.append({"id": id_meli, "ok": False, "detalle": meli_errores.SIN_CONEXION})
             continue
         if r.status_code in (200, 201):
             cursor.execute("UPDATE productos_padre SET estado = 'active', sub_estado = '' WHERE cuenta_id = %s AND id_meli = %s", (cuenta_id, id_meli))

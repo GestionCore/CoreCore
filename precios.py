@@ -13,6 +13,7 @@ rubros): con 1 o 2 ventas se marca como "pocas ventas" y las que todavía no ven
 Sirve a cualquier rubro: no depende de talles, categorías ni de un tipo de logística.
 """
 import math
+import meli_errores
 
 import meli_http
 
@@ -125,11 +126,7 @@ def aplicables(datos):
 
 
 def _mensaje_de_error(respuesta):
-    try:
-        cuerpo = respuesta.json()
-        return str(cuerpo.get("message") or cuerpo.get("error") or respuesta.status_code)[:160]
-    except Exception:
-        return f"Mercado Libre respondió {respuesta.status_code}"
+    return meli_errores.explicar_respuesta(respuesta)
 
 
 def aplicar(cursor, cuenta_id, access_token, cambios, datos):
@@ -160,7 +157,8 @@ def aplicar(cursor, cuenta_id, access_token, cambios, datos):
         try:
             r = meli_http.put(URL_ITEM.format(id_meli), headers=headers, json={"price": item["recomendado"]})
         except Exception as e:
-            resultados.append({"id": id_meli, "ok": False, "detalle": f"No se pudo conectar con Mercado Libre: {e}"[:160]})
+            print(f"[Cambio en MeLi] ⚠️ Sin conexión al tocar {id_meli}: {e}")
+            resultados.append({"id": id_meli, "ok": False, "detalle": meli_errores.SIN_CONEXION})
             continue
         if r.status_code not in (200, 201):
             resultados.append({"id": id_meli, "ok": False, "detalle": _mensaje_de_error(r)})
@@ -250,7 +248,8 @@ def aplicar_ajuste(cursor, cuenta_id, access_token, porcentaje, ids, datos):
         try:
             r = meli_http.put(URL_ITEM.format(id_meli), headers=headers, json={"price": item["nuevo"]})
         except Exception as e:
-            resultados.append({"id": id_meli, "ok": False, "detalle": f"No se pudo conectar con Mercado Libre: {e}"[:160]})
+            print(f"[Cambio en MeLi] ⚠️ Sin conexión al tocar {id_meli}: {e}")
+            resultados.append({"id": id_meli, "ok": False, "detalle": meli_errores.SIN_CONEXION})
             continue
         if r.status_code not in (200, 201):
             resultados.append({"id": id_meli, "ok": False, "detalle": _mensaje_de_error(r)})

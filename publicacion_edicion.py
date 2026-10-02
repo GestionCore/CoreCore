@@ -8,19 +8,14 @@ Reglas (cada una nació de un problema real):
   · Nada se guarda en CoreLux hasta que Mercado Libre lo acepta: antes quedaba un precio o un título que no eran los reales.
 """
 
+from meli_errores import explicar_error_meli  # noqa: F401  (se re-exporta: el panel y las pruebas lo piden acá)
+
 ESTADOS_EDITABLES = ("active", "paused")
 MAX_TITULO = 120      # tope amplio: el límite real depende de la categoría (los títulos de ropa de la cuenta de prueba tienen 79-98) y lo decide Mercado Libre
 NOMBRES_ESTADO = {
     "active": "Activa", "paused": "Pausada", "closed": "Finalizada en Mercado Libre", "under_review": "En revisión de Mercado Libre",
     "inactive": "Inactiva", "payment_required": "Pendiente de pago", "not_yet_active": "Todavía no activa",
 }
-
-_CAUSAS = {
-    "item.title.not_modifiable": "Mercado Libre no deja cambiar el título de una publicación que ya tiene ventas.",
-    "item.price.invalid": "Mercado Libre no aceptó ese precio.",
-    "item.status.invalid": "Mercado Libre no deja pasar la publicación a ese estado ahora.",
-}
-
 
 def nombre_estado(estado):
     return NOMBRES_ESTADO.get(estado, (estado or "Sin estado").replace("_", " ").capitalize())
@@ -69,24 +64,6 @@ def armar_cambios(actual, pedido):
             payload["status"] = estado
 
     return payload, errores
-
-
-def explicar_error_meli(codigo, cuerpo):
-    """Una frase para la persona a partir de la respuesta de Mercado Libre (cuerpo = dict ya decodificado, o None)."""
-    cuerpo = cuerpo if isinstance(cuerpo, dict) else {}
-    for causa in cuerpo.get("cause") or []:
-        if isinstance(causa, dict) and causa.get("code") in _CAUSAS:
-            return _CAUSAS[causa["code"]]
-    if codigo in (401, 403):
-        return "Mercado Libre no autorizó el cambio. Probá reconectar tu cuenta."
-    if codigo == 429:
-        return "Mercado Libre pidió esperar un momento. Probá de nuevo en un minuto."
-    if codigo and codigo >= 500:
-        return "Mercado Libre no respondió bien. Probá de nuevo en unos minutos."
-    for causa in cuerpo.get("cause") or []:
-        if isinstance(causa, dict) and causa.get("message"):
-            return f"Mercado Libre no aceptó el cambio: {str(causa['message'])[:140]}"
-    return "Mercado Libre no aceptó el cambio. No se modificó nada."
 
 
 def resumen_cambios(actual, payload):

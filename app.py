@@ -66,9 +66,11 @@ import scheduler
 import ventas_manuales
 import pagos
 import admin_usuarios
+import meli_errores
 import utils
 from utils import formatear_moneda, formatear_moneda_entera, SQL_RECLAMO_AFECTA, hoy_argentina, ARGENTINA, sql_momento_argentina
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
@@ -266,6 +268,11 @@ app.register_blueprint(salud_sistema.bp)
 
 import costos_importar
 app.register_blueprint(costos_importar.bp)
+
+
+def _con_aviso(ruta, mensaje, tipo="success"):
+    """La ruta con ?msg=…&tipo=… : la pantalla destino lo muestra como aviso emergente (revisarMensajeEnURL en global.js)."""
+    return f"{ruta}?{urlencode({'msg': mensaje, 'tipo': tipo})}"
 
 
 def _detalle_error(e):
@@ -1276,19 +1283,24 @@ def crear_descuento():
         return redirect(url_for("reconectar"))
 
     id_meli = request.form.get("id_meli")
-    deal_price = float(request.form.get("deal_price"))
+    try:
+        deal_price = float(request.form.get("deal_price"))
+    except (TypeError, ValueError):
+        return redirect(_con_aviso("/promociones", "Escribí el precio del descuento antes de crearlo.", "error"))
     fecha_desde = request.form.get("fecha_desde")
     fecha_hasta = request.form.get("fecha_hasta")
 
     ok, detalle = promociones_mod.crear_descuento_individual(access_token, id_meli, deal_price, fecha_desde, fecha_hasta)
-    if ok:
-        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-            cursor = conexion.cursor()
-            cursor.execute("SELECT titulo, precio FROM productos_padre WHERE id_meli = %s", (id_meli,))
-            fila_producto = cursor.fetchone()
-            if fila_producto:
-                promociones_mod.registrar_inicio_promocion(cursor, g.cuenta_id, id_meli, fila_producto[0], fila_producto[1], deal_price, fecha_hasta)
-    return redirect("/promociones")
+    if not ok:
+        # Antes se ignoraba el rechazo y se volvía a Promociones como si el descuento se hubiera creado
+        return redirect(_con_aviso("/promociones", detalle, "error"))
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT titulo, precio FROM productos_padre WHERE id_meli = %s", (id_meli,))
+        fila_producto = cursor.fetchone()
+        if fila_producto:
+            promociones_mod.registrar_inicio_promocion(cursor, g.cuenta_id, id_meli, fila_producto[0], fila_producto[1], deal_price, fecha_hasta)
+    return redirect(_con_aviso("/promociones", "Listo: el descuento quedó creado en Mercado Libre.", "success"))
 
 
 @app.route("/promociones/eliminar_descuento/<id_meli>", methods=["POST"])
@@ -1301,11 +1313,14 @@ def eliminar_descuento(id_meli):
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    promociones_mod.eliminar_promocion_item(access_token, id_meli, "PRICE_DISCOUNT")
+    ok, detalle = promociones_mod.eliminar_promocion_item(access_token, id_meli, "PRICE_DISCOUNT")
+    if not ok:
+        # Si Mercado Libre no lo eliminó, el descuento sigue activo allá: no se lo da por cerrado acá
+        return redirect(_con_aviso("/promociones", detalle, "error"))
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         promociones_mod.cerrar_promocion_activa(cursor, id_meli)
-    return redirect("/promociones")
+    return redirect(_con_aviso("/promociones", "Listo: el descuento se eliminó en Mercado Libre.", "success"))
 
 
 @app.route("/tendencias")
@@ -2396,7 +2411,8 @@ def despacho_etiquetas_pdf():
             timeout=30,
         )
         if resp.status_code != 200:
-            return f"MeLi no pudo generar las etiquetas ahora mismo ({resp.status_code}). Probá de nuevo en un rato.", 502
+            print(f"[Etiquetas] MeLi respondió {resp.status_code}")
+            return "Mercado Libre no pudo generar las etiquetas ahora mismo. Probá de nuevo en un rato.", 502
     except Exception as e:
         print(f"[Calculadora] ❌ {type(e).__name__}: {e}")
         return "No se pudo consultar Mercado Libre ahora mismo. Probá de nuevo en un rato.", 502
@@ -2962,9 +2978,9 @@ def api_drawer_guardar_descripcion(id_meli):
             headers=headers, json={"plain_text": descripcion},
         )
         if r.status_code not in (200, 201):
-            return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}"})
+            return jsonify({"ok": False, "detalle": meli_errores.explicar_respuesta(r)})
     except token_manager.CuentaDesconectada:
-        return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
+        return jsonify({"ok": False, "detalle": "Tu cuenta de Mercado Libre está desconectada. Reconectala para seguir."})
     except Exception as e:
         return jsonify({"ok": False, "detalle": _detalle_error(e)})
     return jsonify({"ok": True})
@@ -2987,9 +3003,9 @@ def api_drawer_guardar_atributos(id_meli):
             headers=headers, json={"attributes": payload},
         )
         if r.status_code not in (200, 201):
-            return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}: {r.text[:200]}"})
+            return jsonify({"ok": False, "detalle": meli_errores.explicar_respuesta(r)})
     except token_manager.CuentaDesconectada:
-        return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
+        return jsonify({"ok": False, "detalle": "Tu cuenta de Mercado Libre está desconectada. Reconectala para seguir."})
     except Exception as e:
         return jsonify({"ok": False, "detalle": _detalle_error(e)})
     return jsonify({"ok": True})

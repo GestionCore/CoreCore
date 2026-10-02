@@ -6,6 +6,7 @@ Promociones — portado de Santi Mens. Cambios reales (no cosméticos):
 - El join de variantes pasa a usar productos_padre.id (igual que en el
   resto del port), no id_meli.
 """
+import meli_errores
 import meli_http
 from datetime import datetime, timedelta
 from utils import hoy_argentina
@@ -208,18 +209,22 @@ def crear_descuento_individual(access_token, item_id, deal_price, fecha_desde, f
         resp = meli_http.post(f"https://api.mercadolibre.com/seller-promotions/items/{item_id}", headers=headers, params={"app_version": APP_VERSION}, json=body, timeout=10)
         if resp.status_code in (200, 201):
             return True, resp.json()
-        return False, f"{resp.status_code} - {resp.text}"
+        return False, meli_errores.explicar_respuesta(resp)
     except Exception as e:
-        return False, str(e)
+        print(f"[Promociones] ⚠️ Sin conexión al crear el descuento de {item_id}: {e}")
+        return False, meli_errores.SIN_CONEXION
 
 
 def eliminar_promocion_item(access_token, item_id, promotion_type):
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
         resp = meli_http.delete(f"https://api.mercadolibre.com/seller-promotions/items/{item_id}", headers=headers, params={"app_version": APP_VERSION, "promotion_type": promotion_type}, timeout=10)
-        return resp.status_code == 200, f"{resp.status_code}"
+        if resp.status_code == 200:
+            return True, ""
+        return False, meli_errores.explicar_respuesta(resp)
     except Exception as e:
-        return False, str(e)
+        print(f"[Promociones] ⚠️ Sin conexión al eliminar el descuento de {item_id}: {e}")
+        return False, meli_errores.SIN_CONEXION
 
 
 def participar_oferta_relampago(access_token, item_id, deal_price, stock):
@@ -229,9 +234,10 @@ def participar_oferta_relampago(access_token, item_id, deal_price, stock):
                               headers=headers, params={"app_version": APP_VERSION}, json={"deal_price": deal_price, "stock_quantity": stock, "promotion_type": "LIGHTNING"}, timeout=10)
         if resp.status_code in (200, 201):
             return True, resp.json()
-        return False, f"{resp.status_code} - {resp.text}"
+        return False, meli_errores.explicar_respuesta(resp)
     except Exception as e:
-        return False, str(e)
+        print(f"[Promociones] ⚠️ Sin conexión al sumar {item_id} a la oferta: {e}")
+        return False, meli_errores.SIN_CONEXION
 
 
 def obtener_cupones(cursor, cuenta_id, dias=30):
