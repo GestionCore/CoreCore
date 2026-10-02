@@ -135,6 +135,21 @@ def obtener_cuando_compran(usuario_id, cuenta_id=None, dias=90):
 MIN_DIAS_PROYECCION = 3      # con menos días de datos el ritmo no dice nada
 
 
+def serie_acumulada(por_dia, inicio, hoy, inicio_anterior, fin_anterior):
+    """
+    Facturación acumulada día por día del mes en curso (hasta hoy) y del mes anterior (completo), para dibujarlos uno sobre otro.
+    `por_dia` es {fecha: facturado}. Cada lista arranca en el día 1; la del mes en curso termina hoy, la del anterior en su último día.
+    """
+    def acumular(desde, hasta):
+        total, serie, dia = 0.0, [], desde
+        while dia <= hasta:
+            total += por_dia.get(dia, 0.0)
+            serie.append(round(total, 2))
+            dia += timedelta(days=1)
+        return serie
+    return {"actual": acumular(inicio, hoy), "anterior": acumular(inicio_anterior, fin_anterior)}
+
+
 def obtener_proyeccion_mes(usuario_id, cuenta_id=None, hoy=None):
     """
     Cómo viene el mes: lo facturado hasta hoy, a cuánto llegaría con el mismo ritmo y cómo se compara con el mes anterior (completo y
@@ -158,6 +173,11 @@ def obtener_proyeccion_mes(usuario_id, cuenta_id=None, hoy=None):
             FROM ventas WHERE origen = 'meli' AND eliminado_en IS NULL AND fecha_venta >= %(ia)s
         """, {"i": inicio, "ia": inicio_anterior, "fa": fin_anterior, "mp": mismo_punto})
         facturado, unidades, anterior, anterior_mismo_punto, unidades_anterior = cursor.fetchone()
+        cursor.execute("""
+            SELECT fecha_venta, COALESCE(SUM(precio_venta * cantidad), 0) FROM ventas
+            WHERE origen = 'meli' AND eliminado_en IS NULL AND fecha_venta BETWEEN %s AND %s GROUP BY fecha_venta
+        """, (inicio_anterior, hoy))
+        por_dia = {f: float(t) for f, t in cursor.fetchall()}
     facturado, anterior, anterior_mismo_punto = float(facturado), float(anterior), float(anterior_mismo_punto)
     if facturado <= 0 and anterior <= 0:
         return None
@@ -166,6 +186,7 @@ def obtener_proyeccion_mes(usuario_id, cuenta_id=None, hoy=None):
     def variacion(a, b):
         return round((a - b) / b * 100, 1) if b > 0 else None
     return {
+        "serie": serie_acumulada(por_dia, inicio, hoy, inicio_anterior, fin_anterior),
         "dia": hoy.day, "dias_mes": dias_mes, "avance_pct": round(hoy.day / dias_mes * 100),
         "facturado": formatear_moneda(facturado), "facturado_raw": round(facturado, 2), "unidades": int(unidades),
         "proyectado": formatear_moneda(proyectado) if proyectado is not None else None, "proyectado_raw": round(proyectado, 2) if proyectado is not None else None,

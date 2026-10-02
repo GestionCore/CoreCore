@@ -113,7 +113,7 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 81. 🟢 S · MEJORAR — **Los widgets que elegís en el Dashboard se guardan solo en el navegador** (`localStorage`): no te acompañan a otro dispositivo ni a otra sesión. Guardarlos en la cuenta; de paso, el widget "Talles en riesgo de quiebre" tiene texto de indumentaria.
 82. ✅ 🟢 S · IMPLEMENTAR — **Botón "ver el tutorial de nuevo"**: hoy se muestra una sola vez.
 83. 🟠 M · MEJORAR — **Menú de 19 ítems en 3 grupos:** demasiado para un usuario nuevo. Mostrar un núcleo corto y el resto bajo "Más", según uso real y capacidades.
-84. 🟠 M · IMPLEMENTAR — **Gráficos de comparación:** mes contra mes anterior y año contra año en Dashboard y Ganancia Real.
+84. ◐ 🟠 M · IMPLEMENTAR — **Gráficos de comparación:** mes contra mes anterior y año contra año en Dashboard y Ganancia Real.
 85. 🟢 M · MEJORAR — **Guía de estilo de textos:** unificar voseo y tono, y revisar frases que "protestan de más" o plantan dudas.
 86. 🟢 S · MEJORAR — **Confirmaciones y "deshacer" no son consistentes** entre acciones destructivas (quitar descuento, dejar de seguir, eliminar gasto, cancelar suscripción).
 

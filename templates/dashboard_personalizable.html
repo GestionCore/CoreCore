@@ -133,6 +133,36 @@
         {{ kpi("Mismo punto de " ~ proyeccion.mes_anterior_nombre, "$" ~ proyeccion.mismo_punto, "info", "calendar", ((delta(proyeccion.vs_mismo_punto) ~ " hoy contra entonces") if proyeccion.vs_mismo_punto is not none else "sin ventas en ese período")) }}
         {{ kpi(proyeccion.mes_anterior_nombre|capitalize ~ " completo", "$" ~ proyeccion.mes_anterior, "neutral", "chart", "mes cerrado") }}
     </div>
+    {% if proyeccion.serie.anterior|sum > 0 or proyeccion.serie.actual|sum > 0 %}
+    <div style="position:relative; height:220px; margin:16px 0 6px;"><canvas id="chart-mes-vs-anterior" role="img" aria-label="Facturación acumulada de {{ proyeccion.mes_nombre }} contra {{ proyeccion.mes_anterior_nombre }}"></canvas></div>
+    <script>
+    window.addEventListener('DOMContentLoaded', function () {
+        const canvas = document.getElementById('chart-mes-vs-anterior');
+        if (!canvas || !window.Chart) { if (canvas) canvas.parentElement.style.display = 'none'; return; }
+        const s = {{ proyeccion.serie|tojson }};
+        const estilo = getComputedStyle(document.documentElement);
+        const tok = (n, f) => estilo.getPropertyValue(n).trim() || f;
+        const cActual = tok('--accent-primary', '#8b5cf6'), cAnterior = tok('--text-faint', '#94a3b8'), cTexto = tok('--text-secondary', '#94a3b8'), cGrilla = tok('--border-soft', 'rgba(255,255,255,0.08)');
+        const dias = Math.max(s.actual.length, s.anterior.length);
+        new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: Array.from({ length: dias }, (_, i) => i + 1),
+                datasets: [
+                    { label: {{ proyeccion.mes_nombre|capitalize|tojson }}, data: s.actual, borderColor: cActual, backgroundColor: cActual + '22', fill: true, borderWidth: 3, pointRadius: (c) => c.dataIndex === s.actual.length - 1 ? 5 : 0, pointBackgroundColor: cActual, pointHoverRadius: 6, tension: 0.25 },
+                    { label: {{ proyeccion.mes_anterior_nombre|capitalize|tojson }}, data: s.anterior, borderColor: cAnterior, borderDash: [6, 5], borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, fill: false },
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { labels: { color: cTexto, usePointStyle: true, boxWidth: 8 } },
+                           tooltip: { padding: 12, cornerRadius: 8, callbacks: { title: (it) => 'Día ' + it[0].label, label: (c) => ' ' + c.dataset.label + ': ' + UX.plata(c.parsed.y) } } },
+                scales: { x: { ticks: { color: cTexto, maxTicksLimit: 10 }, grid: { display: false } }, y: { beginAtZero: true, ticks: { color: cTexto, callback: (v) => UX.plata(v) }, grid: { color: cGrilla } } }
+            }
+        });
+    });
+    </script>
+    {% endif %}
     <div class="text-muted" style="font-size:0.78em;">{% if proyeccion.pocos_dias %}Todavía hay pocos días para proyectar el mes con sentido.{% else %}La proyección multiplica tu ritmo diario por los días del mes: es una referencia, no una promesa.{% endif %}</div>
 </div>
 {% endif %}
