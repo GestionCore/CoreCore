@@ -24,8 +24,10 @@ Nota de confianza, para ser honesto sobre el riesgo de cada mitad:
   "in_mediation" mientras el reclamo sigue abierto.
 """
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+import cache_db
 import meli_http
 import db
 
@@ -137,6 +139,23 @@ def _parsear_fecha(fecha_raw):
         return None
 
 
+# Dos datos secundarios de cada reclamo abierto cambian muy de vez en cuando y se pedían a MeLi en CADA ciclo de 4 minutos (una llamada por reclamo abierto
+# y otra por su orden): ahora se vuelven a pedir cada tanto. Un reclamo u orden que todavía no se consultó nunca se consulta en el acto.
+VIGENCIA_IMPACTO_SEGUNDOS = 2 * 3600
+VIGENCIA_RETENIDO_SEGUNDOS = 1 * 3600
+CLAVE_IMPACTO, CLAVE_RETENIDO = "reclamos_impacto_consultado", "reclamos_retenido_consultado"
+
+
+def filtrar_por_vigencia(ids, consultados, ahora, vigencia):
+    """Los ids que hay que volver a consultar: los que nunca se consultaron o se consultaron hace `vigencia` segundos o más. `consultados` es {id: momento}."""
+    return [i for i in ids if ahora - (consultados or {}).get(i, 0) >= vigencia]
+
+
+def _sin_vencidos(consultados, ahora, maximo=24 * 3600):
+    """La memoria de lo ya consultado no crece para siempre: se descarta lo de hace más de un día."""
+    return {i: t for i, t in (consultados or {}).items() if ahora - t < maximo}
+
+
 def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
     """Trae reclamos/mediaciones/devoluciones desde la API de post-venta de MeLi."""
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -169,7 +188,9 @@ def sincronizar_reclamos(usuario_id, cuenta_id, access_token, seller_id):
 
         with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
-            for c in claims:
+            # Siempre en el mismo orden (por id): dos sincronizaciones de la misma cuenta a la vez (el scheduler y un webhook) que escriben las mismas
+            # filas en distinto orden terminaban en "deadlock detected".
+            for c in sorted(claims, key=lambda c: str(c.get("id"))):
                 id_reclamo = c.get("id")
                 if id_reclamo is None:
                     continue
@@ -243,8 +264,11 @@ def _actualizar_dinero_retenido(usuario_id, cuenta_id, headers):
             """, (cuenta_id,))
             abiertos = cursor.fetchall()
             cursor.execute("UPDATE incidencias_posventa SET monto_retenido = 0 WHERE cuenta_id = %s AND estado IN ('closed', 'resolved') AND monto_retenido <> 0", (cuenta_id,))
+            _, consultadas = cache_db.leer(cursor, cuenta_id, CLAVE_RETENIDO, "v1", ttl_segundos=24 * 3600)
         if not abiertos:
             return
+        ahora = time.time()
+        consultadas = _sin_vencidos(consultadas if isinstance(consultadas, dict) else {}, ahora)
 
         def _retenido(id_orden):
             try:
@@ -255,16 +279,22 @@ def _actualizar_dinero_retenido(usuario_id, cuenta_id, headers):
             except Exception:
                 return None
 
-        ordenes = list(dict.fromkeys(o for _, o in abiertos))
+        ordenes = filtrar_por_vigencia(list(dict.fromkeys(o for _, o in abiertos)), consultadas, ahora, VIGENCIA_RETENIDO_SEGUNDOS)
+        if not ordenes:
+            return                 # todas se consultaron hace poco: el monto retenido guardado sigue vigente
         with ThreadPoolExecutor(max_workers=5) as pool:
             por_orden = dict(zip(ordenes, pool.map(_retenido, ordenes)))
+        for orden, monto in por_orden.items():
+            if monto is not None:
+                consultadas[orden] = ahora
         with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
+            cache_db.guardar(cursor, cuenta_id, CLAVE_RETENIDO, consultadas, "v1")
             ya_contadas = set()
             for id_reclamo, id_orden in abiertos:
                 monto = por_orden.get(id_orden)
                 if monto is None:
-                    continue       # MeLi no respondió: se conserva lo que había
+                    continue       # no se consultó ahora (o MeLi no respondió): se conserva lo que había
                 monto_fila = 0.0 if id_orden in ya_contadas else monto
                 ya_contadas.add(id_orden)
                 cursor.execute("UPDATE incidencias_posventa SET monto_retenido = %s WHERE cuenta_id = %s AND id_reclamo = %s", (monto_fila, cuenta_id, id_reclamo))
@@ -296,13 +326,21 @@ def _actualizar_impacto_en_reputacion(usuario_id, cuenta_id, headers, ids_abiert
             WHERE cuenta_id = %s AND afecta_reputacion IS NULL AND NOT (id_reclamo = ANY(%s)) ORDER BY fecha DESC LIMIT %s
         """, (cuenta_id, ids_abiertos, tope_viejos))
         ids = list(ids_abiertos) + [r[0] for r in cursor.fetchall()]
+        _, consultados = cache_db.leer(cursor, cuenta_id, CLAVE_IMPACTO, "v1", ttl_segundos=24 * 3600)
+    ahora = time.time()
+    consultados = _sin_vencidos(consultados if isinstance(consultados, dict) else {}, ahora)
+    ids = filtrar_por_vigencia(ids, consultados, ahora, VIGENCIA_IMPACTO_SEGUNDOS)
     if not ids:
         return
     with ThreadPoolExecutor(max_workers=5) as pool:
         resultados = list(zip(ids, pool.map(lambda i: _impacto_en_reputacion(headers, i), ids)))
+    for id_reclamo, valor in resultados:
+        if valor:
+            consultados[id_reclamo] = ahora
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
-        for id_reclamo, valor in resultados:
+        cache_db.guardar(cursor, cuenta_id, CLAVE_IMPACTO, consultados, "v1")
+        for id_reclamo, valor in sorted(resultados):          # en orden por id: ver el comentario de sincronizar_reclamos
             if valor:
                 cursor.execute("UPDATE incidencias_posventa SET afecta_reputacion = %s WHERE cuenta_id = %s AND id_reclamo = %s", (valor, cuenta_id, id_reclamo))
 

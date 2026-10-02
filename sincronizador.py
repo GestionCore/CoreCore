@@ -14,7 +14,9 @@ Cambios reales (no cosméticos):
 3. Los avisos por WhatsApp quedan comentados (sin puente todavía).
 """
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
+import cache_db
 import meli_http
 import validacion_meli
 import db
@@ -24,6 +26,12 @@ import enriquecimiento
 from utils import extraer_talle
 
 LOTE_MULTIGET_MELI = 20
+
+# Stock de convivencia (depósito propio + FULL de una misma publicación): una llamada por publicación en CADA ciclo de 4 minutos era lo que más
+# pesaba (41 de ~95 llamadas por cuenta). Casi nunca cambia entre un ciclo y el siguiente, así que solo se vuelve a pedir si la publicación se
+# movió (last_updated, sold_quantity o available_quantity —que en estas publicaciones es el stock de FULL, no el propio—) o si pasó la vigencia.
+CLAVE_CONVIVENCIA = "sync_convivencia"
+VIGENCIA_CONVIVENCIA_SEGUNDOS = 30 * 60
 import devoluciones_sync
 from antirrebote import Antirrebote
 from auth import token_manager
@@ -107,6 +115,28 @@ def _obtener_datos_item(id_item, headers):
     recibis_estimado = _consultar_recibis_estimado(id_item, precio_actual, listing_type_id, site_id, headers)
 
     return {"id_item": id_item, "detalle": p, "precio_original": precio_original, "recibis_estimado": recibis_estimado}
+
+
+def firma_de_movimiento(p):
+    """Lo que cambia en una publicación cuando se vende, se repone o se edita: si es igual a la última vez, su stock de convivencia sigue igual."""
+    return f"{p.get('last_updated')}|{p.get('sold_quantity')}|{p.get('available_quantity')}"
+
+
+def decidir_convivencia(pendientes, estado_previo, ahora, vigencia=VIGENCIA_CONVIVENCIA_SEGUNDOS):
+    """
+    Separa las publicaciones de convivencia en las que hay que volver a pedir a Mercado Libre y las que se conservan como están.
+    `pendientes` es [(indice, user_product_id, id_item, firma)]; `estado_previo` es {id_item: [firma, momento_de_la_consulta]}.
+    Se vuelve a pedir si es la primera vez, si la firma cambió o si pasó la vigencia desde la última consulta.
+    """
+    a_consultar, a_conservar = [], []
+    for pendiente in pendientes:
+        _, _, id_item, firma = pendiente
+        previo = (estado_previo or {}).get(id_item)
+        if previo and previo[0] == firma and ahora - previo[1] < vigencia:
+            a_conservar.append(pendiente)
+        else:
+            a_consultar.append(pendiente)
+    return a_consultar, a_conservar
 
 
 def _consultar_stock_convivencia(user_product_id, headers):
@@ -193,7 +223,9 @@ def _escribir_item_en_db(cuenta_id, datos, cursor):
         stock_propio_previo = stock_anterior[0] if stock_anterior else 0
         stock_full_previo = stock_anterior[1] if stock_anterior else 0
 
-        if es_convivencia and stock_convivencia_propio is not None:
+        if datos.get("convivencia_sin_cambios") and stock_anterior:
+            stock_propio, stock_full = stock_propio_previo, stock_full_previo      # la publicación no se movió: se conserva el reparto propio/FULL ya guardado
+        elif es_convivencia and stock_convivencia_propio is not None:
             stock_propio = stock_convivencia_propio
             stock_full = stock_convivencia_full or 0
         elif es_full:
@@ -355,9 +387,11 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
             cursor_lookup = conexion_lookup.cursor()
             cursor_lookup.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (cuenta_id,))
             fila = cursor_lookup.fetchone()
+            _, estado_convivencia = cache_db.leer(cursor_lookup, cuenta_id, CLAVE_CONVIVENCIA, "v1", ttl_segundos=24 * 3600) if fila else (False, None)
         if not fila:
             return
         user_id = fila[0]
+        estado_convivencia = estado_convivencia if isinstance(estado_convivencia, dict) else {}
         headers = {"Authorization": f"Bearer {access_token}"}
 
         lista_ids = listar_ids_publicaciones(user_id, headers, cuenta_id)
@@ -365,7 +399,7 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
             return
 
         items_procesados = []
-        pendientes_convivencia = []  # (índice en items_procesados, user_product_id)
+        pendientes_convivencia = []  # (índice en items_procesados, user_product_id, id_item, firma de movimiento)
         # MeLi limita GET /items?ids= a 20 ids por pedido (con más responde 400 "only allows 20 elements"). Con lotes de 50 el sync
         # de catálogo fallaba entero y en silencio: no se actualizaba ningún precio, stock ni estado ("0/83 ítems sincronizados").
         lote_size = LOTE_MULTIGET_MELI
@@ -393,26 +427,35 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
                     if es_convivencia:
                         user_product_id = validacion_meli.campo_seguro(p, "user_product_id", default=None, tipo_esperado=str, contexto=f"item {p.get('id')}")
                         if user_product_id:
-                            pendientes_convivencia.append((len(items_procesados) - 1, user_product_id))
+                            pendientes_convivencia.append((len(items_procesados) - 1, user_product_id, p.get("id"), firma_de_movimiento(p)))
 
         # Las consultas de stock de convivencia son independientes entre
         # sí — se resuelven todas en paralelo al final en vez de una por
         # una intercaladas con la descarga de los lotes (mismo patrón que
         # ya se usa en ads.py/metricas.py/despacho.py).
-        if pendientes_convivencia:
+        ahora = time.time()
+        a_consultar, a_conservar = decidir_convivencia(pendientes_convivencia, estado_convivencia, ahora)
+        nuevo_estado_convivencia = {id_item: estado_convivencia[id_item] for _, _, id_item, _ in a_conservar}
+        for indice, _, _, _ in a_conservar:
+            items_procesados[indice]["convivencia_sin_cambios"] = True
+        if a_consultar:
             with ThreadPoolExecutor(max_workers=8) as pool:
                 resultados_convivencia = list(pool.map(
-                    lambda item: _consultar_stock_convivencia(item[1], headers), pendientes_convivencia
+                    lambda item: _consultar_stock_convivencia(item[1], headers), a_consultar
                 ))
-            for (indice, _), stock_convivencia in zip(pendientes_convivencia, resultados_convivencia):
+            for (indice, _, id_item, firma), stock_convivencia in zip(a_consultar, resultados_convivencia):
                 items_procesados[indice]["stock_convivencia"] = stock_convivencia
+                if stock_convivencia and stock_convivencia[0] is not None:        # solo se recuerda lo que respondió bien: lo fallido se reintenta en el próximo ciclo
+                    nuevo_estado_convivencia[id_item] = [firma, ahora]
 
         with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
             for datos in items_procesados:
                 _escribir_item_en_db(cuenta_id, datos, cursor)
+            cache_db.guardar(cursor, cuenta_id, CLAVE_CONVIVENCIA, nuevo_estado_convivencia, "v1")
 
-        print(f"[Sincronizador] ✨ Cuenta {cuenta_id}: {len(items_procesados)}/{len(lista_ids)} ítems sincronizados.")
+        print(f"[Sincronizador] ✨ Cuenta {cuenta_id}: {len(items_procesados)}/{len(lista_ids)} ítems sincronizados"
+              f"{f' (stock de convivencia: {len(a_consultar)} consultados, {len(a_conservar)} sin cambios)' if pendientes_convivencia else ''}.")
 
         with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
