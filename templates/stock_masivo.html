@@ -62,7 +62,7 @@
                     <tbody>
                         {% for v in m.variantes %}
                         <tr>
-                            <td><b>{{ v.talle }}</b> <span class="text-muted" style="font-size:0.78em;">· {{ v.id_meli }}</span></td>
+                            <td><b>{{ v.talle }}</b> <span class="text-muted" style="font-size:0.82em;">· {{ v.id_meli }}</span></td>
                             <td>
                                 {% if v.pausada_por_stock %}<span class="ux-pill ux-neutral ux-pill-suave">Pausada por stock (0 u.)</span>
                                 {% elif v.estado == 'active' %}<span class="ux-pill ux-ok">Activa</span>

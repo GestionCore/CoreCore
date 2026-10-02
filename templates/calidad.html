@@ -90,7 +90,7 @@
         <div class="ux-rank-fila ux-accion">
             {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
             <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}</div><div class="ux-rank-barra"><span style="width:{{ i.pct_visitas }}%;"></span></div></div>
-            <div class="ux-rank-valor"><b>{{ i.visitas|numero }}</b><div class="text-muted" style="font-size:0.75em;">{{ i.conversion|string|replace('.', ',') ~ '% conv.' if i.conversion is not none else '' }}</div></div>
+            <div class="ux-rank-valor"><b>{{ i.visitas|numero }}</b><div class="text-muted" style="font-size:0.82em;">{{ i.conversion|string|replace('.', ',') ~ '% conv.' if i.conversion is not none else '' }}</div></div>
         </div>
         {% endfor %}
     </div>
@@ -112,7 +112,7 @@
         <div class="ux-rank-fila ux-warn">
             {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
             <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}</div></div>
-            <div class="ux-rank-valor"><b>{{ i.visitas|numero }}</b><div class="text-muted" style="font-size:0.75em;">0 ventas</div></div>
+            <div class="ux-rank-valor"><b>{{ i.visitas|numero }}</b><div class="text-muted" style="font-size:0.82em;">0 ventas</div></div>
         </div>
         {% endfor %}
         {% else %}

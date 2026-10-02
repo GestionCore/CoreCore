@@ -67,14 +67,14 @@ html.modo-privacidad .ux-rank-valor:hover, html.modo-privacidad .ux-dist-val:hov
 /* ---------- Pastilla de variación (▲ / ▼) ---------- */
 .ux-delta {
     display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: var(--radius-pill);
-    font-size: 0.78em; font-weight: 800; font-family: var(--font-ui); letter-spacing: 0;
+    font-size: 0.82em; font-weight: 800; font-family: var(--font-ui); letter-spacing: 0;
     background: color-mix(in srgb, var(--ux-c, var(--text-secondary)) 18%, transparent); color: var(--ux-c, var(--text-secondary));
 }
 
 /* ---------- Pastillas de estado SÓLIDAS (no solo contorno) ---------- */
 .ux-pill {
     display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: var(--radius-pill);
-    font-size: 0.76em; font-weight: 800; background: var(--ux-c); color: #0a0a0c; white-space: nowrap;
+    font-size: 0.82em; font-weight: 800; background: var(--ux-c); color: #0a0a0c; white-space: nowrap;
 }
 .ux-pill.ux-accion, .ux-pill.ux-neutral { color: #fff; }
 .ux-pill-suave { background: color-mix(in srgb, var(--ux-c) 18%, transparent); color: var(--ux-c); }
@@ -96,7 +96,7 @@ a.ux-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated)
 
 /* ---------- Lo que tenés que hacer: cola de acciones ---------- */
 .ux-acciones-titulo { display: flex; align-items: center; gap: 10px; font-size: 1.12em; font-weight: 800; margin: 4px 0 12px; }
-.ux-acciones-titulo .ux-contador { background: var(--accent-primary); color: #fff; border-radius: var(--radius-pill); font-size: 0.72em; padding: 2px 10px; font-weight: 800; }
+.ux-acciones-titulo .ux-contador { background: var(--accent-primary); color: #fff; border-radius: var(--radius-pill); font-size: 0.8em; padding: 2px 10px; font-weight: 800; }
 .ux-lista-acciones { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
 .ux-item-accion {
     display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: var(--radius-md);
@@ -169,7 +169,7 @@ tr.ux-fila-ok td:first-child { box-shadow: inset 4px 0 0 var(--success); }
     .pl-waterfall.ux-cascada { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: stretch; }
     .pl-waterfall.ux-cascada .pl-operador { display: none; }
     .pl-waterfall.ux-cascada .pl-tile { min-width: 0; padding: 12px 10px; }
-    .pl-waterfall.ux-cascada .pl-tile .stat-chip-label { font-size: 0.64em; letter-spacing: 0.02em; }
+    .pl-waterfall.ux-cascada .pl-tile .stat-chip-label { font-size: 0.78em; letter-spacing: 0.02em; }
     .pl-waterfall.ux-cascada .pl-tile-valor { font-size: 1.02em; }
     .pl-detalle-label { width: 96px; }
     .pl-detalle-valor { width: 104px; }
@@ -207,7 +207,7 @@ tr.ux-fila-ok td:first-child { box-shadow: inset 4px 0 0 var(--success); }
     .ux-tabla-cards thead { display: none; }
     .ux-tabla-cards tr { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; padding: 14px 16px; border-bottom: 1px solid var(--glass-border); }
     .ux-tabla-cards td { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 0; border: 0; text-align: left; min-width: 0; }
-    .ux-tabla-cards td[data-label]::before { content: attr(data-label); color: var(--text-secondary); font-size: 0.68em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ux-tabla-cards td[data-label]::before { content: attr(data-label); color: var(--text-secondary); font-size: 0.78em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
     .ux-tabla-cards td.col-titulo, .ux-tabla-cards td:last-child { grid-column: 1 / -1; }
     .ux-tabla-cards td.col-titulo { padding-bottom: 10px; }
     .ux-tabla-cards td:last-child { padding-top: 10px; }
@@ -325,9 +325,9 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-medidor-corte { position: absolute; top: -5px; width: 2px; height: 26px; margin-left: -1px; background: var(--text-primary); opacity: 0.7; }
 .ux-medidor-marca { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--ux-c); border: 3px solid var(--bg-surface, #0e0e12); box-shadow: 0 0 0 2px var(--ux-c); }
 .ux-medidor-burbuja { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: var(--ux-c); color: #fff; font-size: 0.74rem; font-weight: 800; padding: 3px 10px; border-radius: 8px; }
-.ux-medidor-escala { position: relative; display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.74em; color: var(--text-faint); height: 1.2em; }
+.ux-medidor-escala { position: relative; display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.8em; color: var(--text-faint); height: 1.2em; }
 .ux-medidor-eq { position: absolute; transform: translateX(-50%); color: var(--text-primary); font-weight: 800; white-space: nowrap; }
-.ux-medidor-leyenda { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 0.78em; color: var(--text-secondary); }
+.ux-medidor-leyenda { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 0.82em; color: var(--text-secondary); }
 .ux-comparativa { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 18px; font-size: 0.85em; }
 
 .ux-embudo { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -345,7 +345,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-donut-caja { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
 .ux-donut-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 .ux-donut-centro b { font-size: 1.5em; font-family: var(--font-data); }
-.ux-donut-centro span { font-size: 0.72em; color: var(--text-secondary); }
+.ux-donut-centro span { font-size: 0.8em; color: var(--text-secondary); }
 .ux-donut-leyenda { display: flex; flex-direction: column; gap: 14px; font-size: 0.9em; }
 .ux-split { display: flex; height: 38px; border-radius: 10px; overflow: hidden; font-size: 0.8em; font-weight: 800; color: #fff; }
 .ux-split-a, .ux-split-b { display: flex; align-items: center; padding: 0 12px; white-space: nowrap; overflow: hidden; }
@@ -393,20 +393,20 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 
 /* Dashboard: ganancia por día */
 .ux-panel-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-.ux-leyenda { display: flex; gap: 14px; font-size: 0.78em; color: var(--text-secondary); flex-wrap: wrap; }
+.ux-leyenda { display: flex; gap: 14px; font-size: 0.82em; color: var(--text-secondary); flex-wrap: wrap; }
 .ux-dot-linea { background: var(--accent-primary); border-radius: 2px; height: 3px; width: 14px; vertical-align: middle; }
 .ux-dash-grafico { position: relative; height: 230px; }
 .ux-ministats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
-.ux-ministats span { display: block; font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); font-weight: 700; }
+.ux-ministats span { display: block; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); font-weight: 700; }
 .ux-ministats b { font-family: var(--font-data); font-size: 1.25em; display: block; margin: 2px 0; }
-.ux-ministats em { font-style: normal; font-size: 0.75em; color: var(--text-secondary); }
+.ux-ministats em { font-style: normal; font-size: 0.82em; color: var(--text-secondary); }
 
 /* Conciliación: lo depositado de verdad */
 .ux-conc-fila { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
 .ux-conc-num { font-family: var(--font-data); font-size: 2.1em; font-weight: 800; color: var(--success); line-height: 1.15; margin: 2px 0; }
 .ux-conc-sello { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 170px; padding: 10px 16px; border-radius: 14px; background: color-mix(in srgb, var(--ux-c) 16%, transparent); border: 1px solid color-mix(in srgb, var(--ux-c) 40%, transparent); }
 .ux-conc-sello b { font-family: var(--font-data); font-size: 1.6em; color: var(--ux-c); }
-.ux-conc-sello span { font-size: 0.72em; color: var(--text-secondary); line-height: 1.3; }
+.ux-conc-sello span { font-size: 0.8em; color: var(--text-secondary); line-height: 1.3; }
 
 /* Calidad de publicaciones */
 .ux-calidad-item { padding: 14px 0; border-top: 1px solid var(--border-soft); }
@@ -437,7 +437,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-regla-justo { background: color-mix(in srgb, var(--semantic-warning) 60%, transparent); }
 .ux-regla-bien { right: 0; border-radius: 0 99px 99px 0; background: color-mix(in srgb, var(--success) 60%, transparent); }
 .ux-regla-marca { top: 50% !important; bottom: auto !important; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--ux-c); border: 3px solid var(--bg-surface, #0e0e12); box-shadow: 0 0 0 2px var(--ux-c); }
-.ux-regla-etiquetas { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 0.74em; color: var(--text-faint); }
+.ux-regla-etiquetas { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 0.8em; color: var(--text-faint); }
 .ux-regla-etiquetas b { color: var(--text-primary); }
 .ux-precio-estado { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; min-width: 150px; }
 .ux-precio-actual { font-family: var(--font-data); font-weight: 800; font-size: 1.05em; }
@@ -472,7 +472,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-hora { flex: 1; height: 100%; display: flex; align-items: flex-end; border-radius: 4px 4px 0 0; }
 .ux-hora i { display: block; width: 100%; background: var(--accent-primary); border-radius: 4px 4px 0 0; min-height: 0; }
 .ux-hora:hover i { background: var(--success); }
-.ux-horas-eje { display: flex; justify-content: space-between; font-size: 0.72em; color: var(--text-faint); margin-top: 6px; }
+.ux-horas-eje { display: flex; justify-content: space-between; font-size: 0.8em; color: var(--text-faint); margin-top: 6px; }
 
 /* Título de publicación con su miniatura al lado (celdas de tabla, preguntas) */
 .ux-titulo-thumb { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -480,7 +480,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 
 /* Entrega Flex: botones de umbral (Despacho) y tarjetas de umbral (Costos) */
 .ux-zonas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.ux-zona { border: 1px solid var(--border-soft); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 5px 12px; font-size: 0.78em; font-weight: 700; font-family: var(--font-ui); cursor: pointer; }
+.ux-zona { border: 1px solid var(--border-soft); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 5px 12px; font-size: 0.82em; font-weight: 700; font-family: var(--font-ui); cursor: pointer; }
 .ux-zona:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--text-primary); }
 .ux-zona.activa { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
 .ux-zona:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -516,7 +516,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-escalera { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 18px; }
 .ux-escalera span { height: 14px; border-radius: 99px; }
 .ux-escalera span.actual { height: 20px; margin-top: -3px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ux-c) 28%, transparent); }
-.ux-escalera-etiquetas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; font-size: 0.7em; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+.ux-escalera-etiquetas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; font-size: 0.78em; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
 
 /* ---------- Tema claro: lo que style.css dejaba fijo en oscuro y los rellenos translúcidos blancos que ahí no se ven ---------- */
 :root[data-theme="light"] .ux-barra { background: rgba(0, 0, 0, 0.09); }

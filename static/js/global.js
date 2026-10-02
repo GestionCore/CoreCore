@@ -102,41 +102,6 @@ function guardarPreferenciaPanel() {
 // Los paneles normales se animan solos al cargar la página (vía CSS). Pero
 // un panel que arranca con display:none y se muestra recién cuando termina
 // un fetch NO siempre retoma esa animación sola — hay que reiniciarla a mano.
-// ---------- Ripple en todos los botones — un solo listener, no toca ningún botón existente ----------
-// ---------- Transición suave entre páginas (fade breve antes de navegar) ----------
-document.addEventListener('click', function (e) {
-    const link = e.target.closest('a[href]');
-    if (!link) return;
-    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    if (link.target === '_blank' || link.hasAttribute('download')) return;
-    const href = link.getAttribute('href');
-    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('http') || link.origin !== window.location.origin) return;
-
-    const cont = document.querySelector('.page-container');
-    if (!cont) return;
-    e.preventDefault();
-    cont.classList.add('saliendo');
-    setTimeout(() => { window.location.href = href; }, 160);
-    // Red de seguridad: si esto era una descarga (PDF, planilla) y no una
-    // navegación real, la página nunca se recarga — sin esto, quedaría
-    // desvanecida para siempre. Si seguimos acá pasado un rato, revertimos.
-    setTimeout(() => { cont.classList.remove('saliendo'); }, 1400);
-});
-
-document.addEventListener('click', function (e) {
-    const boton = e.target.closest('.btn');
-    if (!boton) return;
-    const rect = boton.getBoundingClientRect();
-    const tamano = Math.max(rect.width, rect.height);
-    const ripple = document.createElement('span');
-    ripple.className = 'btn-ripple';
-    ripple.style.width = ripple.style.height = tamano + 'px';
-    ripple.style.left = (e.clientX - rect.left - tamano / 2) + 'px';
-    ripple.style.top = (e.clientY - rect.top - tamano / 2) + 'px';
-    boton.appendChild(ripple);
-    setTimeout(() => ripple.remove(), 600);
-});
-
 // ---------- Celebración breve (confeti) al completar algo al 100% ----------
 function celebrarConfeti() {
     const colores = ['139, 92, 246', '56, 189, 248', '242, 201, 76', '34, 197, 94'];
@@ -748,25 +713,6 @@ function animarNumeroHasta(el, valorFinal, formatearFn, duracionMs = 650) {
     }
     requestAnimationFrame(frame);
 }
-function animarContadoresEnPagina() {
-    document.querySelectorAll('.stat-chip-value, .hero-number').forEach(el => {
-        if (el.children.length > 0) return; // tiene contenido anidado (ej: variación al lado) — no lo tocamos
-        const original = el.textContent.trim();
-        const parseado = parsearValorMoneda(original);
-        if (!parseado) return;
-        const { prefijo, numero, sufijo, tieneDecimales } = parseado;
-        const t0 = performance.now();
-        const duracion = 550;
-        function frame(t) {
-            const progreso = Math.min((t - t0) / duracion, 1);
-            const facilitado = 1 - Math.pow(1 - progreso, 3);
-            el.textContent = prefijo + formatearNumeroAR(numero * facilitado, tieneDecimales) + sufijo;
-            if (progreso < 1) requestAnimationFrame(frame); else el.textContent = original;
-        }
-        requestAnimationFrame(frame);
-    });
-}
-
 // ---------- Búsqueda flexible multi-token ----------
 function coincideBusqueda(textoCompleto, consulta) {
     const tokens = consulta.toLowerCase().split(/\s+/).filter(Boolean);
@@ -1487,15 +1433,9 @@ document.addEventListener('click', (e) => {
 // ---------- Arranque global ----------
 document.addEventListener('DOMContentLoaded', () => {
     _inicializarIconoTema();
-    animarContadoresEnPagina();
     envolverIdsCopiables(document.body);
     inicializarComando();
     actualizarTicker();
-    // El HUD fijo solo pedía sus datos AL ABRIRSE — quedaba en "—" 5-6
-    // segundos justo cuando el usuario ya quería verlo. Se precarga acá,
-    // en segundo plano, apenas entra a cualquier pantalla, para que al
-    // hacer click el panel ya tenga los números listos.
-    cargarHud();
     revisarMensajeEnURL();
     marcarCurvaRota();
     cargarOportunidadesSeo();

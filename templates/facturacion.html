@@ -67,7 +67,7 @@
     </div>
     {% endfor %}
     {% if waterfall_facturacion|selectattr('label', 'equalto', 'Otros cargos de MeLi (sin categorizar)')|list %}
-    <div class="text-muted" style="font-size:0.78em; margin-top:12px;">Mercado Libre no detalla por categoría los cargos de este resumen, así que quedan juntos en "otros cargos". El desglose fino está en tu panel de Facturación de MeLi.</div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:12px;">Mercado Libre no detalla por categoría los cargos de este resumen, así que quedan juntos en "otros cargos". El desglose fino está en tu panel de Facturación de MeLi.</div>
     {% endif %}
 </div>
 <script>
@@ -96,7 +96,7 @@
                 {% if not cargos %}<tr><td colspan="2" class="text-muted">No hay cargos para este período todavía.</td></tr>{% endif %}
             </tbody>
         </table>
-        <div class="text-muted" style="font-size:0.78em; margin-top:10px;">Los montos en verde son bonificaciones o anulaciones a tu favor.</div>
+        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Los montos en verde son bonificaciones o anulaciones a tu favor.</div>
     </div>
 </details>
 

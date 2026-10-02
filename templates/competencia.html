@@ -30,7 +30,7 @@
                 {% endif %}
             </div>
         </div>
-        <div class="ux-rank-valor"><b>{{ i.precio|plata }}</b><div class="text-muted" style="font-size:0.75em;">tu precio</div></div>
+        <div class="ux-rank-valor"><b>{{ i.precio|plata }}</b><div class="text-muted" style="font-size:0.82em;">tu precio</div></div>
     </div>
     {% endfor %}
     {% if mis_catalogo['items']|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">{{ ver_mas(mis_catalogo['items']|length - 8, 'publicación', 'publicaciones') }}</button>{% endif %}
@@ -50,7 +50,7 @@
         </div>
         <button type="submit" class="btn btn-primary" id="btn-seguir-producto">Seguir</button>
     </form>
-    <div class="text-muted" style="font-size:0.78em; margin-top:10px;">
+    <div class="text-muted" style="font-size:0.82em; margin-top:10px;">
         <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
         Mercado Libre no permite consultar precio, stock ni ventas de publicaciones puntuales de otros vendedores; sí permite ver todas las ofertas que compiten dentro de una ficha de catálogo. Encontrás el link desde cualquier publicación, en "Ver más opciones de compra".
     </div>

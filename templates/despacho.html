@@ -72,12 +72,12 @@
                 <span class="ux-pill {{ 'ux-info' if p.tipo_envio == 'Flex' else 'ux-neutral ux-pill-suave' }}">{{ p.tipo_envio }}</span>
                 {% if p.limite_texto and not p.despachado %}<span class="ux-pill ux-{{ p.limite_tono }}" title="Hasta cuándo hay que entregar el paquete, según Mercado Libre">Despachá antes: {{ p.limite_texto }}</span>{% endif %}
                 {% if p.etiqueta_impresa and not p.despachado %}<span class="ux-pill ux-warn ux-pill-suave" title="La etiqueta ya se imprimió en MeLi">Etiqueta ya impresa</span>{% endif %}
-                <a href="https://www.mercadolibre.com.ar/ventas/{{ p.id_orden }}/detalle" target="_blank" rel="noopener" class="text-muted" style="font-size:0.78em; text-decoration:none;" onclick="event.stopPropagation();">Orden #{{ p.id_orden }} ↗</a>
+                <a href="https://www.mercadolibre.com.ar/ventas/{{ p.id_orden }}/detalle" target="_blank" rel="noopener" class="text-muted" style="font-size:0.82em; text-decoration:none;" onclick="event.stopPropagation();">Orden #{{ p.id_orden }} ↗</a>
             </div>
             {% if p.tipo_envio == 'Flex' %}
             {# Lo que te cobra tu logística: el umbral sale solo de la zona de Mercado Libre; acá se puede corregir. Se suma al costo de envío de la venta #}
             <div class="ux-zonas no-imprimir" style="margin-top:8px;" onclick="event.stopPropagation();" data-zonas-orden="{{ p.id_orden }}">
-                <span class="text-muted" style="font-size:0.78em;"><b>Entrega{% if p.flex_zona_meli and p.flex_zona_meli != '*manual' %} · zona {{ p.flex_zona_meli|title }}{% endif %}:</b></span>
+                <span class="text-muted" style="font-size:0.82em;"><b>Entrega{% if p.flex_zona_meli and p.flex_zona_meli != '*manual' %} · zona {{ p.flex_zona_meli|title }}{% endif %}:</b></span>
                 {% for u in umbrales_flex %}
                 <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == u.id }}" data-zona="{{ u.id }}" {% if u.precio is none %}disabled title="Cargá primero el precio de este umbral en Costos"{% endif %} onclick="elegirZonaFlex('{{ p.id_orden }}', {{ u.id }})">{{ u.etiqueta }}{% if u.neto is not none %} · {{ u.neto|plata }}{% endif %}</button>
                 {% endfor %}

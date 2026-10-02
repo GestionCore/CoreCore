@@ -74,7 +74,7 @@
 
 <!-- ── 2. QUÉ HAGO: los pendientes más importantes (la lista completa está en Pendientes) ──────── -->
 <div id="bloque-acciones">
-    <div class="ux-acciones-titulo">Lo que tenés que hacer hoy <span class="ux-contador" id="acciones-contador" style="display:none;"></span><a href="/logros" class="text-muted" style="margin-left:auto; font-size:0.78em; font-weight:700;">Ver todos los pendientes →</a></div>
+    <div class="ux-acciones-titulo">Lo que tenés que hacer hoy <span class="ux-contador" id="acciones-contador" style="display:none;"></span><a href="/logros" class="text-muted" style="margin-left:auto; font-size:0.82em; font-weight:700;">Ver todos los pendientes →</a></div>
     <div class="ux-lista-acciones" id="lista-acciones">
         <div class="skeleton" style="height:64px; border-radius:12px; width:100%;"></div>
         <div class="skeleton" style="height:64px; border-radius:12px; width:100%;"></div>
@@ -116,7 +116,7 @@
             </div>
         </div>
         <div class="pl-detalle-tabla" id="pl-detalle" style="margin-top:18px;"></div>
-        <div class="text-muted" style="font-size:0.76em; margin-top:10px;">Cada costo como % de lo facturado en el período.</div>
+        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Cada costo como % de lo facturado en el período.</div>
     </div>
 </details>
 
@@ -124,7 +124,7 @@
 
 {% if proyeccion %}
 <div class="panel">
-    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-trend"/></svg> Cómo viene {{ proyeccion.mes_nombre }} <span class="text-muted" style="font-weight:500; font-size:0.78em;">día {{ proyeccion.dia }} de {{ proyeccion.dias_mes }}</span></div>
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-trend"/></svg> Cómo viene {{ proyeccion.mes_nombre }} <span class="text-muted" style="font-weight:500; font-size:0.82em;">día {{ proyeccion.dia }} de {{ proyeccion.dias_mes }}</span></div>
     <div class="ux-barra ux-accion" style="height:10px; margin-bottom:14px;"><span style="width:{{ proyeccion.avance_pct }}%;"></span></div>
     <div class="ux-kpis" style="margin-top:0;">
         {{ kpi("Facturado en el mes", "$" ~ proyeccion.facturado, "accion", "coin", proyeccion.unidades ~ " unidades vendidas") }}
@@ -164,13 +164,13 @@
     });
     </script>
     {% endif %}
-    <div class="text-muted" style="font-size:0.78em;">{% if proyeccion.pocos_dias %}Todavía hay pocos días para proyectar el mes con sentido.{% else %}La proyección multiplica tu ritmo diario por los días del mes: es una referencia, no una promesa.{% endif %}</div>
+    <div class="text-muted" style="font-size:0.82em;">{% if proyeccion.pocos_dias %}Todavía hay pocos días para proyectar el mes con sentido.{% else %}La proyección multiplica tu ritmo diario por los días del mes: es una referencia, no una promesa.{% endif %}</div>
 </div>
 {% endif %}
 
 {% if cuando_compran %}
 <div class="panel">
-    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-calendar"/></svg> Cuándo te compran <span class="text-muted" style="font-weight:500; font-size:0.78em;">últimos {{ cuando_compran.desde_dias }} días · {{ cuando_compran.total }} ventas · hora de Argentina</span></div>
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-calendar"/></svg> Cuándo te compran <span class="text-muted" style="font-weight:500; font-size:0.82em;">últimos {{ cuando_compran.desde_dias }} días · {{ cuando_compran.total }} ventas · hora de Argentina</span></div>
     <div class="ux-cc-resumen">Comprás más los <b>{{ cuando_compran.mejor_dia|lower }}</b> y la mejor franja es de <b>{{ cuando_compran.franja }}</b> ({{ cuando_compran.pct_franja }}% de tus ventas). Los <b>{{ cuando_compran.peor_dia|lower }}</b> son los más flojos: buen momento para renovar publicaciones o probar promociones.</div>
     <div class="ux-dos-col" style="margin-top:14px;">
         <div>
@@ -196,7 +196,7 @@
 
 {% if ventas_por_provincia %}
 <div class="panel">
-    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-map-pin"/></svg> Ventas por provincia <span class="text-muted" style="font-weight:500; font-size:0.78em;">últimos 30 días, según el destino del envío</span></div>
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-map-pin"/></svg> Ventas por provincia <span class="text-muted" style="font-weight:500; font-size:0.82em;">últimos 30 días, según el destino del envío</span></div>
     <div class="pl-detalle-tabla">
         {% for p in ventas_por_provincia[:10] %}
         <div class="pl-detalle-fila">
@@ -207,7 +207,7 @@
         {% endfor %}
     </div>
     {% if ventas_por_provincia|length > 10 %}
-    <div class="text-muted" style="font-size:0.76em; margin-top:10px;">+{{ ventas_por_provincia|length - 10 }} provincias más con ventas menores.</div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:10px;">+{{ ventas_por_provincia|length - 10 }} provincias más con ventas menores.</div>
     {% endif %}
 </div>
 {% endif %}
@@ -263,7 +263,7 @@
             <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Guardar</button>
         </form>
 
-        <div class="text-muted" style="font-size:0.76em;">Escalas vigentes desde el {{ mono.vigente_desde|fecha(true) }} para "venta de cosas muebles" — esto avisa y sugiere; la decisión final siempre conviene confirmarla con tu contador.</div>
+        <div class="text-muted" style="font-size:0.82em;">Escalas vigentes desde el {{ mono.vigente_desde|fecha(true) }} para "venta de cosas muebles" — esto avisa y sugiere; la decisión final siempre conviene confirmarla con tu contador.</div>
     </div>
 </details>
 {% endif %}
@@ -440,7 +440,7 @@
                                     </div>
                                     <div style="text-align:right; white-space:nowrap;">
                                         <div style="font-size:0.88em; font-weight:800;">${UX.esc(p.facturado_f)}</div>
-                                        <div style="font-size:0.73em; color:var(--text-faint);">${UX.esc(p.unidades)} u.</div>
+                                        <div style="font-size:0.8em; color:var(--text-faint);">${UX.esc(p.unidades)} u.</div>
                                     </div>
                                 </div>`).join('')}
                         </div>

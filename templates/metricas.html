@@ -349,7 +349,7 @@
                 {% for item in posventa.lista %}
                 <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
                     <td class="text-muted">{{ item.fecha|fecha }}</td>
-                    <td><span class="ux-pill {{ 'ux-info' if (item.tipo == 'RECLAMO' and item.sin_impacto) else ('ux-danger' if item.tipo == 'RECLAMO' else ('ux-warn' if item.tipo == 'DEVOLUCIÓN' else 'ux-neutral ux-pill-suave')) }}">{{ item.tipo }}</span>{% if item.tipo == 'RECLAMO' and item.sin_impacto %}<div class="text-muted" style="font-size:0.72em; margin-top:2px;">no afecta tu reputación</div>{% endif %}</td>
+                    <td><span class="ux-pill {{ 'ux-info' if (item.tipo == 'RECLAMO' and item.sin_impacto) else ('ux-danger' if item.tipo == 'RECLAMO' else ('ux-warn' if item.tipo == 'DEVOLUCIÓN' else 'ux-neutral ux-pill-suave')) }}">{{ item.tipo }}</span>{% if item.tipo == 'RECLAMO' and item.sin_impacto %}<div class="text-muted" style="font-size:0.8em; margin-top:2px;">no afecta tu reputación</div>{% endif %}</td>
                     <td><a href="{{ item.link }}" target="_blank" rel="noopener" class="badge badge-neutral" style="text-decoration:none;">#{{ item.id_orden }} ↗</a></td>
                     <td>{{ item.motivo }}</td>
                     <td><span class="ux-pill ux-warn">{{ item.estado }}</span></td>

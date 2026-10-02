@@ -182,7 +182,7 @@
             <div><span class="text-muted">Invertiste</span> <b>${{ i.costo_formateado.split(',')[0] }}</b></div>
             <div><span class="text-muted">Generó</span> <b>${{ i.ventas_formateado.split(',')[0] }}</b></div>
         </div>
-        <div class="ux-rank-roas">{% if i.sin_ventas %}<span class="ux-pill ux-danger">Sin ventas</span>{% else %}<span class="ux-pill ux-{{ 'ok' if estado == 'ok' else ('warn' if estado == 'warn' else 'danger') }}">ROAS {{ i.roas|string|replace('.', ',') }}x</span><div class="text-muted" style="font-size:0.72em; text-align:right;">{{ i.unidades }} u.</div>{% endif %}</div>
+        <div class="ux-rank-roas">{% if i.sin_ventas %}<span class="ux-pill ux-danger">Sin ventas</span>{% else %}<span class="ux-pill ux-{{ 'ok' if estado == 'ok' else ('warn' if estado == 'warn' else 'danger') }}">ROAS {{ i.roas|string|replace('.', ',') }}x</span><div class="text-muted" style="font-size:0.8em; text-align:right;">{{ i.unidades }} u.</div>{% endif %}</div>
     </div>
     {% endfor %}
     {% if items_ads|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ items_ads|length - 8 }} restantes</button>{% endif %}
@@ -206,7 +206,7 @@
         {% if c.presupuesto_formateado %}
         <div class="ux-camp-presu">
             <div class="ux-barra {{ 'ux-danger' if (c.pct_presupuesto or 0) >= 90 else ('ux-warn' if (c.pct_presupuesto or 0) >= 70 else 'ux-ok') }}"><span style="width:{{ [c.pct_presupuesto or 0, 100]|min }}%;"></span></div>
-            <div class="text-muted" style="font-size:0.78em; margin-top:4px;">Presupuesto: <b>${{ c.costo_formateado.split(',')[0] }}</b> de ${{ c.presupuesto_formateado.split(',')[0] }} · {{ c.pct_presupuesto|round|int }}% usado</div>
+            <div class="text-muted" style="font-size:0.82em; margin-top:4px;">Presupuesto: <b>${{ c.costo_formateado.split(',')[0] }}</b> de ${{ c.presupuesto_formateado.split(',')[0] }} · {{ c.pct_presupuesto|round|int }}% usado</div>
         </div>
         {% endif %}
         <div class="ux-camp-stats">

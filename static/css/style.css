@@ -25,7 +25,8 @@
 
     --text-primary: #ffffff;
     --text-secondary: #94a3b8;
-    --text-faint: #5b6472;
+    --text-faint: #7a8496;               /* antes #5b6472: 3,1:1 sobre las tarjetas, no se leía. Ahora 4,9:1 */
+    --accent-texto: #a78bfa;             /* violeta para TEXTO y links (el de botones y fondos no llega a 4,5:1 sobre las tarjetas) */
 
     /* ---------- Violeta: identidad + TODA acción (CTAs, estados activos,
        loaders, líneas de tendencia). Es el color que más se ve. ---------- */
@@ -73,9 +74,9 @@
     --font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
 
     /* ---------- Escala tipográfica (8 pasos, en orden creciente) ---------- */
-    --text-2xs: 0.70em;   /* etiquetas muy pequeñas, pies de tabla */
-    --text-xs:  0.75em;   /* labels, badges, uppercase tracking */
-    --text-sm:  0.82em;   /* texto secundario, subtítulos chicos */
+    --text-2xs: 0.78em;   /* etiquetas muy pequeñas, pies de tabla (≈11 px: lo mínimo) */
+    --text-xs:  0.8em;    /* labels, badges, uppercase tracking */
+    --text-sm:  0.85em;   /* texto secundario, subtítulos chicos */
     --text-base: 0.90em;  /* texto de cuerpo, celdas de tabla */
     --text-md:  1.05em;   /* títulos de panel, UI mediano */
     --text-lg:  1.55em;   /* cifras grandes en chips — antes 1.40em, KPI ejecutivo pide más presencia */
@@ -114,7 +115,8 @@
 
     --text-primary: #16161f;
     --text-secondary: #55556e;
-    --text-faint: #8686a0;
+    --text-faint: #68688a;
+    --accent-texto: #6d28d9;
 
     /* En modo claro los acentos neón se oscurecen para tener contraste
        real sobre blanco — un violeta/cian "de neón" sobre fondo claro se
@@ -225,7 +227,6 @@ a { color: inherit; text-decoration: none; }
 
 /* Layout & Panels */
 .page-container { max-width: 1440px; margin: 0 auto; padding: 34px 24px 104px; animation: fadeInUp 0.3s cubic-bezier(0.16,1,0.3,1); }
-.page-container.saliendo { opacity: 0; transform: translateY(-6px); transition: opacity 0.18s ease, transform 0.18s ease; }
 .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
 .page-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; margin: 0 0 8px 0; letter-spacing: -0.015em; line-height: 1.15; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; text-wrap: balance; }
 /* Cada pantalla con su ícono (el mismo que tiene en el menú), en una baldosa violeta: antes la mitad lo tenía suelto y la otra mitad no tenía. */
@@ -264,7 +265,7 @@ a.panel:hover, .panel.clickeable:hover { border-color: color-mix(in srgb, var(--
 .panel-title .icon { color: var(--accent-primary); }
 .panel-title > .text-muted:last-child, .panel-title > .btn:last-child, .panel-title > button:last-child,
 .panel-title > form:last-child, .panel-title > a:last-child, .panel-title > .chevron-colapsable { margin-left: auto; }
-.panel-title > .text-muted:last-child { font-weight: 500; font-size: 0.78em; }
+.panel-title > .text-muted:last-child { font-weight: 500; font-size: 0.82em; }
 
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .anim-entrada-js { animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -307,13 +308,13 @@ a.stat-chip:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevat
 .mini-list-row:last-child { border-bottom: none; }
 .mini-list-qty {
     flex-shrink: 0; min-width: 26px; height: 22px; padding: 0 7px;
-    border-radius: var(--radius-pill); background: rgba(139, 92, 246, 0.12); color: var(--accent-primary);
-    font-size: 0.74em; font-weight: 700; font-variant-numeric: tabular-nums;
+    border-radius: var(--radius-pill); background: rgba(139, 92, 246, 0.12); color: var(--accent-texto);
+    font-size: 0.8em; font-weight: 700; font-variant-numeric: tabular-nums;
     display: flex; align-items: center; justify-content: center;
 }
 .mini-list-titulo { flex: 1; min-width: 0; font-size: 0.86em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini-list-precio { flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 0.88em; }
-.mini-list-fecha { flex-shrink: 0; color: var(--text-faint); font-size: 0.76em; min-width: 64px; text-align: right; }
+.mini-list-fecha { flex-shrink: 0; color: var(--text-faint); font-size: 0.82em; min-width: 64px; text-align: right; }
 
 /* ---------- KPI ejecutivo (hero del Dashboard) ----------
    Ícono chico en chip redondeado (no el ícono suelto de 22px de antes)
@@ -344,7 +345,7 @@ a.stat-chip:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevat
     display: inline-flex; align-items: center; gap: 5px;
     margin-left: 8px; padding: 2px 9px; border-radius: var(--radius-pill);
     background: var(--success-bg); color: var(--success);
-    font-size: 0.68em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.78em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
     vertical-align: middle;
 }
 .badge-en-vivo::before {
@@ -362,11 +363,11 @@ a.stat-chip:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevat
 .comparador-caja { border-radius: var(--radius-md); padding: 16px 18px; }
 .comparador-caja-oficial { background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); }
 .comparador-caja-real { background: rgba(139, 92, 246, 0.06); border: 1px solid rgba(139, 92, 246, 0.35); }
-.comparador-caja-eyebrow { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; margin-bottom: 8px; }
+.comparador-caja-eyebrow { font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; margin-bottom: 8px; }
 .comparador-caja-valor { font-family: var(--font-data); font-size: 1.5em; font-weight: 700; font-variant-numeric: tabular-nums; }
 .comparador-caja-oficial .comparador-caja-valor { color: var(--text-secondary); }
 .comparador-caja-real .comparador-caja-valor { color: var(--accent-primary); }
-.comparador-caja-nota { font-size: 0.76em; color: var(--text-faint); margin-top: 4px; }
+.comparador-caja-nota { font-size: 0.82em; color: var(--text-faint); margin-top: 4px; }
 
 /* ---------- Waterfall de costos: fila por fila (label + barra + monto)
    en vez de una sola barra apilada — se lee de un vistazo cuánto pesa
@@ -411,7 +412,7 @@ a.stat-chip:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevat
    caller vía style="color:...", esta clase solo saca el gradiente base. */
 .hero-number.plano { background: none; -webkit-text-fill-color: currentColor; filter: none; }
 .hero-number-label { font-size: 0.32em; font-weight: 600; color: var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); margin-left: 8px; vertical-align: middle; }
-.stat-chip-desc { font-size: 0.78em; color: var(--text-faint); margin-top: 5px; }
+.stat-chip-desc { font-size: 0.82em; color: var(--text-faint); margin-top: 5px; }
 
 /* Modo privacidad — la clase va en <html>, no en <body> (se aplica
    desde un script inline en <head>, antes de que <body> exista, para
@@ -429,7 +430,7 @@ html.modo-privacidad td.num:hover { filter: none; }
 
 /* Tables */
 table.data-table { width: 100%; border-collapse: collapse; }
-table.data-table th { text-align: left; font-size: 0.76em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); padding: 14px 16px; border-bottom: 1px solid var(--glass-border); }
+table.data-table th { text-align: left; font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); padding: 14px 16px; border-bottom: 1px solid var(--glass-border); }
 table.data-table td { padding: 17px 16px; border-bottom: 1px solid var(--border-soft); font-size: 0.9em; vertical-align: middle; }
 table.data-table tbody tr { transition: background 0.15s; }
 table.data-table tbody tr:hover { background: rgba(255,255,255,0.03); }
@@ -447,13 +448,6 @@ tr.row-alert { background: rgba(239, 68, 68, 0.05); }
    usuario que ya estaba procesando el click. */
 .btn:disabled, .btn.disabled { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
 
-/* ---------- Efecto ripple al hacer click (JS crea el span, esto lo anima) ---------- */
-.btn-ripple {
-    position: absolute; border-radius: 50%; pointer-events: none;
-    background: rgba(255,255,255,0.5); transform: scale(0); opacity: 0.6;
-    animation: expandirRipple 0.55s ease-out forwards;
-}
-@keyframes expandirRipple { to { transform: scale(2.6); opacity: 0; } }
 .btn:active { transform: scale(0.96); }
 /* El violeta es el color de ACCIÓN (identidad + CTA), así que .btn-primary
    y .btn-denim son ahora el mismo botón — antes .btn-primary era dorado,
@@ -471,7 +465,7 @@ tr.row-alert { background: rgba(239, 68, 68, 0.05); }
 .btn-danger:hover { box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.3); }
 .btn-block { width: 100%; }
 
-label.field-label { display: block; font-size: 0.78em; color: var(--text-secondary); margin-bottom: 5px; font-weight: 500; }
+label.field-label { display: block; font-size: 0.82em; color: var(--text-secondary); margin-bottom: 5px; font-weight: 500; }
 /* textarea faltaba acá — sin esto quedaba con el estilo por defecto del
    navegador (fondo blanco, letra negra), un textarea de otra era en
    medio de una pantalla oscura. Encontrado en Preguntas (el cuadro de
@@ -518,7 +512,7 @@ select option { background: #14162a; color: var(--text-primary); }
 :root[data-theme="light"] select option { background: #ffffff; color: #1a1a2e; }
 
 /* Badges */
-.badge { display: inline-block; padding: 4px 11px; border-radius: var(--radius-pill); font-size: 0.76em; font-weight: 600; }
+.badge { display: inline-block; padding: 4px 11px; border-radius: var(--radius-pill); font-size: 0.82em; font-weight: 600; }
 .badge-success { background: var(--success-bg); color: var(--success); }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
 .badge-warning { background: var(--semantic-warning-bg); color: var(--semantic-warning); }
@@ -574,7 +568,7 @@ select option { background: #14162a; color: var(--text-primary); }
 .command-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; color: var(--text-primary); transition: background 0.12s; }
 .command-item:hover, .command-item.activo { background: rgba(255,255,255,0.05); }
 .command-empty { padding: 20px; text-align: center; color: var(--text-faint); font-size: 0.85em; }
-.command-footer { display: flex; gap: 14px; padding: 10px 20px; border-top: 1px solid var(--glass-border); font-size: 0.75em; color: var(--text-faint); }
+.command-footer { display: flex; gap: 14px; padding: 10px 20px; border-top: 1px solid var(--glass-border); font-size: 0.82em; color: var(--text-faint); }
 .command-footer kbd { background: rgba(255,255,255,0.08); border-radius: 4px; padding: 1px 6px; font-family: var(--font-mono); margin-right: 4px; }
 
 /* IDs copiables + toast */
@@ -616,15 +610,23 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 /* ---------- Toasts (esquina superior derecha) ---------- */
 #toast-container { position: fixed; top: 70px; right: 20px; z-index: 400; display: flex; flex-direction: column; gap: 8px; }
 .toast-item {
-    background: var(--glass-bg-alt); border: 1px solid var(--glass-border); backdrop-filter: blur(14px);
-    padding: 12px 18px; border-radius: var(--radius-sm); font-size: 0.85em; color: var(--text-primary);
-    box-shadow: var(--shadow-elevated); opacity: 0; transform: translateX(30px); transition: opacity 0.25s, transform 0.25s; max-width: 320px;
+    display: flex; align-items: flex-start; gap: 12px; max-width: 380px; padding: 14px 18px; border-radius: var(--radius-md); font-size: 0.9em; line-height: 1.4; color: var(--text-primary);
+    background: var(--bg-surface); border: 1px solid var(--glass-border); border-left: 4px solid var(--ux-toast, var(--semantic-info));
+    box-shadow: var(--shadow-elevated); opacity: 0; transform: translateX(30px); transition: opacity 0.25s, transform 0.25s;
+}
+/* Un ícono de color por tipo (antes eran solo una rayita fina de color: no se distinguía un error de un aviso) */
+.toast-item::before {
+    content: "i"; flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; margin-top: 1px;
+    font-size: 0.85em; font-weight: 800; color: #0a0a0c; background: var(--ux-toast, var(--semantic-info));
 }
 .toast-item.visible { opacity: 1; transform: translateX(0); }
-.toast-success { border-left: 3px solid var(--success); }
-.toast-error { border-left: 3px solid var(--danger); }
-.toast-warning { border-left: 3px solid var(--semantic-warning); }
-.toast-info { border-left: 3px solid var(--semantic-info); }
+.toast-success { --ux-toast: var(--success); }
+.toast-success::before { content: "✓"; }
+.toast-error { --ux-toast: var(--danger); }
+.toast-error::before { content: "!"; color: #fff; }
+.toast-warning { --ux-toast: var(--semantic-warning); }
+.toast-warning::before { content: "!"; }
+.toast-info { --ux-toast: var(--semantic-info); }
 
 /* ---------- Typing indicator del chat ---------- */
 .typing-dots { display: inline-flex; gap: 4px; }
@@ -648,7 +650,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .drawer-tabs { display: flex; border-bottom: 1px solid var(--glass-border); overflow-x: auto; }
 .drawer-tab { padding: 12px 16px; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.85em; font-weight:600; white-space: nowrap; border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s; }
 .drawer-tab:hover { color: var(--text-primary); }
-.drawer-tab.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
+.drawer-tab.active { color: var(--accent-texto); border-bottom-color: var(--accent-primary); }
 .drawer-body { flex: 1; overflow-y: auto; padding: 20px 22px; }
 .drawer-loading { text-align: center; color: var(--text-faint); padding: 40px 0; }
 
@@ -733,7 +735,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .roas-slider-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-brand), var(--success)); transition: width 0.5s cubic-bezier(0.16,1,0.3,1); }
 .roas-slider-fill-riesgo { background: linear-gradient(90deg, var(--danger), var(--semantic-warning, #f0a13b)); }
 .roas-slider-marca { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--text-primary); opacity: 0.55; }
-.roas-slider-etiquetas { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.74em; color: var(--text-faint); }
+.roas-slider-etiquetas { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.8em; color: var(--text-faint); }
 
 /* ---------- Barra partida directa/indirecta, pago/orgánico (Publicidad) ---------- */
 .split-bar { display: flex; height: 14px; border-radius: 99px; overflow: hidden; }
@@ -745,7 +747,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .split-bar-dot-indirecta { background: rgba(255,255,255,0.3); }
 
 /* ---------- Color-code de margen por producto (Ganancia Real) ---------- */
-.margen-leyenda { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.78em; color: var(--text-secondary); margin-bottom: 12px; }
+.margen-leyenda { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.82em; color: var(--text-secondary); margin-bottom: 12px; }
 .margen-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 .margen-dot-ok { background: var(--success); }
 .margen-dot-limite { background: var(--semantic-warning, #f0a13b); }
@@ -762,7 +764,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
 }
 .tendencias-tab:hover { color: var(--text-primary); }
-.tendencias-tab.activo { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
+.tendencias-tab.activo { color: var(--accent-texto); border-bottom-color: var(--accent-primary); }
 
 .veredicto-caja { background: rgba(255,255,255,0.03); border-radius: var(--radius-md); padding: 14px 16px; }
 
@@ -822,7 +824,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .embudo-titulo { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
 .embudo-barras { display: flex; flex-direction: column; gap: 6px; }
 .embudo-etapa { display: flex; align-items: center; gap: 10px; }
-.embudo-etapa-label { font-size: 0.78em; color: var(--text-secondary); min-width: 150px; font-family: var(--font-data); }
+.embudo-etapa-label { font-size: 0.82em; color: var(--text-secondary); min-width: 150px; font-family: var(--font-data); }
 .embudo-barra-fondo { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; }
 .embudo-barra { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
 .embudo-resumen { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 0.85em; margin-top: 2px; }
@@ -835,9 +837,9 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .timeline-icono {
     position: absolute; left: -28px; top: 0; width: 22px; height: 22px; border-radius: 50%;
     background: var(--bg-surface); border: 2px solid var(--border-soft); display: flex;
-    align-items: center; justify-content: center; font-size: 0.75em;
+    align-items: center; justify-content: center; font-size: 0.82em;
 }
-.timeline-fecha { font-family: var(--font-data); font-size: 0.78em; color: var(--text-faint); margin-bottom: 2px; }
+.timeline-fecha { font-family: var(--font-data); font-size: 0.82em; color: var(--text-faint); margin-bottom: 2px; }
 .timeline-incidencia .timeline-icono { border-color: var(--danger); }
 .timeline-venta .timeline-icono { border-color: var(--success); }
 .timeline-precio .timeline-icono { border-color: var(--accent-gold); }
@@ -858,7 +860,7 @@ body.modo-despacho-limpio .despacho-item .thumb-sm { width: 80px !important; hei
 body.modo-despacho-limpio .despacho-check {
     width: 50px; height: 50px; min-width: 50px; font-size: 1.8em; border-width: 3px;
 }
-body.modo-despacho-limpio .despacho-info .text-muted { font-size: 0.75em; }
+body.modo-despacho-limpio .despacho-info .text-muted { font-size: 0.82em; }
 body.modo-despacho-limpio .despacho-progreso-panel .hero-number { font-size: 1.3em; }
 body.modo-despacho-limpio { padding-top: 20px; }
 
@@ -883,7 +885,7 @@ body.modo-despacho-limpio { padding-top: 20px; }
 .ue-comision { background: var(--danger); }
 .ue-ganancia { background: linear-gradient(90deg, var(--success), #16a37e); }
 .ue-ganancia-negativa { background: var(--danger); }
-.unit-economics-leyenda { display: flex; align-items: center; gap: 16px; font-size: 0.76em; color: var(--text-secondary); flex-wrap: wrap; }
+.unit-economics-leyenda { display: flex; align-items: center; gap: 16px; font-size: 0.82em; color: var(--text-secondary); flex-wrap: wrap; }
 .ue-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
 .ue-dot.ue-costo { background: #55556b; }
 .ue-dot.ue-envio { background: var(--accent-cyan); }
@@ -916,12 +918,12 @@ body.modo-despacho-limpio { padding-top: 20px; }
    mismo contraste que cualquier otro texto accionable de la app. */
 .checklist-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: var(--text-base); color: var(--text-primary); text-decoration: none; transition: background 0.15s; }
 a.checklist-item:hover { background: rgba(255,255,255,0.04); }
-.checklist-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--glass-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.78em; }
+.checklist-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--glass-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.82em; }
 .checklist-item.completo { color: var(--text-secondary); }
 .checklist-item.completo .checklist-check { background: var(--success); border-color: var(--success); color: #06201a; }
 .checklist-item.completo .checklist-texto { text-decoration: line-through; text-decoration-color: var(--text-faint); }
 .checklist-texto { flex: 1; min-width: 0; }
-.checklist-ir { flex-shrink: 0; font-size: 0.82em; font-weight: 700; color: var(--accent-primary); opacity: 0.85; transition: opacity var(--transition-fast), transform var(--transition-fast); }
+.checklist-ir { flex-shrink: 0; font-size: 0.82em; font-weight: 700; color: var(--accent-texto); opacity: 0.85; transition: opacity var(--transition-fast), transform var(--transition-fast); }
 a.checklist-item:hover .checklist-ir { opacity: 1; transform: translateX(2px); }
 a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in srgb, var(--accent-primary) 55%, transparent); }
 
@@ -1028,9 +1030,9 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 .grafico-tendencia-barra:hover::after {
     content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
     background: var(--glass-bg-alt); border: 1px solid var(--glass-border); border-radius: 6px;
-    padding: 4px 8px; font-size: 0.72em; white-space: nowrap; margin-bottom: 6px; pointer-events: none; z-index: 10;
+    padding: 4px 8px; font-size: 0.8em; white-space: nowrap; margin-bottom: 6px; pointer-events: none; z-index: 10;
 }
-.grafico-tendencia-ejes { display: flex; justify-content: space-between; font-size: 0.68em; color: var(--text-faint); margin-top: 6px; }
+.grafico-tendencia-ejes { display: flex; justify-content: space-between; font-size: 0.78em; color: var(--text-faint); margin-top: 6px; }
 
 /* ---------- Calculadora de Costos: panel deslizable 3/4 desde la derecha ---------- */
 .calc-overlay {
@@ -1072,7 +1074,7 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 .tour-tarjeta-titulo { font-weight: 700; font-size: 0.98em; margin-bottom: 6px; }
 .tour-tarjeta-texto { color: var(--text-secondary); font-size: 0.87em; line-height: 1.5; margin-bottom: 16px; }
 .tour-tarjeta-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.tour-tarjeta-contador { color: var(--text-faint); font-size: 0.78em; }
+.tour-tarjeta-contador { color: var(--text-faint); font-size: 0.82em; }
 .tour-btn-saltar { background: none; border: none; color: var(--text-faint); font-size: 0.82em; cursor: pointer; padding: 6px 4px; }
 .tour-btn-saltar:hover { color: var(--text-secondary); }
 .tour-btn-siguiente {
@@ -1157,7 +1159,7 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 
 /* Link de acción genérico (sin decoración pero clicable) */
 .action-link {
-    color: var(--accent-primary);
+    color: var(--accent-texto);
     text-decoration: none;
     transition: color var(--transition-fast), opacity var(--transition-fast);
 }
@@ -1204,7 +1206,7 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 .rf-header button { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); width: 26px; height: 26px; cursor: pointer; }
 .rf-header button:hover { border-color: var(--accent-primary); }
 .rf-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
-.rf-grid-header { color: var(--text-faint); font-size: 0.72em; margin-bottom: 4px; }
+.rf-grid-header { color: var(--text-faint); font-size: 0.8em; margin-bottom: 4px; }
 .rf-dia { padding: 7px 0; border-radius: 6px; font-size: 0.82em; cursor: pointer; color: var(--text-secondary); }
 .rf-dia:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
 .rf-vacio { cursor: default; }

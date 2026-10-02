@@ -66,7 +66,7 @@
         <div class="ux-opinion-cab">{{ estrellas(c.estrellas) }} <span class="text-muted" style="font-size:0.8em;">{{ c.fecha|fecha }}</span></div>
         {% if c.titulo %}<div class="ux-opinion-titulo">{{ c.titulo }}</div>{% endif %}
         {% if c.texto %}<div class="ux-opinion-texto">{{ c.texto }}</div>{% endif %}
-        <div class="text-muted" style="font-size:0.78em; margin-top:4px;">sobre {% if c.permalink %}<a href="{{ c.permalink }}" target="_blank" rel="noopener">{{ c.producto }} ↗</a>{% else %}{{ c.producto }}{% endif %}</div>
+        <div class="text-muted" style="font-size:0.82em; margin-top:4px;">sobre {% if c.permalink %}<a href="{{ c.permalink }}" target="_blank" rel="noopener">{{ c.producto }} ↗</a>{% else %}{{ c.producto }}{% endif %}</div>
     </div>
     {% endfor %}
     {% if criticas|length > 5 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ criticas|length - 5 }} restantes</button>{% endif %}

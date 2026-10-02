@@ -170,12 +170,12 @@ async function reactivarAplicar() {
                 </td>
                 <td class="num col-precio" data-label="Precio">
                     {% if p.descuento_pct %}
-                    <div class="text-muted" style="text-decoration:line-through; font-size:0.78em;">${{ p.precio_original_formateado }}</div>
+                    <div class="text-muted" style="text-decoration:line-through; font-size:0.82em;">${{ p.precio_original_formateado }}</div>
                     <div><b>${{ p.precio_formateado }}</b> <span class="ux-pill ux-ok">-{{ p.descuento_pct }}%</span></div>
                     {% else %}
                     <div><b>${{ p.precio_rango }}</b></div>
                     {% endif %}
-                    {% if p.recibis_formateado %}<div class="text-muted" style="font-size:0.72em;">Recibís ~${{ p.recibis_formateado }}</div>{% endif %}
+                    {% if p.recibis_formateado %}<div class="text-muted" style="font-size:0.8em;">Recibís ~${{ p.recibis_formateado }}</div>{% endif %}
                 </td>
                 <td data-label="Estado">
                     {% if p.estado == 'active' %}<span class="ux-pill ux-ok">Activa</span>

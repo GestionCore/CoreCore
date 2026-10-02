@@ -59,7 +59,7 @@
                 <td class="text-muted" style="font-size:0.8em;">{{ u.id }}</td>
                 <td>
                     <div style="font-size:0.9em;">{{ u.email }}</div>
-                    {% if u.nombre %}<div class="text-muted" style="font-size:0.78em;">{{ u.nombre }}</div>{% endif %}
+                    {% if u.nombre %}<div class="text-muted" style="font-size:0.82em;">{{ u.nombre }}</div>{% endif %}
                 </td>
                 <td class="num">
                     <span id="badge-plan-{{ u.id }}" class="badge {% if u.plan == 'elite' %}badge-brand{% elif u.plan == 'base' %}badge-success{% elif u.plan == 'trial' %}badge-warning{% else %}badge-neutral{% endif %}">{{ u.plan }}</span>
@@ -87,7 +87,7 @@
                 </td>
                 <td class="num" style="font-size:0.8em; color:var(--text-secondary);">{{ u.creado_en }}</td>
                 <td class="num" style="white-space:nowrap;">
-                    <select class="btn btn-secondary" style="font-size:0.78em; padding:3px 6px;" onchange="cambiarPlan({{ u.id }}, this)">
+                    <select class="btn btn-secondary" style="font-size:0.82em; padding:3px 6px;" onchange="cambiarPlan({{ u.id }}, this)">
                         <option value="">Cambiar plan...</option>
                         <option value="trial" {% if u.plan == 'trial' %}disabled{% endif %}>→ Trial</option>
                         <option value="base" {% if u.plan == 'base' %}disabled{% endif %}>→ Base</option>

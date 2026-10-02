@@ -30,7 +30,7 @@
         <span class="ux-pill ux-{{ 'danger' if i.estado == 'pierde' else ('warn' if i.estado == 'justo' else 'ok') }}">{{ i.margen_actual|string|replace('.', ',') }}% de margen</span>
         {% if i.suba_excesiva %}<div class="ux-precio-accion" style="color:var(--warning);">Subirlo a {{ i.recomendado|plata }} sería <b>+{{ i.suba_pct|string|replace('.', ',') }}%</b>: revisá el costo cargado</div>
         {% elif i.estado != 'ok' and i.recomendado %}<div class="ux-precio-accion">Subilo a <b>{{ i.recomendado|plata }}</b></div>
-        {% elif i.recomendado %}<div class="text-muted" style="font-size:0.78em;">Cubrís tu margen hasta {{ i.recomendado|plata }}</div>{% endif %}
+        {% elif i.recomendado %}<div class="text-muted" style="font-size:0.82em;">Cubrís tu margen hasta {{ i.recomendado|plata }}</div>{% endif %}
     </div>
 </div>
 {% endmacro %}

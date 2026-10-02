@@ -128,7 +128,7 @@
         <div style="background:rgba(255,255,255,0.03); border-radius:10px; padding:12px 16px; min-width:180px;">
             <div style="font-weight:700;">{{ e.nombre }}</div>
             <div class="text-muted" style="font-size:0.8em; margin:4px 0;">{{ e.fecha_str }} — {{ 'mañana' if e.dias_faltantes == 1 else ('en ' ~ e.dias_faltantes ~ ' días') }}</div>
-            <div style="font-size:0.78em; color:var(--accent-primary);">{{ e.categoria_sugerida }}</div>
+            <div style="font-size:0.82em; color:var(--accent-primary);">{{ e.categoria_sugerida }}</div>
         </div>
         {% endfor %}
     </div>
@@ -440,7 +440,7 @@ function _renderVendedor(v) {
         <div class="flex-gap" style="justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border-soft);">
             <div>
                 <div style="font-weight:600;">${nombre}</div>
-                <div class="text-muted" style="font-size:0.78em;">${[historicas, `${fmtN(v.publicaciones_muestra)} publicaciones en la muestra`].filter(Boolean).join(' · ')}</div>
+                <div class="text-muted" style="font-size:0.82em;">${[historicas, `${fmtN(v.publicaciones_muestra)} publicaciones en la muestra`].filter(Boolean).join(' · ')}</div>
             </div>
             <div class="flex-gap">${etiquetas}</div>
         </div>`;
@@ -514,7 +514,7 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
 
         const maxHist = Math.max(...(d.distribucion_precios || []).map(b => b.cantidad), 1);
         const histogramaHtml = (d.distribucion_precios || []).map(b => `
-            <div style="display:flex; align-items:center; gap:8px; font-size:0.78em;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.82em;">
                 <span style="width:150px; flex-shrink:0; color:var(--text-secondary);">${fmtM(b.desde)} – ${fmtM(b.hasta)}</span>
                 <div class="checklist-barra"><div class="checklist-fill" style="width:${Math.round(b.cantidad / maxHist * 100)}%; background:var(--accent-primary);"></div></div>
                 <span style="width:28px; text-align:right;">${b.cantidad}</span>
@@ -563,7 +563,7 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
             ${marcasHtml}
             ${vendedoresHtml}
             ${referenciaHtml}
-            <div class="text-muted" style="font-size:0.76em; line-height:1.5;">
+            <div class="text-muted" style="font-size:0.82em; line-height:1.5;">
                 <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>${esc(d.nota_limite || '')}
             </div>
         `;
@@ -651,7 +651,7 @@ async function calcularEstimadorMargen(categoryId) {
         const nota = (d.costo_envio_estimado === null || d.costo_envio_estimado === undefined)
             ? 'Antes de envío y publicidad: restalos para ver tu margen final.'
             : 'Incluye el envío estimado; falta restar la publicidad si la usás.';
-        html += `<div class="text-muted" style="font-size:0.76em; margin-top:8px;">${nota}</div>`;
+        html += `<div class="text-muted" style="font-size:0.82em; margin-top:8px;">${nota}</div>`;
         cont.innerHTML = html;
     } catch (e) {
         _mostrarMensajeEn(cont, 'No se pudo calcular.', 'text-danger');

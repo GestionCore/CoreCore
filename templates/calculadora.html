@@ -44,7 +44,7 @@
                 <input type="number" id="calc-envio" min="0" step="1" inputmode="numeric" placeholder="3500">
             </div>
         </div>
-        <div class="text-muted" style="font-size:0.78em; margin-top:10px;">Con el costo de fabricación ves tu ganancia neta real. El envío depende del peso y tamaño del producto: si MeLi no lo informa desde acá, cargalo vos.</div>
+        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Con el costo de fabricación ves tu ganancia neta real. El envío depende del peso y tamaño del producto: si MeLi no lo informa desde acá, cargalo vos.</div>
     </div>
 
     <!-- ── Resultado ────────────────────────────────────────────────────── -->
@@ -82,7 +82,7 @@ function elegirCategoria(id, nombre) {
     $('calc-cat-resultados').style.display = 'none';
     $('calc-categoria-buscar').value = '';
     $('calc-cat-elegida').innerHTML = `<span class="ux-pill ux-accion">${UX.icono('check')}${UX.esc(nombre)}</span>
-        <button type="button" class="btn btn-secondary" style="padding:3px 10px; font-size:0.78em; margin-left:6px;" id="calc-cambiar-cat">Cambiar</button>`;
+        <button type="button" class="btn btn-secondary" style="padding:3px 10px; font-size:0.82em; margin-left:6px;" id="calc-cambiar-cat">Cambiar</button>`;
     $('calc-cambiar-cat').addEventListener('click', () => { categoriaElegida = null; $('calc-cat-elegida').innerHTML = ''; $('calc-categoria-buscar').focus(); programarCalculo(); });
     programarCalculo();
 }
@@ -122,7 +122,7 @@ $('calc-categoria-buscar').addEventListener('input', () => {
         const cats = await (await fetch('/api/calculadora_categorias')).json();
         if (!Array.isArray(cats) || !cats.length) return;
         const cont = $('calc-mis-categorias');
-        cont.innerHTML = '<span class="text-muted" style="font-size:0.78em;">Tus categorías:</span>';
+        cont.innerHTML = '<span class="text-muted" style="font-size:0.82em;">Tus categorías:</span>';
         cats.slice(0, 6).forEach(c => {
             const b = document.createElement('button');
             b.type = 'button'; b.className = 'ux-pill ux-neutral ux-pill-suave'; b.style.cursor = 'pointer'; b.style.border = '0';
@@ -216,7 +216,7 @@ function pintarResultado(d) {
 function pintarCuotas(d, envio, costo) {
     const recibisContado = d.precio - d.comision_total - (envio || 0);
     $('calc-cuotas').innerHTML = `
-        <div class="ux-seccion ux-warn">¿Y si ofrecés cuotas sin interés? <span class="text-muted" style="font-weight:600; font-size:0.78em;">estimado</span></div>
+        <div class="ux-seccion ux-warn">¿Y si ofrecés cuotas sin interés? <span class="text-muted" style="font-weight:600; font-size:0.82em;">estimado</span></div>
         <div class="ux-kpis">
             ${CUOTAS_FINANCIACION.map(c => {
                 const costoFin = d.precio * c.pct;

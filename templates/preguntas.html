@@ -159,7 +159,7 @@ function tarjeta(p) {
     return `<div class="ux-pregunta ux-${pendiente ? a.tono : 'neutral'}" data-qid="${UX.esc(p.question_id)}">
         <div class="ux-pregunta-cabecera"><div class="ux-titulo-thumb" style="min-width:0;">${p.thumbnail ? `<img src="${UX.esc(p.thumbnail)}" class="thumb-sm" alt="" loading="lazy">` : ''}${verPub}</div>${pillEstado}</div>
         <div class="ux-pregunta-texto">“${UX.esc(p.texto)}”</div>
-        <div class="text-muted" style="font-size:0.76em; margin-bottom:10px;">${UX.esc(p.fecha)}</div>
+        <div class="text-muted" style="font-size:0.82em; margin-bottom:10px;">${UX.esc(p.fecha)}</div>
         ${acciones}
     </div>`;
 }
