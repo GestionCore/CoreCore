@@ -276,7 +276,7 @@
         { id: 'top_productos', nombre: 'Top productos del mes', default: true },
         { id: 'ultimas_ventas', nombre: 'Últimas ventas', default: true },
         { id: 'costos', nombre: 'Margen promedio del catálogo', default: false },
-        { id: 'stock_riesgo', nombre: 'Talles en riesgo de quiebre', default: false },
+        { id: 'stock_riesgo', nombre: '{{ vocab.VN }} en riesgo de quiebre', default: false },
     ];
     const CLAVE_PREFS_DASHBOARD = 'dashboard_widgets_activos';
 
@@ -413,7 +413,7 @@
             const w = crearTarjetaWidget('stock_riesgo', '/stock');
             grid.appendChild(w);
             fetch('/api/quiebre_stock').then(r => r.json()).then(d => {
-                w.innerHTML = `<div class="stat-chip-label">Talles en riesgo de quiebre</div><div class="hero-number ${d.length > 0 ? 'acento-warning' : 'acento-success'}" style="font-size:1.9em;">${d.length}</div>
+                w.innerHTML = `<div class="stat-chip-label">{{ vocab.VN }} en riesgo de quiebre</div><div class="hero-number ${d.length > 0 ? 'acento-warning' : 'acento-success'}" style="font-size:1.9em;">${d.length}</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.length > 0 ? '<b>Revisalos</b> antes de perder ventas' : 'Todo en orden'}</div>`;
             });
         }

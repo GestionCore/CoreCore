@@ -10,7 +10,7 @@
     <div>
         <h1 class="page-title">Stock masivo</h1>
         <div class="page-subtitle">
-            {% if modelos %}Cambiá el depósito de varios talles a la vez — <strong>solo se envía a Mercado Libre lo que cambies</strong>{% else %}Cambiá el depósito de varias publicaciones a la vez, agrupadas por modelo{% endif %}
+            {% if modelos %}Cambiá el depósito de varias publicaciones a la vez — <strong>solo se envía a Mercado Libre lo que cambies</strong>{% else %}Cambiá el depósito de varias publicaciones a la vez, agrupadas por modelo{% endif %}
         </div>
     </div>
 </div>
@@ -25,7 +25,7 @@
 
 <div class="ux-periodo" style="margin-bottom:16px;">
     <div class="field-group" style="flex:1; min-width:220px;">
-        <input type="text" id="input-buscador-masivo" placeholder="Buscar modelo, color o talle — ej: celeste l" aria-label="Buscar" onkeyup="filtrarAcordeon()">
+        <input type="text" id="input-buscador-masivo" placeholder="Buscar modelo, color o {{ vocab.v1 }}" aria-label="Buscar" onkeyup="filtrarAcordeon()">
     </div>
     <div class="ux-periodo-botones">
         <button type="button" class="btn btn-secondary" id="btn-solo-editables" onclick="alternarSoloEditables()" {% if not editables %}disabled{% endif %}>Solo los que puedo editar <span class="ux-pill ux-accion" style="padding:1px 8px;">{{ editables|length }}</span></button>
@@ -35,7 +35,7 @@
 <form action="/actualizar_stock_multiple" method="POST" id="form-stock-masivo">
     <input type="hidden" name="volver_a" value="/stock_masivo">
     <div id="acordeon-modelos">
-        <div id="acordeon-sin-resultados" style="display:none;">{{ vacio("No encontramos ningún modelo con eso", "Probá con otro talle, color o nombre.", "search", "info") }}</div>
+        <div id="acordeon-sin-resultados" style="display:none;">{{ vacio("No encontramos ningún modelo con eso", "Probá con otro nombre o color.", "search", "info") }}</div>
         {% for m in modelos %}
         {% set hay_editable = m.variantes|rejectattr('full')|list|length > 0 %}
         <div class="panel acordeon-item {% if hay_editable %}abierto{% endif %}" data-editable="{{ 1 if hay_editable else 0 }}" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}" style="padding:0; overflow:hidden;">
@@ -45,7 +45,7 @@
                     <div>
                         <strong>{{ m.titulo }}</strong>
                         <div class="text-muted" style="font-size:0.8em;">
-                            <b>{{ m.propio }}</b> u. en tu depósito · <b>{{ m.full }}</b> u. en FULL · {{ m.variantes|length }} talle{{ 's' if m.variantes|length != 1 }}
+                            <b>{{ m.propio }}</b> u. en tu depósito · <b>{{ m.full }}</b> u. en FULL · {{ m.variantes|length }} {{ vocab.v1 }}{{ 's' if m.variantes|length != 1 }}
                         </div>
                     </div>
                 </div>
@@ -58,7 +58,7 @@
             <div class="acordeon-body" style="display:{{ 'block' if hay_editable else 'none' }}; padding:0 20px 16px;">
                 <div style="overflow-x:auto;">
                 <table class="data-table">
-                    <thead><tr><th>Talle</th><th>Estado</th><th class="num">Depósito propio</th><th class="num">FULL</th></tr></thead>
+                    <thead><tr><th>{{ vocab.V1 }}</th><th>Estado</th><th class="num">Depósito propio</th><th class="num">FULL</th></tr></thead>
                     <tbody>
                         {% for v in m.variantes %}
                         <tr>

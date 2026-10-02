@@ -19,6 +19,14 @@ def sql_momento_argentina(prefijo="", por_defecto="00:00"):
             f"+ CASE WHEN {p}hora_normalizada THEN INTERVAL '0 hour' ELSE INTERVAL '1 hour' END)")
 
 
+def vocabulario(usa_talles):
+    """
+    Cómo llamar a las variantes de una publicación en pantalla. CoreLux lo usan vendedores de todos los rubros: quien vende ropa o calzado ve "talle", y
+    quien vende electrónica o artículos sin variantes ve "variante" (no "talle"). `usa_talles` es True si la cuenta tiene al menos un talle real.
+    """
+    return {"v1": "talle", "vN": "talles", "V1": "Talle", "VN": "Talles"} if usa_talles else {"v1": "variante", "vN": "variantes", "V1": "Variante", "VN": "Variantes"}
+
+
 def hoy_argentina():
     """La fecha de hoy en Argentina (el servidor corre en UTC: pasadas las 21 h, "hoy" ya sería mañana)."""
     return datetime.now(ARGENTINA).date()

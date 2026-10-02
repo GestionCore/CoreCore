@@ -57,3 +57,10 @@ def test_el_momento_en_hora_argentina_unifica_filas_viejas_y_nuevas():
         sql_momento_argentina(por_defecto="12:00'; DROP TABLE ventas; --")
     with pytest.raises(ValueError):
         sql_momento_argentina(prefijo="v; --")
+
+
+def test_vocabulario_segun_la_cuenta():
+    from utils import vocabulario
+    assert vocabulario(True) == {"v1": "talle", "vN": "talles", "V1": "Talle", "VN": "Talles"}
+    v = vocabulario(False)
+    assert (v["v1"], v["vN"], v["V1"], v["VN"]) == ("variante", "variantes", "Variante", "Variantes")

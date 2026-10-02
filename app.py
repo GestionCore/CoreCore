@@ -164,7 +164,7 @@ def _inyectar_cuentas_usuario():
     """
     if not getattr(g, "usuario_id", None):
         # Rutas públicas (/planes, /suscripcion/retorno...): base.html igual arma el menú si hay sesión y llama capacidades.get(...)
-        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None}
+        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True)}
     # Se pedía a la base en CADA página; cambia muy poco (al vincular una cuenta o refrescar capacidades): 60 s de caché, con el usuario en la clave
     clave_cuentas = construir_key("cuentas_usuario", g.usuario_id)
     cuentas = cache_leer(clave_cuentas)
@@ -173,7 +173,24 @@ def _inyectar_cuentas_usuario():
         cache_guardar(clave_cuentas, cuentas, timeout=60)
     cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
     # Qué usa esta cuenta (ads, flex, full, catalogo): las pantallas esconden solo lo que se confirmó que no aplica (ver capacidades.py)
-    return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual, "capacidades": (cuenta_actual or {}).get("capacidades") or {}}
+    return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual, "capacidades": (cuenta_actual or {}).get("capacidades") or {},
+            "vocab": _vocabulario_de_la_cuenta(g.usuario_id, g.cuenta_id)}
+
+
+def _vocabulario_de_la_cuenta(usuario_id, cuenta_id):
+    """"talle" si la cuenta tiene talles reales, "variante" si no (ver utils.vocabulario). 10 minutos en caché por cuenta."""
+    clave = construir_key("usa_talles", cuenta_id)
+    usa = cache_leer(clave)
+    if usa is None:
+        try:
+            with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+                cursor = conexion.cursor()
+                cursor.execute("SELECT EXISTS(SELECT 1 FROM productos_variantes WHERE talle IS NOT NULL AND talle NOT IN ('', 'Único'))")
+                usa = bool(cursor.fetchone()[0])
+        except Exception:
+            usa = True                      # ante la duda, el vocabulario de siempre
+        cache_guardar(clave, usa, timeout=600)
+    return utils.vocabulario(usa)
 
 
 @app.context_processor

@@ -436,7 +436,7 @@
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Historial de ventas detallado <span class="ux-detalle-nota">{{ ventas|length }} ventas</span></summary>
     <div class="ux-detalle-cuerpo" data-mostrar-mas-scope>
         <table class="data-table">
-            <thead><tr><th>Fecha</th><th>Producto</th><th>Talle</th><th class="num">Cant.</th><th class="num">Venta</th><th class="num">Cargo</th><th class="num">Envío</th><th class="num">Ads</th><th class="num">Costo</th><th class="num">Neto</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Producto</th><th>{{ vocab.V1 }}</th><th class="num">Cant.</th><th class="num">Venta</th><th class="num">Cargo</th><th class="num">Envío</th><th class="num">Ads</th><th class="num">Costo</th><th class="num">Neto</th></tr></thead>
             <tbody>
                 {% for v in ventas %}
                 <tr class="{% if v.es_negativo %}ux-fila-danger{% endif %} {% if loop.index > 10 %}oculto-mostrar-mas{% endif %}">

@@ -115,7 +115,7 @@ async function reactivarAplicar() {
 
 <div class="ux-periodo" style="margin-bottom:16px;">
     <div class="field-group" style="flex:1; min-width:220px;">
-        <input type="text" id="input-buscador" placeholder="Buscar por nombre, talle o ID…" aria-label="Buscar modelo" onkeyup="aplicarFiltros()">
+        <input type="text" id="input-buscador" placeholder="Buscar por nombre, {{ vocab.v1 }} o ID…" aria-label="Buscar modelo" onkeyup="aplicarFiltros()">
     </div>
     <div class="ux-periodo-botones" style="flex-wrap:wrap;">
         <button type="button" id="chip-activas" class="btn btn-secondary active" onclick="toggleEstado('active')">Activas</button>
@@ -132,7 +132,7 @@ async function reactivarAplicar() {
     <table class="data-table ux-tabla-cards" id="tabla-productos">
         <thead>
             <tr>
-                <th>Modelo y talles</th>
+                <th>Modelo y {{ vocab.vN }}</th>
                 <th class="num">Precio</th>
                 <th>Estado</th>
                 <th class="num">Propio</th>
@@ -291,9 +291,9 @@ async function reactivarAplicar() {
         if (riesgoCantidad === null) {
             if (!bloques.length) bloques.push('<div class="skeleton" style="height:76px; width:100%; border-radius:12px; margin-bottom:20px;"></div>');
         } else if (riesgoCantidad > 0) {
-            bloques.push(UX.banner({ tono: 'warn', icono: 'box', tituloHtml: `<b>${riesgoCantidad} talle${riesgoCantidad > 1 ? 's' : ''}</b> se agota${riesgoCantidad > 1 ? 'n' : ''} pronto al ritmo de venta actual`, detalle: 'Mirá abajo cuáles son y cuánto te queda.', cta: { texto: 'Ver qué reponer', href: '#bloque-reponer', clase: 'btn-alerta' } }));
+            bloques.push(UX.banner({ tono: 'warn', icono: 'box', tituloHtml: `<b>${riesgoCantidad} {{ vocab.v1 }}${riesgoCantidad > 1 ? 's' : ''}</b> se agota${riesgoCantidad > 1 ? 'n' : ''} pronto al ritmo de venta actual`, detalle: 'Mirá abajo cuáles son y cuánto te queda.', cta: { texto: 'Ver qué reponer', href: '#bloque-reponer', clase: 'btn-alerta' } }));
         } else if (SIN_STOCK_CANTIDAD === 0) {
-            bloques.push(UX.banner({ tono: 'ok', icono: 'check', tituloHtml: '<b>Stock sano.</b> Nada agotado ni por agotarse', detalle: 'Te avisamos acá apenas algún talle se acerque al final.' }));
+            bloques.push(UX.banner({ tono: 'ok', icono: 'check', tituloHtml: '<b>Stock sano.</b> Nada agotado ni por agotarse', detalle: 'Te avisamos acá apenas alguno se acerque al final.' }));
         }
         cont.innerHTML = bloques.join('');
     }
@@ -327,7 +327,7 @@ async function reactivarAplicar() {
                     </div>
                     <button type="button" class="btn ${v.pedir_ya || v.dias_restantes <= 2 ? 'btn-urgente' : 'btn-alerta'}" data-drawer="${UX.esc(v.id_meli)}">Gestionar</button>
                 </div>`;
-            }).join('') + (data.length > 6 ? `<div class="text-muted" style="font-size:0.82em; padding:4px 2px;">Y ${data.length - 6} talles más — los ves marcados en naranja en la tabla.</div>` : '');
+            }).join('') + (data.length > 6 ? `<div class="text-muted" style="font-size:0.82em; padding:4px 2px;">Y ${data.length - 6} {{ vocab.vN }} más — los ves marcados en naranja en la tabla.</div>` : '');
         } catch (e) { console.error(e); riesgoCantidad = 0; pintarEstadoStock(); }
     }
 

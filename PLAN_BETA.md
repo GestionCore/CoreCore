@@ -47,3 +47,6 @@ Mercado Pago de punta a punta, planes con límites reales, factura propia, sopor
 
 ## Registro
 - 2026-10-02: plan creado.
+- 2026-10-02: **A1** `desplegar.py` + versión en `/healthz` (hecho). **B** aviso de ganancia inflada por % de plata sin costo, Excel antes que Flex (hecho).
+  **C** cuenta sintética de otro perfil (electrónica, sin FULL/Flex/Ads/catálogo, datos con nulos): 73 pantallas sin excepciones y oculta lo que no aplica;
+  vocabulario adaptado ("talle" solo si la cuenta tiene talles reales, si no "variante") (hecho). Pendiente: menú, móvil, ayuda/feedback, capacidad (D).

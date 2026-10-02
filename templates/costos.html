@@ -19,7 +19,7 @@
 <!-- ── 1. ESTADO: ¿tengo cargado lo que necesita la ganancia real? ───────── -->
 {% if activos %}
 {% if sin_costo %}
-{{ banner("warn", "alert", "<b>Falta el costo de fabricación de " ~ sin_costo|length ~ " de tus " ~ activos|length ~ " publicaciones activas</b>", "Mientras falte, tu ganancia neta real es más alta que la verdadera. Cargá el costo de un talle y copialo a los demás del modelo.", "Cargar costos", "#costos-fabricacion", "btn-alerta") }}
+{{ banner("warn", "alert", "<b>Falta el costo de fabricación de " ~ sin_costo|length ~ " de tus " ~ activos|length ~ " publicaciones activas</b>", "Mientras falte, tu ganancia neta real es más alta que la verdadera. Cargá el costo de uno y copialo a los demás del modelo.", "Cargar costos", "#costos-fabricacion", "btn-alerta") }}
 {% elif con_perdida %}
 {{ banner("danger", "alert", "<b>" ~ con_perdida|length ~ " publicación(es) venden por debajo de su costo</b> con los precios actuales", "Revisá el precio o el costo de las que aparecen en rojo abajo.", "Ver cuáles", "#costos-fabricacion", "btn-urgente") }}
 {% else %}
@@ -39,7 +39,7 @@
 <div class="ux-seccion ux-warn" id="costos-fabricacion">Costo de fabricación por modelo
     {% if sin_costo %}<span class="ux-pill ux-warn">{{ sin_costo|length }} sin costo</span>{% endif %}
 </div>
-<div class="text-muted" style="font-size:0.88em; margin:-6px 0 14px;">Escribí lo que te cuesta cada unidad. Abajo de cada talle ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>
+<div class="text-muted" style="font-size:0.88em; margin:-6px 0 14px;">Escribí lo que te cuesta cada unidad. Abajo de cada {{ vocab.v1 }} ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>
 
 {% if not productos %}
 {{ vacio("Todavía no hay publicaciones sincronizadas", "Sincronizá para traer tu catálogo y poder cargarles el costo.", "refresh", "accion") }}
@@ -53,10 +53,10 @@
             {% if items[0].thumbnail %}<img src="{{ items[0].thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}
             <div style="flex:1; min-width:0;">
                 <div style="font-weight:800;">{{ modelo }}</div>
-                <div class="text-muted" style="font-size:0.8em;">{{ items|length }} talle{{ 's' if items|length != 1 }}{% if sin_c %} · <b style="color:var(--semantic-warning);">{{ sin_c|length }} sin costo</b>{% else %} · <b style="color:var(--success);">con costo cargado</b>{% endif %}</div>
+                <div class="text-muted" style="font-size:0.8em;">{{ items|length }} {{ vocab.v1 }}{{ 's' if items|length != 1 }}{% if sin_c %} · <b style="color:var(--semantic-warning);">{{ sin_c|length }} sin costo</b>{% else %} · <b style="color:var(--success);">con costo cargado</b>{% endif %}</div>
             </div>
             <div class="ux-copiar-costo">
-                <label class="field-label" style="margin:0;">Mismo costo para todos los talles</label>
+                <label class="field-label" style="margin:0;">Mismo costo para todo el modelo</label>
                 <span class="flex-gap" style="gap:6px;">
                     <input type="number" step="0.01" min="0" inputmode="decimal" placeholder="$ por unidad" class="input-costo-modelo" aria-label="Costo de todos los talles de {{ modelo }}">
                     <button type="button" class="btn btn-secondary btn-copiar-costo">Aplicar a todos</button>
@@ -297,7 +297,7 @@
     document.querySelectorAll('.input-costo-producto').forEach(i => i.addEventListener('input', () => alCambiarCosto(i)));
     document.querySelectorAll('.ux-fila-costo').forEach(pintarGanancia);
 
-    // "Mismo costo para todos los talles del modelo"
+    // "Mismo costo para todo el modelo"
     document.querySelectorAll('.btn-copiar-costo').forEach(btn => btn.addEventListener('click', () => {
         const modelo = btn.closest('.ux-modelo-costo');
         const valor = modelo.querySelector('.input-costo-modelo').value;
