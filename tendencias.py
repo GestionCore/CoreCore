@@ -14,6 +14,7 @@ resuelve con "ON CONFLICT DO NOTHING" en Postgres.
 """
 import re
 import threading
+import cache_db
 import meli_http
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
@@ -93,30 +94,81 @@ def obtener_categoria_especifica(access_token, cuenta_id, cursor):
     if hit and ahora - hit[0] < TTL_CATEGORIA_ESPECIFICA_SEGUNDOS:
         return hit[1]
 
-    cursor.execute("SELECT id_meli FROM productos_padre WHERE estado = 'active' ORDER BY id_meli LIMIT 20")
-    ids = [f[0] for f in cursor.fetchall()]
-    if not ids:
+    categorias = categorias_del_catalogo(cursor, 1)
+    if not categorias:
         return None, None
-
-    headers = {"Authorization": f"Bearer {access_token}"}
-    estado, data = _get_json("https://api.mercadolibre.com/items", headers, {"ids": ",".join(ids), "attributes": "id,category_id"})
-    if estado != 200 or not isinstance(data, list):
-        return None, None
-    conteo = {}
-    for fila in data:
-        cid = (fila.get("body") or {}).get("category_id") if fila.get("code") == 200 else None
-        if cid:
-            conteo[cid] = conteo.get(cid, 0) + 1
-    if not conteo:
-        return None, None
-    # desempate estable por id: si dos categorías empatan no puede cambiar de una carga a la otra
-    category_id = sorted(conteo.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
-
-    _, c = _get_json(f"https://api.mercadolibre.com/categories/{category_id}", headers)
+    category_id = categorias[0][0]
+    _, c = _get_json(f"https://api.mercadolibre.com/categories/{category_id}", {"Authorization": f"Bearer {access_token}"})
     resultado = (category_id, (c or {}).get("name"))
     if resultado[1]:
         _categoria_especifica_cache[cuenta_id] = (ahora, resultado)
     return resultado
+
+
+def categorias_del_catalogo(cursor, maximo=3):
+    """[(category_id, publicaciones activas)] de las categorías con más publicaciones de la cuenta. Sale de la base (el sync guarda category_id): sin llamadas a MeLi."""
+    cursor.execute(
+        "SELECT category_id, count(*) FROM productos_padre WHERE estado = 'active' AND category_id IS NOT NULL GROUP BY category_id ORDER BY 2 DESC, 1 LIMIT %s",
+        (maximo,),
+    )
+    return [(fila[0], fila[1]) for fila in cursor.fetchall()]
+
+
+TTL_TENDENCIAS_SEGUNDOS = 6 * 3600
+CLAVE_TENDENCIAS = "tendencias_catalogo"
+
+
+def mezclar_tendencias(listas_por_categoria):
+    """
+    Une las listas de tendencias de varias categorías de a una por turno (así cada categoría está representada arriba), sin repetir términos y
+    renumerando la posición. `listas_por_categoria` es [(category_id, [tendencia, ...]), ...].
+    """
+    mezcla, vistos = [], set()
+    largo = max((len(lista) for _, lista in listas_por_categoria), default=0)
+    for i in range(largo):
+        for cid, lista in listas_por_categoria:
+            if i >= len(lista):
+                continue
+            kw = (lista[i].get("keyword") or "").strip().lower()
+            if not kw or kw in vistos:
+                continue
+            vistos.add(kw)
+            mezcla.append({**lista[i], "categoria_id": cid})
+    for idx, tendencia in enumerate(mezcla):
+        tendencia["relevante"] = True
+        tendencia["posicion"] = idx + 1
+        tendencia["es_top"] = idx < 20
+    return mezcla
+
+
+def obtener_tendencias_del_catalogo(access_token, cursor, cuenta_id, site_id="MLA", maximo_categorias=3):
+    """
+    Las tendencias de Mercado Libre de las categorías ESPECÍFICAS donde vende la cuenta (hoy: las 3 con más publicaciones activas). La categoría raíz
+    ("Ropa y Accesorios") trae búsquedas ajenas al rubro ("slots casino", marcas que la cuenta no vende); las categorías hoja, no.
+    Devuelve {"lista": [...], "categorias": [{"id", "nombre", "publicaciones"}]} o None si la cuenta todavía no tiene categorías (se usa la raíz).
+    Cacheada 6 h por cuenta en la base: las tendencias de MeLi cambian por día y consultarlas en cada carga tardaba ~4 s.
+    """
+    categorias = categorias_del_catalogo(cursor, maximo_categorias)
+    if not categorias:
+        return None
+    firma = ",".join(c for c, _ in categorias)
+    hit, valor = cache_db.leer(cursor, cuenta_id, CLAVE_TENDENCIAS, firma, TTL_TENDENCIAS_SEGUNDOS, ttl_fallido=600)
+    if hit and valor:
+        return valor
+    headers = {"Authorization": f"Bearer {access_token}"}
+    listas, datos = [], []
+    for cid, cantidad in categorias:
+        lista = obtener_tendencias(access_token, site_id, category_id=cid)
+        _, c = _get_json(f"https://api.mercadolibre.com/categories/{cid}", headers)
+        listas.append((cid, lista))
+        datos.append({"id": cid, "nombre": (c or {}).get("name") or cid, "publicaciones": cantidad})
+    lista = mezclar_tendencias(listas)
+    if not lista:
+        cache_db.guardar(cursor, cuenta_id, CLAVE_TENDENCIAS, None, firma)       # MeLi no respondió: no se insiste en cada carga
+        return None
+    valor = {"lista": lista, "categorias": datos}
+    cache_db.guardar(cursor, cuenta_id, CLAVE_TENDENCIAS, valor, firma)
+    return valor
 
 
 NOTA_LIMITE_DATOS = (
@@ -967,20 +1019,37 @@ def registrar_y_detectar_emergentes(cursor, cuenta_id, keywords_de_hoy):
     return {kw for kw in keywords_de_hoy if kw not in vistas_antes}
 
 
+# Mercado Libre no permite texto promocional en el título (oferta, envío gratis, descuento…): la publicación puede quedar penalizada en la búsqueda.
+PALABRAS_PROMOCIONALES = {"oferta", "ofertas", "promo", "promocion", "promoción", "liquidacion", "liquidación", "descuento", "barato", "outlet", "imperdible", "gratis", "cuotas"}
+
+
 def calcular_seo_score_titulo(titulo, palabras_tendencia_actuales):
+    """
+    Puntaje 0-100 de un título para la búsqueda de MeLi, con la razón de cada punto. No hay un "MeLi trunca a los 60": en la cuenta de prueba los
+    títulos van de 62 a 113 caracteres (MeLi los arma a partir del nombre de familia), así que el largo solo penaliza lo corto.
+    """
     score = 100
     razones = []
-    palabras_titulo = set(p.lower() for p in titulo.split() if p.lower() not in PALABRAS_RELLENO_TITULO)
+    palabras_lista = [p.lower().strip(".,;:!()") for p in titulo.split()]
+    palabras_titulo = {p for p in palabras_lista if p and p not in PALABRAS_RELLENO_TITULO}
     longitud = len(titulo)
 
     if longitud < 40:
         resta = 15
         score -= resta
-        razones.append(f"-{resta}: título corto ({longitud} caracteres) — MeLi permite hasta 60, estás dejando espacio de búsqueda sin usar")
-    elif longitud > 60:
+        razones.append(f"-{resta}: título corto ({longitud} caracteres) — sumá tipo de producto, marca, material o uso para aparecer en más búsquedas")
+
+    promocionales = sorted(palabras_titulo & PALABRAS_PROMOCIONALES)
+    if promocionales:
         resta = 10
         score -= resta
-        razones.append(f"-{resta}: título de {longitud} caracteres — MeLi lo trunca en la búsqueda a partir de los 60")
+        razones.append(f"-{resta}: tiene texto promocional ({', '.join(f'«{p}»' for p in promocionales)}) — Mercado Libre no lo permite en el título y puede penalizar la publicación")
+
+    repetidas = sorted({p for p in palabras_titulo if len(p) > 3 and palabras_lista.count(p) > 1})
+    if repetidas:
+        resta = 5
+        score -= resta
+        razones.append(f"-{resta}: repite {', '.join(f'«{p}»' for p in repetidas)} — ese espacio rinde más con otra palabra que la gente busque")
 
     palabras_tendencia_en_titulo = palabras_titulo & palabras_tendencia_actuales
     if palabras_tendencia_en_titulo:

@@ -1331,11 +1331,17 @@ def tendencias_vista():
     try:
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
-            category_id, categoria_nombre = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
-
-            lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id, palabras_del_rubro=None if category_id else tendencias_mod.palabras_del_catalogo(cursor))
+            # Las tendencias son las de las categorías específicas donde vende la cuenta; sin categorías todavía, las del rubro raíz.
+            del_catalogo = tendencias_mod.obtener_tendencias_del_catalogo(access_token, cursor, g.cuenta_id)
+            if del_catalogo:
+                category_id, categoria_nombre = None, None
+                lista, categorias_tendencia = del_catalogo["lista"], del_catalogo["categorias"]
+            else:
+                category_id, categoria_nombre = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
+                lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id, palabras_del_rubro=None if category_id else tendencias_mod.palabras_del_catalogo(cursor))
+                categorias_tendencia = []
             relevantes = [t for t in lista if t.get("relevante")]
-            resto = [] if category_id else [t for t in lista if not t.get("relevante")]
+            resto = [] if (category_id or del_catalogo) else [t for t in lista if not t.get("relevante")]
 
             oportunidades = tendencias_mod.cruzar_tendencias_con_catalogo(relevantes, cursor)
             terminos_oportunidad = {o["termino"]: o for o in oportunidades}
@@ -1383,7 +1389,7 @@ def tendencias_vista():
     return render_template(
         "tendencias.html", relevantes=relevantes, resto=resto, canibalismo=canibalismo,
         seo_scores=seo_scores, coincide_con_competencia=coincide_con_competencia,
-        calendario_estacional=calendario_estacional, categoria_nombre=categoria_nombre,
+        calendario_estacional=calendario_estacional, categoria_nombre=categoria_nombre, categorias_tendencia=categorias_tendencia,
         category_id_principal=category_id, categoria_foco_nombre=categoria_foco_nombre, seguimientos=seguimientos,
         resumen_categoria_principal=resumen_categoria_principal, active_nav="tendencias"
     )
@@ -1723,8 +1729,12 @@ def api_oportunidades_seo():
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        category_id, _ = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
-        lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id, palabras_del_rubro=None if category_id else tendencias_mod.palabras_del_catalogo(cursor))
+        del_catalogo = tendencias_mod.obtener_tendencias_del_catalogo(access_token, cursor, g.cuenta_id)
+        if del_catalogo:
+            lista = del_catalogo["lista"]
+        else:
+            category_id, _ = tendencias_mod.obtener_categoria_principal(access_token, g.cuenta_id, cursor)
+            lista = tendencias_mod.obtener_tendencias(access_token, category_id=category_id, palabras_del_rubro=None if category_id else tendencias_mod.palabras_del_catalogo(cursor))
         relevantes = [t for t in lista if t.get("relevante")]
         oportunidades = tendencias_mod.cruzar_tendencias_con_catalogo(relevantes, cursor)
     return jsonify(oportunidades)

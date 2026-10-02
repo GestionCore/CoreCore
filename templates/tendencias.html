@@ -162,6 +162,9 @@
 {% set oportunidades = relevantes|selectattr("es_oportunidad")|list %}
 {% set cubiertas = relevantes|selectattr("cubierta")|list %}
 
+{% if categorias_tendencia %}
+<div class="text-muted" style="font-size:0.88em; margin-bottom:10px;">Lo que más se busca hoy en Mercado Libre en {% for c in categorias_tendencia %}<b>{{ c.nombre }}</b>{% if not loop.last %} · {% endif %}{% endfor %}, las categorías donde más publicaciones tenés. Se actualiza varias veces por día.</div>
+{% endif %}
 <div class="stat-strip">
     <div class="stat-chip accent-denim">
         <div class="stat-chip-label">Tendencias del rubro (MeLi)</div>
