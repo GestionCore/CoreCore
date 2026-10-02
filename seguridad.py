@@ -19,6 +19,7 @@ import limitador
 METODOS_QUE_ESCRIBEN = {"POST", "PUT", "PATCH", "DELETE"}
 RUTAS_EXENTAS = {"/notificaciones_meli", "/webhook", "/webhook/mercadopago"}
 EN_PRODUCCION = bool(os.getenv("FLY_APP_NAME"))
+VERSION = os.getenv("CORELUX_VERSION", "local")        # el commit desplegado (lo pone desplegar.py): ver /healthz
 HOSTS_EXTRA = {h.strip() for h in os.getenv("HOSTS_PERMITIDOS", "").split(",") if h.strip()}
 
 
@@ -94,7 +95,7 @@ def iniciar(app):
 
     @app.route("/healthz")
     def healthz():
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "version": VERSION})
 
     @app.route("/healthz/db")
     def healthz_db():
@@ -102,7 +103,7 @@ def iniciar(app):
             import db
             with db.conexion_admin() as conexion:
                 conexion.cursor().execute("SELECT 1")
-            return jsonify({"ok": True, "db": True})
+            return jsonify({"ok": True, "db": True, "version": VERSION})
         except Exception:
             return jsonify({"ok": False, "db": False}), 503
 

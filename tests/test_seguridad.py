@@ -47,7 +47,7 @@ def test_cabeceras_de_seguridad(cliente):
 
 def test_estaticos_versionados_con_cache_largo(cliente):
     # el archivo no existe en esta app mínima (404), pero la regla de caché solo aplica a 200: se prueba la ruta real en test_app
-    assert cliente.get("/healthz").json == {"ok": True}
+    assert cliente.get("/healthz").json["ok"] is True
 
 
 def test_paginas_de_error_en_espanol_y_json_en_api(cliente):
@@ -70,3 +70,13 @@ def test_la_ip_del_cliente_sale_de_cloudflare_si_esta_y_si_no_de_la_conexion():
         assert seguridad.ip_del_cliente() == "181.1.2.3"
     with app.test_request_context("/", environ_base={"REMOTE_ADDR": "190.9.9.9"}):
         assert seguridad.ip_del_cliente() == "190.9.9.9"
+
+
+def test_healthz_informa_la_version_desplegada(monkeypatch):
+    from flask import Flask
+    import seguridad
+    monkeypatch.setattr(seguridad, "VERSION", "abc123def456")
+    app = Flask(__name__)
+    seguridad.iniciar(app)
+    r = app.test_client().get("/healthz")
+    assert r.status_code == 200 and r.get_json() == {"ok": True, "version": "abc123def456"}

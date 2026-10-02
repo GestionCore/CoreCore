@@ -16,8 +16,10 @@ ver [`CLAUDE.md`](../CLAUDE.md); para arrancar el proyecto en local, el [`README
 ## 2. Desplegar
 
 ```bash
-fly deploy
+python desplegar.py            # verifica carpeta y git, corre predeploy, despliega marcando la versión y confirma que producción la corre
 ```
+
+(`fly deploy` a mano ya no hace falta: `desplegar.py` lo ejecuta y además comprueba el resultado. `/healthz` informa el commit desplegado.)
 
 - Antes de arrancar la versión nueva corre `python migrate.py` (`release_command`): aplica las migraciones pendientes y, si una falla, **el
   deploy se frena** y la versión vieja sigue sirviendo. Las migraciones son idempotentes.

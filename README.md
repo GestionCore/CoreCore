@@ -63,8 +63,8 @@ GitHub Actions corre las dos en cada push (`.github/workflows/ci.yml`).
 ## Despliegue (Fly.io)
 
 ```bash
-python predeploy.py   # lint, pruebas (también sin Redis), recorrido de pantallas y migraciones pendientes
-fly deploy            # aplica las migraciones pendientes (release_command) y reemplaza las máquinas
+python desplegar.py   # TODO en uno: verifica git, corre predeploy, hace fly deploy y confirma la versión en producción
+# (a mano: python predeploy.py y después fly deploy)
 fly logs -a corecore
 ```
 
