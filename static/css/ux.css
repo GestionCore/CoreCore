@@ -81,6 +81,10 @@ html.modo-privacidad .ux-rank-valor:hover, html.modo-privacidad .ux-dist-val:hov
 
 /* ---------- KPI con estado: número grande coloreado ---------- */
 .ux-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 24px; }
+/* Con 5 o 6 indicadores, columnas más angostas para que entren en UNA fila (con 210 px se partían 4+1 o 4+2) */
+.ux-kpis:has(> :nth-child(5)) { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.ux-kpis:has(> :nth-child(6)) { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.ux-kpis:has(> :nth-child(7)) { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 .ux-kpi {
     position: relative; padding: 18px 20px 16px; border-radius: var(--radius-md); background: var(--glass-bg);
     border: 1px solid var(--glass-border); border-top: 4px solid var(--ux-c); box-shadow: var(--shadow-card);

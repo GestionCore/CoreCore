@@ -50,13 +50,13 @@
 <!-- ── 2c. PAUSADAS CON STOCK: plata que no se está cobrando ───────────────────────────────────── -->
 {% if reactivables %}
 <div class="ux-seccion ux-warn">Pausadas con stock <span class="ux-pill ux-warn">{{ reactivables|length }}</span></div>
-<div class="panel" id="panel-reactivar">
+<div class="panel" id="panel-reactivar" data-mostrar-mas-scope>
     <div class="text-muted" style="font-size:0.88em; margin-bottom:10px; line-height:1.5;"><b>Estas publicaciones están pausadas pero tienen unidades:</b> no se están vendiendo. Elegí cuáles reactivar; solo se tocan las que marques. Las bloqueadas por Mercado Libre no aparecen acá.</div>
     <div class="flex-gap" style="margin-bottom:8px;">
         <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="reactivar-todas" onchange="reactivarMarcarTodas(this.checked)"> Marcar todas</label>
     </div>
     {% for r in reactivables %}
-    <label class="ux-rank-fila ux-warn" style="cursor:pointer;" data-reactivar-fila="{{ r.id_meli }}">
+    <label class="ux-rank-fila ux-warn {% if loop.index > 4 %}oculto-mostrar-mas{% endif %}" style="cursor:pointer;" data-reactivar-fila="{{ r.id_meli }}">
         <input type="checkbox" class="reactivar-check" value="{{ r.id_meli }}" onchange="reactivarActualizarBoton()">
         {% if r.thumbnail %}<img src="{{ r.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
         <div class="ux-rank-info">
@@ -67,6 +67,7 @@
         <div class="ux-rank-valor"><b>{{ r.stock }} u.</b></div>
     </label>
     {% endfor %}
+    {% if reactivables|length > 4 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:10px;" onclick="mostrarMasGenerico(this)">{{ ver_mas(reactivables|length - 4, "publicación", "publicaciones", "las") }}</button>{% endif %}
     <div style="margin-top:14px;"><button type="button" class="btn btn-primary" id="btn-reactivar" onclick="reactivarAplicar()" disabled>Reactivar publicaciones</button></div>
 </div>
 <script>
@@ -76,7 +77,10 @@ function reactivarActualizarBoton() {
     b.disabled = n === 0;
     b.textContent = n ? `Reactivar ${n} publicaci${n === 1 ? 'ón' : 'ones'}` : 'Reactivar publicaciones';
 }
-function reactivarMarcarTodas(on) { document.querySelectorAll('.reactivar-check:not(:disabled)').forEach(c => c.checked = on); reactivarActualizarBoton(); }
+function reactivarMarcarTodas(on) {
+    // No se marca nada que no se vea: "Marcar todas" primero despliega las filas escondidas por "ver más"
+    if (on) { document.querySelectorAll('#panel-reactivar .oculto-mostrar-mas').forEach(el => el.classList.remove('oculto-mostrar-mas')); document.querySelector('#panel-reactivar [onclick^="mostrarMasGenerico"]')?.remove(); }
+    document.querySelectorAll('.reactivar-check:not(:disabled)').forEach(c => c.checked = on); reactivarActualizarBoton(); }
 async function reactivarAplicar() {
     const ids = reactivarMarcadas(); if (!ids.length) return;
     const b = document.getElementById('btn-reactivar'); b.disabled = true; b.textContent = 'Reactivando…';
