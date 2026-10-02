@@ -10,6 +10,41 @@
     <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-settings"/></svg> Personalizar</button>
 </div>
 
+{% if primeros_pasos %}
+<div class="panel ux-pasos" id="primeros-pasos" hidden>
+    <div class="ux-pasos-cabecera">
+        <div>
+            <div class="panel-title" style="margin:0; justify-content:flex-start; gap:8px;">Primeros pasos <span class="text-muted" style="font-weight:600;">· {{ primeros_pasos.hechos }} de {{ primeros_pasos.total }}</span></div>
+            <div class="text-muted" style="font-size:0.88em; margin-top:2px;">Con esto tus números reflejan lo que de verdad te queda.</div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="ocultarPrimerosPasos()">Ocultar</button>
+    </div>
+    <div class="ux-barra ux-ok" style="margin:12px 0 6px;"><span style="width:{{ primeros_pasos.pct }}%;"></span></div>
+    {% for p in primeros_pasos.pasos %}
+    <div class="ux-paso {{ 'ux-paso-hecho' if p.hecho }}">
+        <span class="ux-paso-marca" aria-hidden="true">{% if p.hecho %}<svg class="icon"><use href="#icon-check"/></svg>{% endif %}</span>
+        <div class="ux-paso-cuerpo">
+            <div class="ux-paso-titulo">{{ p.titulo }}</div>
+            {% if p.detalle and not p.hecho %}<div class="text-muted" style="font-size:0.85em;">{{ p.detalle }}</div>{% endif %}
+        </div>
+        {% if not p.hecho and p.href %}<a class="btn btn-primary btn-sm" href="{{ p.href }}">{{ p.boton }}</a>{% endif %}
+    </div>
+    {% endfor %}
+</div>
+<script>
+(function () {
+    const clave = 'primeros_pasos_oculto_{{ session.get("cuenta_id") }}';
+    let oculto = false;
+    try { oculto = localStorage.getItem(clave) === '1'; } catch (e) { /* sin almacenamiento: se muestra */ }
+    document.getElementById('primeros-pasos').hidden = oculto;
+    window.ocultarPrimerosPasos = function () {
+        try { localStorage.setItem(clave, '1'); } catch (e) { /* queda oculta hasta recargar */ }
+        document.getElementById('primeros-pasos').hidden = true;
+    };
+})();
+</script>
+{% endif %}
+
 <!-- ── 1. CÓMO VOY: ganancia neta real de hoy, teñida según cómo viene el día ─ -->
 <div class="ux-hero ux-info" id="hero-ganancia-dia">
     <div class="ux-hero-etiqueta">Ganancia neta real · hoy <span class="badge-en-vivo">En vivo</span></div>

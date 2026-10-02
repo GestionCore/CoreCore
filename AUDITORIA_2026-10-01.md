@@ -107,7 +107,7 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 75. ✅ 🟠 M · MEJORAR — **Probar el tema claro** en las pantallas nuevas (Calidad, Precios, Opiniones, Cobros, Dashboard): se verificaron solo en oscuro.
 76. 🟠 M · MEJORAR — **Estados de carga y vacío no uniformes:** algunas pantallas usan `skeleton`, otras texto "Cargando…" o quedan en blanco si falla el fetch.
 77. 🟠 M · MEJORAR — **Móvil:** las tablas anchas (stock masivo, costos) no usan `ux-tabla-cards` en todas partes. Revisar cada pantalla a 375 px.
-78. 🟠 M · IMPLEMENTAR — **Checklist de primeros pasos con progreso** ("costos cargados 19 de 83", "Ads conectado", "cobros revisados") visible hasta completarlo.
+78. ✅ 🟠 M · IMPLEMENTAR — **Checklist de primeros pasos con progreso** ("costos cargados 19 de 83", "Ads conectado", "cobros revisados") visible hasta completarlo.
 79. 🟢 M · MEJORAR — **La búsqueda Ctrl+K encuentra secciones y productos pero no órdenes, preguntas ni reclamos.** Ampliarla.
 80. ✅ 🟢 S · MEJORAR — **El modo privacidad (ocultar montos) tapa los números grandes, los KPI y las celdas de tabla, pero no los valores de los rankings (`ux-rank-valor`), las barras (`ux-dist-val`), los montos dentro de textos ni los gráficos.**
 81. 🟢 S · MEJORAR — **Los widgets que elegís en el Dashboard se guardan solo en el navegador** (`localStorage`): no te acompañan a otro dispositivo ni a otra sesión. Guardarlos en la cuenta; de paso, el widget "Talles en riesgo de quiebre" tiene texto de indumentaria.

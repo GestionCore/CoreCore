@@ -175,6 +175,49 @@ def obtener_proyeccion_mes(usuario_id, cuenta_id=None, hoy=None):
     }
 
 
+PORCENTAJE_COSTOS_COMPLETO = 90      # con el 90 % de las publicaciones activas con costo, el paso se da por hecho (siempre queda alguna promo sin costo)
+
+
+def armar_primeros_pasos(activas, con_costo, capacidades=None, umbrales=None):
+    """
+    Checklist de arranque para una cuenta nueva. Devuelve None cuando todo está hecho (la tarjeta desaparece sola).
+    Un paso que no aplica a la cuenta (Flex sin Flex) no se muestra: solo un False/True confirmado en `capacidades` decide.
+    """
+    capacidades = capacidades or {}
+    pct = round(con_costo / activas * 100) if activas else 0
+    pasos = [
+        {"clave": "cuenta", "titulo": "Conectaste tu cuenta de Mercado Libre", "hecho": True},
+        {"clave": "catalogo", "titulo": "Trajimos tus publicaciones", "hecho": activas > 0,
+         "detalle": f"{activas} activas" if activas else "Todavía no hay publicaciones activas: apenas las haya, aparecen solas."},
+        {"clave": "costos", "titulo": "Cargá el costo de tus productos", "hecho": activas > 0 and pct >= PORCENTAJE_COSTOS_COMPLETO,
+         "detalle": f"{con_costo} de {activas} con costo cargado. Sin costo, la ganancia sale inflada.",
+         "href": "/costos", "boton": "Cargar costos"},
+    ]
+    if capacidades.get("flex") is True:
+        sin_precio = all(u.get("precio") is None for u in (umbrales or [])) if isinstance(umbrales, list) else True
+        pasos.append({"clave": "flex", "titulo": "Cargá el costo de tus entregas Flex", "hecho": not sin_precio,
+                      "detalle": "Mercado Libre informa $0 de envío en Flex: el costo real lo cobra tu logística.",
+                      "href": "/costos#entrega-flex", "boton": "Cargar costos de Flex"})
+    hechos = sum(1 for p in pasos if p["hecho"])
+    if hechos == len(pasos):
+        return None
+    return {"pasos": pasos, "hechos": hechos, "total": len(pasos), "pct": round(hechos / len(pasos) * 100)}
+
+
+def obtener_primeros_pasos(usuario_id, cuenta_id=None):
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FILTER (WHERE estado = 'active'),
+                   COUNT(*) FILTER (WHERE estado = 'active' AND COALESCE(precio_costo, 0) > 0)
+            FROM productos_padre
+        """)
+        activas, con_costo = cursor.fetchone()
+        cursor.execute("SELECT capacidades, flex_umbrales FROM cuentas_meli WHERE id = %s", (cuenta_id,))
+        fila = cursor.fetchone()
+    return armar_primeros_pasos(activas or 0, con_costo or 0, fila[0] if fila and isinstance(fila[0], dict) else {}, fila[1] if fila else None)
+
+
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
 
 

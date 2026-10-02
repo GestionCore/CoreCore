@@ -1027,9 +1027,14 @@ def dashboard_personalizable():
         proyeccion = dashboard_mod.obtener_proyeccion_mes(g.usuario_id, g.cuenta_id)
     except Exception as e:
         print(f"[Dashboard] ⚠️ Error calculando la proyección del mes: {e}")
+    primeros_pasos = None
+    try:
+        primeros_pasos = dashboard_mod.obtener_primeros_pasos(g.usuario_id, g.cuenta_id)
+    except Exception as e:
+        print(f"[Dashboard] ⚠️ Error armando los primeros pasos: {e}")
     return render_template(
         "dashboard_personalizable.html", active_nav="dashboard", mono=mono,
-        ventas_por_provincia=ventas_por_provincia, cuando_compran=cuando_compran, proyeccion=proyeccion,
+        ventas_por_provincia=ventas_por_provincia, cuando_compran=cuando_compran, proyeccion=proyeccion, primeros_pasos=primeros_pasos,
     )
 
 
