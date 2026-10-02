@@ -11,7 +11,7 @@
 </div>
 
 <!-- ── 0. PRIMEROS PASOS: arriba de todo mientras la cuenta no esté completa (se oculta solo al llegar al 100 %) ── -->
-<div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" role="button" tabindex="0" aria-expanded="true" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
+<div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" role="button" tabindex="0" aria-expanded="true" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto'); this.setAttribute('aria-expanded', this.classList.contains('abierto'));" onkeydown="if(event.target===this && (event.key==='Enter' || event.key===' ')) { event.preventDefault(); this.click(); }">
     <div class="panel-title">
         <span>Completá tu perfil <span class="text-muted" id="checklist-contador" style="font-size:0.8em; font-weight:400;"></span></span>
         <span class="chevron-colapsable">▾</span>
@@ -62,16 +62,6 @@
     </div>
 </div>
 
-<!-- ── 1b. LAS ÚLTIMAS DOS SEMANAS: qué días ganaste y cuáles perdiste ────── -->
-<div class="panel" id="panel-ganancia-14d">
-    <div class="ux-panel-cab">
-        <div class="panel-title" style="margin:0;">Ganancia por día · últimos 14 días</div>
-        <div class="ux-leyenda"><span><i class="ux-dot ux-dot-ok"></i>Ganaste</span><span><i class="ux-dot ux-dot-mal"></i>Perdiste</span><span><i class="ux-dot ux-dot-linea"></i>Promedio</span></div>
-    </div>
-    <div class="ux-dash-grafico" id="caja-grafico-14d"><div class="skeleton" style="position:absolute; inset:0; border-radius:12px;"></div><canvas id="chartGanancia14d" role="img" aria-label="Ganancia neta por día de los últimos 14 días"></canvas></div>
-    <div class="ux-ministats" id="ministats-14d"></div>
-</div>
-
 <!-- ── 2. QUÉ HAGO: los pendientes más importantes (la lista completa está en Pendientes) ──────── -->
 <div id="bloque-acciones">
     <div class="ux-acciones-titulo">Lo que tenés que hacer hoy <span class="ux-contador" id="acciones-contador" style="display:none;"></span><a href="/logros" class="text-muted" style="margin-left:auto; font-size:0.82em; font-weight:700;">Ver todos los pendientes →</a></div>
@@ -82,7 +72,7 @@
 </div>
 
 <!-- ── 3. NÚMEROS DEL DÍA ───────────────────────────────────────────────── -->
-<div class="ux-kpis" id="kpis-dia">
+<div class="ux-kpis" id="kpis-dia" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));">
     <a href="/metricas" class="ux-kpi ux-accion" id="kpi-facturado"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-coin"/></svg>Facturado hoy</div><div class="ux-kpi-valor"><span class="skeleton">$0</span></div><div class="ux-kpi-sub">&nbsp;</div></a>
     <div class="ux-kpi ux-info" id="kpi-ventas"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-box"/></svg>Ventas hoy</div><div class="ux-kpi-valor"><span class="skeleton">0</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
     <a href="/metricas" class="ux-kpi ux-ok" id="kpi-14d"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-chart"/></svg>Facturado · 14 días</div><div class="ux-kpi-valor"><span class="skeleton">$0</span></div><div class="ux-kpi-sub">&nbsp;</div></a>
@@ -90,38 +80,7 @@
     <div class="ux-kpi ux-ok" id="kpi-salud"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-star"/></svg>Salud de la cuenta</div><div class="ux-kpi-valor"><span class="skeleton">00</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
 </div>
 
-<div class="panel" id="panel-personalizar-dashboard" style="display:none;">
-    <div class="panel-title">¿Qué más querés ver acá?</div>
-    <div class="flex-gap" id="checks-widgets-dashboard" style="flex-wrap:wrap;"></div>
-</div>
-
-<!-- ── 4. DETALLE: resultado de 14 días, gráficos, rankings ─────────────── -->
-<details class="ux-detalle" id="panel-pl-14d" open>
-    <summary>Resultado de los últimos 14 días <span class="ux-detalle-nota">facturado − costos = margen</span></summary>
-    <div class="ux-detalle-cuerpo">
-        <div class="pl-waterfall ux-cascada" id="pl-waterfall">
-            <div class="pl-tile">
-                <div class="stat-chip-label">Facturado</div>
-                <div class="pl-tile-valor skeleton" id="pl-facturado">$0</div>
-            </div>
-            <div class="pl-operador">−</div>
-            <div class="pl-tile">
-                <div class="stat-chip-label">Costos totales</div>
-                <div class="pl-tile-valor text-danger skeleton" id="pl-costos">$0</div>
-            </div>
-            <div class="pl-operador">=</div>
-            <div class="pl-tile pl-tile-resultado" id="pl-tile-margen">
-                <div class="stat-chip-label">Margen neto</div>
-                <div class="pl-tile-valor skeleton" id="pl-margen">$0</div>
-            </div>
-        </div>
-        <div class="pl-detalle-tabla" id="pl-detalle" style="margin-top:18px;"></div>
-        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Cada costo como % de lo facturado en el período.</div>
-    </div>
-</details>
-
-<div id="grid-widgets-dashboard" class="grid-dashboard"></div>
-
+<!-- ── 4. ESTE MES: cómo viene contra el mes pasado ───────────────────────── -->
 {% if proyeccion %}
 <div class="panel">
     <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-trend"/></svg> Cómo viene {{ proyeccion.mes_nombre }} <span class="text-muted" style="font-weight:500; font-size:0.82em;">día {{ proyeccion.dia }} de {{ proyeccion.dias_mes }}</span></div>
@@ -168,6 +127,53 @@
 </div>
 {% endif %}
 
+<!-- ── 5. LAS ÚLTIMAS DOS SEMANAS: qué días ganaste y cuáles perdiste ────── -->
+<div class="panel" id="panel-ganancia-14d">
+    <div class="ux-panel-cab">
+        <div class="panel-title" style="margin:0;">Ganancia por día · últimos 14 días</div>
+        <div class="ux-leyenda"><span><i class="ux-dot ux-dot-ok"></i>Ganaste</span><span><i class="ux-dot ux-dot-mal"></i>Perdiste</span><span><i class="ux-dot ux-dot-linea"></i>Promedio</span></div>
+    </div>
+    <div class="ux-dash-grafico" id="caja-grafico-14d"><div class="skeleton" style="position:absolute; inset:0; border-radius:12px;"></div><canvas id="chartGanancia14d" role="img" aria-label="Ganancia neta por día de los últimos 14 días"></canvas></div>
+    <div class="ux-ministats" id="ministats-14d"></div>
+</div>
+
+<div class="panel" id="panel-personalizar-dashboard" style="display:none;">
+    <div class="panel-title">¿Qué más querés ver acá?</div>
+    <div class="flex-gap" id="checks-widgets-dashboard" style="flex-wrap:wrap;"></div>
+</div>
+
+<!-- ── 6. DETALLE: resultado de 14 días, gráficos, rankings ─────────────── -->
+<details class="ux-detalle" id="panel-pl-14d" open>
+    <summary>Resultado de los últimos 14 días <span class="ux-detalle-nota">facturado − costos = margen</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="pl-waterfall ux-cascada" id="pl-waterfall">
+            <div class="pl-tile">
+                <div class="stat-chip-label">Facturado</div>
+                <div class="pl-tile-valor skeleton" id="pl-facturado">$0</div>
+            </div>
+            <div class="pl-operador">−</div>
+            <div class="pl-tile">
+                <div class="stat-chip-label">Costos totales</div>
+                <div class="pl-tile-valor text-danger skeleton" id="pl-costos">$0</div>
+            </div>
+            <div class="pl-operador">=</div>
+            <div class="pl-tile pl-tile-resultado" id="pl-tile-margen">
+                <div class="stat-chip-label">Margen neto</div>
+                <div class="pl-tile-valor skeleton" id="pl-margen">$0</div>
+            </div>
+        </div>
+        <div class="pl-detalle-tabla" id="pl-detalle" style="margin-top:18px;"></div>
+        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Cada costo como % de lo facturado en el período.</div>
+    </div>
+</details>
+
+<div id="grid-widgets-dashboard" class="grid-dashboard"></div>
+
+<!-- ── 7. MÁS ANÁLISIS: plegado, para no alargar la página ──────────────────── -->
+{% if cuando_compran or ventas_por_provincia %}
+<details class="ux-detalle" id="panel-mas-analisis">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);" aria-hidden="true"><use href="#icon-chart"/></svg> Más análisis <span class="ux-detalle-nota">cuándo te compran y desde dónde</span></summary>
+    <div class="ux-detalle-cuerpo">
 {% if cuando_compran %}
 <div class="panel">
     <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-calendar"/></svg> Cuándo te compran <span class="text-muted" style="font-weight:500; font-size:0.82em;">últimos {{ cuando_compran.desde_dias }} días · {{ cuando_compran.total }} ventas · hora de Argentina</span></div>
@@ -210,6 +216,10 @@
     <div class="text-muted" style="font-size:0.82em; margin-top:10px;">+{{ ventas_por_provincia|length - 10 }} provincias más con ventas menores.</div>
     {% endif %}
 </div>
+{% endif %}
+
+    </div>
+</details>
 {% endif %}
 
 {% if mono %}
@@ -478,7 +488,10 @@
         try {
             const d = await (await fetch('/api/onboarding/checklist')).json();
             if (!d.pasos || !d.pasos.length || d.porcentaje >= 100) return; // ya está completo — no ocupa lugar
-            document.getElementById('panel-checklist-perfil').style.display = '';
+            const panelPrimerosPasos = document.getElementById('panel-checklist-perfil');
+            panelPrimerosPasos.style.display = '';
+            // Con la cuenta ya por la mitad la lista no tiene por qué empujar la ganancia de hoy fuera de la pantalla: queda plegada (una línea).
+            if (d.completos / d.total >= 0.5) { panelPrimerosPasos.classList.remove('abierto'); panelPrimerosPasos.setAttribute('aria-expanded', 'false'); }
             document.getElementById('checklist-contador').textContent = `${d.completos}/${d.total}`;
             document.getElementById('checklist-fill').style.width = d.porcentaje + '%';
             document.getElementById('checklist-items').innerHTML = d.pasos.map(p => {

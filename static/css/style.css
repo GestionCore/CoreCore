@@ -796,6 +796,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .panel-colapsable.abierto .chevron-colapsable { transform: rotate(180deg); }
 .panel-colapsable .contenido-colapsable { display: none; margin-top: 14px; }
 .panel-colapsable.abierto .contenido-colapsable { display: block; }
+.panel-colapsable:not(.abierto) > .panel-title { margin-bottom: 0; }   /* plegado: solo el título, sin el hueco de debajo */
 
 /* ---------- Modo Despacho Rápido ---------- */
 .despacho-item {

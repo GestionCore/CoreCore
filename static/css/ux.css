@@ -135,6 +135,9 @@ a.ux-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated)
 .ux-detalle > summary:hover { background: rgba(255,255,255,0.03); }
 .ux-detalle > summary .ux-detalle-nota { font-weight: 500; font-size: 0.8em; color: var(--text-secondary); }
 .ux-detalle-cuerpo { padding: 4px 22px 22px; overflow-x: auto; }
+/* "Más análisis" del Dashboard: paneles planos separados por una línea (una caja dentro de otra pesaba de más) */
+#panel-mas-analisis > .ux-detalle-cuerpo > .panel { background: transparent; border: 0; box-shadow: none; padding: 16px 0 6px; margin-bottom: 0; animation: none; }
+#panel-mas-analisis > .ux-detalle-cuerpo > .panel + .panel { border-top: 1px solid var(--border-soft); margin-top: 10px; padding-top: 22px; }
 
 /* ---------- Estado vacío con salida ---------- */
 .ux-vacio { text-align: center; padding: 38px 20px; border: 2px dashed color-mix(in srgb, var(--ux-c, var(--accent-primary)) 35%, var(--glass-border)); border-radius: var(--radius-md); background: color-mix(in srgb, var(--ux-c, var(--accent-primary)) 5%, transparent); }
@@ -557,3 +560,11 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .fb-tipo.activo { background: color-mix(in srgb, var(--accent-primary) 20%, transparent); border-color: var(--accent-primary); color: var(--text-primary); }
 .fb-caja textarea { width: 100%; resize: vertical; min-height: 110px; }
 .fb-pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+
+/* Dashboard en celular: los 5 indicadores del día en dos columnas (el primero, el más largo, ocupa las dos) en vez de uno por fila */
+@media (max-width: 560px) {
+    #kpis-dia { grid-template-columns: 1fr 1fr !important; gap: 10px; }
+    #kpis-dia .ux-kpi { padding: 14px 14px 12px; }
+    #kpis-dia .ux-kpi-valor { font-size: 1.45em; }
+    #kpis-dia .ux-kpi:first-child { grid-column: 1 / -1; }
+}
