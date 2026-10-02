@@ -47,6 +47,58 @@
 </div>
 {% endif %}
 
+<!-- ── 2c. PAUSADAS CON STOCK: plata que no se está cobrando ───────────────────────────────────── -->
+{% if reactivables %}
+<div class="ux-seccion ux-warn">Pausadas con stock <span class="ux-pill ux-warn">{{ reactivables|length }}</span></div>
+<div class="panel" id="panel-reactivar">
+    <div class="text-muted" style="font-size:0.88em; margin-bottom:10px; line-height:1.5;"><b>Estas publicaciones están pausadas pero tienen unidades:</b> no se están vendiendo. Elegí cuáles reactivar; solo se tocan las que marques. Las bloqueadas por Mercado Libre no aparecen acá.</div>
+    <div class="flex-gap" style="margin-bottom:8px;">
+        <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="reactivar-todas" onchange="reactivarMarcarTodas(this.checked)"> Marcar todas</label>
+    </div>
+    {% for r in reactivables %}
+    <label class="ux-rank-fila ux-warn" style="cursor:pointer;" data-reactivar-fila="{{ r.id_meli }}">
+        <input type="checkbox" class="reactivar-check" value="{{ r.id_meli }}" onchange="reactivarActualizarBoton()">
+        {% if r.thumbnail %}<img src="{{ r.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
+        <div class="ux-rank-info">
+            <div class="ux-rank-titulo">{{ r.titulo }}</div>
+            <div class="text-muted" style="font-size:0.8em;">{{ r.motivo }}{% if r.precio %} · {{ r.precio|plata }}{% endif %}</div>
+            <div class="text-muted" style="font-size:0.8em; display:none;" data-reactivar-estado></div>
+        </div>
+        <div class="ux-rank-valor"><b>{{ r.stock }} u.</b></div>
+    </label>
+    {% endfor %}
+    <div style="margin-top:14px;"><button type="button" class="btn btn-primary" id="btn-reactivar" onclick="reactivarAplicar()" disabled>Reactivar publicaciones</button></div>
+</div>
+<script>
+function reactivarMarcadas() { return [...document.querySelectorAll('.reactivar-check:checked')].map(c => c.value); }
+function reactivarActualizarBoton() {
+    const n = reactivarMarcadas().length, b = document.getElementById('btn-reactivar');
+    b.disabled = n === 0;
+    b.textContent = n ? `Reactivar ${n} publicaci${n === 1 ? 'ón' : 'ones'}` : 'Reactivar publicaciones';
+}
+function reactivarMarcarTodas(on) { document.querySelectorAll('.reactivar-check:not(:disabled)').forEach(c => c.checked = on); reactivarActualizarBoton(); }
+async function reactivarAplicar() {
+    const ids = reactivarMarcadas(); if (!ids.length) return;
+    const b = document.getElementById('btn-reactivar'); b.disabled = true; b.textContent = 'Reactivando…';
+    try {
+        const r = await fetch('/api/reactivar/aplicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+        const d = await r.json();
+        (d.resultados || []).forEach(x => {
+            const fila = document.querySelector(`[data-reactivar-fila="${x.id}"]`); if (!fila) return;
+            const estado = fila.querySelector('[data-reactivar-estado]');
+            estado.style.display = 'block'; estado.textContent = x.ok ? '✔ Reactivada' : '✖ ' + x.detalle;
+            estado.style.color = x.ok ? 'var(--success)' : 'var(--danger)';
+            if (x.ok) { const c = fila.querySelector('input'); c.checked = false; c.disabled = true; }
+        });
+        if (typeof mostrarToast === 'function') mostrarToast(d.ok ? `${d.reactivadas} publicación(es) reactivada(s)` + (d.fallidas ? `, ${d.fallidas} con error` : '') : (d.detalle || 'No se pudo reactivar'), d.ok ? 'success' : 'error');
+    } catch (e) {
+        if (typeof mostrarToast === 'function') mostrarToast('Error de red', 'error');
+    }
+    reactivarActualizarBoton();
+}
+</script>
+{% endif %}
+
 <!-- ── 3. QUÉ REPONER: los talles que se agotan, ordenados por urgencia ─────── -->
 <div id="bloque-reponer" style="display:none;">
     <div class="ux-acciones-titulo">Lo que tenés que reponer <span class="ux-contador" id="contador-riesgo-stock">0</span></div>

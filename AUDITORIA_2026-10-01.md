@@ -125,7 +125,7 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 90. ✅ 🟠 M · IMPLEMENTAR — **SEO y vista previa al compartir:** etiquetas Open Graph/Twitter, `robots.txt` y `sitemap.xml` para la landing.
 91. 🟠 L · MEJORAR — **Preparar el uso fuera de Argentina:** `"MLA"` está fijo en 15+ lugares, la moneda es ARS y las zonas Flex solo cubren AMBA.
 92. 🟠 L · IMPLEMENTAR — **Cambio de precios guiado desde `/precios`:** aplicar el precio recomendado con vista previa del impacto y confirmación (la acción masiva ya existe).
-93. 🟠 M · IMPLEMENTAR — **Reactivar publicaciones pausadas que ya tienen stock** (61 pausadas hoy) con un botón y confirmación.
+93. ✅ 🟠 M · IMPLEMENTAR — **Reactivar publicaciones pausadas que ya tienen stock** (61 pausadas hoy) con un botón y confirmación.
 94. ✅ 🟠 M · IMPLEMENTAR — **Proyección del mes:** ventas y ganancia estimadas al ritmo actual contra el mes anterior.
 95. 🟠 M · IMPLEMENTAR — **Comparador Clásica vs Premium por publicación** con la comisión real y el cargo de cuotas (ya se guarda el costo de financiación por publicación).
 96. 🟠 M · IMPLEMENTAR — **Reporte mensual para el contador** con percepciones y retenciones de IIBB ya guardadas (hoy el fiscal es anual).

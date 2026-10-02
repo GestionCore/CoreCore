@@ -18,6 +18,7 @@ REGLAS = (
     (("/api/chat_ia", "/api/costos_chat", "/api/logros/coach", "/api/preguntas/sugerir", "/api/drawer/optimizar_titulo"), None, 20, 60, "usuario", "ia"),
     (("/sincronizar_todo", "/api/flex/sincronizar"), {"POST"}, 4, 60, "usuario", "sync"),
     (("/api/costos/importar",), {"POST"}, 10, 60, "usuario", "importar"),
+    (("/api/reactivar",), {"POST"}, 10, 60, "usuario", "reactivar"),
     (("/admin",), None, 60, 60, "ip", "admin"),
 )
 GENERAL = (600, 60)       # por IP, para todo lo que no es estático, healthcheck ni webhook

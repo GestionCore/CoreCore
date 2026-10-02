@@ -21,3 +21,6 @@ skills-lock.json
 
 # Respaldos locales de la base (datos de todos los usuarios: nunca al repositorio)
 respaldos/
+
+# Vistas previas temporales de pantallas (no se versionan)
+static/_prev/

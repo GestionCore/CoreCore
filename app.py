@@ -54,6 +54,7 @@ import opiniones as opiniones_mod
 import cobros as cobros_mod
 import tiempo_respuesta as tiempo_respuesta_mod
 import full_stock
+import reactivar
 import flex
 import chat_ia
 import db
@@ -226,6 +227,42 @@ def _detalle_error(e):
     return "No se pudo completar la acción. Probá de nuevo en un momento."
 
 
+def _render_stock():
+    """La pantalla de Stock (la comparten "/" y "/stock")."""
+    productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id, g.cuenta_id)
+    full_no_disponible = {"total": 0, "items": []}
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            full_no_disponible = full_stock.unidades_no_disponibles(conexion.cursor(), g.cuenta_id)
+    except Exception as e:
+        print(f"[Stock] ⚠️ No se pudo leer el stock no disponible de FULL: {e}")
+    reactivables = []
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            reactivables = reactivar.listar(conexion.cursor())
+    except Exception as e:
+        print(f"[Stock] ⚠️ No se pudieron listar las pausadas con stock: {e}")
+    return render_template("index.html", productos=productos, stats=stats, full_no_disponible=full_no_disponible, reactivables=reactivables, active_nav="stock")
+
+
+@app.route("/api/reactivar/aplicar", methods=["POST"])
+@login_requerido
+@auditar("publicaciones_reactivar")
+def api_reactivar_aplicar():
+    """Reactiva las publicaciones pausadas que la persona confirmó (se revalidan acá: ver reactivar.py)."""
+    ids = (request.get_json(silent=True) or {}).get("ids")
+    if not isinstance(ids, list) or not ids:
+        return jsonify({"ok": False, "detalle": "Elegí al menos una publicación."}), 400
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "detalle": "Tu cuenta de Mercado Libre se desconectó. Volvé a conectarla."}), 401
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        resultados = reactivar.reactivar(conexion.cursor(), g.cuenta_id, access_token, ids)
+    reactivadas = sum(1 for r in resultados if r["ok"])
+    return jsonify({"ok": reactivadas > 0, "reactivadas": reactivadas, "fallidas": len(resultados) - reactivadas, "resultados": resultados})
+
+
 @app.route("/")
 def landing():
     if not session.get("usuario_id"):
@@ -266,14 +303,7 @@ def landing():
     if fila_pref and fila_pref[0] == "metricas":
         return redirect(url_for("metricas_vista", **request.args))
 
-    productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id, g.cuenta_id)
-    full_no_disponible = {"total": 0, "items": []}
-    try:
-        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-            full_no_disponible = full_stock.unidades_no_disponibles(conexion.cursor(), g.cuenta_id)
-    except Exception as e:
-        print(f"[Stock] ⚠️ No se pudo leer el stock no disponible de FULL: {e}")
-    return render_template("index.html", productos=productos, stats=stats, full_no_disponible=full_no_disponible, active_nav="stock")
+    return _render_stock()
 
 
 @app.route("/stock")
@@ -292,14 +322,7 @@ def stock_vista():
         token_manager.asegurar_token_valido(g.cuenta_id)
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
-    productos, stats = catalogo.obtener_productos_y_estadisticas(g.usuario_id, g.cuenta_id)
-    full_no_disponible = {"total": 0, "items": []}
-    try:
-        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-            full_no_disponible = full_stock.unidades_no_disponibles(conexion.cursor(), g.cuenta_id)
-    except Exception as e:
-        print(f"[Stock] ⚠️ No se pudo leer el stock no disponible de FULL: {e}")
-    return render_template("index.html", productos=productos, stats=stats, full_no_disponible=full_no_disponible, active_nav="stock")
+    return _render_stock()
 
 
 @app.route("/exportar_planilla_stock")
