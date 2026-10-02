@@ -409,6 +409,19 @@ y color donde hay que mirar. Piezas (usarlas, no reinventar HTML):
   editar archivos (usar Edit/Write); el tema claro necesita overrides en
   `ux.css` para lo que `style.css` deja fijo en oscuro.
 - Lo que NO se tocó a propósito: backend de cálculos de plata, RLS, sync.
+- **Pulido visual 2026-10-02** (pedido del dueño: "que se vea hermoso"; la identidad grafito + violeta + dorado NO cambió):
+  - Cifras: `--font-data` es Inter con dígitos tabulares (Space Mono se sacó: se veía como código y cortaba los KPI). `--font-mono` solo para `kbd`.
+  - Plata en pantalla SIN centavos: `utils.formatear_moneda` da pesos enteros ("1.234.568"); `|plata` igual. Los Excel usan el número crudo.
+  - Fechas para personas: `|fecha` ("2 sep", con año si no es el actual), `rango_fechas(desde, hasta)` ("2 sep – 2 oct"), `utils.cuando_corto`
+    ("Hoy 14:32", "Ayer 21:05"). Nunca mostrar "2026-09-02". El selector de rango (RangoFechas en global.js) usa el mismo formato.
+  - Plurales: `utils.plural(n, "venta")` / `|plural`; nunca "venta(s)". `utils.corregir_plurales` arregla al mostrar textos viejos guardados.
+  - Los paneles NO se levantan al pasar el mouse (solo lo clickeable: `a.panel`, `a.ux-kpi`, `.widget-dashboard`). `.panel-title` alinea a la
+    izquierda y empuja al final la nota/botón (antes space-between centraba el título).
+  - Cada `h1.page-title` lleva `<svg class="icon page-title-icono">` con el MISMO ícono que la página tiene en el menú.
+  - Tablas: los costos van en gris (`td.num.costo`), el color queda para el resultado. Estados vacíos (`.alert-empty`) sin círculo animado.
+  - Jinja: nunca `"<b>" ~ (x|e)` — con autoescape escapa también el `<b>` y se ve escrito (pasó en Logros). Un test lo impide.
+  - Se sacó el botón flotante "HUD" (repetía la barra superior y tapaba contenido). La landing (`landing.html`) muestra el producto con DATOS
+    DE EJEMPLO rotulados: nunca poner números reales de una cuenta ahí (es pública).
 - MeLi cerró (403) `/sites/{site}/search`, el detalle de publicaciones ajenas
   (`/items/{id}`) y `/highlights`: Tendencias y Competencia se rehicieron sobre
   `/products/search`, `/products/{id}/items`, `/categories`, `/users`.
@@ -500,7 +513,7 @@ MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones corridas hasta `0032_cache_valores.sql (0029 auditoria, 0030 sub_estado, 0031 hora_normalizada, 0032 cache_valores)` — 
+- Migraciones corridas hasta `0033_feedback.sql` (0029 auditoria, 0030 sub_estado, 0031 hora_normalizada, 0032 cache_valores, 0033 feedback) — 
   verificá `migrate.py --status` contra Supabase real antes de asumir
   cuál es la última aplicada, el número más alto en `migrations/` no
   siempre coincide con lo corrido de verdad.
