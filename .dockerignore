@@ -16,3 +16,16 @@ Procfile
 
 # Vistas previas locales con datos reales (nunca a producción)
 static/_prev/
+
+# Respaldos de la base: tienen los datos de TODOS los usuarios. Nunca dentro de la imagen.
+respaldos/
+*.zip
+*.csv
+# Lo que producción no usa
+tests/
+.pytest_cache/
+.ruff_cache/
+docs/
+deploy/
+cosas.txt
+skills-lock.json
