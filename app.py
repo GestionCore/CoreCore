@@ -2020,8 +2020,10 @@ def facturacion_vista():
         for p in periodos
     ]
 
+    fuera_de_ganancia, total_fuera_de_ganancia = facturacion.cargos_fuera_de_la_ganancia(resumen)
     return render_template(
         "facturacion.html", periodos=periodos_vista, key_seleccionada=key_seleccionada, cargos=cargos,
+        fuera_de_ganancia=fuera_de_ganancia, total_fuera_de_ganancia=total_fuera_de_ganancia,
         total_cargos_formateado=formatear_moneda(total_cargos), pagos_cobrados_formateado=formatear_moneda(pagos_cobrados),
         pendiente_formateado=formatear_moneda(pendiente), percepciones_formateado=formatear_moneda(percepciones_total),
         total_adeudado_formateado=formatear_moneda(total_adeudado),

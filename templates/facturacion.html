@@ -75,6 +75,14 @@
 </script>
 {% endif %}
 
+<!-- ── 3b. CARGOS QUE GANANCIA REAL NO DESCUENTA ───────────────────────────── -->
+{% if fuera_de_ganancia %}
+<div class="ux-banner ux-info" style="display:block; margin-bottom:16px;">
+    <div class="ux-banner-titulo"><b>{{ total_fuera_de_ganancia|plata }}</b> de esta factura no están en la ganancia de cada venta</div>
+    <div class="ux-banner-detalle" style="margin-top:6px;">Son cargos que Mercado Libre factura aparte de las comisiones: {% for c in fuera_de_ganancia %}{{ c.label }} ({{ c.monto|plata }}){{ ', ' if not loop.last else '.' }}{% endfor %} Si querés que cuenten en tu ganancia, cargalos como gasto del negocio en <a href="/costos">Costos</a>.</div>
+</div>
+{% endif %}
+
 <!-- ── 4. DETALLE ─────────────────────────────────────────────────────── -->
 <details class="ux-detalle" open>
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Cargos del período <span class="ux-detalle-nota">{{ cargos|length }} conceptos · total {{ rs.cargos|plata }}</span></summary>

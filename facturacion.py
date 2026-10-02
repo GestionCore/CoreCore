@@ -104,6 +104,18 @@ def obtener_costo_almacenamiento_full(access_token, cuenta_id, period_key, group
     return resultado
 
 
+# Cargos de la factura que NO están en el cargo por venta de cada orden (ni en publicidad, envíos o impuestos): Ganancia Real no los descuenta.
+# CESM mantenimiento de la tienda oficial (eShop) · CSTP cargo de reputación · CDSD cargo por devolución · CFWA almacenamiento en FULL
+CARGOS_FUERA_DE_LA_GANANCIA = {"CESM", "CSTP", "CDSD", "CFWA"}
+
+
+def cargos_fuera_de_la_ganancia(resumen):
+    """[{label, monto}] de los cargos de la factura que no entran en la ganancia por venta, más su total. Vacío si no hay ninguno."""
+    cargos = [{"label": c.get("label") or c.get("type"), "tipo": c.get("type"), "monto": float(c.get("amount") or 0)}
+              for c in ((resumen or {}).get("bill_includes") or {}).get("charges", []) if c.get("type") in CARGOS_FUERA_DE_LA_GANANCIA]
+    return sorted(cargos, key=lambda c: -c["monto"]), round(sum(c["monto"] for c in cargos), 2)
+
+
 def resumen_condensado_periodo_actual(access_token, cuenta_id, group="ML"):
     """
     Versión liviana de obtener_resumen_periodo pensada para paneles que
