@@ -80,3 +80,37 @@ def test_healthz_informa_la_version_desplegada(monkeypatch):
     seguridad.iniciar(app)
     r = app.test_client().get("/healthz")
     assert r.status_code == 200 and r.get_json() == {"ok": True, "version": "abc123def456"}
+
+
+def test_sin_conexiones_libres_o_sin_base_se_muestra_mucha_demanda_con_503():
+    """Un pool agotado o una base que no responde no son un 'error nuestro': 503 con Retry-After y un mensaje claro, en vez del 500 genérico."""
+    from flask import Flask
+    from psycopg import OperationalError
+    from psycopg_pool import PoolTimeout
+    import seguridad
+    app = Flask(__name__)
+    app.template_folder = __import__("os").path.join(seguridad.__file__.rsplit("seguridad.py", 1)[0], "templates")
+    seguridad.iniciar(app)
+
+    @app.route("/pool")
+    def pool():
+        raise PoolTimeout("couldn't get a connection after 10 sec")
+
+    @app.route("/base")
+    def base():
+        raise OperationalError("connection refused")
+
+    @app.route("/api/pool")
+    def api_pool():
+        raise PoolTimeout("x")
+    cliente = app.test_client()
+    for ruta in ("/pool", "/base"):
+        r = cliente.get(ruta)
+        assert r.status_code == 503 and r.headers["Retry-After"] == "5" and "mucha demanda" in r.get_data(as_text=True)
+    r = cliente.get("/api/pool")
+    assert r.status_code == 503 and r.json["ok"] is False
+
+
+def test_el_pool_no_espera_mas_de_lo_configurado():
+    import db
+    assert db.POOL_TIMEOUT <= 10

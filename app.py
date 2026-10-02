@@ -162,6 +162,9 @@ def _inyectar_cuentas_usuario():
     disponible en cualquier template sin que cada vista tenga que
     acordarse de pasarla; el navbar solo la muestra si hay más de una.
     """
+    if getattr(g, "mostrando_error", False):
+        # Una página de error NUNCA puede consultar la base: el error suele ser justamente que la base no responde o no hay conexiones libres
+        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True)}
     if not getattr(g, "usuario_id", None):
         # Rutas públicas (/planes, /suscripcion/retorno...): base.html igual arma el menú si hay sesión y llama capacidades.get(...)
         return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True)}
@@ -169,7 +172,11 @@ def _inyectar_cuentas_usuario():
     clave_cuentas = construir_key("cuentas_usuario", g.usuario_id)
     cuentas = cache_leer(clave_cuentas)
     if cuentas is None:
-        cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
+        try:
+            cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
+        except Exception as e:                      # la base no responde: la página se arma igual, sin selector de cuentas
+            print(f"[Contexto] ⚠️ No se pudo leer la lista de cuentas: {e}")
+            return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True)}
         cache_guardar(clave_cuentas, cuentas, timeout=60)
     cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
     # Qué usa esta cuenta (ads, flex, full, catalogo): las pantallas esconden solo lo que se confirmó que no aplica (ver capacidades.py)

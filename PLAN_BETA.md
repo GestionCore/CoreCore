@@ -56,3 +56,5 @@ Mercado Pago de punta a punta, planes con límites reales, factura propia, sopor
   decidir con ese número.
 - 2026-10-02: **B/móvil** 33 pantallas a 375 px sin desbordes horizontales (verificado midiendo cada una). **B/feedback** «Enviar un comentario» en el menú: ventana con tipo
   (algo no anda / idea / pregunta), llega con pantalla y versión a `/admin/feedback` (bandeja con «atendido»); tabla `feedback` (migración 0033), privada por usuario y solo-agregar.
+- 2026-10-02: **A/carga** pool de conexiones agotado o base sin respuesta → 503 "mucha demanda" en ≤10 s (antes: 30 s colgado y 500 crudo). La prueba real destapó que la página de error
+  consultaba la base (procesador de contexto): ahora un error nunca toca la base. `DB_POOL_TIMEOUT` configurable.

@@ -9,15 +9,19 @@ Seguridad y errores de la app web, en un solo lugar (se activa con seguridad.ini
   · /healthz (liviano, no toca la base: lo usa Fly) y /healthz/db (chequeo completo, para un monitor externo).
   · Páginas de error propias en español; las rutas /api/* responden JSON.
 """
+import logging
 import os
 from datetime import timedelta
 from urllib.parse import urlparse
-from flask import request, jsonify, render_template, session, make_response
+from flask import g, request, jsonify, render_template, session, make_response
+from psycopg import OperationalError
+from psycopg_pool import PoolTimeout
 
 import limitador
 
 METODOS_QUE_ESCRIBEN = {"POST", "PUT", "PATCH", "DELETE"}
 RUTAS_EXENTAS = {"/notificaciones_meli", "/webhook", "/webhook/mercadopago"}
+log = logging.getLogger("corelux.seguridad")
 EN_PRODUCCION = bool(os.getenv("FLY_APP_NAME"))
 VERSION = os.getenv("CORELUX_VERSION", "local")        # el commit desplegado (lo pone desplegar.py): ver /healthz
 HOSTS_EXTRA = {h.strip() for h in os.getenv("HOSTS_PERMITIDOS", "").split(",") if h.strip()}
@@ -123,12 +127,35 @@ def iniciar(app):
     def _429(e):
         return _error(429, "Demasiados pedidos", "Esperá un momento y volvé a intentar.")
 
+    @app.errorhandler(503)
+    def _503(e):
+        return _ocupado()
+
+    @app.errorhandler(PoolTimeout)
+    def _pool_agotado(e):
+        # Todas las conexiones a la base están en uso y ninguna se liberó a tiempo: demasiada demanda, no un error de programación
+        log.warning("Pool de conexiones agotado: %s", e)
+        return _ocupado()
+
+    @app.errorhandler(OperationalError)
+    def _base_no_responde(e):
+        log.error("La base de datos no respondió: %s", e)
+        return _ocupado()
+
     @app.errorhandler(500)
     def _500(e):
         return _error(500, "Algo salió mal de nuestro lado", "Ya quedó registrado. Probá de nuevo en un momento; si sigue, avisanos.")
 
 
+def _ocupado():
+    resp, codigo = _error(503, "Estamos con mucha demanda", "Probá de nuevo en unos segundos. No se perdió nada de lo que tenías guardado.")
+    resp = make_response(resp, codigo)
+    resp.headers["Retry-After"] = "5"
+    return resp
+
+
 def _error(codigo, titulo, detalle):
+    g.mostrando_error = True            # ver app._inyectar_cuentas_usuario: armar una página de error no puede tocar la base
     if request.path.startswith("/api/") or request.is_json or "application/json" in (request.headers.get("Accept") or ""):
         return jsonify({"ok": False, "detalle": titulo + ". " + detalle}), codigo
     return render_template("errores.html", codigo=codigo, titulo=titulo, detalle=detalle, logueado=bool(request.cookies.get("session"))), codigo

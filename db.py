@@ -31,6 +31,9 @@ import config
 # (fly.toml fija el valor de producción; con 2 máquinas × 2 workers, 3). Los scripts y el desarrollo local usan lo que sobra.
 POOL_MAX = max(1, int(os.getenv("DB_POOL_MAX", "4")))
 POOL_ADMIN_MAX = max(1, int(os.getenv("DB_POOL_ADMIN_MAX", "2")))
+# Cuánto espera un pedido por una conexión libre antes de rendirse (psycopg_pool: 30 s por defecto). Con el pool chico que exige el tope de Supabase, esperar 30 s
+# solo apila pedidos: es mejor fallar rápido y mostrar "mucha demanda" (503) que dejar a la persona colgada medio minuto.
+POOL_TIMEOUT = max(1.0, float(os.getenv("DB_POOL_TIMEOUT", "10")))
 
 _pool = None
 _pool_admin = None
@@ -71,7 +74,7 @@ def _crear_pool():
     # Presupuesto actual: (4 + 2) × 2 workers = 12, más la conexión
     # fija que scheduler.py mantiene abierta para el advisory lock =
     # 13, dejando 2 de margen bajo el tope de 15.
-    return ConnectionPool(config.DATABASE_URL, min_size=1, max_size=POOL_MAX, open=True)
+    return ConnectionPool(config.DATABASE_URL, min_size=1, max_size=POOL_MAX, timeout=POOL_TIMEOUT, open=True)
 
 
 def _obtener_pool_admin():
@@ -92,7 +95,7 @@ def _crear_pool_admin():
     # en vez de 0 (evita abrir una conexión nueva en el camino
     # caliente de cada pedido), pero max_size se recortó fuerte para
     # no volver a pisar el tope de 15 de Supabase.
-    return ConnectionPool(config.DATABASE_URL_ADMIN, min_size=1, max_size=POOL_ADMIN_MAX, open=True)
+    return ConnectionPool(config.DATABASE_URL_ADMIN, min_size=1, max_size=POOL_ADMIN_MAX, timeout=POOL_TIMEOUT, open=True)
 
 
 @atexit.register
