@@ -191,3 +191,103 @@ sin `DATABASE_URL`, respaldos con datos de todos los usuarios que entraban en la
 158. [M·S] Prueba que exija política RLS por cuenta en toda tabla nueva.
 159. [B·S] Prueba que exija que cada página del menú tenga su ícono y título (hoy se arregló a mano).
 160. [B·S] Vistas previas para revisar diseño: script del proyecto que use una cuenta sintética (nunca datos reales).
+
+---
+
+# Rondas 2 y 3
+
+Correcciones a la lista anterior: **6** queda reemplazado por **172** (`rate_limiter.py` no lo usa nadie: no hay ningún freno, ni con Redis).
+**77** ya existe en parte (Stock muestra "alcanzan ~N días" en las variantes en riesgo): falta llevarlo a todos los modelos.
+
+## N. Errores encontrados (los arreglaría primero)
+161. [A·S] Panel de publicación: "Inactiva" en realidad FINALIZA la publicación en MeLi (no tiene vuelta atrás) y está a un clic → sacar esa opción o pedir confirmación fuerte con su nombre real.
+162. [A·S] Panel: guarda en CoreLux antes de que MeLi acepte; si MeLi rechaza, quedan un precio/título que no son los reales → guardar recién con el OK de MeLi.
+163. [A·S] Panel: manda título, precio y estado juntos siempre; con ventas MeLi no deja cambiar el título y rechaza todo (también el precio) → mandar solo lo que cambió.
+164. [A·S] Panel: precio vacío se manda como $0 → validar antes.
+165. [A·S] Panel: no muestra qué se va a cambiar en MeLi (regla del proyecto: confirmar) → "vas a cambiar el precio de $A a $B" antes de guardar.
+166. [A·M] Ventas fuera de MeLi: descuenta el stock solo en CoreLux; a los 4 min la sync lo pisa y la publicación sigue mostrando la unidad (riesgo de sobreventa) → descontarlo también en MeLi (con confirmación) o no tocarlo.
+167. [A·S] "Logística propia vs FULL" contradice a Ganancia Real (58 vs 147 unidades de FULL en el mismo período) porque agrupa por la logística de HOY → eliminar la pantalla (Ganancia Real ya lo calcula bien venta por venta).
+168. [A·S] Reputación: "Calificaciones positivas 0%" sale de un dato que MeLi ya no usa (viene 100% "neutral") → sacarlo y enlazar a Opiniones.
+169. [A·M] Primera sincronización que falla o se corta (por un deploy) deja "Sincronizando" para siempre → detectar que no avanza, relanzar y explicar.
+170. [A·S] Reporte fiscal llama "ganancia estimada" a un número SIN publicidad ($27,3 M, 47%) y la regla de la app la incluye → misma fórmula que Ganancia Real o renombrar.
+171. [M·M] Cambio de precios por % a TODO el catálogo (en Stock) sin vista previa ni freno por precio mínimo → llevarlo a Precios con vista previa y freno.
+172. [M·S] No existe ningún freno de llamadas a MeLi (`rate_limiter.py` sin uso) → freno real por cuenta y global.
+173. [M·S] Combos sugeridos: se calculan cada semana y en cada carga de Promociones, nunca se muestran → mostrarlos o borrar el cálculo.
+174. [M·S] Dos endpoints distintos para responder preguntas (panel y Preguntas) → uno.
+175. [M·S] Logros muestra "talle(s) por quedarse sin stock" y "curva de talles rota (M/L/XL)" a cualquier rubro → solo con talles reales, y sin "(s)".
+176. [M·S] "Talle" fijo en Dashboard "(Talle X)", CSV de Stock, Ventas fuera de MeLi y Costos → vocabulario de la cuenta.
+177. [M·S] Embudo: dibuja visitas → preguntas → ventas con más ventas (183) que preguntas (9): el embudo está mal armado → visitas → ventas; preguntas aparte.
+178. [M·S] Embudo: 17-20 visitas sin venta aparecen en rojo como urgentes → mínimo de visitas para alertar (ej. 100) y naranja.
+179. [M·S] Embudo: barras por publicación escaladas a visitas (ventas siempre vacías) → conversión contra el promedio.
+180. [M·S] "solo 0 vendidas" / "y solo 0 ventas" → "ninguna venta".
+181. [B·S] "Ver las 1 restantes" → "Ver 1 más" (macro común para todos los "ver más").
+182. [M·M] Tendencias y Publicidad consultan MeLi en vivo en cada carga (3,8 y 4,3 s) → caché de 30 min con "actualizado hace X".
+183. [B·S] El scheduler retiene una conexión de la base para siempre (lock): usa 1 de las 15 del pooler → liberarla o contarla en el tope.
+184. [M·M] El asistente IA no recuerda la conversación (cada pregunta empieza de cero) → historial.
+185. [M·S] El asistente no recibe la ganancia real (solo facturación, comisión y envío) → darle ganancia neta, costos y publicidad.
+186. [B·S] El asistente tiene un nombre distinto en cada lugar → uno solo.
+187. [B·S] 13 botones sin `type` → `type="button"`.
+
+## O. Pantalla por pantalla
+188. [M·S] Promociones: candidatas por talle (el mismo modelo 8 veces) → agrupar por modelo.
+189. [M·S] Promociones: 8 botones naranjas iguales → secundarios; destacar solo el de más plata parada.
+190. [B·S] Promociones: "Hasta cuándo" usa un selector de rango → un solo día.
+191. [M·S] Promociones: el descuento propio no muestra el margen que queda → ganancia por unidad con el descuento.
+192. [M·S] Invitaciones a campañas de MeLi (8) plegadas al final, con vencimiento → arriba, con fecha límite y margen si entrás.
+193. [M·M] Historial de precios vacío aunque haya historia → reconstruirlo con el precio de cada venta.
+194. [M·S] Stock masivo y Costos: filas del mismo talle que solo se distinguen por el código (Clásica / Premium) → mostrar tipo y precio.
+195. [M·M] Costos mide 10.500 px (una fila por publicación) → una fila por modelo y el detalle por talle plegado.
+196. [B·S] "Sin datos de comisión todavía" en pausadas → estimarla con la categoría.
+197. [M·S] Calculadora inversa: "quiero ganar X% → ¿a cuánto publico?".
+198. [B·S] Calculadora: Clásica y Premium lado a lado.
+199. [B·M] Opiniones: resumen de lo que se repite en las quejas (tela, talle, color) con IA.
+200. [B·S] Opiniones: el KPI "Calificación" repite el número grande → sacarlo.
+201. [M·S] Reputación: cuántas ventas sin reclamo faltan para bajar del límite.
+202. [M·M] Costo de fabricación de hoy aplicado a ventas viejas (Reporte fiscal, Ganancia Real) → costo con fecha de vigencia.
+203. [B·S] Monotributo: cuánto falta para la próxima categoría y en qué mes llegarías.
+204. [M·M] Suscripción casi vacía → "Mi cuenta": plan, datos del negocio, cuentas conectadas, preferencias, actividad, exportar mis datos, eliminar.
+205. [M·S] Referidos sin premio → definir el premio (ej. 1 mes gratis) o sacarlo.
+206. [B·S] "Exportar imagen para redes" escondido en la línea de tiempo → en la ficha de la publicación.
+207. [M·S] Cada pantalla cuenta distinto (21 publicaciones, 5 modelos, 9 "en catálogo") → usar siempre "modelos" y "publicaciones" con la misma definición.
+208. [M·S] Período: solo 7/14/30 días → "Este mes", "Mes pasado", "Este año" (se piensa en meses).
+209. [B·M] Comparar contra el mismo período del año anterior.
+210. [M·S] "Capital en stock" a precio de venta → también a costo.
+211. [M·S] El 15% de margen "bueno" está fijo en el código → margen objetivo de cada persona, usado en todos los colores.
+212. [B·M] Alertas con umbrales configurables (días de stock, margen mínimo).
+213. [B·M] Lista de picking en Despacho (qué sacar del depósito, agrupado por modelo y talle).
+214. [M·S] "Datos al 14:32" visible en todas las pantallas.
+215. [M·S] Tema "como el sistema" por defecto (hoy siempre oscuro).
+216. [B·M] Notificaciones del navegador (venta nueva, pregunta) sin instalar nada.
+
+## P. Reestructuración (cambios grandes)
+217. [M·L] Menú lateral fijo con 8 secciones en vez de 3 desplegables + subpestañas + barra de ticker.
+218. [M·L] Secciones: Inicio · Ventas y ganancia · Precios y costos · Stock · Publicaciones · Operación del día · Crecimiento · Reputación.
+219. [M·L] "Ficha de publicación" única (reemplaza panel lateral y línea de tiempo): ganancia, stock, precio, calidad, visitas, opiniones, preguntas e historial; toda lista enlaza ahí.
+220. [M·M] Pantalla "Posventa": reclamos, devoluciones, dinero retenido y mensajes (hoy plegados dentro de Ganancia Real).
+221. [M·M] "Pendientes" como bandeja única (reemplaza Logros, "Lo que tenés que hacer hoy" y alertas) con contador en el menú.
+222. [M·M] Dashboard en 3 bloques: Hoy · Este mes · Pendientes; el resto a su pantalla.
+223. [M·M] Stock + Stock masivo en una sola pantalla con modo edición.
+224. [M·L] Calidad + Embudo + SEO + Opiniones → "Publicaciones": una tabla de salud por publicación.
+225. [M·M] Precios + Calculadora + Historial + cambio masivo → "Precios" con pestañas.
+226. [M·M] Ganancia Real + Facturación + Cobros + Reporte fiscal + Monotributo → "Ventas y ganancia" con pestañas.
+227. [M·M] Tendencias + Competencia + Promociones + Publicidad → "Crecimiento" con pestañas.
+228. [M·S] Barra superior solo con: buscador, estado de la sync, notificaciones y cuenta (fuera racha y tema).
+
+## Q. Negocio argentino (lo que una planilla no hace)
+229. [M·M] Perfil fiscal (Monotributo / Responsable Inscripto): para RI la ganancia tiene que ser neta de IVA.
+230. [B·M] Costos en dólares (importadores) convertidos al tipo de cambio del día.
+231. [B·M] Ganancia ajustada por inflación: "este mes ganaste X% más en pesos, Y% en términos reales".
+232. [B·S] Envío gratis obligatorio desde $33.000: avisarlo en Calculadora y Precios.
+233. [B·S] Costo de almacenamiento prolongado en FULL dentro de la ganancia (hoy solo lo veía la pantalla a eliminar).
+
+## R. Sistema de diseño y código
+234. [M·M] Conviven dos sistemas visuales (stat-chip/card-* viejos y ux-* nuevos) → uno solo.
+235. [M·M] Tres mecanismos de caché (Redis/memoria, `cache_db`, diccionarios) → solo `cache_db`.
+236. [M·M] Celery + Redis solo en la PC (producción usa hilos): la PC se porta distinto que producción → sacar Celery.
+237. [B·S] Tablas sin pantalla (`conversacion_whatsapp_historial`, `proveedores`) → borrar o construir.
+238. [B·S] Índice `ventas(cuenta_id, id_orden)` para reembolsos y dinero retenido.
+239. [M·M] Prueba de las acciones que escriben en MeLi contra un servidor falso (nunca título+precio juntos, nunca sin confirmar).
+240. [B·S] Revisión automática de `innerHTML` con datos externos.
+241. [B·S] Menús con `aria-expanded` y flechas de teclado.
+242. [B·M] Scripts grandes dentro de las plantillas → archivos JS por pantalla (se cachean).
+243. [B·S] `import db` repetido dentro de las funciones de `app.py` → una vez arriba.
