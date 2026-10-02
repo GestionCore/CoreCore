@@ -21,6 +21,24 @@ NOMBRES_POWER_SELLER = {
 }
 
 
+def interpretar_ratings(ratings):
+    """
+    Las calificaciones de la reputación llegan como PROPORCIONES que suman 1 (0.96 / 0.03 / 0.01) o, en cuentas viejas, como CANTIDADES (45 / 3 / 2).
+    Mercado Libre dejó de usar las calificaciones de vendedor: en cuentas reales llega positive 0 / neutral 1 / negative 0 (= "100 % neutral", o sea
+    ningún dato), y mostrarlo como "1 calificación" o "0 % positivas" engaña. `disponibles` es False en ese caso y cuando no hay nada.
+    """
+    ratings = ratings or {}
+    pos, neu, neg = (float(ratings.get(k) or 0) for k in ("positive", "neutral", "negative"))
+    suma = pos + neu + neg
+    return {
+        "positivas": ratings.get("positive", 0) or 0,
+        "neutras": ratings.get("neutral", 0) or 0,
+        "negativas": ratings.get("negative", 0) or 0,
+        "son_proporciones": any(isinstance(v, float) and v != int(v) for v in ratings.values() if v is not None),
+        "disponibles": pos > 0 or neg > 0 or suma > 1.0001,
+    }
+
+
 def obtener_reputacion(access_token, user_id):
     headers = {"Authorization": f"Bearer {access_token}"}
     try:
@@ -38,10 +56,7 @@ def obtener_reputacion(access_token, user_id):
         nivel_id = rep.get("level_id")
         power_status = rep.get("power_seller_status")
 
-        # Las calificaciones pueden venir como CANTIDADES (1, 0, 0) o como PROPORCIONES (0.96, 0.03, 0.01): según cuál sea, "poca muestra" significa
-        # una cosa u otra. Con proporciones no hay muestra que juzgar.
-        valores_ratings = [ratings.get(k) for k in ("positive", "neutral", "negative") if ratings.get(k) is not None]
-        ratings_son_proporciones = any(isinstance(v, float) and v != int(v) for v in valores_ratings)
+        calificaciones = interpretar_ratings(ratings)
 
         total = transacciones.get("total", 0) or 0
         completadas = transacciones.get("completed", 0) or 0
@@ -64,10 +79,11 @@ def obtener_reputacion(access_token, user_id):
             "completadas": completadas,
             "canceladas": canceladas,
             "tasa_cancelacion": tasa_cancelacion,
-            "ratings_son_proporciones": ratings_son_proporciones,
-            "ratings_positivas": ratings.get("positive", 0) or 0,
-            "ratings_neutras": ratings.get("neutral", 0) or 0,
-            "ratings_negativas": ratings.get("negative", 0) or 0,
+            "ratings_son_proporciones": calificaciones["son_proporciones"],
+            "ratings_disponibles": calificaciones["disponibles"],
+            "ratings_positivas": calificaciones["positivas"],
+            "ratings_neutras": calificaciones["neutras"],
+            "ratings_negativas": calificaciones["negativas"],
             "reclamos": _extraer_metrica("claims"),
             "demora_en_despacho": _extraer_metrica("delayed_handling_time"),
             "cancelaciones_metrica": _extraer_metrica("cancellations"),

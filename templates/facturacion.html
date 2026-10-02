@@ -29,12 +29,12 @@
 {% if hay_datos %}
 <!-- ── 1. CUÁNTO ME QUEDÓ ───────────────────────────────────────────────── -->
 <div class="ux-hero ux-{{ tono }}">
-    <div class="ux-hero-etiqueta">Lo que te queda después de MeLi y tus gastos</div>
+    <div class="ux-hero-etiqueta">Después de MeLi y tus gastos · antes del costo de fabricación</div>
     <div class="ux-hero-numero">{{ rs.ganancia_neta|plata }}</div>
     <div class="ux-hero-frase">
         {% if rs.facturado > 0 %}
         De <b>{{ rs.facturado|plata }}</b> facturados, Mercado Libre te cobró <b>{{ rs.cargos|plata }}</b> ({{ (rs.cargos / rs.facturado * 100)|pct }})
-        {% if rs.gastos %} y tus gastos operativos fueron <b>{{ rs.gastos|plata }}</b>{% endif %} — {% if rs.ganancia_neta < 0 %}<b>el período cerró en pérdida</b>{% else %}<b>te quedaron {{ rs.ganancia_neta|plata }}</b> antes del costo de fabricación{% endif %}.
+        {% if rs.gastos %} y tus gastos operativos fueron <b>{{ rs.gastos|plata }}</b>{% endif %} — {% if rs.ganancia_neta < 0 %}<b>el período cerró en pérdida</b>{% else %}<b>quedaron {{ rs.ganancia_neta|plata }}</b>, sin descontar todavía el costo de fabricación{% endif %}.
         {% else %}Todavía no hay ventas registradas en este período.{% endif %}
     </div>
     <div class="ux-hero-nota">Facturado bruto − cargos de MeLi − gastos operativos del período. <b>No descuenta el costo de fabricación:</b> la ganancia neta real completa está en <a href="/metricas"><b>Ganancia Real →</b></a></div>

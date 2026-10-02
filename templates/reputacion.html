@@ -17,7 +17,7 @@
 {% set tono = 'ok' if rep.nivel_id in ['5_green', '4_light_green'] else ('danger' if rep.nivel_id == '1_red' else 'warn') %}
 {% set idx = niveles.index(rep.nivel_id) if rep.nivel_id in niveles else none %}
 {% set total_calif = rep.ratings_positivas + rep.ratings_neutras + rep.ratings_negativas %}
-{% set pct_positivas = (rep.ratings_positivas / total_calif * 100) if total_calif else none %}
+{% set pct_positivas = (rep.ratings_positivas / total_calif * 100) if (total_calif and rep.ratings_disponibles) else none %}
 
 <!-- ── 1. CÓMO ESTÁ MI REPUTACIÓN ──────────────────────────────────────── -->
 <div class="ux-hero ux-{{ tono }}">
@@ -55,6 +55,9 @@
     {# El total histórico de canceladas incluye las que cancela el comprador y NO es la métrica del nivel: se muestra como contexto, sin alarma #}
     {{ kpi("Ventas canceladas", rep.tasa_cancelacion|pct, "neutral", "x", "histórico total, incluye las que canceló el comprador") }}
 </div>
+{% if not rep.ratings_disponibles %}
+<div class="text-muted" style="font-size:0.88em; margin:-8px 0 16px;">Mercado Libre ya no publica calificaciones de vendedor. Lo que opinan tus compradores de cada publicación está en <a href="/opiniones">Opiniones</a>.</div>
+{% endif %}
 
 {% if incidencias_por_tipo.devoluciones or incidencias_por_tipo.reclamos or incidencias_por_tipo.reclamos_sin_impacto or incidencias_por_tipo.cancelaciones %}
 <div class="ux-seccion ux-warn">Desglose real de lo que registramos</div>
@@ -69,7 +72,7 @@
 
 <!-- ── 3. HISTORIAL ─────────────────────────────────────────────────────── -->
 <details class="ux-detalle" open>
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-chart"/></svg> Transacciones y calificaciones <span class="ux-detalle-nota">{{ rep.total_transacciones|numero }} transacciones históricas</span></summary>
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-chart"/></svg> {{ "Transacciones y calificaciones" if rep.ratings_disponibles else "Historial de transacciones" }} <span class="ux-detalle-nota">{{ rep.total_transacciones|numero }} transacciones históricas</span></summary>
     <div class="ux-detalle-cuerpo">
         <div class="filter-row" style="align-items:flex-start;">
             <div style="flex:1; min-width:260px;">
@@ -80,15 +83,17 @@
                     <tr><td>Canceladas / devueltas</td><td class="num text-danger"><b>{{ rep.canceladas|numero }}</b></td></tr>
                 </tbody></table>
             </div>
+            {% if rep.ratings_disponibles %}
             <div style="flex:1; min-width:260px;">
                 <div class="page-subtitle" style="margin-bottom:8px;"><b>Calificaciones recibidas</b></div>
                 <div style="height:200px; position:relative; margin-bottom:12px;"><canvas id="chartCalificaciones" role="img" aria-label="Calificaciones positivas, neutras y negativas"></canvas></div>
                 <table class="data-table"><tbody>
-                    <tr><td><i class="ue-dot" style="background:var(--success);"></i>Positivas</td><td class="num text-success"><b>{{ rep.ratings_positivas|numero }}</b></td></tr>
-                    <tr><td><i class="ue-dot" style="background:var(--accent-gold);"></i>Neutras</td><td class="num"><b>{{ rep.ratings_neutras|numero }}</b></td></tr>
-                    <tr><td><i class="ue-dot" style="background:var(--danger);"></i>Negativas</td><td class="num text-danger"><b>{{ rep.ratings_negativas|numero }}</b></td></tr>
+                    <tr><td><i class="ue-dot" style="background:var(--success);"></i>Positivas</td><td class="num text-success"><b>{{ ((rep.ratings_positivas * 100)|pct(0)) if rep.ratings_son_proporciones else (rep.ratings_positivas|numero) }}</b></td></tr>
+                    <tr><td><i class="ue-dot" style="background:var(--accent-gold);"></i>Neutras</td><td class="num"><b>{{ ((rep.ratings_neutras * 100)|pct(0)) if rep.ratings_son_proporciones else (rep.ratings_neutras|numero) }}</b></td></tr>
+                    <tr><td><i class="ue-dot" style="background:var(--danger);"></i>Negativas</td><td class="num text-danger"><b>{{ ((rep.ratings_negativas * 100)|pct(0)) if rep.ratings_son_proporciones else (rep.ratings_negativas|numero) }}</b></td></tr>
                 </tbody></table>
             </div>
+            {% endif %}
         </div>
     </div>
 </details>
