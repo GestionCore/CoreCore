@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 {% from "_ux.html" import banner, kpi, vacio %}
-{% block title %}Logros · CoreLux{% endblock %}
+{% block title %}Pendientes · CoreLux{% endblock %}
 {% block content %}
 {% set tono = 'danger' if conteo_por_prioridad.urgente else ('warn' if conteo_por_prioridad.importante else ('accion' if misiones else 'ok')) %}
 {% set ICONOS = {'stock': 'box', 'reclamos': 'alert', 'atencion': 'chat', 'seo': 'edit', 'financiero': 'coin', 'tendencias': 'trend'} %}
 
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-trophy"/></svg>Logros</h1>
-        <div class="page-subtitle">Tareas concretas, sacadas de <strong>los datos reales de tu cuenta</strong> — resolverlas es plata y reputación</div>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-check"/></svg>Pendientes</h1>
+        <div class="page-subtitle">Lo que conviene hacer ahora, sacado de <strong>los datos reales de tu cuenta</strong> — resolverlo es plata y reputación</div>
     </div>
 </div>
 
 {% if recien_resueltas > 0 %}
-{{ banner("gold", "trophy", "<b>¡Resolviste " ~ recien_resueltas ~ " misi" ~ ("ón" if recien_resueltas == 1 else "ones") ~ " desde la última vez!</b> Buen trabajo", "Seguí así: cada una que cerrás se suma a tus logros conseguidos.") }}
+{{ banner("ok", "check", "<b>¡Resolviste " ~ recien_resueltas ~ (" pendiente" if recien_resueltas == 1 else " pendientes") ~ " desde la última vez!</b> Buen trabajo", "Los que cerrás quedan abajo, en «Resueltos».") }}
 {% endif %}
 
 {% if mensaje_todo_bien %}
@@ -23,29 +23,27 @@
 </div>
 {% else %}
 
-<!-- ── 1. LA PRIORIDAD DE HOY ───────────────────────────────────────────── -->
-<div class="ux-hero ux-{{ tono }}">
-    <div class="ux-hero-etiqueta">{{ misiones|length }} misi{{ 'ón' if misiones|length == 1 else 'ones' }} por resolver
+<!-- ── 1. CUÁNTOS HAY Y LA PRIORIDAD DE HOY (la frase de la IA; si no llega, no se repite la primera tarea: ya está en la lista) ── -->
+<div class="ux-hero ux-{{ tono }}" id="hero-prioridad">
+    <div class="ux-hero-etiqueta">{{ misiones|length }} pendiente{{ '' if misiones|length == 1 else 's' }} por resolver
         {% if conteo_por_prioridad.urgente %}<span class="ux-pill ux-danger">{{ conteo_por_prioridad.urgente }} urgente{{ 's' if conteo_por_prioridad.urgente > 1 }}</span>{% endif %}
         {% if conteo_por_prioridad.importante %}<span class="ux-pill ux-warn">{{ conteo_por_prioridad.importante }} importante{{ 's' if conteo_por_prioridad.importante > 1 }}</span>{% endif %}
         {% if conteo_por_prioridad.opcional %}<span class="ux-pill ux-accion">{{ conteo_por_prioridad.opcional }} opcional{{ 'es' if conteo_por_prioridad.opcional > 1 }}</span>{% endif %}
     </div>
     <div class="ux-hero-numero" style="font-size:clamp(1.5em, 4vw, 2.1em);">Tu prioridad de hoy</div>
     <div class="ux-hero-frase" id="coach-texto">
-        {% if mensaje_coach %}{{ mensaje_coach }}{% elif coach_pendiente %}<span class="skeleton" style="display:inline-block; width:min(520px,90%); height:2.6em; border-radius:8px;">&nbsp;</span>{% else %}<b>{{ misiones[0].titulo }}</b> — {{ misiones[0].descripcion }}{% endif %}
+        {% if mensaje_coach %}{{ mensaje_coach }}{% elif coach_pendiente %}<span class="skeleton" style="display:inline-block; width:min(520px,90%); height:2.6em; border-radius:8px;">&nbsp;</span>{% endif %}
     </div>
 </div>
+{% if not mensaje_coach and not coach_pendiente %}<script>document.getElementById('coach-texto').remove();</script>{% endif %}
 {% if coach_pendiente %}
 <script>
-// El mensaje lo redacta la IA (tarda unos segundos): se pide aparte para no frenar la carga de la página.
-// Si no llega, se muestra la primera misión tal cual — el resto de la pantalla no depende de esto.
+// El mensaje lo redacta la IA (tarda unos segundos): se pide aparte para no frenar la carga de la página. Si no llega se deja solo el conteo.
 (function () {
     const el = document.getElementById('coach-texto');
-    // Se arma acá y no en Jinja: con autoescape, '<b>' ~ (texto|e) escapaba también las etiquetas y la persona veía "<b>" escrito
-    const respaldo = '<b>' + UX.esc({{ misiones[0].titulo|tojson }}) + '</b> — ' + UX.esc({{ misiones[0].descripcion|tojson }});
     fetch('/api/logros/coach').then(r => r.json()).then(d => {
-        if (d && d.mensaje) el.textContent = d.mensaje; else el.innerHTML = respaldo;
-    }).catch(() => { el.innerHTML = respaldo; });
+        if (d && d.mensaje) el.textContent = d.mensaje; else el.remove();
+    }).catch(() => { el.remove(); });
 })();
 </script>
 {% endif %}
@@ -69,7 +67,7 @@
 
 <!-- ── 3. LO YA LOGRADO ────────────────────────────────────────────────── -->
 {% if logros_resueltos %}
-<div class="ux-seccion ux-gold">Logros conseguidos <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ logros_resueltos|length }}</span></div>
+<div class="ux-seccion ux-ok">Resueltos <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ logros_resueltos|length }}</span></div>
 <div class="panel" data-mostrar-mas-scope>
     {% for l in logros_resueltos %}
     <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border-soft); font-size:0.9em;">

@@ -195,7 +195,7 @@ function ejecutarSincronizarTodo(btn, alTerminar) {
     const _spin = '<svg class="icon spin-anim" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg>';
     const liberar = () => { btn.disabled = false; btn.innerHTML = textoOriginal; };
     btn.disabled = true;
-    btn.innerHTML = _spin + '<span class="btn-sync-texto">Sincronizando...</span>';
+    btn.innerHTML = _spin + '<span class="btn-sync-texto">Actualizando…</span>';
     fetch('/sincronizar_todo', { method: 'POST' })
         .then(r => r.json())
         .then(data => {
@@ -210,7 +210,7 @@ function ejecutarSincronizarTodo(btn, alTerminar) {
                         if (!est.en_curso || intentos >= maxIntentos) {
                             clearInterval(poll);
                             liberar();
-                            mostrarToast('Sincronización completada.', 'success');
+                            mostrarToast('Listo: datos actualizados.', 'success');
                             if (alTerminar) alTerminar();
                         }
                     })
@@ -466,11 +466,13 @@ const RangoFechas = {
 const PASOS_TUTORIAL = [
     { selector: '.brand', titulo: 'Este es tu punto de partida', texto: 'El logo te trae de vuelta acá desde cualquier pantalla.' },
     { selector: '#tour-buscador', titulo: 'Buscador universal', texto: 'Buscá cualquier publicación o sección de la app — o abrilo en cualquier momento con Ctrl+K.' },
-    { selector: '#tour-nav-catalogo', titulo: 'Catálogo', texto: 'Tu stock por modelo, la vista masiva para editar varios a la vez, y el panel de despacho del día.' },
-    { selector: '#tour-nav-finanzas', titulo: 'Finanzas', texto: 'Ganancia Real, Facturación, Costos y más — todo lo que tiene que ver con la plata.' },
-    { selector: '#tour-nav-crecimiento', titulo: 'Crecimiento', texto: 'Promociones, tendencias, competencia y publicidad — para vender más, no solo para medir lo que ya vendiste.' },
-    { selector: '#btn-sincronizar-todo', titulo: 'Sincronizar Todo', texto: 'Trae lo último de Mercado Libre bajo demanda. De fondo, esto ya corre solo cada tanto — no hace falta que lo toques seguido.' },
-    { selector: '.ticker-bar', titulo: 'Estado en vivo', texto: 'Ventas de hoy, plata que se libera mañana, reclamos activos y salud de la cuenta, siempre a la vista.' },
+    { selector: '#tour-nav-dia', titulo: 'Día a día', texto: 'Lo que hay que hacer hoy: paquetes por despachar, preguntas por responder, pendientes y tu reputación.' },
+    { selector: '#tour-nav-ventas', titulo: 'Ventas y ganancia', texto: 'Cuánto te queda de verdad de cada venta, cuánto te cobra Mercado Libre y cuándo te acreditan la plata.' },
+    { selector: '#tour-nav-precios', titulo: 'Precios y costos', texto: 'Cargá lo que te cuesta fabricar cada producto: sin eso la ganancia sale más alta que la real. Acá también está el precio mínimo de cada publicación.' },
+    { selector: '#tour-nav-stock', titulo: 'Stock', texto: 'Tu stock por modelo, en tu depósito y en FULL, y qué conviene reponer.' },
+    { selector: '#tour-nav-crecimiento', titulo: 'Crecimiento', texto: 'Promociones, publicidad, tendencias y competencia: para vender más, no solo para medir lo que ya vendiste.' },
+    { selector: '#btn-sincronizar-todo', titulo: 'Actualizar', texto: 'Trae lo último de Mercado Libre ahora. De fondo se actualiza solo cada 4 minutos: no hace falta que lo toques seguido.' },
+    { selector: '#tour-estado', titulo: 'Cómo va hoy', texto: 'Las ventas de hoy y cuándo te acreditan la próxima plata, siempre a la vista.' },
 ];
 
 let _tourPasoActual = 0;
@@ -511,7 +513,8 @@ function _crearElementosTour() {
 function _posicionarPasoTour() {
     const paso = PASOS_TUTORIAL[_tourPasoActual];
     const objetivo = document.querySelector(paso.selector);
-    if (!objetivo) { avanzarTutorial(); return; }
+    // un elemento escondido (el menú lateral en el celular) no se puede señalar: se salta ese paso
+    if (!objetivo || objetivo.getClientRects().length === 0) { avanzarTutorial(); return; }
     objetivo.scrollIntoView({ block: 'center', behavior: 'instant' });
 
     const r = objetivo.getBoundingClientRect();
@@ -841,7 +844,7 @@ async function actualizarTicker() {
             // "04/10" → "4 oct", igual que el resto de las fechas de la app
             const f = String(data.proxima_liberacion.fecha || '').match(/^(\d{1,2})\/(\d{1,2})/);
             const fecha = f ? `${Number(f[1])} ${RangoFechas.MESES_CORTOS[Number(f[2]) - 1] || ''}`.trim() : data.proxima_liberacion.fecha;
-            elLiberacion.textContent = `Próximo depósito: $${sinCentavos(data.proxima_liberacion.monto)} · ${fecha}`;
+            elLiberacion.textContent = `Depósito: $${sinCentavos(data.proxima_liberacion.monto)} · ${fecha}`;
         }
         else elLiberacion.textContent = `Disponible mañana: $${data.liberacion_manana}`;
         elLiberacion.title = data.hay_liberaciones ? `En total te falta acreditar $${sinCentavos(data.a_liberar_total)}` : '';
@@ -1016,10 +1019,10 @@ const ATAJOS_COMANDO = [
     { alias: ['embudo', 'conversion'], texto: 'Ir a Embudo de Conversión', url: '/embudo_conversion' },
     { alias: ['rep', 'reputacion'], texto: 'Ir a Reputación', url: '/reputacion' },
     { alias: ['ads', 'publicidad'], texto: 'Ir a Publicidad', url: '/publicidad', requiere: 'ads' },
-    { alias: ['log', 'logros', 'misiones'], texto: 'Ir a Logros', url: '/logros' },
+    { alias: ['log', 'logros', 'misiones', 'pendientes', 'tareas'], texto: 'Ir a Pendientes', url: '/logros' },
 ];
 const ACCIONES_COMANDO = [
-    { alias: ['sinc', 'sincronizar', 'actualizar'], texto: 'Sincronizar Todo', accion: 'ejecutarSincronizarTodo' },
+    { alias: ['sinc', 'sincronizar', 'actualizar'], texto: 'Actualizar con Mercado Libre', accion: 'ejecutarSincronizarTodo' },
     { alias: ['tema', 'oscuro', 'claro', 'dark', 'light'], texto: 'Cambiar tema claro/oscuro', accion: 'alternarTema' },
     { alias: ['privacidad', 'ocultar', 'blur'], texto: 'Modo privacidad (ocultar montos)', accion: 'alternarModoPrivacidad' },
 ];
@@ -1130,16 +1133,12 @@ async function cargarOportunidadesSeo() {
     } catch (e) { console.error(e); }
 }
 
-function inicializarDropdownsNav() {
-    document.querySelectorAll('.nav-dropdown-toggle').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const dropdown = btn.closest('.nav-dropdown');
-            document.querySelectorAll('.nav-dropdown.open').forEach(d => { if (d !== dropdown) d.classList.remove('open'); });
-            dropdown.classList.toggle('open');
-        });
-    });
-    document.addEventListener('click', () => document.querySelectorAll('.nav-dropdown.open').forEach(d => d.classList.remove('open')));
+// Menú lateral: en pantallas angostas es un panel que se abre desde la izquierda (en las anchas está siempre a la vista)
+function abrirSidebar() { document.body.classList.add('sidebar-abierto'); }
+function cerrarSidebar() { document.body.classList.remove('sidebar-abierto'); }
+function inicializarSidebar() {
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarSidebar(); });
+    document.querySelectorAll('.sidebar a').forEach(a => a.addEventListener('click', cerrarSidebar));
 }
 
 function abrirDrawer(idMeli) {
@@ -1500,7 +1499,7 @@ document.addEventListener('DOMContentLoaded', () => {
     revisarMensajeEnURL();
     marcarCurvaRota();
     cargarOportunidadesSeo();
-    inicializarDropdownsNav();
+    inicializarSidebar();
     inicializarProtectorInactividad();
     // El ticker (varias consultas a la base) se actualiza cada 60 s y SOLO con la pestaña a la vista; al volver a mirarla se refresca enseguida.
     setInterval(() => { if (!document.hidden) actualizarTicker(); }, 60000);

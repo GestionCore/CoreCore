@@ -14,6 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700;8..60,800;8..60,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_v('css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ux.css') }}?v={{ static_v('css/ux.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/shell.css') }}?v={{ static_v('css/shell.css') }}">
     <script src="{{ url_for('static', filename='js/ux.js') }}?v={{ static_v('js/ux.js') }}"></script>
     <script>
         // Aplicamos el tema y el modo privacidad guardados ANTES de que se
@@ -86,103 +87,72 @@
 
 <div id="toast-container"></div>
 
-<header class="topnav">
-    <div class="ticker-bar">
-        <span class="ticker-pill" id="ticker-ventas-pill" onmouseenter="mostrarTooltipVentas(this)" onmouseleave="ocultarTooltipTicker()"><span class="ticker-dot dot-emerald"></span><span id="ticker-ventas" class="skeleton">Cargando ventas de hoy...</span></span>
-        <span class="ticker-pill"><span class="ticker-dot dot-blue"></span><span id="ticker-liberacion" class="skeleton">Cargando liquidez...</span></span>
+{% set _seccion_activa = nav_seccion_de.get(active_nav|default('')) %}
+{% set _nombre_cuenta = ((cuenta_actual.nombre_negocio or cuenta_actual.nickname) if cuenta_actual else None) or 'Mi cuenta' %}
+<div class="app-shell">
+
+<!-- ── Menú lateral: las secciones, siempre a la vista ─────────────────────── -->
+<aside class="sidebar" id="sidebar" aria-label="Menú principal">
+    <a href="/dashboard" class="brand sidebar-brand"><span class="brand-mark"></span><span class="sidebar-texto">CoreLux</span></a>
+    {% if cuentas_disponibles and cuentas_disponibles|length > 1 %}
+    <details class="sidebar-cuenta" id="tour-nav-cuenta">
+        <summary>{{ _nombre_cuenta|title }}</summary>
+        <div class="sidebar-cuenta-lista">
+            {% for c in cuentas_disponibles %}
+            <form method="post" action="{{ url_for('cambiar_cuenta', cuenta_id=c.id) }}"><button type="submit" class="{% if cuenta_actual and c.id == cuenta_actual.id %}active{% endif %}">{{ (c.nombre_negocio or c.nickname or ('Cuenta #' ~ c.id))|title }}</button></form>
+            {% endfor %}
+        </div>
+    </details>
+    {% endif %}
+    <nav class="sidebar-nav">
+        {% for clave, s in nav_grupos.items() %}
+        {% set primera = namespace(href=None) %}
+        {% for p in s.paginas if (not p.requiere) or capacidades.get(p.requiere) is not false %}{% if not primera.href %}{% set primera.href = p.href %}{% endif %}{% endfor %}
+        {% if primera.href %}
+        <a href="{{ primera.href }}" class="sidebar-item {% if _seccion_activa == clave %}active{% endif %}" id="tour-nav-{{ clave }}" title="{{ s.label }}">
+            <svg class="icon" aria-hidden="true"><use href="#icon-{{ s.icono }}"/></svg><span class="sidebar-item-texto">{{ s.label }}</span>
+            {% if clave == 'dia' %}<span id="nav-badge-incidencias" class="nav-badge" style="display:none;"></span>{% endif %}
+        </a>
+        {% endif %}
+        {% endfor %}
+    </nav>
+    <div class="sidebar-pie">
+        <button type="button" class="sidebar-item" onclick="abrirComentario()" title="Contanos qué te parece"><svg class="icon" aria-hidden="true"><use href="#icon-chat"/></svg><span class="sidebar-item-texto">Enviar un comentario</span></button>
+    </div>
+</aside>
+<div class="sidebar-overlay" onclick="cerrarSidebar()"></div>
+
+<div class="app-main">
+
+<!-- ── Barra superior: buscar, cómo va hoy, actualizar y tu cuenta ─────────── -->
+<header class="topbar">
+    <button type="button" class="btn-icono-barra btn-sidebar-toggle" onclick="abrirSidebar()" aria-label="Abrir el menú de secciones"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+    <button class="buscador-central" onclick="abrirComando()" type="button" id="tour-buscador" aria-label="Buscar en toda la app">
+        <svg class="icon" style="width:15px;height:15px;" aria-hidden="true"><use href="#icon-search"/></svg>
+        <span>Buscar publicaciones y secciones…</span>
+        <kbd>Ctrl K</kbd>
+    </button>
+    <div class="topbar-espacio"></div>
+    <div class="topbar-estado" id="tour-estado">
+        <span class="ticker-pill" id="ticker-ventas-pill" onmouseenter="mostrarTooltipVentas(this)" onmouseleave="ocultarTooltipTicker()"><span class="ticker-dot dot-emerald"></span><span id="ticker-ventas" class="skeleton">Cargando…</span></span>
+        <span class="ticker-pill ticker-pill-secundario"><span class="ticker-dot dot-blue"></span><span id="ticker-liberacion" class="skeleton">Cargando…</span></span>
         <span class="ticker-pill" id="ticker-incidencias-pill" style="display:none;"><span class="ticker-dot" style="background:var(--danger); box-shadow:0 0 6px var(--danger);"></span><span id="ticker-incidencias-texto">0 incidencias</span></span>
-        <span class="ticker-pill" id="ticker-salud-pill" onmouseenter="mostrarTooltipSalud(this)" onmouseleave="ocultarTooltipTicker()"><span class="orbe-salud" id="ticker-salud-dot"></span><span id="ticker-salud-texto">Salud: ...</span></span>
-        <span class="ticker-pill" id="ticker-racha-pill" style="display:none;" title="Días seguidos usando CoreLux"><svg class="icon" style="width:13px;height:13px;color:var(--accent-brand);"><use href="#icon-flame"/></svg><span id="ticker-racha-texto"></span></span>
-        <button type="button" class="ticker-pill ticker-btn" onclick="alternarModoPrivacidad()" title="Modo privacidad" aria-label="Modo privacidad"><svg class="icon" style="width:14px;height:14px;" aria-hidden="true"><use href="#icon-eye"/></svg></button>
-        <button type="button" class="ticker-pill ticker-btn" onclick="alternarTema()" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro" id="btn-tema"><svg class="icon" style="width:14px;height:14px;" id="icono-tema" aria-hidden="true"><use id="icono-tema-use" href="#icon-moon"/></svg></button>
     </div>
-    <div class="topnav-inner">
-        <div class="topnav-zona-izq">
-            <a href="/dashboard" class="brand"><span class="brand-mark"></span><span>CoreLux</span></a>
-            {% if cuentas_disponibles and cuentas_disponibles|length > 1 %}
-            <div class="nav-dropdown" id="tour-nav-cuenta">
-                <button class="topnav-link nav-dropdown-toggle" type="button">
-                    <svg class="icon"><use href="#icon-home"/></svg>{{ cuenta_actual.nickname or cuenta_actual.nombre_negocio or 'Cuenta' }} <span class="nav-chevron">▾</span>
-                </button>
-                <div class="nav-dropdown-menu">
-                    {% for c in cuentas_disponibles %}
-                    <form method="post" action="{{ url_for('cambiar_cuenta', cuenta_id=c.id) }}" style="margin:0;"><button type="submit" class="nav-dropdown-item {% if cuenta_actual and c.id == cuenta_actual.id %}active{% endif %}" style="width:100%; text-align:left; background:none; border:0; font:inherit; color:inherit; cursor:pointer;">{{ c.nickname or c.nombre_negocio or ('Cuenta #' ~ c.id) }}</button></form>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-            <nav class="topnav-links">
-                <a href="/dashboard" class="topnav-link {% if active_nav == 'dashboard' %}active{% endif %}" style="text-decoration:none;" id="tour-nav-dashboard"><svg class="icon"><use href="#icon-home"/></svg>Dashboard</a>
-                <div class="nav-dropdown {% if active_nav in ['stock','stock_masivo','despacho','preguntas','calidad','opiniones'] %}active{% endif %}" id="tour-nav-catalogo">
-                    <button class="topnav-link nav-dropdown-toggle" type="button"><svg class="icon"><use href="#icon-grid"/></svg>Catálogo <span class="nav-chevron">▾</span></button>
-                    <div class="nav-dropdown-menu">
-                        <a href="/stock" class="nav-dropdown-item {% if active_nav == 'stock' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-package"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Stock{% if session.get('mas_usado', {}).get('catalogo') == 'stock' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Tu catálogo completo, depósito y FULL en un vistazo</span></span></a>
-                        <a href="/stock_masivo" class="nav-dropdown-item {% if active_nav == 'stock_masivo' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-layers"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Stock Masivo{% if session.get('mas_usado', {}).get('catalogo') == 'stock_masivo' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Editá el depósito de varias publicaciones a la vez</span></span></a>
-                        <a href="/despacho" class="nav-dropdown-item {% if active_nav == 'despacho' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-truck"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Despacho{% if session.get('mas_usado', {}).get('catalogo') == 'despacho' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Lo que hay que embalar y enviar hoy</span></span></a>
-                        <a href="/preguntas" class="nav-dropdown-item {% if active_nav == 'preguntas' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-chat"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Preguntas{% if session.get('mas_usado', {}).get('catalogo') == 'preguntas' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Preguntas sin responder, con respuesta sugerida</span></span></a>
-                        <a href="/calidad" class="nav-dropdown-item {% if active_nav == 'calidad' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-star"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Calidad{% if session.get('mas_usado', {}).get('catalogo') == 'calidad' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Qué mejorarle a cada publicación, según Mercado Libre</span></span></a>
-                        <a href="/opiniones" class="nav-dropdown-item {% if active_nav == 'opiniones' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-users"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Opiniones{% if session.get('mas_usado', {}).get('catalogo') == 'opiniones' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Qué dicen quienes te compraron y qué corregir</span></span></a>
-                    </div>
-                </div>
-                <div class="nav-dropdown {% if active_nav in ['metricas','facturacion','cobros','costos','comparador_logistica','historial_precios','monotributo','ventas_manuales','calculadora','precios','reporte_fiscal'] %}active{% endif %}" id="tour-nav-finanzas">
-                    <button class="topnav-link nav-dropdown-toggle" type="button"><svg class="icon"><use href="#icon-chart"/></svg>Finanzas <span class="nav-chevron">▾</span></button>
-                    <div class="nav-dropdown-menu">
-                        <a href="/metricas" class="nav-dropdown-item {% if active_nav == 'metricas' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-coin"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Ganancia Real{% if session.get('mas_usado', {}).get('finanzas') == 'metricas' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Lo que te queda de verdad, descontando todo</span></span></a>
-                        <a href="/facturacion" class="nav-dropdown-item {% if active_nav == 'facturacion' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-receipt"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Facturación{% if session.get('mas_usado', {}).get('finanzas') == 'facturacion' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Lo que te cobra MeLi, tal cual te lo factura</span></span></a>
-                        <a href="/cobros" class="nav-dropdown-item {% if active_nav == 'cobros' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-calendar"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Cobros{% if session.get('mas_usado', {}).get('finanzas') == 'cobros' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Cuándo te acreditan la plata y cuánta está retenida</span></span></a>
-                        <a href="/costos" class="nav-dropdown-item {% if active_nav == 'costos' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-wallet"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Costos{% if session.get('mas_usado', {}).get('finanzas') == 'costos' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Tus gastos fijos y variables del negocio</span></span></a>
-                        <a href="/ventas_manuales" class="nav-dropdown-item {% if active_nav == 'ventas_manuales' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-edit"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Ventas fuera de MeLi{% if session.get('mas_usado', {}).get('finanzas') == 'ventas_manuales' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Cargá ventas manuales para el cálculo completo</span></span></a>
-                        <a href="/historial_precios" class="nav-dropdown-item {% if active_nav == 'historial_precios' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-trend"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Historial de Precios{% if session.get('mas_usado', {}).get('finanzas') == 'historial_precios' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Cómo cambió el precio de cada publicación</span></span></a>
-                        <a href="/calculadora" class="nav-dropdown-item {% if active_nav == 'calculadora' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-calculator"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Calculadora MeLi{% if session.get('mas_usado', {}).get('finanzas') == 'calculadora' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Cuánto te queda antes de publicar</span></span></a>
-                        <a href="/precios" class="nav-dropdown-item {% if active_nav == 'precios' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-tag"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Precios{% if session.get('mas_usado', {}).get('finanzas') == 'precios' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">El precio mínimo de cada publicación</span></span></a>
-                        <a href="/reporte_fiscal" class="nav-dropdown-item {% if active_nav == 'reporte_fiscal' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-file-text"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Reporte Fiscal{% if session.get('mas_usado', {}).get('finanzas') == 'reporte_fiscal' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Datos ordenados y listos para tu contador</span></span></a>
-                    </div>
-                </div>
-                <div class="nav-dropdown {% if active_nav in ['promociones','tendencias','competencia','embudo_conversion','reputacion','publicidad','logros'] %}active{% endif %}" id="tour-nav-crecimiento">
-                    <button class="topnav-link nav-dropdown-toggle" type="button"><svg class="icon"><use href="#icon-percent"/></svg>Crecimiento<span id="nav-badge-incidencias" class="nav-badge" style="display:none;"></span> <span class="nav-chevron">▾</span></button>
-                    <div class="nav-dropdown-menu">
-                        <a href="/promociones" class="nav-dropdown-item {% if active_nav == 'promociones' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-tag"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Promociones{% if session.get('mas_usado', {}).get('crecimiento') == 'promociones' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Descuentos activos y su impacto real</span></span></a>
-                        <a href="/tendencias" class="nav-dropdown-item {% if active_nav == 'tendencias' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-chart"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Tendencias{% if session.get('mas_usado', {}).get('crecimiento') == 'tendencias' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Qué se busca en tu categoría esta semana</span></span></a>
-                        {% if capacidades.get('catalogo') is not false %}<a href="/competencia" class="nav-dropdown-item {% if active_nav == 'competencia' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-eye"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Espía de Competencia{% if session.get('mas_usado', {}).get('crecimiento') == 'competencia' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Precios y vendedores en un producto de catálogo</span></span></a>{% endif %}
-                        <a href="/embudo_conversion" class="nav-dropdown-item {% if active_nav == 'embudo_conversion' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-percent"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Embudo de Conversión{% if session.get('mas_usado', {}).get('crecimiento') == 'embudo_conversion' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">De visita a venta: dónde perdés gente</span></span></a>
-                        <a href="/reputacion" class="nav-dropdown-item {% if active_nav == 'reputacion' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-star"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Reputación{% if session.get('mas_usado', {}).get('crecimiento') == 'reputacion' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Tu reputación oficial de MeLi, desglosada</span></span></a>
-{% if capacidades.get('ads') is not false %}
-                        <a href="/publicidad" class="nav-dropdown-item {% if active_nav == 'publicidad' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-bolt"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Publicidad{% if session.get('mas_usado', {}).get('crecimiento') == 'publicidad' %}<span class="nav-badge-usado" title="Más usado">★</span>{% endif %}</span><span class="nav-dropdown-item-desc">Qué campañas rinden de verdad</span></span></a>
-{% endif %}
-                        <a href="/logros" class="nav-dropdown-item {% if active_nav == 'logros' %}active{% endif %}"><span class="nav-dropdown-item-icon"><svg class="icon"><use href="#icon-trophy"/></svg></span><span class="nav-dropdown-item-texto"><span class="nav-dropdown-item-nombre">Logros<span id="nav-badge-logros" class="nav-badge" style="display:none;"></span></span><span class="nav-dropdown-item-desc">Misiones y avances de tu cuenta</span></span></a>
-                    </div>
-                </div>
-            </nav>
-        </div>
-        <button class="buscador-central" onclick="abrirComando()" type="button" id="tour-buscador">
-            <svg class="icon" style="width:15px;height:15px;"><use href="#icon-search"/></svg>
-            <span>Buscar en toda la app...</span>
-            <kbd>Ctrl K</kbd>
-        </button>
-        <div class="topnav-zona-der">
-        <!-- Botón menú lateral -->
-        <button type="button" class="btn-menu-lateral" onclick="abrirMenuLateral()" title="Menú" aria-label="Abrir menú lateral">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-        <button type="button" class="btn btn-denim btn-sync-todo" id="btn-sincronizar-todo" onclick="ejecutarSincronizarTodo()" aria-label="Sincronizar todo con Mercado Libre">
-            <svg class="icon" style="width:14px;height:14px;"><use href="#icon-bolt"/></svg><span class="btn-sync-texto">Sincronizar Todo</span>
-        </button>
-        </div>
-    </div>
+    <button type="button" class="btn-icono-barra btn-privacidad" onclick="alternarModoPrivacidad()" title="Ocultar los montos (modo privacidad)" aria-label="Modo privacidad"><svg class="icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#icon-eye"/></svg></button>
+    <button type="button" class="btn btn-denim btn-sync-todo" id="btn-sincronizar-todo" onclick="ejecutarSincronizarTodo()" aria-label="Actualizar con Mercado Libre" title="Trae lo último de Mercado Libre ahora (se actualiza solo cada 4 minutos)">
+        <svg class="icon" style="width:14px;height:14px;" aria-hidden="true"><use href="#icon-refresh"/></svg><span class="btn-sync-texto">Actualizar</span>
+    </button>
+    <button type="button" class="cuenta-btn" onclick="abrirMenuLateral()" aria-label="Abrir el menú de tu cuenta"><span class="cuenta-inicial">{{ _nombre_cuenta[0]|upper }}</span><span class="cuenta-nombre">{{ _nombre_cuenta|title }}</span></button>
 </header>
 
-{% set _grupo_activo = namespace(valor=None) %}
-{% for _g, _datos in nav_grupos.items() %}
-    {% if active_nav in (_datos['paginas'] | map(attribute='nav_key') | list) %}{% set _grupo_activo.valor = _g %}{% endif %}
-{% endfor %}
-{% if _grupo_activo.valor %}
+{% if _seccion_activa and nav_grupos[_seccion_activa].paginas|length > 1 %}
 <div class="subnav-tabs">
-    <div class="subnav-tabs-inner">
-        {% for item in nav_grupos[_grupo_activo.valor]['paginas'] if not item.requiere or capacidades.get(item.requiere) is not false %}
-        <a href="{{ item.href }}" class="subnav-tab {% if active_nav == item.nav_key %}active{% endif %}">
-            {{ item.label }}
-            {% if session.get('mas_usado', {}).get(_grupo_activo.valor) == item.nav_key %}
-            <span class="subnav-tab-badge" title="Tu sección más usada dentro de {{ nav_grupos[_grupo_activo.valor].label }}">MÁS USADO</span>
+    <div class="subnav-tabs-inner" role="tablist" aria-label="{{ nav_grupos[_seccion_activa].label }}">
+        {% for item in nav_grupos[_seccion_activa].paginas if not item.requiere or capacidades.get(item.requiere) is not false %}
+        <a href="{{ item.href }}" class="subnav-tab {% if active_nav == item.nav_key %}active{% endif %}" role="tab">
+            {{ item.label }}{% if item.nav_key == 'logros' %}<span id="nav-badge-logros" class="nav-badge" style="display:none;"></span>{% endif %}
+            {% if session.get('mas_usado', {}).get(_seccion_activa) == item.nav_key %}
+            <span class="subnav-tab-badge" title="La pantalla que más usás dentro de {{ nav_grupos[_seccion_activa].label }}">MÁS USADO</span>
             {% endif %}
         </a>
         {% endfor %}
@@ -193,6 +163,16 @@
 <main class="page-container" id="contenido-principal" tabindex="-1">
     {% block content %}{% endblock %}
 </main>
+</div><!-- /app-main -->
+</div><!-- /app-shell -->
+
+<!-- ── Barra inferior (celular): lo más usado a un toque; "Más" abre todas las secciones ── -->
+<nav class="bottombar" aria-label="Secciones principales">
+    {% for clave in ['inicio', 'dia', 'ventas', 'stock'] %}
+    <a href="{{ nav_grupos[clave].paginas[0].href }}" class="bottombar-item {% if _seccion_activa == clave %}active{% endif %}"><svg class="icon" aria-hidden="true"><use href="#icon-{{ nav_grupos[clave].icono }}"/></svg><span>{{ nav_grupos[clave].label.split(' ')[0] }}</span></a>
+    {% endfor %}
+    <button type="button" class="bottombar-item" onclick="abrirSidebar()"><svg class="icon" aria-hidden="true"><use href="#icon-grid"/></svg><span>Más</span></button>
+</nav>
 
 <div class="command-overlay" id="command-overlay" onclick="if(event.target===this) cerrarComando()">
     <div class="command-modal">
@@ -295,7 +275,7 @@
 <div id="menu-lateral-overlay" class="menu-lateral-overlay" onclick="if(event.target===this) cerrarMenuLateral()">
     <div class="menu-lateral-panel" id="menu-lateral-panel">
         <div class="menu-lateral-header">
-            <span class="menu-lateral-titulo">Menú</span>
+            <span class="menu-lateral-titulo">Mi cuenta</span>
             <button type="button" class="menu-lateral-cerrar" onclick="cerrarMenuLateral()" title="Cerrar" aria-label="Cerrar menú">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -486,8 +466,8 @@ document.addEventListener('keydown', e => {
 // debajo, sin superponerse ni dejar hueco.
 (function () {
     function actualizarAlturaTopnav() {
-        const header = document.querySelector('.topnav');
-        if (header) document.documentElement.style.setProperty('--topnav-height', header.offsetHeight + 'px');
+        const header = document.querySelector('.topbar');
+        if (header) document.documentElement.style.setProperty('--topbar-h', header.offsetHeight + 'px');
     }
     actualizarAlturaTopnav();
     window.addEventListener('resize', actualizarAlturaTopnav);

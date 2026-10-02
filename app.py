@@ -211,7 +211,7 @@ def _vocabulario_de_la_cuenta(usuario_id, cuenta_id):
 
 @app.context_processor
 def _inyectar_nav_grupos():
-    return {"nav_grupos": nav_config.GRUPOS_NAV}
+    return {"nav_grupos": nav_config.GRUPOS_NAV, "nav_seccion_de": nav_config.SECCION_DE_NAV}
 
 
 @app.context_processor
