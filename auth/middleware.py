@@ -72,7 +72,9 @@ def login_requerido(vista):
                 if necesita_plan:
                     if plan_actual == "cancelado":
                         return redirect(url_for("planes_vista"))
-                    if plan_actual == "trial" and trial_termina_en:
+                    # Con la prueba vencida solo se frena el acceso si se puede pagar: en la beta (sin Mercado Pago) bloquear dejaría a la
+                    # persona sin salida, ni siquiera pagando.
+                    if plan_actual == "trial" and trial_termina_en and config.PAGOS_HABILITADOS:
                         if datetime.now(timezone.utc) > trial_termina_en:
                             return redirect(url_for("planes_vista"))
 

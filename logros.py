@@ -11,7 +11,7 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 import analisis_stock
 import embudo_conversion
-from utils import SQL_RECLAMO_AFECTA, corregir_plurales, hoy_argentina, plural
+from utils import SQL_RECLAMO_AFECTA, corregir_plurales, cuenta_usa_talles, hoy_argentina, plural, vocabulario
 import tendencias as tendencias_mod
 import promociones as promociones_mod
 import ia_asistente
@@ -42,6 +42,12 @@ def _rollback_seguro(cursor):
 
 def _detectar_misiones_base(cursor, cuenta_id):
     misiones = []
+    try:
+        usa_talles = cuenta_usa_talles(cursor)
+    except Exception:
+        usa_talles = True
+        _rollback_seguro(cursor)
+    vocab = vocabulario(usa_talles)       # "talle" o "variante" según lo que vende la cuenta: no se le habla de talles a quien vende electrónica
 
     try:
         en_riesgo = analisis_stock.obtener_variantes_en_riesgo(cursor)
@@ -50,8 +56,8 @@ def _detectar_misiones_base(cursor, cuenta_id):
             nivel = "urgente" if urgentes else "importante"
             misiones.append({
                 "id": "stock_critico", "categoria": "stock", "icono": "📦", "prioridad": nivel,
-                "titulo": f"{len(en_riesgo)} talle(s) por quedarse sin stock",
-                "descripcion": f"Al ritmo de venta actual, {len(en_riesgo)} variante(s) se agotan pronto" + (f" — {len(urgentes)} en menos de 2 días." if urgentes else "."),
+                "titulo": f"{plural(len(en_riesgo), vocab['v1'], vocab['vN'])} por quedarse sin stock",
+                "descripcion": f"Al ritmo de venta actual, {'se agota' if len(en_riesgo) == 1 else 'se agotan'} pronto" + (f" — {len(urgentes)} en menos de 2 días." if urgentes else "."),
                 "link": "/stock", "link_texto": "Ver en Stock"
             })
     except Exception as e:
@@ -59,7 +65,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
         _rollback_seguro(cursor)
 
     try:
-        curva_rota = analisis_stock.evaluar_curva_talles(cursor)
+        curva_rota = analisis_stock.evaluar_curva_talles(cursor) if usa_talles else []      # la curva de talles solo existe donde hay talles
         if curva_rota:
             misiones.append({
                 "id": "curva_rota", "categoria": "stock", "icono": "⚖️", "prioridad": "importante",

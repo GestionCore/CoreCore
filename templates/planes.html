@@ -4,7 +4,10 @@
 <div class="planes-hero">
   <h1 class="planes-titulo">Elegí tu plan</h1>
   <p class="planes-subtitulo">Todo lo que necesitás para gestionar tu negocio en Mercado Libre.</p>
-  {% if plan_actual == "trial" and dias_trial is not none %}
+  {% if not pagos_habilitados %}
+  <div class="planes-trial-banner"><strong>Estás en la beta: CoreLux es gratis mientras lo probamos.</strong> Estos son los precios previstos; todavía no se cobra nada y te avisamos con tiempo antes de que cambie.</div>
+  {% endif %}
+  {% if plan_actual == "trial" and dias_trial is not none and pagos_habilitados %}
     {% if dias_trial > 0 %}
     <div class="planes-trial-banner">
       Te quedan <strong>{{ dias_trial }} día{{ "s" if dias_trial != 1 else "" }}</strong> de prueba gratuita.
@@ -44,10 +47,12 @@
     {% if plan_actual == "base" %}
     <div class="plan-badge-activo">Tu plan actual</div>
     {% elif plan_actual in (None, "trial", "cancelado") %}
+    {% if pagos_habilitados %}
     <form action="/suscripcion/iniciar" method="post" class="plan-form">
       <input type="hidden" name="plan" value="base">
       <button type="submit" class="btn-plan">Suscribirme — $40.000/mes</button>
     </form>
+    {% else %}<div class="plan-badge-activo" style="opacity:0.75;">Próximamente</div>{% endif %}
     {% endif %}
   </div>
 
@@ -72,15 +77,19 @@
     {% if plan_actual == "elite" %}
     <div class="plan-badge-activo">Tu plan actual</div>
     {% elif plan_actual in (None, "trial", "cancelado") %}
+    {% if pagos_habilitados %}
     <form action="/suscripcion/iniciar" method="post" class="plan-form">
       <input type="hidden" name="plan" value="elite">
       <button type="submit" class="btn-plan btn-plan-elite">Suscribirme — $99.000/mes</button>
     </form>
+    {% else %}<div class="plan-badge-activo" style="opacity:0.75;">Próximamente</div>{% endif %}
     {% elif plan_actual == "base" %}
+    {% if pagos_habilitados %}
     <form action="/suscripcion/iniciar" method="post" class="plan-form">
       <input type="hidden" name="plan" value="elite">
       <button type="submit" class="btn-plan btn-plan-elite">Mejorar a Elite</button>
     </form>
+    {% else %}<div class="plan-badge-activo" style="opacity:0.75;">Próximamente</div>{% endif %}
     {% endif %}
   </div>
 
@@ -94,7 +103,7 @@
 
 <div class="planes-notas">
   <p>El cobro se procesa a través de <strong>Mercado Pago</strong>. Podés cancelar cuando quieras desde tu panel de suscripción.</p>
-  <p>Prueba gratuita de 14 días incluida para nuevas cuentas — se activa automáticamente al registrarte.</p>
+  {% if pagos_habilitados %}<p>Prueba gratuita de 14 días incluida para nuevas cuentas — se activa automáticamente al registrarte.</p>{% endif %}
 </div>
 
 <style>

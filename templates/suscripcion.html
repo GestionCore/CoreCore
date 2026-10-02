@@ -19,7 +19,9 @@
     <div class="ux-hero-etiqueta">Plan activo</div>
     <div class="ux-hero-numero" style="font-size:clamp(1.8em, 5vw, 2.6em);">{{ nombre_plan }}</div>
 
-    {% if plan == 'trial' and dias_trial is not none %}
+    {% if plan == 'trial' and not pagos_habilitados %}
+    <div class="ux-hero-frase"><b>Estás en la beta: usás CoreLux gratis.</b> Todavía no se cobra nada. Cuando se habiliten los pagos te avisamos con tiempo, y no vas a perder el acceso ni tus datos de golpe.</div>
+    {% elif plan == 'trial' and dias_trial is not none %}
     <div class="ux-hero-frase">
         {% if dias_trial <= 0 %}<b>Tu prueba terminó.</b> Elegí un plan para seguir usando CoreLux.
         {% else %}Te quedan <b>{{ dias_trial }} día{{ 's' if dias_trial != 1 }}</b> de prueba gratuita{% if dias_trial <= 3 %} — <b>conviene elegir un plan ya</b> para no perder el acceso{% endif %}.{% endif %}

@@ -64,7 +64,7 @@
         <div class="despacho-info" onclick="toggleDespacho(this.closest('.despacho-item'), '{{ p.id_orden }}', '{{ p.id_meli }}', '{{ p.id_variante }}')" style="cursor:pointer;">
             <strong>{{ p.modelo }}</strong>
             <div style="margin-top:4px; font-size:0.9em;">
-                {% if p.talle != 'Único' %}<b>Talle {{ p.talle }}</b> · {% endif %}<b>{{ p.cantidad }} u.</b>
+                {% if p.talle != 'Único' %}<b>{{ vocab.V1 }} {{ p.talle }}</b> · {% endif %}<b>{{ p.cantidad }} u.</b>
                 {% if p.comprador_nombre %} · {{ p.comprador_nombre }}{% endif %}
                 {% if p.comprador_nickname %} · <span class="text-muted" title="Usuario de MeLi">@{{ p.comprador_nickname }}</span>{% endif %}
             </div>

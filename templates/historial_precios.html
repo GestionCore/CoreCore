@@ -63,7 +63,7 @@
     </table>
     </div>
     {% if cambios|length > 8 %}
-    <div style="padding:0 16px 16px;"><button type="button" class="btn btn-secondary btn-block" onclick="mostrarMasGenerico(this)">Ver los {{ cambios|length - 8 }} cambios restantes</button></div>
+    <div style="padding:0 16px 16px;"><button type="button" class="btn btn-secondary btn-block" onclick="mostrarMasGenerico(this)">{{ ver_mas(cambios|length - 8, 'cambio', 'cambios', 'los') }}</button></div>
     {% endif %}
 </div>
 {% endif %}

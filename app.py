@@ -31,7 +31,6 @@ import meli_http
 import logistica
 import despacho as despacho_mod
 import stock_masivo as stock_masivo_mod
-import motor_combos
 import promociones as promociones_mod
 import tendencias as tendencias_mod
 import logros as logros_mod
@@ -113,7 +112,7 @@ if _dsn_sentry:
         print(f"[Sentry] ❌ SENTRY_DSN no es válida ({_e}): la app arranca igual, pero sin monitoreo de errores. Debe tener la forma https://<clave>@<algo>.ingest.sentry.io/<número>.")
 
 # ── Flask-Caching ─────────────────────────────────────────────────────────
-from cache import cache, construir_key, leer as cache_leer, guardar as cache_guardar
+from cache import cache, construir_key, leer as cache_leer, guardar as cache_guardar, redis_disponible
 
 _cache_config = {
     "CACHE_TYPE": config.CACHE_TYPE,
@@ -122,7 +121,7 @@ _cache_config = {
 }
 if config.CACHE_TYPE == "RedisCache":
     # Redis no se conecta al iniciar: sin esta comprobación, con Redis inalcanzable (Fly no tiene) cada cache.get() lanzaba ConnectionError
-    if scheduler._redis_disponible():
+    if redis_disponible(config.REDIS_URL):
         _cache_config["CACHE_REDIS_URL"] = config.REDIS_URL
     else:
         print("[Cache] ℹ️  Redis no disponible: se usa una caché en memoria por proceso.")
@@ -144,6 +143,7 @@ app.add_template_filter(utils.numero, "numero")
 app.add_template_filter(utils.fecha_corta, "fecha")
 app.add_template_filter(utils.plural, "plural")
 app.add_template_global(utils.rango_fechas, "rango_fechas")
+app.add_template_global(utils.ver_mas, "ver_mas")
 app.add_template_filter(utils.html_seguro, "ux_seguro")
 
 
@@ -156,6 +156,12 @@ def _inyectar_version_estaticos():
         except OSError:
             return "1"
     return {"static_v": v}
+
+
+@app.context_processor
+def _inyectar_pagos():
+    """¿Se puede pagar? Sin Mercado Pago configurado CoreLux es una beta gratuita (ver config.PAGOS_HABILITADOS). Va aparte: lo necesitan también las páginas de error."""
+    return {"pagos_habilitados": config.PAGOS_HABILITADOS}
 
 
 @app.context_processor
@@ -196,9 +202,7 @@ def _vocabulario_de_la_cuenta(usuario_id, cuenta_id):
     if usa is None:
         try:
             with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
-                cursor = conexion.cursor()
-                cursor.execute("SELECT EXISTS(SELECT 1 FROM productos_variantes WHERE talle IS NOT NULL AND talle NOT IN ('', 'Único'))")
-                usa = bool(cursor.fetchone()[0])
+                usa = utils.cuenta_usa_talles(conexion.cursor())
         except Exception:
             usa = True                      # ante la duda, el vocabulario de siempre
         cache_guardar(clave, usa, timeout=600)
@@ -393,7 +397,7 @@ def exportar_planilla_stock():
     # es-AR usa la coma como separador decimal — con "," como
     # delimitador, un precio "1234,50" en una celda rompe las columnas.
     writer = csv.writer(buffer_texto, delimiter=';')
-    writer.writerow(["ID MeLi", "Título", "Talle", "Color", "Precio", "Estado", "Stock Propio", "Stock FULL"])
+    writer.writerow(["ID MeLi", "Título", _vocabulario_de_la_cuenta(g.usuario_id, g.cuenta_id)["V1"], "Color", "Precio", "Estado", "Stock Propio", "Stock FULL"])
     for id_meli, titulo, talle, color, precio, estado, stock_propio, stock_full in filas:
         writer.writerow([id_meli, titulo, talle, color or "", precio, estado, stock_propio, stock_full])
 
@@ -404,65 +408,6 @@ def exportar_planilla_stock():
         buffer_bytes, mimetype="text/csv", as_attachment=True,
         download_name=f"stock_{hoy_argentina().strftime('%Y-%m-%d')}.csv"
     )
-
-
-@app.route("/actualizar_precios_masivo", methods=["POST"])
-@login_requerido
-@auditar("precios_masivo")
-def actualizar_precios_masivo():
-    """
-    "Aplicar Masivo" en Stock (subir/bajar % el precio de todo el
-    catálogo activo) — nunca había tenido backend; el modal de
-    confirmación ("¿Modificar precios de TODO el catálogo?") se
-    mostraba pero después no pasaba nada.
-    """
-    from urllib.parse import urlencode
-    accion = request.form.get("accion")
-    try:
-        porcentaje = float(request.form.get("porcentaje", ""))
-    except (ValueError, TypeError):
-        return redirect(f"/?{urlencode({'msg': 'Porcentaje inválido.', 'tipo': 'error'})}")
-    if accion not in ("aumentar", "descontar") or porcentaje <= 0:
-        return redirect(f"/?{urlencode({'msg': 'Datos inválidos.', 'tipo': 'error'})}")
-
-    factor = 1 + (porcentaje / 100) if accion == "aumentar" else 1 - (porcentaje / 100)
-
-    try:
-        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
-    except token_manager.CuentaDesconectada:
-        return redirect(url_for("reconectar"))
-
-    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-    actualizados, fallidos = 0, 0
-
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        cursor.execute("SELECT id_meli, precio FROM productos_padre WHERE estado = 'active'")
-        productos = cursor.fetchall()
-
-        for id_meli, precio_actual in productos:
-            nuevo_precio = round(float(precio_actual or 0) * factor, 2)
-            if nuevo_precio <= 0:
-                fallidos += 1
-                continue
-            try:
-                r = meli_http.put(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, json={"price": nuevo_precio})
-                if r.status_code not in (200, 201):
-                    print(f"[PreciosMasivo] ⚠️ MeLi rechazó el precio de {id_meli}: {r.status_code} - {r.text[:200]}")
-                    fallidos += 1
-                    continue
-            except Exception as e:
-                print(f"[PreciosMasivo] ⚠️ Error actualizando {id_meli}: {e}")
-                fallidos += 1
-                continue
-            cursor.execute("UPDATE productos_padre SET precio = %s WHERE id_meli = %s", (nuevo_precio, id_meli))
-            actualizados += 1
-
-    mensaje = "1 publicación actualizada." if actualizados == 1 else f"{actualizados} publicaciones actualizadas."
-    if fallidos:
-        mensaje += f" {fallidos} con error."
-    tipo = "success" if (actualizados and not fallidos) else ("error" if not actualizados else "info")
-    return redirect(f"/?{urlencode({'msg': mensaje, 'tipo': tipo})}")
 
 
 @app.route("/conectar")
@@ -621,7 +566,7 @@ def callback():
             msg = "Esa cuenta de Mercado Libre ya estaba conectada a tu usuario — no se agregó ninguna nueva. Para sumar una cuenta distinta, primero cerrá sesión en mercadolibre.com (o usá una ventana privada) y volvé a intentar."
             return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': 'info'})}")
 
-        _en_segundo_plano("tasks.sync_tasks", "sincronizar_todo_task", sincronizador.sincronizar_todo, usuario_id_actual, cuenta_id)
+        _en_segundo_plano(sincronizador.sincronizar_todo, usuario_id_actual, cuenta_id)
         msg = f"¡Cuenta {datos_meli.get('nickname') or ''} conectada! Ya podés cambiar entre tus cuentas desde el selector del menú.".replace("  ", " ")
         return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': 'success'})}")
 
@@ -652,30 +597,16 @@ def callback():
     # Sync inicial en background: si Celery está disponible lo encola
     # (persistente, con reintentos). Si no, cae a un thread de Python
     # como antes — la app funciona igual, solo sin garantía ante reinicios.
-    _en_segundo_plano("tasks.sync_tasks", "sincronizar_todo_task", sincronizador.sincronizar_todo, usuario_id, cuenta_id)
+    _en_segundo_plano(sincronizador.sincronizar_todo, usuario_id, cuenta_id)
 
     return redirect(url_for("landing"))
 
 
-_celery_disponible = None
-
-
-def _en_segundo_plano(modulo_tarea, nombre_tarea, funcion, *args):
+def _en_segundo_plano(funcion, *args):
     """
-    Corre `funcion(*args)` sin bloquear el pedido: la encola en Celery si hay broker (reintentos, sobrevive a reinicios) y si no, en un hilo.
-    Redis se comprueba UNA vez: sin Redis, cada `.delay()` tardaba ~0,7 s en fallar, y el webhook de Mercado Libre espera una respuesta casi
-    inmediata (si responde lento seguido, MeLi deja de mandar las notificaciones).
+    Corre `funcion(*args)` en un hilo, sin bloquear el pedido. Mercado Libre espera que el webhook responda casi al instante (si tarda seguido deja
+    de mandar notificaciones), así que lo pesado nunca se hace dentro del pedido.
     """
-    global _celery_disponible
-    if _celery_disponible is None:
-        _celery_disponible = scheduler._redis_disponible()
-    if _celery_disponible:
-        try:
-            import importlib
-            getattr(importlib.import_module(modulo_tarea), nombre_tarea).delay(*args)
-            return
-        except Exception as e:
-            print(f"[SegundoPlano] ⚠️ No se pudo encolar {nombre_tarea} en Celery ({e}); se ejecuta en un hilo.")
     import threading
     threading.Thread(target=funcion, args=args, daemon=True).start()
 
@@ -710,7 +641,7 @@ def notificaciones_meli():
         return "", 200
 
     if topic and meli_user_id:
-        _en_segundo_plano("tasks.webhook_tasks", "procesar_webhook_task", sincronizador.procesar_notificacion_webhook, topic, resource, meli_user_id)
+        _en_segundo_plano(sincronizador.procesar_notificacion_webhook, topic, resource, meli_user_id)
 
     return "", 200
 
@@ -1330,7 +1261,6 @@ def promociones_vista():
         cursor.execute("SELECT id_meli, titulo, precio, precio_costo FROM productos_padre WHERE estado = 'active' ORDER BY titulo")
         catalogo_promo = [{"id": r[0], "titulo": r[1], "precio": r[2], "precio_costo": r[3]} for r in cursor.fetchall()]
 
-        combos_sugeridos = motor_combos.obtener_combos_sugeridos(cursor)
         impacto_promociones = promociones_mod.obtener_impacto_promociones(cursor)
         sugerencias_promocion = promociones_mod.sugerir_candidatos_promocion(cursor)
         promociones_por_vencer = promociones_mod.obtener_promociones_por_vencer(cursor)
@@ -1338,7 +1268,7 @@ def promociones_vista():
 
     return render_template(
         "promociones.html", campanias=campanias_vista, hay_cofinanciamiento=hay_cofinanciamiento, con_descuento=con_descuento,
-        catalogo=catalogo_promo, ofertas_relampago=[], combos_sugeridos=combos_sugeridos,
+        catalogo=catalogo_promo, ofertas_relampago=[],
         impacto_promociones=impacto_promociones, sugerencias_promocion=sugerencias_promocion,
         promociones_por_vencer=promociones_por_vencer, cupones=cupones, active_nav="promociones"
     )
@@ -1741,7 +1671,7 @@ def sincronizar_manual():
     """Arranca la sincronización en segundo plano y responde enseguida; el front consulta /api/estado_sincronizacion hasta que termina."""
     if sincronizador.sincronizacion_en_curso(g.cuenta_id):
         return jsonify({"status": "ya_en_curso"})
-    _en_segundo_plano("tasks.sync_tasks", "sincronizar_todo_task", sincronizador.sincronizar_todo, g.usuario_id, g.cuenta_id)
+    _en_segundo_plano(sincronizador.sincronizar_todo, g.usuario_id, g.cuenta_id)
     return jsonify({"status": "iniciado"})
 
 
@@ -3115,39 +3045,6 @@ def api_drawer_preguntas(id_meli):
     return jsonify(preguntas)
 
 
-@app.route("/api/drawer/responder_pregunta", methods=["POST"])
-@login_requerido
-@auditar("pregunta_responder")
-def api_drawer_responder_pregunta():
-    import db
-    data = request.get_json(silent=True) or {}
-    question_id = data.get("question_id")
-    texto = (data.get("texto") or "").strip()
-    if not question_id or not texto:
-        return jsonify({"ok": False, "detalle": "Faltan datos"}), 400
-    try:
-        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
-        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-        r = meli_http.post(
-            "https://api.mercadolibre.com/answers",
-            headers=headers, json={"question_id": question_id, "text": texto},
-        )
-        if r.status_code not in (200, 201):
-            return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}: {r.text[:200]}"})
-    except token_manager.CuentaDesconectada:
-        return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
-    except Exception as e:
-        return jsonify({"ok": False, "detalle": _detalle_error(e)})
-
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        cursor.execute(
-            "UPDATE preguntas_pendientes SET estado = 'respondida', respuesta_sugerida = %s WHERE question_id = %s",
-            (texto, str(question_id)),
-        )
-    return jsonify({"ok": True})
-
-
 @app.route("/api/drawer/optimizar_titulo/<id_meli>", methods=["POST"])
 @login_requerido
 def api_drawer_optimizar_titulo(id_meli):
@@ -3288,6 +3185,45 @@ def api_precios_aplicar():
     return jsonify({"ok": cambiadas > 0, "cambiadas": cambiadas, "fallidas": len(resultados) - cambiadas, "resultados": resultados})
 
 
+@app.route("/api/precios/ajuste/vista_previa", methods=["POST"])
+@login_requerido
+def api_precios_ajuste_vista_previa():
+    """Qué pasaría con cada publicación activa si se sube o baja el precio un porcentaje. No cambia nada."""
+    cuerpo = request.get_json(silent=True) or {}
+    porcentaje = precios_mod.porcentaje_valido(cuerpo.get("porcentaje"))
+    if porcentaje is None:
+        return jsonify({"ok": False, "detalle": f"Poné un porcentaje entre -{precios_mod.LIMITE_AJUSTE_PCT} y {precios_mod.LIMITE_AJUSTE_PCT} (distinto de cero)."}), 400
+    margen, publicidad = precios_mod.parametros(cuerpo.get("margen"), cuerpo.get("publicidad"))
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        datos = precios_mod.obtener_datos(conexion.cursor(), g.cuenta_id, margen, publicidad)
+    return jsonify({"ok": True, "porcentaje": porcentaje, "items": precios_mod.calcular_ajuste(datos, porcentaje)})
+
+
+@app.route("/api/precios/ajuste/aplicar", methods=["POST"])
+@login_requerido
+@auditar("precios_ajuste")
+def api_precios_ajuste_aplicar():
+    """Cambia en Mercado Libre el precio de las publicaciones que la persona revisó y confirmó (ver precios.aplicar_ajuste)."""
+    cuerpo = request.get_json(silent=True) or {}
+    porcentaje = precios_mod.porcentaje_valido(cuerpo.get("porcentaje"))
+    ids = cuerpo.get("ids")
+    if porcentaje is None or not isinstance(ids, list) or not ids:
+        return jsonify({"ok": False, "detalle": "Elegí un porcentaje válido y al menos una publicación."}), 400
+    if not cuerpo.get("confirmado"):
+        return jsonify({"ok": False, "detalle": "Falta la confirmación."}), 400
+    margen, publicidad = precios_mod.parametros(cuerpo.get("margen"), cuerpo.get("publicidad"))
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "detalle": "Tu cuenta de Mercado Libre se desconectó. Volvé a conectarla."}), 401
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        datos = precios_mod.obtener_datos(cursor, g.cuenta_id, margen, publicidad)
+        resultados = precios_mod.aplicar_ajuste(cursor, g.cuenta_id, access_token, porcentaje, ids, datos)
+    cambiadas = sum(1 for r in resultados if r["ok"])
+    return jsonify({"ok": cambiadas > 0, "cambiadas": cambiadas, "fallidas": len(resultados) - cambiadas, "resultados": resultados})
+
+
 @app.route("/cobros")
 @login_requerido
 def cobros_vista():
@@ -3403,22 +3339,25 @@ def api_preguntas_lista():
 @login_requerido
 @auditar("pregunta_responder")
 def api_preguntas_responder():
+    """Responde una pregunta de un comprador (la usan Preguntas y la pestaña Preguntas del panel de una publicación: un solo camino)."""
     data = request.get_json(silent=True) or {}
     question_id = data.get("question_id")
     texto = (data.get("texto") or "").strip()
     if not question_id or not texto:
-        return jsonify({"ok": False, "detalle": "Faltan datos"}), 400
+        return jsonify({"ok": False, "detalle": "Escribí la respuesta antes de enviarla."}), 400
+    if len(texto) > 2000:
+        return jsonify({"ok": False, "detalle": "La respuesta es muy larga: Mercado Libre acepta hasta 2000 caracteres."}), 400
     try:
         access_token = token_manager.asegurar_token_valido(g.cuenta_id)
         headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-        r = meli_http.post(
-            "https://api.mercadolibre.com/answers",
-            headers=headers, json={"question_id": question_id, "text": texto},
-        )
+        r = meli_http.post("https://api.mercadolibre.com/answers", headers=headers, json={"question_id": question_id, "text": texto})
         if r.status_code not in (200, 201):
-            return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}: {r.text[:200]}"})
+            print(f"[Preguntas] MeLi rechazó la respuesta a {question_id}: {r.status_code} {r.text[:200]}")
+            if r.status_code in (400, 404, 409):
+                return jsonify({"ok": False, "detalle": "Esa pregunta ya no se puede responder: puede que ya esté respondida o que el comprador la haya borrado."})
+            return jsonify({"ok": False, "detalle": publicacion_edicion.explicar_error_meli(r.status_code, None)})
     except token_manager.CuentaDesconectada:
-        return jsonify({"ok": False, "detalle": "Cuenta desconectada"})
+        return jsonify({"ok": False, "detalle": "La cuenta de Mercado Libre está desconectada: reconectala primero."})
     except Exception as e:
         return jsonify({"ok": False, "detalle": _detalle_error(e)})
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
@@ -3621,7 +3560,7 @@ def planes_vista():
         "plan_invalido": "No reconocimos ese plan — elegí uno de los de abajo.",
         "mp_error": "No pudimos conectar con Mercado Pago ahora. Probá de nuevo en unos minutos.",
     }
-    return render_template("planes.html", plan_actual=plan_actual, dias_trial=dias_trial, aviso=avisos.get(request.args.get("aviso")))
+    return render_template("planes.html", plan_actual=plan_actual, dias_trial=dias_trial, aviso=avisos.get(request.args.get("aviso")), pagos_habilitados=config.PAGOS_HABILITADOS)
 
 
 @app.route("/suscripcion")
@@ -3803,11 +3742,9 @@ def webhook_mercadopago():
 # de más abajo, así que si esta llamada quedaba ahí adentro, correr la
 # app por gunicorn (como en Railway) dejaba el sync automático sin
 # arrancar NUNCA, en silencio. scheduler.iniciar_scheduler() ya decide
-# solo si usa APScheduler o se lo cede a Celery Beat (según haya Redis
-# disponible), así que es seguro llamarlo siempre, una vez por proceso.
+# cuál proceso corre las tareas (lock de Postgres), así que es seguro
+# llamarlo siempre, una vez por proceso.
 scheduler.iniciar_scheduler()
-# Se resuelve al arrancar para que ni el primer webhook de Mercado Libre pague el chequeo (ver _en_segundo_plano)
-_celery_disponible = scheduler._redis_disponible()
 
 if __name__ == "__main__":
     if config.DEBUG:

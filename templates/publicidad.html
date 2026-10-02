@@ -175,7 +175,7 @@
     <div class="ux-rank-fila ux-{{ estado }} {% if loop.index > 8 %}oculto-mostrar-mas{% endif %}">
         {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
         <div class="ux-rank-info">
-            <div class="ux-rank-titulo"><b>{{ i.modelo }}</b>{% if i.talle %} <span class="ux-pill ux-neutral ux-pill-suave">Talle {{ i.talle }}</span>{% endif %}</div>
+            <div class="ux-rank-titulo"><b>{{ i.modelo }}</b>{% if i.talle and i.talle != 'Único' %} <span class="ux-pill ux-neutral ux-pill-suave">{{ vocab.V1 }} {{ i.talle }}</span>{% endif %}</div>
             <div class="ux-rank-barra"><span style="width:{{ i.pct_barra }}%;"></span></div>
         </div>
         <div class="ux-rank-nums">

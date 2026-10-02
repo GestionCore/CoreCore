@@ -66,7 +66,7 @@
             <b>{% if p %}{{ p.en_uso }} en uso de {{ p.maximo }}{% if p.esperando %} · <span class="text-danger">{{ p.esperando }} esperando</span>{% endif %}{% else %}sin abrir todavía{% endif %}</b></div>
         {% endfor %}
         <div class="ux-dist-fila"><span class="ux-dist-etq" style="width:200px;">Scheduler</span>
-            <b>{% if e.scheduler.redis %}Celery Beat (Redis disponible){% elif e.scheduler.este_proceso %}APScheduler en este proceso{% else %}APScheduler en otro proceso{% endif %}</b></div>
+            <b>{% if e.scheduler.este_proceso %}Las tareas periódicas corren en este proceso{% else %}Las tareas periódicas corren en otro proceso{% endif %}</b></div>
         <div class="text-muted" style="font-size:0.85em; margin-top:10px;">Las conexiones y el scheduler son del proceso que atendió esta página; en producción hay 2 máquinas con 2 procesos cada una (tope en db.POOL_MAX = {{ e.pools.pool_max }}).</div>
     </div>
 </details>

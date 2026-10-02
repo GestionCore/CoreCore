@@ -41,3 +41,14 @@ def test_ninguna_plantilla_concatena_html_con_texto_ya_escapado():
             if patron.search(linea) and not linea.strip().startswith("//"):
                 culpables.append(f"{nombre}:{n}")
     assert not culpables, culpables
+
+
+def test_todo_boton_declara_su_tipo():
+    """Un <button> sin type dentro de un formulario envía el formulario: hay que decir type="button" (o "submit") siempre."""
+    sin_tipo = []
+    for nombre in PLANTILLAS:
+        for n, linea in enumerate(open(os.path.join(RAIZ, "templates", nombre), encoding="utf-8"), 1):
+            for boton in re.findall(r"<button\b[^>]*>", linea):
+                if "type=" not in boton:
+                    sin_tipo.append(f"{nombre}:{n}")
+    assert not sin_tipo, sin_tipo

@@ -31,7 +31,7 @@
         {% if s.thumbnail %}<img src="{{ s.thumbnail }}" class="thumb-sm" alt="" loading="lazy" style="flex-shrink:0;">{% else %}<div class="ux-item-accion-icono"><svg class="icon"><use href="#icon-tag"/></svg></div>{% endif %}
         <div class="ux-item-accion-cuerpo">
             <div class="ux-item-accion-titulo">{{ s.titulo }}</div>
-            <div class="ux-item-accion-detalle"><b>{{ s.capital_inmovilizado|plata }}</b> inmovilizados · {{ s.stock_total }} u. en stock · solo {{ s.unidades_14d }} vendidas en 14 días</div>
+            <div class="ux-item-accion-detalle"><b>{{ s.capital_inmovilizado|plata }}</b> inmovilizados · {{ s.stock_total }} u. en stock · {{ 'ninguna venta' if s.unidades_14d == 0 else ('solo 1 venta' if s.unidades_14d == 1 else 'solo ' ~ s.unidades_14d ~ ' ventas') }} en 14 días</div>
         </div>
         <button type="button" class="btn btn-alerta" data-promocionar="{{ s.id_meli }}">Promocionar</button>
     </div>

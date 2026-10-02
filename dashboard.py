@@ -16,7 +16,7 @@ from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle, SQL_RE
 def _detalle_venta(titulo):
     modelo = limpiar_titulo_modelo(titulo)
     talle = extraer_talle(titulo)
-    return modelo if talle == "Único" else f"{modelo} (Talle {talle})"
+    return modelo if talle == "Único" else f"{modelo} ({talle})"
 
 
 def obtener_ventas_hoy(usuario_id, cuenta_id=None):

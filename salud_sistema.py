@@ -105,7 +105,7 @@ def obtener_estado():
     estado["pools"] = {"usuario": _estadisticas_del_pool(db._pool), "admin": _estadisticas_del_pool(db._pool_admin), "pool_max": db.POOL_MAX}
 
     import scheduler
-    estado["scheduler"] = {"este_proceso": scheduler._scheduler_apscheduler is not None, "redis": scheduler._redis_disponible()}
+    estado["scheduler"] = {"este_proceso": scheduler._scheduler_apscheduler is not None}
 
     faltan, recomendadas = config.validar()
     estado["config"] = {"faltan": faltan, "recomendadas": recomendadas}

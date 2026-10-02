@@ -205,27 +205,8 @@ async function reactivarAplicar() {
     {% endif %}
 </div>
 
-<!-- ── 5. HERRAMIENTAS: acciones que tocan todo el catálogo, aparte y con confirmación ── -->
-<details class="ux-detalle">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--semantic-warning);"><use href="#icon-tag"/></svg> Cambiar los precios de todo el catálogo <span class="ux-detalle-nota">afecta todas las publicaciones activas</span></summary>
-    <div class="ux-detalle-cuerpo">
-        <form action="/actualizar_precios_masivo" method="POST" class="filter-row" onsubmit="confirmarAccion('¿Modificar precios de TODO el catálogo?', this, 'Modificar precios', 'Esta acción afecta todas las publicaciones activas.'); return false;">
-            <div class="field-group">
-                <label class="field-label">Qué querés hacer</label>
-                <select name="accion">
-                    <option value="aumentar">Aumentar precios</option>
-                    <option value="descontar">Bajar precios</option>
-                </select>
-            </div>
-            <div class="field-group" style="max-width:110px;">
-                <label class="field-label">Porcentaje</label>
-                <input type="number" step="0.1" name="porcentaje" placeholder="%" required min="0.1">
-            </div>
-            <button type="submit" class="btn btn-alerta"><svg class="icon"><use href="#icon-tag"/></svg>Aplicar a todo el catálogo</button>
-        </form>
-        <div class="text-muted" style="font-size:0.8em; margin-top:10px;">Te pedimos confirmación antes de tocar nada en Mercado Libre.</div>
-    </div>
-</details>
+<!-- ── 5. Los precios se cambian en Precios (con vista previa y freno por precio mínimo) ── -->
+<div class="text-muted" style="font-size:0.85em; margin-top:6px;">¿Querés subir o bajar los precios de varias publicaciones? Hacelo en <a href="/precios#ajuste"><b>Precios</b></a>: ves qué pasaría con cada una antes de cambiar nada.</div>
 
 <script>
     const CLAVE_FILTRO_ESTADO = 'filtro_estado_stock';

@@ -130,3 +130,26 @@ def test_una_tendencia_solo_esta_cubierta_si_aparece_en_algun_titulo():
     cubiertas = {t["keyword"] for t in tendencias_ if t.get("cubierta")}
     assert cubiertas == {"campera de jean", "medias"}
     assert len(oportunidades) == 5 and not {o["termino"] for o in oportunidades} & cubiertas
+
+
+def test_ver_mas_nunca_dice_las_1_restantes():
+    import utils
+    assert utils.ver_mas(1, "publicación", "publicaciones") == "Ver 1 publicación más"
+    assert utils.ver_mas(5, "publicación", "publicaciones") == "Ver las 5 publicaciones restantes"
+    assert utils.ver_mas(4, "día", "días", "los") == "Ver los 4 días restantes"
+
+
+@pytest.mark.parametrize("visitas, vendidas, global_, esperado", [
+    (0, 0, 1.5, "sin_datos"),
+    (17, 0, 1.5, "pocos_datos"),            # 17 visitas sin venta es lo normal: antes salía en rojo como "revisar ficha"
+    (431, 2, 1.5, "revisar_ficha"),          # 0,46% contra un promedio de 1,5%: muchas visitas y casi nada de ventas
+    (431, 6, 1.5, "funciona_bien"),          # 1,4%
+    (120, 0, 1.5, "revisar_ficha"),
+    (60, 4, 1.5, "poca_visibilidad"),        # vende bien lo poco que se ve
+    (60, 1, 1.5, "pocos_datos"),
+    (200, 1, 0.0, "funciona_bien"),          # sin promedio de referencia, el piso es 0,3%: 0,5% está por encima
+    (500, 1, 0.2, "revisar_ficha"),          # 0,2% < piso 0,3%
+])
+def test_diagnostico_del_embudo(visitas, vendidas, global_, esperado):
+    import embudo_conversion
+    assert embudo_conversion.diagnosticar(visitas, vendidas, global_) == esperado

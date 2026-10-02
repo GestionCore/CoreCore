@@ -1,25 +1,17 @@
 """
-Scheduler de CoreLux.
+Scheduler de CoreLux: las tareas periódicas corren con APScheduler dentro del proceso web, y un lock de Postgres hace que de todos los workers
+y máquinas UNO solo las ejecute (el resto vigila por si ese cae). Es el mismo camino en producción y en la PC: antes, con Redis (solo en la PC del
+dueño) las tareas se delegaban a Celery y el sistema se portaba distinto que en producción.
 
-En producción (con Redis disponible):
-  Las tareas periódicas las maneja Celery Beat — correr en proceso separado:
-      celery -A celery_app beat --loglevel=info
-  Este módulo detecta que Redis está disponible e imprime un mensaje
-  informativo. iniciar_scheduler() es un no-op en ese caso.
-
-En desarrollo (sin Redis):
-  Fallback automático a APScheduler corriendo en un hilo de fondo del mismo
-  proceso de Flask. No es ideal (muere si Flask se reinicia, no escala a
-  múltiples workers) pero suficiente para testear localmente sin instalar Redis.
-
-El API externo (iniciar_scheduler()) no cambia — app.py lo llama igual.
+  · cada 4 minutos: sincronización de todas las cuentas activas
+  · cada hora: verificación de los permisos de Mercado Libre (salud_tokens)
+  · cada 24 horas: relevamiento de competencia y de tendencias
 """
 from apscheduler.schedulers.background import BackgroundScheduler
-import config
 import db
+import salud_tokens
 import sincronizador
 import espia_competencia
-import motor_combos
 import tendencias as tendencias_mod
 from auth import token_manager
 
@@ -63,16 +55,6 @@ def _tiene_el_lock_del_scheduler():
     except Exception as e:
         print(f"[Scheduler] ⚠️ No se pudo chequear el advisory lock ({e}) — arranca igual, por las dudas.")
         return True
-
-
-def _redis_disponible():
-    try:
-        import redis
-        r = redis.from_url(config.REDIS_URL, socket_connect_timeout=1)
-        r.ping()
-        return True
-    except Exception:
-        return False
 
 
 def _obtener_cuentas_activas():
@@ -135,33 +117,17 @@ def _tarea_relevar_tendencias():
             print(f"[Scheduler APScheduler] ❌ Error tendencias cuenta {cuenta_id}: {e}")
 
 
-def _tarea_analizar_combos():
-    for cuenta_id, usuario_id in _obtener_cuentas_activas():
-        try:
-            with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
-                cursor = conexion.cursor()
-                motor_combos.analizar_combos(cursor, cuenta_id)
-        except Exception as e:
-            print(f"[Scheduler APScheduler] ❌ Error combos cuenta {cuenta_id}: {e}")
+def _tarea_verificar_tokens():
+    salud_tokens.verificar_tokens()
 
 
 def iniciar_scheduler():
     """
-    Punto de entrada llamado desde app.py en el bloque __main__.
-    Si Redis está disponible, asume que Celery Beat corre por separado.
-    Si no, arranca APScheduler como fallback.
+    Punto de entrada llamado desde app.py al importarse (una vez por proceso). Solo un proceso tiene el lock y corre las tareas; los demás
+    quedan vigilando por si ese se cae.
     """
     global _scheduler_apscheduler
 
-    if _redis_disponible():
-        print(
-            "[Scheduler] ✅ Redis detectado — tareas periódicas delegadas a Celery Beat.\n"
-            "            Correr en proceso separado:\n"
-            "            celery -A celery_app beat --loglevel=info"
-        )
-        return
-
-    # Fallback a APScheduler
     if _scheduler_apscheduler is not None:
         return
 
@@ -195,16 +161,10 @@ def _arrancar_apscheduler():
     global _scheduler_apscheduler
     if _scheduler_apscheduler is not None:
         return
-    print(
-        "[Scheduler] ⚠️  Redis no disponible — usando APScheduler como fallback.\n"
-        "            Las tareas periódicas corren en este mismo proceso de Flask.\n"
-        "            Para producción: instalá Redis y corré Celery Beat por separado."
-    )
-
     _scheduler_apscheduler = BackgroundScheduler(daemon=True)
     _scheduler_apscheduler.add_job(_tarea_sincronizar_todo, "interval", minutes=4, id="sync_todo", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_relevar_competencia, "interval", hours=24, id="relevar")
     _scheduler_apscheduler.add_job(_tarea_relevar_tendencias, "interval", hours=24, id="relevar_tendencias")
-    _scheduler_apscheduler.add_job(_tarea_analizar_combos, "interval", days=7, id="combos")
+    _scheduler_apscheduler.add_job(_tarea_verificar_tokens, "interval", hours=1, id="verificar_tokens", max_instances=1, coalesce=True)
     _scheduler_apscheduler.start()
     print("[Scheduler] ✅ APScheduler iniciado (sync cada 4 min, para todas las cuentas).")

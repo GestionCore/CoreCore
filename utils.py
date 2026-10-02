@@ -27,6 +27,12 @@ def vocabulario(usa_talles):
     return {"v1": "talle", "vN": "talles", "V1": "Talle", "VN": "Talles"} if usa_talles else {"v1": "variante", "vN": "variantes", "V1": "Variante", "VN": "Variantes"}
 
 
+def cuenta_usa_talles(cursor):
+    """True si alguna variante de la cuenta tiene un talle real (no vacío ni "Único"): decide si se habla de "talles" o de "variantes"."""
+    cursor.execute("SELECT EXISTS(SELECT 1 FROM productos_variantes WHERE talle IS NOT NULL AND talle NOT IN ('', 'Único'))")
+    return bool(cursor.fetchone()[0])
+
+
 def hoy_argentina():
     """La fecha de hoy en Argentina (el servidor corre en UTC: pasadas las 21 h, "hoy" ya sería mañana)."""
     return datetime.now(ARGENTINA).date()
@@ -178,6 +184,12 @@ def corregir_plurales(texto):
         return palabra + sufijo
 
     return _RE_PLURAL_VIEJO.sub(reemplazar, texto)
+
+
+def ver_mas(n, uno, varios, articulo="las"):
+    """Texto del botón de "ver más": 'Ver 1 publicación más' / 'Ver las 5 publicaciones restantes' (antes decía 'Ver las 1 restantes')."""
+    n = int(n)
+    return f"Ver 1 {uno} más" if n == 1 else f"Ver {articulo} {n} {varios} restantes"
 
 
 # ── Fechas para mostrar ───────────────────────────────────────────────────────────────────────────────────────────────────────

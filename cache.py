@@ -26,6 +26,16 @@ cache = Cache()
 log = logging.getLogger("corelux.cache")
 
 
+def redis_disponible(url):
+    """True si hay un Redis al que conectarse (en la PC del dueño sí; Fly no tiene). Redis ya no es necesario para nada: solo acelera la caché."""
+    try:
+        import redis
+        redis.from_url(url, socket_connect_timeout=1).ping()
+        return True
+    except Exception:
+        return False
+
+
 def leer(clave):
     """El valor guardado o None; si la caché falla, None (la página lo calcula como si no hubiera caché)."""
     try:

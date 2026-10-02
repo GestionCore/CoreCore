@@ -1365,7 +1365,7 @@ async function responderPreguntaDrawer(questionId) {
     const texto = document.getElementById('respuesta-' + questionId).value.trim();
     if (!texto) return;
     try {
-        const resp = await fetch('/api/drawer/responder_pregunta', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({question_id: questionId, texto}) });
+        const resp = await fetch('/api/preguntas/responder', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({question_id: questionId, texto}) });
         const data = await resp.json();
         if (data.ok) { mostrarToast('Respuesta publicada en Mercado Libre', 'success'); cargarTabPreguntas(drawerIdActual); }
         else mostrarToast('No se pudo publicar la respuesta', 'error');

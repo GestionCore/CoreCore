@@ -93,6 +93,26 @@ def detectar_publicaciones_zombie(headers, cuenta_id, cursor, dias=60):
 
 
 DIAS_EMBUDO = 28     # = las visitas de 14 días + las de los 14 anteriores que ya guarda enriquecimiento.py (sin llamar a la API por publicación)
+MIN_VISITAS_PARA_JUZGAR = 100     # con menos visitas, "0 ventas" no dice nada: 17 visitas sin venta es lo normal, no una ficha para revisar
+FACTOR_BAJA_CONVERSION = 0.5      # una publicación convierte mal si lo hace a menos de la mitad que el promedio de la propia cuenta
+MIN_CONVERSION_REFERENCIA = 0.3   # piso de ese umbral: aunque el promedio de la cuenta sea muy bajo, por debajo de 0,3% se revisa
+
+
+def diagnosticar(visitas, vendidas, conversion_global):
+    """
+    "sin_datos" | "pocos_datos" | "revisar_ficha" | "poca_visibilidad" | "funciona_bien". Solo se juzga con visitas suficientes y contra el promedio de la propia
+    cuenta (el rubro, el precio y la temporada cambian lo que es una buena conversión: un número fijo para todos no sirve).
+    """
+    if visitas <= 0:
+        return "sin_datos"
+    tasa = vendidas / visitas * 100
+    if visitas >= MIN_VISITAS_PARA_JUZGAR:
+        if tasa < max(conversion_global * FACTOR_BAJA_CONVERSION, MIN_CONVERSION_REFERENCIA):
+            return "revisar_ficha"
+        return "funciona_bien"
+    if vendidas >= 2 and tasa >= max(conversion_global, MIN_CONVERSION_REFERENCIA):
+        return "poca_visibilidad"            # vende bien lo poco que se ve: lo que falta son visitas
+    return "pocos_datos"
 
 
 def contar_preguntas_por_publicacion(headers, seller_id, dias):
@@ -171,6 +191,10 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=DIAS_EMBUDO):
                 except Exception:
                     preguntas_por_item[id_meli] = 0
 
+    total_visitas = sum((visitas_por_item.get(a[0], 0) or 0) for a in activos)
+    total_vendidas = sum(ventas_por_item.get(a[0], 0) for a in activos)
+    conversion_global = (total_vendidas / total_visitas * 100) if total_visitas > 0 else 0.0
+
     resultado = []
     for id_meli, titulo, thumbnail, precio, stock_total, visitas_14d, visitas_previas in activos:
         visitas = visitas_por_item.get(id_meli, 0) or 0
@@ -180,19 +204,13 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=DIAS_EMBUDO):
         preguntas = preguntas_por_item.get(id_meli, 0)
         vendidas = ventas_por_item.get(id_meli, 0)
         tasa_conversion = round((vendidas / visitas) * 100, 2) if visitas > 0 else None
-        if visitas == 0:
-            diagnostico = "sin_datos"
-        elif tasa_conversion is not None and tasa_conversion < 1:
-            diagnostico = "revisar_ficha"
-        elif visitas < 50:
-            diagnostico = "poca_visibilidad"
-        else:
-            diagnostico = "funciona_bien"
+        diagnostico = diagnosticar(visitas, vendidas, conversion_global)
 
         resultado.append({
             "id_meli": id_meli, "titulo": titulo, "visitas": visitas, "preguntas": preguntas,
             "vendidas": vendidas, "tasa_conversion": tasa_conversion, "diagnostico": diagnostico,
             "thumbnail": thumbnail, "precio": float(precio or 0), "stock_total": int(stock_total or 0), "tendencia_visitas": tendencia,
+            "conversion_global": round(conversion_global, 2),
         })
 
     def _prioridad(r):

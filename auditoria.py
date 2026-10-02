@@ -34,6 +34,7 @@ ETIQUETAS = {
     "stock_masivo": "Cambio de stock masivo",
     "publicaciones_reactivar": "Publicaciones reactivadas",
     "precios_guiado": "Precios cambiados al recomendado",
+    "precios_ajuste": "Precios subidos o bajados un porcentaje",
     "descuento_crear": "Descuento creado",
     "descuento_eliminar": "Descuento eliminado",
     "publicacion_editar": "Publicación editada",

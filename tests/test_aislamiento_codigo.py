@@ -11,8 +11,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # (/admin, salud, borrado de cuenta, respaldos, migraciones, rotación de claves) y en token_manager (meli_tokens bloquea al rol normal).
 USAN_ADMIN = {
     "app.py", "db.py", "feedback.py", "legal.py", "normalizar_horas.py", "predeploy.py", "respaldo.py", "rotar_clave.py", "salud_sistema.py", "scheduler.py", "seguridad.py",
-    "sincronizador.py", os.path.join("auth", "registro.py"), os.path.join("auth", "token_manager.py"),
-    os.path.join("tasks", "health_tasks.py"), os.path.join("tasks", "sync_tasks.py"),
+    "salud_tokens.py", "sincronizador.py", os.path.join("auth", "registro.py"), os.path.join("auth", "token_manager.py"),
 }
 
 

@@ -172,3 +172,93 @@ def aplicar(cursor, cuenta_id, access_token, cambios, datos):
         )
         resultados.append({"id": id_meli, "ok": True, "detalle": "Precio actualizado", "precio": item["recomendado"]})
     return resultados
+
+
+# ── Subir o bajar todos los precios un porcentaje ───────────────────────────────────────────────────────────────────────────────────────
+# Antes vivía en Stock: tocaba TODAS las publicaciones activas sin mostrar nada antes, sin freno por precio mínimo (bajar un 20% podía dejar la
+# mitad del catálogo vendiendo a pérdida) y sin anotar el cambio en el Historial de precios. Ahora se ve antes qué pasaría con cada una y las que
+# quedarían por debajo de su precio mínimo no se aplican.
+
+LIMITE_AJUSTE_PCT = 50
+
+
+def porcentaje_valido(valor):
+    """Un porcentaje entre -50 y +50 distinto de cero, o None. Un dedo de más ("200" en vez de "20") no puede arruinar el catálogo."""
+    try:
+        p = float(valor)
+    except (TypeError, ValueError):
+        return None
+    if p != p or p == 0 or abs(p) > LIMITE_AJUSTE_PCT:
+        return None
+    return p
+
+
+def calcular_ajuste(datos, porcentaje):
+    """
+    Qué pasaría con cada publicación activa si su precio cambia `porcentaje` %. `datos` es lo que devuelve obtener_datos.
+    Cada ítem: id_meli, titulo, thumbnail, precio, nuevo, estado ("ok" | "pierde" | "sin_datos" | "sin_cambio"), margen_nuevo (None si no se puede
+    calcular), motivo y aplicable. Con comisión y envío reales el margen se calcula; con solo el costo se juzga contra el costo; sin costo no se sabe.
+    """
+    factor = 1 + porcentaje / 100
+    pub = (datos.get("publicidad_pct") or 0) / 100
+    resultado = []
+    for origen, lista in (("calculada", datos["items"]), ("sin_ventas", datos["sin_ventas"]), ("sin_costo", datos["sin_costo"])):
+        for i in lista:
+            nuevo = float(round(i["precio"] * factor))
+            base = {"id_meli": i["id_meli"], "titulo": i["titulo"], "thumbnail": i.get("thumbnail"), "precio": i["precio"], "nuevo": nuevo,
+                    "margen_nuevo": None, "motivo": "", "estado": "ok"}
+            if nuevo <= 0 or nuevo == i["precio"]:
+                base.update(estado="sin_cambio", motivo="El precio no cambia con ese porcentaje." if nuevo > 0 else "El precio quedaría en cero.")
+            elif origen == "calculada":
+                neto = nuevo * (1 - i["comision_pct"] / 100 - pub) - i["envio"] - i["costo"]
+                base["margen_nuevo"] = round(neto / nuevo * 100, 1)
+                if neto < 0:
+                    base.update(estado="pierde", motivo="Quedaría por debajo de su precio mínimo: cada venta perdería plata.")
+            elif origen == "sin_ventas":
+                if nuevo <= i["costo"]:
+                    base.update(estado="pierde", motivo="Quedaría por debajo de su costo de fabricación.")
+                else:
+                    base["motivo"] = "Sin ventas todavía: no se conoce su comisión y su envío."
+            else:
+                base.update(estado="sin_datos", motivo="Sin costo de fabricación cargado: no se sabe si deja ganancia.")
+            base["aplicable"] = base["estado"] in ("ok", "sin_datos")
+            resultado.append(base)
+    resultado.sort(key=lambda x: ({"pierde": 0, "sin_datos": 1, "ok": 2, "sin_cambio": 3}[x["estado"]], x["titulo"]))
+    return resultado
+
+
+def aplicar_ajuste(cursor, cuenta_id, access_token, porcentaje, ids, datos):
+    """
+    Cambia en Mercado Libre el precio de las publicaciones pedidas. El precio nuevo se recalcula acá, en el servidor, a partir del precio de hoy y
+    el porcentaje: nunca se acepta un precio mandado desde el navegador. Una que falla (o que quedaría por debajo del mínimo) no corta a las demás.
+    Devuelve [{"id", "ok", "detalle", "precio"}].
+    """
+    por_id = {i["id_meli"]: i for i in calcular_ajuste(datos, porcentaje)}
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+    resultados, vistos = [], set()
+    for id_meli in [str(x) for x in (ids or [])][:MAXIMO_POR_PEDIDO]:
+        if id_meli in vistos:
+            continue
+        vistos.add(id_meli)
+        item = por_id.get(id_meli)
+        if item is None:
+            resultados.append({"id": id_meli, "ok": False, "detalle": "Esa publicación ya no está activa. Recargá la página."})
+            continue
+        if not item["aplicable"]:
+            resultados.append({"id": id_meli, "ok": False, "detalle": item["motivo"] or "No se puede aplicar."})
+            continue
+        try:
+            r = meli_http.put(URL_ITEM.format(id_meli), headers=headers, json={"price": item["nuevo"]})
+        except Exception as e:
+            resultados.append({"id": id_meli, "ok": False, "detalle": f"No se pudo conectar con Mercado Libre: {e}"[:160]})
+            continue
+        if r.status_code not in (200, 201):
+            resultados.append({"id": id_meli, "ok": False, "detalle": _mensaje_de_error(r)})
+            continue
+        cursor.execute("UPDATE productos_padre SET precio = %s WHERE cuenta_id = %s AND id_meli = %s", (item["nuevo"], cuenta_id, id_meli))
+        cursor.execute(
+            "INSERT INTO historial_precios (cuenta_id, id_meli, precio_anterior, precio_nuevo, fecha_cambio) VALUES (%s, %s, %s, %s, now())",
+            (cuenta_id, id_meli, item["precio"], item["nuevo"]),
+        )
+        resultados.append({"id": id_meli, "ok": True, "detalle": "Precio actualizado", "precio": item["nuevo"]})
+    return resultados

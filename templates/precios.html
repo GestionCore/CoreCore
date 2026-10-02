@@ -164,6 +164,28 @@
 </details>
 {% endif %}
 
+<!-- ── 6. SUBIR O BAJAR TODO UN PORCENTAJE: se ve qué pasa con cada una antes de cambiar nada ─────────────── -->
+<details class="ux-detalle" id="ajuste">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-percent"/></svg> Subir o bajar varios precios un porcentaje <span class="ux-detalle-nota">ves el resultado antes de cambiar nada</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="ux-precios-ajustes" style="margin-top:0;">
+            <div class="field-group" style="max-width:200px;">
+                <label class="field-label" for="aj-pct"><b>Porcentaje</b> <span class="text-muted" style="font-weight:400;">(+ sube, − baja)</span></label>
+                <input type="number" id="aj-pct" step="0.1" min="-50" max="50" inputmode="decimal" placeholder="Ej: 10 o -5">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="ajusteVerPrevia(this)">Ver qué pasaría</button>
+        </div>
+        <div class="text-muted" style="font-size:0.8em; margin-top:8px;">Hasta 50% en cada vez. Las publicaciones que quedarían por debajo de su precio mínimo no se cambian.</div>
+        <div id="aj-resultado" hidden style="margin-top:18px;">
+            <div class="ux-precios-barra no-imprimir">
+                <span class="text-muted" id="aj-resumen"></span>
+                <button type="button" class="btn btn-primary" id="aj-aplicar" onclick="ajusteAplicar(this)" disabled>Cambiar en Mercado Libre</button>
+            </div>
+            <div id="aj-lista"></div>
+        </div>
+    </div>
+</details>
+
 <div class="text-muted" style="font-size:0.8em; margin-top:18px; line-height:1.5;">Antes de cambiar un precio, confirmalo en la <a href="/calculadora">Calculadora</a>: la comisión y el envío pueden variar con el precio, la logística y las cuotas que ofrezcas.</div>
 {% endif %}
 
@@ -236,6 +258,77 @@
             boton.disabled = false; boton.textContent = 'Reintentar';
             if (typeof mostrarToast === 'function') mostrarToast('Error de red', 'error');
         }
+    };
+})();
+
+(function () {
+    const MARGEN = {{ margen_objetivo }}, PUBLICIDAD = {{ publicidad_pct }};
+    const dinero = n => (window.UX && UX.plata) ? UX.plata(n) : '$' + Math.round(n).toLocaleString('es-AR');
+    let porcentaje = null;
+    const marcadas = () => [...document.querySelectorAll('.aj-check:checked')];
+
+    function actualizarResumen() {
+        const n = marcadas().length;
+        document.getElementById('aj-resumen').textContent = n ? `${n} publicaci${n === 1 ? 'ón elegida' : 'ones elegidas'}` : 'Elegí las publicaciones que querés cambiar.';
+        document.getElementById('aj-aplicar').disabled = n === 0;
+    }
+
+    window.ajusteVerPrevia = async function (boton) {
+        const valor = document.getElementById('aj-pct').value;
+        boton.disabled = true;
+        try {
+            const r = await fetch('/api/precios/ajuste/vista_previa', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ porcentaje: valor, margen: MARGEN, publicidad: PUBLICIDAD }) });
+            const d = await r.json();
+            if (!d.ok) { mostrarToast(d.detalle || 'No se pudo calcular.', 'error'); return; }
+            porcentaje = d.porcentaje;
+            const lista = document.getElementById('aj-lista'); lista.textContent = '';
+            d.items.forEach(i => {
+                const fila = document.createElement('label');
+                fila.className = 'ux-dist-fila'; fila.style.cssText = 'align-items:flex-start; gap:10px; padding:10px 0; border-top:1px solid var(--border-soft); cursor:' + (i.aplicable ? 'pointer' : 'default');
+                const check = document.createElement('input');
+                check.type = 'checkbox'; check.className = 'aj-check'; check.dataset.id = i.id_meli; check.disabled = !i.aplicable;
+                check.checked = i.estado === 'ok'; check.style.cssText = 'width:18px; height:18px; margin-top:3px; flex-shrink:0;';
+                check.onchange = actualizarResumen;
+                const cuerpo = document.createElement('div'); cuerpo.style.cssText = 'flex:1; min-width:0;';
+                const titulo = document.createElement('div'); titulo.textContent = i.titulo; titulo.style.fontWeight = '600';
+                const nota = document.createElement('div'); nota.className = 'text-muted'; nota.style.fontSize = '0.82em';
+                nota.textContent = i.motivo || (i.margen_nuevo !== null ? `Quedaría con ${String(i.margen_nuevo).replace('.', ',')}% de margen.` : '');
+                if (i.estado === 'pierde') nota.style.color = 'var(--danger)';
+                cuerpo.append(titulo); if (nota.textContent) cuerpo.append(nota);
+                const precios = document.createElement('b');
+                precios.style.cssText = 'white-space:nowrap; font-variant-numeric:tabular-nums;';
+                precios.textContent = i.estado === 'sin_cambio' ? dinero(i.precio) : `${dinero(i.precio)} → ${dinero(i.nuevo)}`;
+                fila.append(check, cuerpo, precios);
+                lista.appendChild(fila);
+            });
+            document.getElementById('aj-resultado').hidden = false;
+            actualizarResumen();
+        } catch (e) { mostrarToast('No se pudo calcular. Probá de nuevo.', 'error'); }
+        finally { boton.disabled = false; }
+    };
+
+    window.ajusteAplicar = async function (boton) {
+        const ids = marcadas().map(c => c.dataset.id);
+        if (!ids.length || porcentaje === null) return;
+        const signo = porcentaje > 0 ? 'subir' : 'bajar';
+        if (!(await confirmarDecision(`¿Cambiar el precio de ${ids.length} publicaci${ids.length === 1 ? 'ón' : 'ones'} en Mercado Libre?`, 'Cambiar precios',
+            `Vas a ${signo} ${String(Math.abs(porcentaje)).replace('.', ',')}% cada precio que elegiste. El cambio se hace ahora mismo en tu cuenta.`))) return;
+        boton.disabled = true; boton.textContent = 'Cambiando precios…';
+        let cambiadas = 0, fallidas = 0; const problemas = [];
+        try {
+            for (let i = 0; i < ids.length; i += 50) {          // de a 50: es lo que acepta el servidor por pedido
+                const r = await fetch('/api/precios/ajuste/aplicar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ porcentaje, ids: ids.slice(i, i + 50), margen: MARGEN, publicidad: PUBLICIDAD, confirmado: true }) });
+                const d = await r.json();
+                cambiadas += d.cambiadas || 0; fallidas += d.fallidas || 0;
+                (d.resultados || []).filter(x => !x.ok).forEach(x => problemas.push(x.detalle));
+                if (!d.resultados) problemas.push(d.detalle || 'No se pudo aplicar.');
+            }
+        } catch (e) { problemas.push('Se cortó la conexión.'); }
+        mostrarToast(cambiadas ? `Listo: ${cambiadas} precio${cambiadas === 1 ? '' : 's'} cambiado${cambiadas === 1 ? '' : 's'} en Mercado Libre.` + (fallidas ? ` ${fallidas} no se pudo.` : '') : 'No se cambió ningún precio. ' + (problemas[0] || ''), cambiadas ? 'success' : 'error');
+        if (cambiadas) setTimeout(() => location.reload(), 1600);
+        else { boton.disabled = false; boton.textContent = 'Cambiar en Mercado Libre'; }
     };
 })();
 </script>

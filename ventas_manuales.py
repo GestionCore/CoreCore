@@ -50,7 +50,7 @@ def obtener_catalogo_para_selector(usuario_id, cuenta_id):
 
     return [{
         "id_variante": f["id_variante"], "id_meli": f["id_meli"],
-        "etiqueta": f"{f['titulo']} — Talle {f['talle']}" + (f" / {f['color']}" if f["color"] and f["color"] != "Único" else "") + f" (stock: {f['stock_propio']})",
+        "etiqueta": f"{f['titulo']} — {f['talle']}" + (f" / {f['color']}" if f["color"] and f["color"] != "Único" else "") + f" (stock: {f['stock_propio']})",
         "precio_sugerido": float(f["precio"] or 0),
     } for f in filas]
 

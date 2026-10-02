@@ -79,6 +79,9 @@ TOKEN_ENCRYPTION_KEY_ANTERIOR = os.getenv("TOKEN_ENCRYPTION_KEY_ANTERIOR", "")
 # No confundir con las credenciales de MeLi de cada usuario vendedor.
 # Obtené el access token en https://www.mercadopago.com.ar/developers/panel
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN", "")
+# Sin Mercado Pago configurado no hay forma de pagar: CoreLux funciona como BETA GRATUITA (la prueba no bloquea el acceso al vencer, /planes y
+# /suscripcion lo dicen y el programa de referidos —que no tiene qué descontar— se oculta). Al cargar MP_ACCESS_TOKEN pasa solo a modo de cobro.
+PAGOS_HABILITADOS = bool(MP_ACCESS_TOKEN)
 # Clave secreta de los webhooks de Mercado Pago (panel de la integración > Webhooks > "Clave secreta"): con ella se verifica x-signature.
 MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET", "")
 

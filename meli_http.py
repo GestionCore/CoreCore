@@ -7,7 +7,17 @@ mismo objeto de respuesta, solo que ahora no se rinde al primer tropiezo.
 
 Antes de esto, cada módulo llamaba a requests.get/put directo, así que
 un 429 puntual de MeLi cortaba esa sincronización sin más.
+
+Dos reglas de seguridad:
+  · Un POST NO se reintenta solo: si Mercado Libre lo procesó y falló al responder, repetirlo duplicaría la acción (una respuesta, una promoción).
+    GET, PUT y DELETE sí: repetirlos da el mismo resultado.
+  · Si Mercado Libre sigue rechazando después de los reintentos (429/5xx), TODOS los hilos del proceso esperan un momento antes de insistir
+    (PAUSA_TRAS_RECHAZO) en vez de que cada uno siga golpeando por su cuenta. No hay un límite de pedidos por segundo inventado: las medidas
+    reales muestran que MeLi acepta el ritmo de una sincronización (unos 12 pedidos por segundo por cuenta) sin rechazar.
 """
+import threading
+import time
+
 import requests
 
 try:
@@ -21,7 +31,7 @@ try:
                 total=3,
                 backoff_factor=1.5,  # espera ~1.5s, 3s, 6s entre intentos
                 status_forcelist=[429, 500, 502, 503, 504],
-                allowed_methods=["GET", "PUT", "POST", "DELETE"],
+                allowed_methods=["GET", "PUT", "DELETE"],
                 respect_retry_after_header=True,
             )
         except TypeError:
@@ -31,7 +41,7 @@ try:
                 total=3,
                 backoff_factor=1.5,
                 status_forcelist=[429, 500, 502, 503, 504],
-                method_whitelist=["GET", "PUT", "POST", "DELETE"],
+                method_whitelist=["GET", "PUT", "DELETE"],
             )
         adaptador = HTTPAdapter(max_retries=reintento)
         sesion.mount("https://", adaptador)
@@ -44,21 +54,39 @@ except Exception as e:
     _sesion = requests.Session()
 
 
-def get(url, **kwargs):
+PAUSA_TRAS_RECHAZO = 20.0           # segundos que esperan todos los hilos después de que MeLi rechaza aun con reintentos
+_pausa = {"hasta": 0.0}
+_candado = threading.Lock()
+
+
+def _respetar_pausa():
+    espera = _pausa["hasta"] - time.monotonic()
+    if espera > 0:
+        time.sleep(min(espera, PAUSA_TRAS_RECHAZO))
+
+
+def _pedir(metodo, url, kwargs):
     kwargs.setdefault("timeout", 15)
-    return _sesion.get(url, **kwargs)
+    _respetar_pausa()
+    try:
+        return getattr(_sesion, metodo)(url, **kwargs)
+    except requests.exceptions.RetryError:
+        with _candado:
+            _pausa["hasta"] = time.monotonic() + PAUSA_TRAS_RECHAZO
+        raise
+
+
+def get(url, **kwargs):
+    return _pedir("get", url, kwargs)
 
 
 def put(url, **kwargs):
-    kwargs.setdefault("timeout", 15)
-    return _sesion.put(url, **kwargs)
+    return _pedir("put", url, kwargs)
 
 
 def post(url, **kwargs):
-    kwargs.setdefault("timeout", 15)
-    return _sesion.post(url, **kwargs)
+    return _pedir("post", url, kwargs)
 
 
 def delete(url, **kwargs):
-    kwargs.setdefault("timeout", 15)
-    return _sesion.delete(url, **kwargs)
+    return _pedir("delete", url, kwargs)

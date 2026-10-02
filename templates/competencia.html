@@ -33,7 +33,7 @@
         <div class="ux-rank-valor"><b>{{ i.precio|plata }}</b><div class="text-muted" style="font-size:0.75em;">tu precio</div></div>
     </div>
     {% endfor %}
-    {% if mis_catalogo['items']|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ mis_catalogo['items']|length - 8 }} restantes</button>{% endif %}
+    {% if mis_catalogo['items']|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">{{ ver_mas(mis_catalogo['items']|length - 8, 'publicación', 'publicaciones') }}</button>{% endif %}
 </div>
 {% endif %}
 

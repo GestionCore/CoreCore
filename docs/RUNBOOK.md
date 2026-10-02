@@ -98,7 +98,7 @@ Supabase hace además sus propios respaldos diarios (según el plan). Probar de 
 
 - Cada cuenta se sincroniza cada 4 minutos y por webhook (`/notificaciones_meli`, con un antirrebote de 15 s por cuenta).
 - Sin Redis (el caso actual en Fly) corre APScheduler dentro de un worker, que toma un *advisory lock* de Postgres; si ese worker cae, otro lo toma
-  en menos de un minuto. Con Redis disponible, el reparto lo hace Celery Beat (proceso aparte).
+  en menos de un minuto. El reparto lo hace un lock de Postgres: solo un proceso corre las tareas y los demás vigilan por si cae.
 - **No aparecen ventas nuevas**: ver en los logs `[VentasSync]` y `[Sincronizador]` de esa cuenta. Si dice `CuentaDesconectada`, el usuario revocó
   el permiso o cambió la clave de Mercado Libre: tiene que volver a conectar (`/reconectar`).
 - Forzar un sync de una cuenta desde una consola con el `.env` local: `python -c "import sincronizador; sincronizador.sincronizar_todo(<usuario_id>, <cuenta_id>)"`.
