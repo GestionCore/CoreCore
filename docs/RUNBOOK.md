@@ -21,6 +21,9 @@ fly deploy
 
 - Antes de arrancar la versión nueva corre `python migrate.py` (`release_command`): aplica las migraciones pendientes y, si una falla, **el
   deploy se frena** y la versión vieja sigue sirviendo. Las migraciones son idempotentes.
+- **Antes de desplegar: `python predeploy.py`** (lint, pruebas, pruebas sin Redis, recorrido de las ~80 pantallas con las condiciones de Fly y migraciones
+  pendientes; unos 2 minutos, no escribe nada). Con `--rapido` salta el recorrido. Existe porque Fly no tiene Redis y esta PC sí: un error que solo aparece
+  sin Redis pasa todas las pruebas locales y rompería todas las páginas en producción.
 - Hacer deploy solo con el CI en verde (`ruff` + `pytest`).
 - Después del deploy: abrir `/healthz/db`, entrar a la app y mirar `fly logs -a corecore` un par de minutos.
 
