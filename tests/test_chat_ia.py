@@ -16,7 +16,8 @@ def test_los_talles_se_suman_en_un_solo_modelo_y_se_ordena_por_facturado():
 
 
 def test_el_top_tiene_tope():
-    filas = [(f"Producto {i}", 1, 100 + i) for i in range(20)]
+    nombres = ["Alfa", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa"]
+    filas = [(f"Producto {n}", 1, 100 + i) for i, n in enumerate(nombres)]
     assert len(chat_ia._consolidar_por_modelo(filas, limite=5)) == 5
 
 
