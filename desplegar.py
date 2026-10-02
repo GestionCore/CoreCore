@@ -80,13 +80,23 @@ def verificar_git():
     return local[:12]
 
 
+class _SinRedirecciones(urllib.request.HTTPRedirectHandler):
+    """urllib sigue las redirecciones solo: /dashboard sin sesión (302 al inicio) terminaba en un 200 y se marcaba como falla."""
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+_abridor = urllib.request.build_opener(_SinRedirecciones)
+
+
 def pedir(ruta):
+    """(código, cuerpo) SIN seguir redirecciones; en un 3xx el cuerpo es el destino (Location)."""
     req = urllib.request.Request(URL + ruta, headers={"User-Agent": "corelux-desplegar"})
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with _abridor.open(req, timeout=15) as r:
             return r.status, r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
-        return e.code, ""
+        return e.code, (e.headers.get("Location") or "") if 300 <= e.code < 400 else ""
     except Exception as e:
         return 0, str(e)
 
@@ -116,10 +126,11 @@ def probar_rutas():
                  ("/dashboard", (302,))]          # sin sesión, una pantalla protegida tiene que redirigir al ingreso (no dar error)
     ok = True
     for ruta, validos in esperadas:
-        codigo, _ = pedir(ruta)
+        codigo, cuerpo = pedir(ruta)
         bien = codigo in validos
         ok &= bien
-        print(f"  {'✅' if bien else '❌'} {ruta} → {codigo}")
+        destino = f" ({cuerpo})" if 300 <= codigo < 400 and cuerpo else ""
+        print(f"  {'✅' if bien else '❌'} {ruta} → {codigo}{destino}")
     return ok
 
 
