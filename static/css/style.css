@@ -924,7 +924,7 @@ body.modo-despacho-limpio { padding-top: 20px; }
 }
 
 /* ---------- "Mostrar más" genérico ---------- */
-.oculto-mostrar-mas { display: none; }
+.oculto-mostrar-mas { display: none !important; }   /* !important: ux.css se carga después y le ponía display:flex a las filas del ranking de Publicidad ("Ver las 14 restantes" no ocultaba nada) */
 
 /* ---------- Checklist "Completá tu perfil" (Dashboard) ---------- */
 .checklist-barra { height: 8px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; flex: 1; }
