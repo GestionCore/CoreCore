@@ -6,6 +6,7 @@ que lo consultamos en vez de asumir un horario fijo para todos.
 import time
 import meli_http
 from datetime import datetime
+from utils import ARGENTINA
 
 DIAS_SEMANA_EN = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
@@ -36,7 +37,7 @@ def obtener_horario_corte_hoy(access_token, user_id, logistic_type="drop_off"):
             return None
 
         data = resp.json()
-        dia_hoy = DIAS_SEMANA_EN[datetime.now().weekday()]
+        dia_hoy = DIAS_SEMANA_EN[datetime.now(ARGENTINA).weekday()]
         info_dia = data.get("schedule", {}).get(dia_hoy, {})
 
         if not info_dia.get("work"):

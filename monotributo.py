@@ -21,6 +21,7 @@ como corresponde para algo con implicancia fiscal real.
 """
 from datetime import datetime, timedelta
 import db
+from utils import ARGENTINA
 
 ESCALAS_VIGENTES_DESDE = "2026-08-01"
 
@@ -66,7 +67,7 @@ def _proxima_ventana_recategorizacion(hoy):
 
 
 def evaluar_categoria(usuario_id, cuenta_id):
-    hoy = datetime.now()
+    hoy = datetime.now(ARGENTINA).replace(tzinfo=None)      # hora argentina; sin zona para poder comparar con las fechas de recategorización
     hace_12_meses = (hoy - timedelta(days=365)).strftime("%Y-%m-%d")
     hoy_str = hoy.strftime("%Y-%m-%d")
     hace_3_meses = (hoy - timedelta(days=90)).strftime("%Y-%m-%d")

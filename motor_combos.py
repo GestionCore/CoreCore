@@ -8,14 +8,15 @@ Combos sugeridos — portado de Santi Mens. Dos ajustes reales:
    en 01_schema_multitenant.sql en vez de agregar una migración para
    esto todavía.
 """
-from datetime import datetime, timedelta
+from datetime import timedelta
 from itertools import combinations
+from utils import hoy_argentina
 
 UMBRAL_MINIMO_VECES = 3
 
 
 def analizar_combos(cursor, cuenta_id):
-    fecha_desde = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+    fecha_desde = (hoy_argentina() - timedelta(days=90)).strftime("%Y-%m-%d")
     cursor.execute("""
         SELECT id_orden, id_meli FROM ventas
         WHERE fecha_venta >= %s

@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime
 from psycopg.rows import dict_row
 import db
-from utils import formatear_moneda
+from utils import formatear_moneda, ARGENTINA
 
 
 def obtener_catalogo_para_selector(usuario_id, cuenta_id):
@@ -61,7 +61,7 @@ def registrar_venta_manual(usuario_id, cuenta_id, id_variante, cantidad, precio_
             return False, "Esa variante no pertenece a tu catálogo."
 
         id_orden_manual = f"MANUAL-{uuid.uuid4().hex[:12]}"
-        ahora = datetime.now()
+        ahora = datetime.now(ARGENTINA)       # la hora de la venta es la argentina, no la del servidor (UTC)
         cursor.execute("""
             INSERT INTO ventas (cuenta_id, id_orden, id_meli, id_variante, titulo, cantidad, precio_venta,
                                  cargo_venta, costo_envio, fecha_venta, hora_venta, despachado,

@@ -11,7 +11,7 @@ Postgres multi-tenant. Los cambios reales son mínimos gracias a RLS:
 """
 from datetime import datetime, timedelta
 import db
-from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle
+from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle, ARGENTINA
 
 
 def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
@@ -39,7 +39,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
         """)
         items_db = cursor.fetchall()
 
-        hoy_dt = datetime.now()
+        hoy_dt = datetime.now(ARGENTINA)
         dias_ventana = [(hoy_dt - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
         fecha_desde_spark = dias_ventana[0]
         cursor.execute("""

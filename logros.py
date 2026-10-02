@@ -11,7 +11,7 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 import analisis_stock
 import embudo_conversion
-from utils import SQL_RECLAMO_AFECTA
+from utils import SQL_RECLAMO_AFECTA, hoy_argentina
 import tendencias as tendencias_mod
 import promociones as promociones_mod
 import ia_asistente
@@ -129,9 +129,9 @@ def _detectar_misiones_base(cursor, cuenta_id):
         print(f"[Logros] ⚠️ Error detectando canibalismo: {e}")
         _rollback_seguro(cursor)
 
-    hoy = datetime.now().strftime("%Y-%m-%d")
-    hace_7 = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-    hace_14 = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+    hoy = hoy_argentina().strftime("%Y-%m-%d")
+    hace_7 = (hoy_argentina() - timedelta(days=7)).strftime("%Y-%m-%d")
+    hace_14 = (hoy_argentina() - timedelta(days=14)).strftime("%Y-%m-%d")
     cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (hace_7, hoy))
     semana_actual = float(cursor.fetchone()[0] or 0.0)
     cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (hace_14, hace_7))
@@ -196,7 +196,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
 
 
 def actualizar_historial_y_marcar_resueltas(cursor, cuenta_id, misiones_actuales):
-    hoy = datetime.now().strftime("%Y-%m-%d")
+    hoy = hoy_argentina().strftime("%Y-%m-%d")
     ids_actuales = {m["id"] for m in misiones_actuales}
 
     cursor.execute("SELECT mision_id FROM logros_historial WHERE cuenta_id = %s AND resuelta = false", (cuenta_id,))

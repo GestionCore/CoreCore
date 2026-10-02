@@ -65,7 +65,7 @@ import scheduler
 import ventas_manuales
 import pagos
 import utils
-from utils import formatear_moneda, formatear_moneda_entera, SQL_RECLAMO_AFECTA
+from utils import formatear_moneda, formatear_moneda_entera, SQL_RECLAMO_AFECTA, hoy_argentina, ARGENTINA
 from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__)
@@ -173,7 +173,7 @@ def _inyectar_nav_grupos():
 
 @app.context_processor
 def _inyectar_anio_actual():
-    return {"anio_actual": datetime.now().year}
+    return {"anio_actual": hoy_argentina().year}
 
 
 @app.after_request
@@ -361,7 +361,7 @@ def exportar_planilla_stock():
     buffer_bytes = BytesIO(buffer_texto.getvalue().encode("utf-8-sig"))
     return send_file(
         buffer_bytes, mimetype="text/csv", as_attachment=True,
-        download_name=f"stock_{datetime.now().strftime('%Y-%m-%d')}.csv"
+        download_name=f"stock_{hoy_argentina().strftime('%Y-%m-%d')}.csv"
     )
 
 
@@ -913,7 +913,7 @@ def api_dashboard_ganancia_dia_vs_promedio():
     except token_manager.CuentaDesconectada:
         access_token = None
 
-    hoy = datetime.now()
+    hoy = datetime.now(ARGENTINA)
     hoy_str = hoy.strftime("%Y-%m-%d")
     desde_str = (hoy - timedelta(days=13)).strftime("%Y-%m-%d")  # 14 días incluyendo hoy
 
@@ -975,8 +975,8 @@ def api_dashboard_ganancia_dia_vs_promedio():
 @app.route("/api/dashboard/top_productos")
 @login_requerido
 def api_dashboard_top_productos():
-    from datetime import date, timedelta
-    desde = (date.today() - timedelta(days=30)).isoformat()
+    from datetime import timedelta
+    desde = (hoy_argentina() - timedelta(days=30)).isoformat()
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
@@ -1071,8 +1071,8 @@ def metricas_vista():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    fecha_hasta = request.args.get("fecha_hasta") or datetime.now().strftime("%Y-%m-%d")
-    fecha_desde = request.args.get("fecha_desde") or (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    fecha_hasta = request.args.get("fecha_hasta") or hoy_argentina().strftime("%Y-%m-%d")
+    fecha_desde = request.args.get("fecha_desde") or (hoy_argentina() - timedelta(days=30)).strftime("%Y-%m-%d")
 
     datos = metricas_mod.calcular_ganancia_real(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
 
@@ -1226,8 +1226,8 @@ def metricas_exportar_excel():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    fecha_hasta = request.args.get("fecha_hasta") or datetime.now().strftime("%Y-%m-%d")
-    fecha_desde = request.args.get("fecha_desde") or (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    fecha_hasta = request.args.get("fecha_hasta") or hoy_argentina().strftime("%Y-%m-%d")
+    fecha_desde = request.args.get("fecha_desde") or (hoy_argentina() - timedelta(days=30)).strftime("%Y-%m-%d")
     datos = metricas_mod.calcular_ganancia_real(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
     buffer = metricas_mod.generar_excel_balance(datos, fecha_desde, fecha_hasta)
 
@@ -1645,8 +1645,8 @@ def comparador_logistica_vista():
     except token_manager.CuentaDesconectada:
         access_token = None
 
-    fecha_hasta = request.args.get("fecha_hasta") or datetime.now().strftime("%Y-%m-%d")
-    fecha_desde = request.args.get("fecha_desde") or (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    fecha_hasta = request.args.get("fecha_hasta") or hoy_argentina().strftime("%Y-%m-%d")
+    fecha_desde = request.args.get("fecha_desde") or (hoy_argentina() - timedelta(days=30)).strftime("%Y-%m-%d")
 
     resultado, cantidad_cargos_almacenamiento = comparador_logistica_mod.calcular_comparacion(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
 
@@ -1664,8 +1664,8 @@ def publicidad_vista():
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
 
-    fecha_hasta = request.args.get("fecha_hasta") or datetime.now().strftime("%Y-%m-%d")
-    fecha_desde = request.args.get("fecha_desde") or (datetime.now() - timedelta(days=13)).strftime("%Y-%m-%d")
+    fecha_hasta = request.args.get("fecha_hasta") or hoy_argentina().strftime("%Y-%m-%d")
+    fecha_desde = request.args.get("fecha_desde") or (hoy_argentina() - timedelta(days=13)).strftime("%Y-%m-%d")
 
     datos = publicidad_mod.calcular_datos_publicidad(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
     if datos is None:
@@ -2091,8 +2091,8 @@ def historial_precios_vista():
 @app.route("/costos")
 @login_requerido
 def costos_vista():
-    fecha_hasta = request.args.get("fecha_hasta") or datetime.now().strftime("%Y-%m-%d")
-    fecha_desde = request.args.get("fecha_desde") or datetime.now().replace(day=1).strftime("%Y-%m-%d")
+    fecha_hasta = request.args.get("fecha_hasta") or hoy_argentina().strftime("%Y-%m-%d")
+    fecha_desde = request.args.get("fecha_desde") or hoy_argentina().replace(day=1).strftime("%Y-%m-%d")
     gastos, stats, productos = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta, g.cuenta_id)
     # Los talles de un mismo modelo se cargan juntos. Primero los modelos activos con talles sin costo (lo urgente), después el resto.
     grupos = {}
@@ -2210,7 +2210,7 @@ def ventas_manuales_vista():
     recientes = ventas_manuales.obtener_ventas_manuales_recientes(g.usuario_id, g.cuenta_id)
     return render_template(
         "ventas_manuales.html", catalogo=catalogo, ventas=recientes,
-        hoy=datetime.now().strftime("%Y-%m-%d"), active_nav="ventas_manuales"
+        hoy=hoy_argentina().strftime("%Y-%m-%d"), active_nav="ventas_manuales"
     )
 
 
@@ -2229,7 +2229,7 @@ def ventas_manuales_agregar():
             "ventas_manuales.html",
             catalogo=ventas_manuales.obtener_catalogo_para_selector(g.usuario_id, g.cuenta_id),
             ventas=ventas_manuales.obtener_ventas_manuales_recientes(g.usuario_id, g.cuenta_id),
-            hoy=datetime.now().strftime("%Y-%m-%d"), active_nav="ventas_manuales", error=error
+            hoy=hoy_argentina().strftime("%Y-%m-%d"), active_nav="ventas_manuales", error=error
         ), 400
     return redirect(url_for("ventas_manuales_vista"))
 
@@ -2250,7 +2250,7 @@ def agregar_gasto():
     concepto = request.form.get("concepto", "").strip()
     categoria = request.form.get("categoria")
     monto = float(request.form.get("monto", 0.0))
-    fecha = request.form.get("fecha") or datetime.now().strftime("%Y-%m-%d")
+    fecha = request.form.get("fecha") or hoy_argentina().strftime("%Y-%m-%d")
     if concepto and monto > 0:
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
@@ -2310,7 +2310,7 @@ def eliminar_gasto(id_gasto):
 @login_requerido
 def despacho_vista():
     import db
-    fecha = request.args.get("fecha") or datetime.now().strftime("%Y-%m-%d")
+    fecha = request.args.get("fecha") or hoy_argentina().strftime("%Y-%m-%d")
 
     hora_corte = 11
     flex_habilitado = False
@@ -2363,7 +2363,7 @@ def despacho_etiquetas_pdf():
     nada acá.
     """
     from io import BytesIO
-    fecha = request.args.get("fecha") or datetime.now().strftime("%Y-%m-%d")
+    fecha = request.args.get("fecha") or hoy_argentina().strftime("%Y-%m-%d")
     try:
         access_token = token_manager.asegurar_token_valido(g.cuenta_id)
     except token_manager.CuentaDesconectada:
@@ -2757,7 +2757,7 @@ def calculadora_vista():
 @login_requerido
 def reporte_fiscal_vista():
     import reporte_fiscal as rf
-    anio_actual = datetime.now().year
+    anio_actual = hoy_argentina().year
     anio_seleccionado = request.args.get("anio", anio_actual, type=int)
     if not 2000 <= anio_seleccionado <= anio_actual + 1:
         anio_seleccionado = anio_actual
@@ -2800,8 +2800,8 @@ def reporte_fiscal_vista():
 @login_requerido
 def reporte_fiscal_exportar():
     import reporte_fiscal as rf
-    anio = request.args.get("anio", datetime.now().year, type=int)
-    if not 2000 <= anio <= datetime.now().year + 1:
+    anio = request.args.get("anio", hoy_argentina().year, type=int)
+    if not 2000 <= anio <= hoy_argentina().year + 1:
         return jsonify({"ok": False, "detalle": "Año inválido."}), 400
     meses = rf.calcular_reporte_anual(g.usuario_id, anio, g.cuenta_id)
     buf = rf.generar_excel_fiscal(meses, anio)
@@ -2820,7 +2820,7 @@ def reporte_fiscal_detalle():
     import reporte_fiscal as rf
     anio = request.args.get("anio", type=int)
     mes = request.args.get("mes", type=int)
-    if not anio or not mes or not 2000 <= anio <= datetime.now().year + 1 or not 1 <= mes <= 12:
+    if not anio or not mes or not 2000 <= anio <= hoy_argentina().year + 1 or not 1 <= mes <= 12:
         return jsonify({"ok": False, "detalle": "Año o mes inválido."}), 400
     buf = rf.generar_excel_detalle(rf.detalle_del_mes(g.usuario_id, anio, mes, g.cuenta_id), anio, mes)
     return send_file(
@@ -3083,7 +3083,7 @@ def api_drawer_optimizar_titulo(id_meli):
 def api_drawer_salud(id_meli):
     """Score de salud por publicación individual (distinto al score global de cuenta)."""
     import db
-    from datetime import datetime, timedelta
+    from datetime import timedelta
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -3128,7 +3128,7 @@ def api_drawer_salud(id_meli):
             )
 
         # Sin ventas en los últimos 30 días
-        hace_30 = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+        hace_30 = (hoy_argentina() - timedelta(days=30)).strftime("%Y-%m-%d")
         cursor.execute(
             "SELECT COALESCE(SUM(cantidad), 0) FROM ventas WHERE id_meli = %s AND fecha_venta >= %s",
             (id_meli, hace_30),

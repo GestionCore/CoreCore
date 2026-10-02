@@ -1,11 +1,11 @@
 """Resumen de período estructurado — portado de Santi Mens (solo la parte de datos, sin el texto libre de IA que no se usa en el widget del dashboard)."""
 from datetime import datetime, timedelta
 import analisis_stock
-from utils import formatear_moneda, SQL_RECLAMO_AFECTA
+from utils import formatear_moneda, SQL_RECLAMO_AFECTA, ARGENTINA
 
 
 def generar_resumen_periodo(cursor, dias=7):
-    hoy = datetime.now()
+    hoy = datetime.now(ARGENTINA)
     hoy_str = hoy.strftime("%Y-%m-%d")
     ayer_str = (hoy - timedelta(days=1)).strftime("%Y-%m-%d")
 

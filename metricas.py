@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 import db
 import ads
-from utils import formatear_moneda, formatear_estado_incidencia
+from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina
 
 _NOMBRES_MES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
@@ -26,7 +26,7 @@ def obtener_evolucion_mensual(usuario_id, cuenta_id, access_token, meses=6):
     agrupada por mes, y Publicidad usa el gasto total de la cuenta por
     mes (una llamada liviana a Ads por mes, no por item).
     """
-    hoy = date.today()
+    hoy = hoy_argentina()
     inicios_mes = []
     cursor_mes = hoy.replace(day=1)
     for _ in range(meses):

@@ -19,6 +19,7 @@ import time
 import meli_http
 import concurrent.futures
 from datetime import datetime, timedelta
+from utils import hoy_argentina
 
 _advertiser_cache = {}
 _costos_cache = {}
@@ -178,7 +179,7 @@ def obtener_gasto_ads_total_periodo(access_token, advertiser_id, fecha_desde, fe
     """
     from datetime import date, timedelta
     try:
-        if date.fromisoformat(str(fecha_desde)[:10]) < date.today() - timedelta(days=DIAS_HISTORIA_ADS):
+        if date.fromisoformat(str(fecha_desde)[:10]) < hoy_argentina() - timedelta(days=DIAS_HISTORIA_ADS):
             return None
     except ValueError:
         return None

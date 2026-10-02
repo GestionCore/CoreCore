@@ -1,7 +1,7 @@
 """Score de Salud de Cuenta — portado de Santi Mens."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 import analisis_stock
-from utils import SQL_RECLAMO_AFECTA
+from utils import SQL_RECLAMO_AFECTA, hoy_argentina
 
 
 def calcular_score_salud(cursor):
@@ -44,9 +44,9 @@ def calcular_score_salud(cursor):
     except Exception as e:
         print(f"[Salud] ⚠️ No se pudo evaluar la curva de talles: {e}")
 
-    hoy = datetime.now().strftime("%Y-%m-%d")
-    hace_7 = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-    hace_14 = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+    hoy = hoy_argentina().strftime("%Y-%m-%d")
+    hace_7 = (hoy_argentina() - timedelta(days=7)).strftime("%Y-%m-%d")
+    hace_14 = (hoy_argentina() - timedelta(days=14)).strftime("%Y-%m-%d")
 
     cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (hace_7, hoy))
     ventas_ultima_semana = float(cursor.fetchone()[0] or 0.0)

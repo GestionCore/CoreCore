@@ -8,6 +8,7 @@ Promociones — portado de Santi Mens. Cambios reales (no cosméticos):
 """
 import meli_http
 from datetime import datetime, timedelta
+from utils import hoy_argentina
 
 APP_VERSION = "v2"
 
@@ -20,8 +21,8 @@ def _a_fecha(valor):
 
 
 def registrar_inicio_promocion(cursor, cuenta_id, id_meli, titulo, precio_original, precio_promo, fecha_fin_planeada=None):
-    hoy = datetime.now().strftime("%Y-%m-%d")
-    hace_7 = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+    hoy = hoy_argentina().strftime("%Y-%m-%d")
+    hace_7 = (hoy_argentina() - timedelta(days=7)).strftime("%Y-%m-%d")
     cursor.execute("SELECT COALESCE(SUM(cantidad),0) FROM ventas WHERE id_meli = %s AND fecha_venta BETWEEN %s AND %s", (id_meli, hace_7, hoy))
     unidades_previas = cursor.fetchone()[0] or 0
     promedio_diario_previo = round(unidades_previas / 7, 2)
@@ -33,8 +34,8 @@ def registrar_inicio_promocion(cursor, cuenta_id, id_meli, titulo, precio_origin
 
 
 def obtener_promociones_por_vencer(cursor, dias_aviso=2):
-    hoy = datetime.now().strftime("%Y-%m-%d")
-    limite = (datetime.now() + timedelta(days=dias_aviso)).strftime("%Y-%m-%d")
+    hoy = hoy_argentina().strftime("%Y-%m-%d")
+    limite = (hoy_argentina() + timedelta(days=dias_aviso)).strftime("%Y-%m-%d")
     cursor.execute("""
         SELECT id_meli, titulo, fecha_fin_planeada FROM historial_promociones
         WHERE activo = true AND fecha_fin_planeada IS NOT NULL AND fecha_fin_planeada BETWEEN %s AND %s
@@ -43,7 +44,7 @@ def obtener_promociones_por_vencer(cursor, dias_aviso=2):
 
 
 def cerrar_promocion_activa(cursor, id_meli):
-    hoy = datetime.now().strftime("%Y-%m-%d")
+    hoy = hoy_argentina().strftime("%Y-%m-%d")
     cursor.execute("UPDATE historial_promociones SET activo = false, fecha_fin = %s WHERE id_meli = %s AND activo = true", (hoy, id_meli))
 
 
@@ -55,7 +56,7 @@ def obtener_impacto_promociones(cursor):
         ORDER BY h.fecha_inicio DESC LIMIT 30
     """)
     filas = cursor.fetchall()
-    hoy = datetime.now().date()
+    hoy = hoy_argentina()
 
     resultados = []
     for id_hist, id_meli, titulo, precio_orig, precio_promo, fecha_inicio, fecha_fin, promedio_previo, activo, thumbnail in filas:
@@ -82,8 +83,8 @@ def obtener_impacto_promociones(cursor):
 
 
 def sugerir_candidatos_promocion(cursor, umbral_dias_sin_rotar=20):
-    hoy = datetime.now().strftime("%Y-%m-%d")
-    hace_14 = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+    hoy = hoy_argentina().strftime("%Y-%m-%d")
+    hace_14 = (hoy_argentina() - timedelta(days=14)).strftime("%Y-%m-%d")
 
     cursor.execute("""
         SELECT p.id_meli, p.titulo, p.precio, p.precio_costo,

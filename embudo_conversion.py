@@ -10,6 +10,7 @@ import meli_http
 import time
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from utils import hoy_argentina
 
 _cache_embudo = {}
 _cache_zombies = {}
@@ -67,8 +68,8 @@ def detectar_publicaciones_zombie(headers, cuenta_id, cursor, dias=60):
     if cacheado and (ahora - cacheado["timestamp"]) < TTL_SEGUNDOS:
         return cacheado["data"]
 
-    fecha_hasta = datetime.now().strftime("%Y-%m-%d")
-    fecha_desde = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
+    fecha_hasta = hoy_argentina().strftime("%Y-%m-%d")
+    fecha_desde = (hoy_argentina() - timedelta(days=dias)).strftime("%Y-%m-%d")
 
     cursor.execute("SELECT id_meli, titulo, thumbnail FROM productos_padre WHERE estado = 'active'")
     activos = cursor.fetchall()
@@ -131,8 +132,8 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=DIAS_EMBUDO):
     if cacheado and (ahora - cacheado["timestamp"]) < TTL_SEGUNDOS:
         return cacheado["data"]
 
-    fecha_hasta = datetime.now().strftime("%Y-%m-%d")
-    fecha_desde = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
+    fecha_hasta = hoy_argentina().strftime("%Y-%m-%d")
+    fecha_desde = (hoy_argentina() - timedelta(days=dias)).strftime("%Y-%m-%d")
 
     cursor.execute("""
         SELECT p.id_meli, p.titulo, p.thumbnail, p.precio,

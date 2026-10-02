@@ -17,6 +17,7 @@ import threading
 import meli_http
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
+from utils import hoy_argentina
 
 # Palabras que no distinguen un producto de otro en ningún rubro (para comparar títulos entre sí)
 PALABRAS_GENERICAS = {
@@ -765,7 +766,7 @@ def relevar_snapshots_tendencias(access_token, cursor, cuenta_id, site_id="MLA")
     if not seguimientos:
         return 0
 
-    hoy = datetime.now().strftime("%Y-%m-%d")
+    hoy = hoy_argentina().strftime("%Y-%m-%d")
     relevados = 0
 
     # Consultas independientes entre sí — se resuelven en paralelo antes
@@ -798,7 +799,7 @@ def listar_seguimientos_con_historial(cursor, cuenta_id, dias=60):
     if not seguimientos:
         return []
 
-    desde = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
+    desde = (hoy_argentina() - timedelta(days=dias)).strftime("%Y-%m-%d")
     resultado = []
     for sid, tipo, valor, etiqueta, automatico in seguimientos:
         cursor.execute("""
@@ -909,7 +910,7 @@ def _enesimo_domingo_del_mes(anio, mes, n):
 
 def obtener_calendario_estacional(anio=None):
     if anio is None:
-        anio = datetime.now().year
+        anio = hoy_argentina().year
     eventos = [
         {"nombre": "Vuelta al cole", "fecha": date(anio, 2, 25), "categoria_sugerida": "útiles, mochilas, tecnología y ropa escolar"},
         {"nombre": "Día de la Primavera", "fecha": date(anio, 9, 21), "categoria_sugerida": "productos de temporada, regalos y salidas al aire libre"},
@@ -920,7 +921,7 @@ def obtener_calendario_estacional(anio=None):
         {"nombre": "Black Friday", "fecha": _enesimo_dia_semana_del_mes(anio, 11, 3, 4) + timedelta(days=1), "categoria_sugerida": "todo el catálogo — el pico de ventas más grande del año"},
         {"nombre": "Navidad", "fecha": date(anio, 12, 25), "categoria_sugerida": "regalos de todo tipo y productos de temporada"},
     ]
-    hoy = date.today()
+    hoy = hoy_argentina()
     for e in eventos:
         e["fecha_str"] = e["fecha"].strftime("%d/%m/%Y")
         e["dias_faltantes"] = (e["fecha"] - hoy).days
@@ -948,8 +949,8 @@ def cruzar_tendencias_con_catalogo(tendencias_relevantes, cursor):
 
 
 def registrar_y_detectar_emergentes(cursor, cuenta_id, keywords_de_hoy):
-    hoy = datetime.now().strftime("%Y-%m-%d")
-    hace_14 = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+    hoy = hoy_argentina().strftime("%Y-%m-%d")
+    hace_14 = (hoy_argentina() - timedelta(days=14)).strftime("%Y-%m-%d")
 
     cursor.execute("SELECT DISTINCT keyword FROM tendencias_historial WHERE cuenta_id = %s AND fecha >= %s AND fecha < %s", (cuenta_id, hace_14, hoy))
     vistas_antes = {r[0] for r in cursor.fetchall()}
@@ -957,7 +958,7 @@ def registrar_y_detectar_emergentes(cursor, cuenta_id, keywords_de_hoy):
     for kw in keywords_de_hoy:
         cursor.execute("INSERT INTO tendencias_historial (cuenta_id, keyword, fecha) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", (cuenta_id, kw, hoy))
 
-    hace_30 = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    hace_30 = (hoy_argentina() - timedelta(days=30)).strftime("%Y-%m-%d")
     cursor.execute("DELETE FROM tendencias_historial WHERE cuenta_id = %s AND fecha < %s", (cuenta_id, hace_30))
 
     return {kw for kw in keywords_de_hoy if kw not in vistas_antes}

@@ -7,6 +7,7 @@ Todo sale de lo que ya guarda el sync, sin llamar a la API:
 Sirve a cualquier vendedor y rubro: es el calendario de cobro de su cuenta.
 """
 from datetime import date, timedelta
+from utils import hoy_argentina
 
 DIAS_VISTA = 30          # los próximos depósitos se agrupan hasta 30 días; lo posterior va en "más adelante"
 DIAS_ACREDITADO = 30
@@ -43,7 +44,7 @@ def resumen_factura(periodos):
 
 
 def obtener_datos(cursor, cuenta_id, hoy=None, periodos_factura=None):
-    hoy = hoy or date.today()
+    hoy = hoy or hoy_argentina()
     cursor.execute("""
         SELECT fecha_liberacion, COUNT(*), COALESCE(SUM(monto_liberacion), 0)
         FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND fecha_liberacion >= %s AND monto_liberacion IS NOT NULL

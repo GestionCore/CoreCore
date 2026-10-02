@@ -19,7 +19,7 @@ import unicodedata
 from datetime import datetime
 import db
 import ia_asistente
-from utils import limpiar_titulo_modelo
+from utils import limpiar_titulo_modelo, hoy_argentina
 
 PROMPT_SISTEMA = """Sos un asistente que ayuda a cargar datos de costos de un negocio que vende en Mercado Libre: gastos operativos (alquiler, sueldos, insumos) y costos de fabricación de productos. Tu única tarea es extraer datos estructurados de lo que te describe el usuario, o preguntar lo que falte — nunca conversás de otra cosa.
 
@@ -160,7 +160,7 @@ def procesar_mensaje(historial_mensajes, usuario_id=None, cuenta_id=None):
     cada vez que se confirma o se cierra el chat).
     `usuario_id`/`cuenta_id` hacen falta para emparejar costos de productos con el catálogo de la cuenta.
     """
-    prompt = PROMPT_SISTEMA.format(fecha_hoy=datetime.now().strftime("%Y-%m-%d"))
+    prompt = PROMPT_SISTEMA.format(fecha_hoy=hoy_argentina().strftime("%Y-%m-%d"))
     # max_tokens generoso — un mensaje con varios gastos en una sola
     # confirmación necesita lugar para la lista JSON completa. 900 ya
     # había sido subido una vez para tolerar 2 gastos, pero seguía

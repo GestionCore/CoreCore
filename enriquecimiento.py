@@ -14,9 +14,10 @@ Cada una es best-effort: un error no frena el sync ni toca lo que ya había.
 """
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 import db
 import meli_http
+from utils import hoy_argentina
 
 SITE_ID = "MLA"
 HILOS = 6
@@ -94,7 +95,7 @@ def refrescar_visitas(usuario_id, cuenta_id, access_token, tope=TOPE["visitas"])
     if not ids:
         return 0
     headers = {"Authorization": f"Bearer {access_token}"}
-    corte = date.today() - timedelta(days=14)
+    corte = hoy_argentina() - timedelta(days=14)
 
     def _uno(item_id):
         try:

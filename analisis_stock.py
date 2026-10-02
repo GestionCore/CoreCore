@@ -11,8 +11,8 @@ conectado por ahora. Lo que sí está acá es la detección pura, que es lo
 que consumen las páginas y APIs del dashboard.
 """
 import re
-from datetime import datetime, timedelta
-from utils import extraer_talle
+from datetime import timedelta
+from utils import extraer_talle, hoy_argentina
 
 VENTANA_DIAS = 14
 UMBRAL_DIAS_RESTANTES = 5
@@ -20,8 +20,8 @@ CENTRALES = {"M", "L", "XL"}
 
 
 def obtener_variantes_en_riesgo(cursor, umbral_dias=UMBRAL_DIAS_RESTANTES, ventana_dias=VENTANA_DIAS):
-    fecha_hasta = datetime.now().strftime("%Y-%m-%d")
-    fecha_desde = (datetime.now() - timedelta(days=ventana_dias)).strftime("%Y-%m-%d")
+    fecha_hasta = hoy_argentina().strftime("%Y-%m-%d")
+    fecha_desde = (hoy_argentina() - timedelta(days=ventana_dias)).strftime("%Y-%m-%d")
 
     cursor.execute("""
         SELECT v.id_variante, v.talle, v.color, v.stock_propio, v.stock_full, p.titulo, p.id_meli,

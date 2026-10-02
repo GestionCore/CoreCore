@@ -17,6 +17,7 @@ import re
 import meli_http
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from utils import ARGENTINA, hoy_argentina
 
 # Fichas de catálogo: MLA + 6 a 8 dígitos (MLA63419087). Las publicaciones
 # puntuales tienen 9-10 dígitos (MLA2841280276) y esas ya no se pueden seguir.
@@ -88,7 +89,7 @@ def agregar_competidor(cursor, access_token, cuenta_id, texto, alias=""):
     if not producto:
         return False, "No pudimos consultar ese producto en Mercado Libre ahora mismo — probá de nuevo en un momento."
 
-    ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ahora = datetime.now(ARGENTINA).strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
         INSERT INTO competidores_seguimiento (cuenta_id, id_meli_rival, alias, titulo_actual, thumbnail, agregado_en)
         VALUES (%s, %s, %s, %s, %s, %s)
@@ -141,7 +142,7 @@ def _relevar_producto(headers, id_producto):
 def _guardar_relevamiento(cursor, cuenta_id, id_producto, datos):
     if not datos:
         return False
-    hoy = datetime.now().strftime("%Y-%m-%d")
+    hoy = hoy_argentina().strftime("%Y-%m-%d")
     cursor.execute("""
         INSERT INTO competidores_historial (cuenta_id, id_meli_rival, fecha, precio, precio_mediano, precio_max, ofertas, vendedores, pct_full)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
