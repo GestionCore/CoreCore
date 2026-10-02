@@ -48,6 +48,8 @@ import monotributo
 import costos_chat
 import calidad as calidad_mod
 import precios as precios_mod
+import publicacion_edicion
+import stock_meli
 import catalogo_ganar
 import mensajes as mensajes_mod
 import opiniones as opiniones_mod
@@ -1845,10 +1847,11 @@ def api_estado_sincronizacion():
     en_curso = sincronizador.sincronizacion_en_curso(g.cuenta_id)
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("SELECT sincronizacion_inicial_completa FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
+        cursor.execute("SELECT sincronizacion_inicial_completa, EXTRACT(EPOCH FROM (now() - conectada_en)) / 60 FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
         fila = cursor.fetchone()
         if fila and fila[0]:
             return jsonify({"lista": True, "en_curso": en_curso})
+        minutos = float(fila[1] or 0) if fila else 0.0
         cursor.execute("SELECT COUNT(*) FROM productos_padre WHERE cuenta_id = %s", (g.cuenta_id,))
         n_productos = cursor.fetchone()[0] or 0
         cursor.execute("SELECT COUNT(*) FROM ventas WHERE cuenta_id = %s", (g.cuenta_id,))
@@ -1859,7 +1862,15 @@ def api_estado_sincronizacion():
         etapa = "ventas"
     else:
         etapa = "calculando"
-    return jsonify({"lista": False, "en_curso": en_curso, "productos": n_productos, "ventas": n_ventas, "etapa": etapa})
+    # Solo si ya pasó un rato se comprueba el permiso (renueva el token: no se hace en cada consulta de la espera normal)
+    desconectada = False
+    if minutos >= sincronizador.MINUTOS_SYNC_ATASCADA:
+        try:
+            token_manager.asegurar_token_valido(g.cuenta_id)
+        except token_manager.CuentaDesconectada:
+            desconectada = True
+    diagnostico = sincronizador.diagnostico_sync_inicial(minutos, en_curso, desconectada)
+    return jsonify({"lista": False, "en_curso": en_curso, "productos": n_productos, "ventas": n_ventas, "etapa": etapa, "diagnostico": diagnostico})
 
 
 @app.route("/publicacion/<id_meli>/timeline")
@@ -2266,7 +2277,7 @@ def ventas_manuales_vista():
     recientes = ventas_manuales.obtener_ventas_manuales_recientes(g.usuario_id, g.cuenta_id)
     return render_template(
         "ventas_manuales.html", catalogo=catalogo, ventas=recientes,
-        hoy=hoy_argentina().strftime("%Y-%m-%d"), active_nav="ventas_manuales"
+        hoy=hoy_argentina().strftime("%Y-%m-%d"), active_nav="ventas_manuales", aviso=session.pop("aviso_ventas_manuales", "")
     )
 
 
@@ -2274,11 +2285,12 @@ def ventas_manuales_vista():
 @login_requerido
 @auditar("venta_manual_agregar")
 def ventas_manuales_agregar():
-    ok, error = ventas_manuales.registrar_venta_manual(
+    ok, error, aviso = ventas_manuales.registrar_venta_manual(
         g.usuario_id, g.cuenta_id,
         request.form.get("id_variante"), request.form.get("cantidad"),
         request.form.get("precio_venta"), request.form.get("fecha_venta"),
         request.form.get("comprador_nombre", "").strip(),
+        descontar_en_meli=request.form.get("descontar_en_meli") == "1",
     )
     if not ok:
         return render_template(
@@ -2287,6 +2299,7 @@ def ventas_manuales_agregar():
             ventas=ventas_manuales.obtener_ventas_manuales_recientes(g.usuario_id, g.cuenta_id),
             hoy=hoy_argentina().strftime("%Y-%m-%d"), active_nav="ventas_manuales", error=error
         ), 400
+    session["aviso_ventas_manuales"] = aviso or ""
     return redirect(url_for("ventas_manuales_vista"))
 
 
@@ -2294,7 +2307,8 @@ def ventas_manuales_agregar():
 @login_requerido
 @auditar("venta_manual_eliminar")
 def ventas_manuales_eliminar(id_venta):
-    ventas_manuales.eliminar_venta_manual(g.usuario_id, g.cuenta_id, id_venta)
+    _, aviso = ventas_manuales.eliminar_venta_manual(g.usuario_id, g.cuenta_id, id_venta)
+    session["aviso_ventas_manuales"] = aviso or ""
     return redirect(url_for("ventas_manuales_vista"))
 
 
@@ -2692,10 +2706,8 @@ def actualizar_stock_multiple():
                 continue
 
             try:
-                if len(variantes_del_item) == 1:
-                    payload = {"variations": [{"id": variantes_del_item[0], "available_quantity": nuevo_stock}]}
-                else:
-                    payload = {"available_quantity": nuevo_stock}
+                # Sin variaciones la variante guardada es «<id>_unica» (id interno): a MeLi va available_quantity de la publicación, no esa variación
+                payload = stock_meli.payload_para_stock(variantes_del_item, nuevo_stock)
                 r = meli_http.put(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, json=payload)
                 if r.status_code not in (200, 201):
                     print(f"[StockMasivo] ⚠️ MeLi rechazó el stock de {id_meli}: {r.status_code} - {r.text[:200]}")
@@ -2912,6 +2924,7 @@ def api_drawer_info(id_meli):
     titulo, precio, estado, precio_costo = fila
     descripcion = ""
     atributos = []
+    editable = estado in publicacion_edicion.ESTADOS_EDITABLES
 
     if access_token:
         try:
@@ -2931,8 +2944,8 @@ def api_drawer_info(id_meli):
             print(f"[Exportador] ⚠️ No se pudo traer la descripción: {e}")
 
     return jsonify({
-        "titulo": titulo, "precio": precio, "estado": estado,
-        "precio_costo": precio_costo or 0.0,
+        "titulo": titulo, "precio": precio, "estado": estado, "estado_nombre": publicacion_edicion.nombre_estado(estado), "estado_editable": editable,
+        "titulo_max": publicacion_edicion.MAX_TITULO, "precio_costo": precio_costo or 0.0,
         "descripcion": descripcion, "atributos": atributos,
     })
 
@@ -2941,42 +2954,67 @@ def api_drawer_info(id_meli):
 @login_requerido
 @auditar("publicacion_editar")
 def api_drawer_guardar(id_meli):
-    import db
+    """
+    Guarda lo que se editó en el panel de una publicación. El costo de fabricación es solo de CoreLux. Título, precio y estado se mandan a Mercado
+    Libre (solo lo que cambió, ver publicacion_edicion) y recién cuando MeLi los acepta se reflejan acá y se anota el cambio de precio.
+    """
     data = request.get_json(silent=True) or {}
-    titulo = (data.get("titulo") or "").strip()
-    try:
-        precio = float(data.get("precio", 0))
-    except (ValueError, TypeError):
-        return jsonify({"ok": False, "detalle": "Precio inválido"}), 400
-    estado = data.get("estado", "active")
-    try:
-        precio_costo = float(data.get("precio_costo", 0))
-    except (ValueError, TypeError):
-        precio_costo = 0.0
-
-    if estado not in ("active", "paused", "closed"):
-        return jsonify({"ok": False, "detalle": "Estado no válido"}), 400
-
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute(
-            "UPDATE productos_padre SET titulo = %s, precio = %s, estado = %s, precio_costo = %s WHERE id_meli = %s",
-            (titulo, precio, estado, precio_costo, id_meli),
-        )
+        cursor.execute("SELECT titulo, precio, estado FROM productos_padre WHERE cuenta_id = %s AND id_meli = %s", (g.cuenta_id, id_meli))
+        fila = cursor.fetchone()
+    if not fila:
+        return jsonify({"ok": False, "detalle": "No encontramos esa publicación."}), 404
+    actual = {"titulo": fila[0], "precio": float(fila[1] or 0), "estado": fila[2]}
 
-    try:
-        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
-        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-        payload = {"title": titulo, "price": precio, "status": estado}
-        r = meli_http.put(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, json=payload)
+    payload, errores = publicacion_edicion.armar_cambios(actual, {"titulo": data.get("titulo"), "precio": data.get("precio"), "estado": data.get("estado")})
+    precio_costo = None
+    if data.get("precio_costo") not in (None, ""):
+        try:
+            precio_costo = float(data["precio_costo"])
+        except (TypeError, ValueError):
+            precio_costo = None
+        if precio_costo is None or precio_costo < 0 or precio_costo != precio_costo:
+            errores.append("El costo de fabricación tiene que ser un número de cero o más.")
+    if errores:
+        return jsonify({"ok": False, "detalle": errores[0]}), 400
+
+    if precio_costo is not None:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            conexion.cursor().execute("UPDATE productos_padre SET precio_costo = %s WHERE cuenta_id = %s AND id_meli = %s", (precio_costo, g.cuenta_id, id_meli))
+
+    cambios = publicacion_edicion.resumen_cambios(actual, payload)
+    if payload:
+        try:
+            access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+            headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+            r = meli_http.put(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, json=payload)
+        except token_manager.CuentaDesconectada:
+            return jsonify({"ok": False, "detalle": "La cuenta de Mercado Libre está desconectada: reconectala primero."})
+        except Exception as e:
+            return jsonify({"ok": False, "detalle": _detalle_error(e)})
         if r.status_code not in (200, 201):
-            return jsonify({"ok": False, "detalle": f"MeLi respondió {r.status_code}: {r.text[:200]}"})
-    except token_manager.CuentaDesconectada:
-        return jsonify({"ok": False, "detalle": "La cuenta de MeLi está desconectada — reconectala primero."})
-    except Exception as e:
-        return jsonify({"ok": False, "detalle": _detalle_error(e)})
-
-    return jsonify({"ok": True})
+            try:
+                cuerpo = r.json()
+            except ValueError:
+                cuerpo = None
+            print(f"[Publicación] MeLi rechazó {sorted(payload)} de {id_meli}: {r.status_code} {r.text[:300]}")
+            return jsonify({"ok": False, "detalle": publicacion_edicion.explicar_error_meli(r.status_code, cuerpo)})
+        # Mercado Libre aceptó: recién ahora CoreLux refleja el cambio (y anota el precio, que la sincronización ya no va a ver como diferencia)
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            sets, params = [], []
+            for columna, clave in (("titulo", "title"), ("precio", "price"), ("estado", "status")):
+                if clave in payload:
+                    sets.append(f"{columna} = %s")
+                    params.append(payload[clave])
+            cursor.execute(f"UPDATE productos_padre SET {', '.join(sets)} WHERE cuenta_id = %s AND id_meli = %s", (*params, g.cuenta_id, id_meli))
+            if "price" in payload:
+                cursor.execute(
+                    "INSERT INTO historial_precios (cuenta_id, id_meli, precio_anterior, precio_nuevo, fecha_cambio) VALUES (%s, %s, %s, %s, now())",
+                    (g.cuenta_id, id_meli, actual["precio"], payload["price"]),
+                )
+    return jsonify({"ok": True, "cambios": cambios, "costo_guardado": precio_costo is not None, "titulo": payload.get("title", actual["titulo"])})
 
 
 @app.route("/api/drawer/guardar_descripcion/<id_meli>", methods=["POST"])

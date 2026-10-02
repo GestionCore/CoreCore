@@ -38,6 +38,11 @@ def obtener_reputacion(access_token, user_id):
         nivel_id = rep.get("level_id")
         power_status = rep.get("power_seller_status")
 
+        # Las calificaciones pueden venir como CANTIDADES (1, 0, 0) o como PROPORCIONES (0.96, 0.03, 0.01): según cuál sea, "poca muestra" significa
+        # una cosa u otra. Con proporciones no hay muestra que juzgar.
+        valores_ratings = [ratings.get(k) for k in ("positive", "neutral", "negative") if ratings.get(k) is not None]
+        ratings_son_proporciones = any(isinstance(v, float) and v != int(v) for v in valores_ratings)
+
         total = transacciones.get("total", 0) or 0
         completadas = transacciones.get("completed", 0) or 0
         canceladas = transacciones.get("canceled", 0) or 0
@@ -59,6 +64,7 @@ def obtener_reputacion(access_token, user_id):
             "completadas": completadas,
             "canceladas": canceladas,
             "tasa_cancelacion": tasa_cancelacion,
+            "ratings_son_proporciones": ratings_son_proporciones,
             "ratings_positivas": ratings.get("positive", 0) or 0,
             "ratings_neutras": ratings.get("neutral", 0) or 0,
             "ratings_negativas": ratings.get("negative", 0) or 0,

@@ -49,8 +49,9 @@
     {% if rep.reclamos.tasa is not none %}{{ kpi("Reclamos", (rep.reclamos.tasa * 100)|pct(2), "info", "alert", "métrica que arma tu nivel") }}{% endif %}
     {% if rep.demora_en_despacho.tasa is not none %}{{ kpi("Demora en el despacho", (rep.demora_en_despacho.tasa * 100)|pct(2), "info", "truck", "métrica que arma tu nivel") }}{% endif %}
     {% if rep.cancelaciones_metrica.tasa is not none %}{{ kpi("Cancelaciones", (rep.cancelaciones_metrica.tasa * 100)|pct(2), "info", "x", "métrica que arma tu nivel") }}{% endif %}
-    {# Con muy pocas calificaciones el porcentaje no dice nada (1 calificación = 0% o 100%): se muestra neutro y se aclara #}
-    {% if pct_positivas is not none %}{{ kpi("Calificaciones positivas", pct_positivas|pct(0), ("ok" if pct_positivas >= 90 else ("warn" if pct_positivas >= 75 else "danger")) if total_calif >= 10 else "neutral", "star", total_calif|numero ~ (" calificación recibida — muestra muy chica" if total_calif == 1 else " calificaciones recibidas" ~ (" — muestra chica" if total_calif < 10 else ""))) }}{% endif %}
+    {# Con menos de 10 calificaciones el porcentaje no dice nada (1 calificación = 0% o 100%): no se muestra un número engañoso, se dice cuántas hay #}
+    {% if pct_positivas is not none and (rep.ratings_son_proporciones or total_calif >= 10) %}{{ kpi("Calificaciones positivas", pct_positivas|pct(0), "ok" if pct_positivas >= 90 else ("warn" if pct_positivas >= 75 else "danger"), "star", "de las calificaciones que recibiste" if rep.ratings_son_proporciones else (total_calif|numero ~ " calificaciones recibidas")) }}
+    {% elif pct_positivas is not none %}{{ kpi("Calificaciones", total_calif|numero, "neutral", "star", "Todavía son muy pocas para sacar un porcentaje. Lo que opinan tus compradores está en Opiniones.", "/opiniones") }}{% endif %}
     {# El total histórico de canceladas incluye las que cancela el comprador y NO es la métrica del nivel: se muestra como contexto, sin alarma #}
     {{ kpi("Ventas canceladas", rep.tasa_cancelacion|pct, "neutral", "x", "histórico total, incluye las que canceló el comprador") }}
 </div>

@@ -84,7 +84,12 @@
         .sync-tip strong { color: var(--accent-primary); }
         .sync-tip-label { font-size: 0.72em; text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); margin-bottom: 4px; font-weight: 600; }
 
-        .sync-nota { text-align: center; color: var(--text-faint); font-size: 0.78em; margin-top: 20px; }
+        .sync-nota { text-align: center; color: var(--text-secondary); font-size: 0.8em; margin-top: 20px; }
+        .sync-problema { margin-top: 20px; padding: 16px 18px; border-radius: var(--radius-md); text-align: left; background: var(--semantic-warning-bg); border: 1px solid color-mix(in srgb, var(--semantic-warning) 45%, transparent); }
+        .sync-problema[hidden] { display: none; }
+        .sync-problema-titulo { font-weight: 800; margin-bottom: 4px; }
+        .sync-problema-texto { color: var(--text-secondary); font-size: 0.86em; line-height: 1.5; }
+        .sync-problema-botones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
     </style>
 </head>
 <body>
@@ -128,7 +133,12 @@
       <div class="sync-tip-label">Mientras esperás</div>
       <div id="tip-texto">CoreLux calcula tu <strong>ganancia neta real</strong> descontando comisiones, envíos, publicidad y costo de fabricación — no solo la facturación bruta.</div>
     </div>
-    <div class="sync-nota">Esta pantalla se actualiza sola cuando termine. No hace falta que hagas nada.</div>
+    <div class="sync-nota" id="sync-nota">Esta pantalla se actualiza sola cuando termine. No hace falta que hagas nada.</div>
+    <div class="sync-problema" id="sync-problema" hidden>
+      <div class="sync-problema-titulo" id="sync-problema-titulo"></div>
+      <div class="sync-problema-texto" id="sync-problema-texto"></div>
+      <div class="sync-problema-botones" id="sync-problema-botones"></div>
+    </div>
   </div>
 </div>
 
@@ -164,6 +174,34 @@ function marcarActivo(stepId) {
 }
 
 var prevProductos = 0, prevVentas = 0;
+
+// Si la espera se vuelve anormal se dice qué pasa y qué se puede hacer, en vez de dejar el mismo cartel para siempre
+function mostrarDiagnostico(d) {
+  var caja = document.getElementById('sync-problema');
+  if (!d || d === 'normal') { caja.hidden = true; return; }
+  var titulo = document.getElementById('sync-problema-titulo'), texto = document.getElementById('sync-problema-texto'), botones = document.getElementById('sync-problema-botones');
+  var reintentar = '<button type="button" class="btn btn-primary" onclick="reintentarSync(this)">Reintentar ahora</button>';
+  var escribir = '<a class="btn btn-secondary" href="mailto:soporte@corelux.app?subject=Mi%20cuenta%20no%20termina%20de%20sincronizar">Escribirnos</a>';
+  if (d === 'desconectada') {
+    titulo.textContent = 'Mercado Libre desconectó tu cuenta';
+    texto.textContent = 'Esperar no lo resuelve: hay que volver a autorizar la conexión. No pierdas nada, tus datos se conservan.';
+    botones.innerHTML = '<a class="btn btn-primary" href="/reconectar">Reconectar mi cuenta</a>';
+  } else if (d === 'atascada') {
+    titulo.textContent = 'Está tardando más de lo normal';
+    texto.textContent = 'La importación no está avanzando. La reintentamos sola cada 4 minutos; podés reintentarla ahora. Si sigue igual, escribinos y lo vemos.';
+    botones.innerHTML = reintentar + escribir;
+  } else {
+    titulo.textContent = 'Tu cuenta tiene mucha información';
+    texto.textContent = 'Sigue importando: con muchas publicaciones y ventas puede llevar un rato más. No hace falta que hagas nada.';
+    botones.innerHTML = '';
+  }
+  caja.hidden = false;
+}
+async function reintentarSync(boton) {
+  boton.disabled = true; boton.textContent = 'Reintentando…';
+  try { await fetch('/sincronizar_todo', { method: 'POST' }); } catch (e) { /* se vuelve a ver en la próxima consulta */ }
+  setTimeout(function () { boton.disabled = false; boton.textContent = 'Reintentar ahora'; }, 6000);
+}
 function cuantos(n, uno, varios) { return n + ' ' + (n === 1 ? uno : varios); }
 
 async function chequearEstado() {
@@ -179,6 +217,7 @@ async function chequearEstado() {
       return;
     }
 
+    mostrarDiagnostico(data.diagnostico);
     var etapa = data.etapa || 'productos';
     var nP = data.productos || 0;
     var nV = data.ventas || 0;

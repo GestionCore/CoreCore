@@ -10,7 +10,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-file-text"/></svg>Reporte fiscal</h1>
-        <div class="page-subtitle">Resumen mensual para tu contador — facturación, cargos y ganancia estimada del año</div>
+        <div class="page-subtitle">Resumen mensual para tu contador — facturación, cargos y ganancia estimada del año (antes de publicidad)</div>
     </div>
     <a href="/reporte_fiscal/exportar?anio={{ anio_seleccionado }}" class="btn btn-primary btn-lg no-imprimir">
         <svg class="icon"><use href="#icon-download"/></svg>Descargar Excel {{ anio_seleccionado }}
@@ -28,13 +28,13 @@
 
 <!-- ── 1. EL AÑO EN UN NÚMERO ───────────────────────────────────────────── -->
 <div class="ux-hero ux-{{ tono }}">
-    <div class="ux-hero-etiqueta">Ganancia estimada {{ anio_seleccionado }}</div>
+    <div class="ux-hero-etiqueta">Ganancia estimada {{ anio_seleccionado }} · antes de publicidad</div>
     <div class="ux-hero-numero">{{ totales.ganancia_estimada|plata }}</div>
     <div class="ux-hero-frase">
         De <b>{{ totales.facturacion|plata }}</b> facturados en <b>{{ totales.ordenes }}</b> órdenes
         {% if mejor %}— tu mejor mes fue <b>{{ mejor.nombre }}</b> con {{ mejor.ganancia_estimada|plata }}{% endif %}.
     </div>
-    <div class="ux-hero-nota">Estimación sin publicidad y con el costo de fabricación que tenés cargado hoy por producto.</div>
+    <div class="ux-hero-nota">Estimación sin publicidad y con el costo de fabricación que tenés cargado hoy por producto. Lo que realmente te queda, con la publicidad descontada, está en <a href="/metricas"><b>Ganancia Real</b></a>.</div>
 </div>
 
 {{ banner("info", "info", "<b>Antes de presentar algo a AFIP,</b> confirmá estos números con tu contador", "Es una herramienta de seguimiento, no reemplaza la declaración jurada. Para tu categoría de Monotributo usá la pantalla Monotributo.", "Ir a Monotributo", "/monotributo", "btn-secondary") }}

@@ -8,7 +8,7 @@ import re
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROHIBIDO = re.compile(r"datetime\.now\(\)(?!\.timestamp|\.astimezone)|\bdate\.today\(\)|datetime\.today\(\)")
-PERMITIDOS = {"respaldo.py"}          # nombres de archivo de los respaldos: la hora local de quien lo corre
+PERMITIDOS = {"respaldo.py", "enter.py"}          # respaldo.py: nombres de archivo con la hora local de quien lo corre; enter.py: script personal del dueño, no es parte de la app
 
 
 def _archivos():

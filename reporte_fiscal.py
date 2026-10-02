@@ -1,7 +1,7 @@
 """
 Reporte fiscal mensual — totales agrupados por mes para el contador.
 Columnas: facturación bruta, comisiones MeLi, costo de envíos,
-gastos operativos, costo estimado de fabricación, ganancia neta estimada.
+gastos operativos, costo estimado de fabricación y ganancia estimada ANTES de publicidad (la ganancia neta real, con publicidad, está en Ganancia Real).
 
 No incluye Ads por mes (requeriría 12 llamadas a la API de MeLi; usá
 la pantalla de Publicidad para ese desglose). Todo lo demás viene de
@@ -177,7 +177,7 @@ def generar_excel_fiscal(meses_data, anio):
         "Facturación Bruta",
         "Comisiones MeLi", "Costo Envíos", "Total Cargos MeLi",
         "Gastos Operativos", "Costo Fabricación (est.)",
-        "Ganancia Neta Estimada",
+        "Ganancia estimada (sin publicidad)",
         "Retenciones de impuestos (informativo)",
     ]
     ws.append(columnas)

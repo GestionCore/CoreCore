@@ -14,13 +14,17 @@
 {{ banner("danger", "alert", "<b>No se pudo registrar la venta</b>", error ~ " Revisá los datos y probá de nuevo.") }}
 {% endif %}
 
+{% if aviso %}
+{{ banner("warn", "alert", "<b>Registrado, con un aviso</b>", aviso) }}
+{% endif %}
+
 <!-- ── 1. REGISTRAR: el formulario es lo principal de esta pantalla ───────── -->
 <div class="panel">
     <div class="panel-title"><svg class="icon"><use href="#icon-plus"/></svg> Registrar una venta</div>
     {% if not catalogo %}
     {{ vacio("Todavía no hay publicaciones para vender", "Sincronizá desde \"Sincronizar Todo\" para traer tu catálogo.", "refresh", "accion") }}
     {% else %}
-    <form action="/ventas_manuales/agregar" method="POST" id="form-venta-manual">
+    <form action="/ventas_manuales/agregar" method="POST" id="form-venta-manual" onsubmit="return confirmarVentaManual(this);">
         <div class="filter-row">
             <div class="field-group" style="flex:2; min-width:260px;">
                 <label class="field-label" for="select-variante-manual">Qué vendiste</label>
@@ -41,12 +45,13 @@
             <div class="field-group"><label class="field-label" for="input-fecha-manual">Fecha</label><input type="date" name="fecha_venta" id="input-fecha-manual" value="{{ hoy }}" max="{{ hoy }}" required></div>
             <div class="field-group" style="flex:1; min-width:160px;"><label class="field-label" for="input-cliente-manual">Cliente (opcional)</label><input type="text" name="comprador_nombre" id="input-cliente-manual" placeholder="Ej: Marcela"></div>
         </div>
+        <label class="flex-incluir" style="margin-top:14px;"><input type="checkbox" name="descontar_en_meli" value="1" id="check-descontar-meli" checked><span><b>Descontar también en Mercado Libre</b> — si no, la publicación sigue ofreciendo esa unidad (CoreLux se actualiza solo cada 4 minutos y pisaría el descuento).</span></label>
         <div class="flex-gap" style="margin-top:16px; justify-content:space-between;">
             <div style="font-size:1.05em;">Total de la venta: <b id="total-venta-manual" style="font-family:var(--font-data); font-size:1.3em; color:var(--success);">$0</b></div>
             <button type="submit" class="btn btn-primary btn-lg"><svg class="icon"><use href="#icon-check"/></svg>Registrar venta</button>
         </div>
     </form>
-    <div class="text-muted" style="font-size:0.82em; margin-top:12px;">No lleva comisión ni envío de MeLi (quedan en $0) y <b>descuenta del stock propio</b> de ese talle al guardar.</div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:12px;">No lleva comisión ni envío de MeLi (quedan en $0). Las publicaciones en FULL no se descuentan en Mercado Libre: ese stock lo maneja ellos.</div>
     {% endif %}
 </div>
 
@@ -101,6 +106,15 @@
     function actualizarTotal() {
         const total = (parseFloat($precio.value) || 0) * (parseInt($cant.value, 10) || 0);
         document.getElementById('total-venta-manual').textContent = UX.plata(total);
+    }
+    // Descontar en Mercado Libre cambia datos reales de la cuenta: se pide confirmación antes (y se dice cuánto)
+    function confirmarVentaManual(form) {
+        const marca = document.getElementById('check-descontar-meli');
+        if (!marca || !marca.checked) return true;
+        const n = parseInt($cant.value, 10) || 0;
+        confirmarAccion('¿Registrar la venta y descontar el stock en Mercado Libre?', form, 'Registrar y descontar',
+            `Se van a descontar ${n} ${n === 1 ? 'unidad' : 'unidades'} de «${$sel.options[$sel.selectedIndex].text.split(' (stock')[0]}» en tu cuenta de Mercado Libre.`);
+        return false;
     }
     if ($sel) {
         // Al cambiar de producto se vuelve a sugerir su precio, salvo que el usuario ya haya escrito uno a mano

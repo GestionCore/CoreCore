@@ -1172,46 +1172,62 @@ async function cargarTabInfo(idMeli) {
         const d = await resp.json();
         if (d.error) { cont.innerHTML = `<div class="text-danger">${d.error}</div>`; return; }
         document.getElementById('drawer-titulo-header').textContent = d.titulo;
+        window._drawerOriginal = { titulo: d.titulo, precio: Number(d.precio) || 0, estado: d.estado, costo: Number(d.precio_costo) || 0, estadoNombre: d.estado_nombre };
+        // Solo se puede activar o pausar. Una publicación finalizada o en revisión muestra su estado, bloqueado: "finalizar" no tiene vuelta atrás en Mercado Libre.
+        const opcionesEstado = d.estado_editable
+            ? `<option value="active" ${d.estado === 'active' ? 'selected' : ''}>Activa</option><option value="paused" ${d.estado === 'paused' ? 'selected' : ''}>Pausada</option>`
+            : `<option value="${UX.esc(d.estado)}" selected>${UX.esc(d.estado_nombre)}</option>`;
         cont.innerHTML = `
             <div class="field-group" style="margin-bottom:14px;">
-                <label class="field-label">Título</label>
-                <input type="text" id="drawer-titulo" value="${d.titulo.replace(/"/g,'&quot;')}">
+                <label class="field-label">Título <span class="text-muted" id="drawer-titulo-largo" style="font-weight:400;"></span></label>
+                <input type="text" id="drawer-titulo" maxlength="${Number(d.titulo_max) || 60}" value="${UX.esc(d.titulo)}" oninput="actualizarLargoTituloDrawer()">
                 <button type="button" class="btn btn-secondary" style="margin-top:6px;" onclick="optimizarTitulo()"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-bolt"/></svg>Optimizar Título con IA</button>
             </div>
             <div class="filter-row" style="margin-bottom:14px;">
-                <div class="field-group" style="flex:1;"><label class="field-label">Precio ($)</label><input type="number" step="0.01" id="drawer-precio" value="${d.precio}"></div>
+                <div class="field-group" style="flex:1;"><label class="field-label">Precio ($)</label><input type="number" step="0.01" min="0" id="drawer-precio" value="${Number(d.precio) || ''}"></div>
                 <div class="field-group" style="flex:1;"><label class="field-label">Estado</label>
-                    <select id="drawer-estado">
-                        <option value="active" ${d.estado==='active'?'selected':''}>Activa</option>
-                        <option value="paused" ${d.estado==='paused'?'selected':''}>Pausada</option>
-                        <option value="closed" ${d.estado==='closed'?'selected':''}>Inactiva</option>
-                    </select>
+                    <select id="drawer-estado" ${d.estado_editable ? '' : 'disabled'}>${opcionesEstado}</select>
                 </div>
             </div>
-            <div class="field-group" style="margin-bottom:14px;"><label class="field-label">Costo de fabricación ($)</label><input type="number" step="0.01" id="drawer-costo" value="${d.precio_costo}"></div>
+            <div class="field-group" style="margin-bottom:14px;"><label class="field-label">Costo de fabricación ($) <span class="text-muted" style="font-weight:400;">solo en CoreLux</span></label><input type="number" step="0.01" min="0" id="drawer-costo" value="${Number(d.precio_costo) || 0}"></div>
             <button type="button" class="btn btn-primary btn-block" onclick="guardarDrawerInfo()">Guardar cambios</button>
             <a href="/publicacion/${idMeli}/timeline" class="btn btn-secondary btn-block" style="margin-top:8px; text-align:center; text-decoration:none;"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-info"/></svg>Ver línea de tiempo completa</a>
         `;
+        actualizarLargoTituloDrawer();
         if (_tituloSugeridoPendiente) {
             document.getElementById('drawer-titulo').value = _tituloSugeridoPendiente;
-            mostrarToast('Título sugerido cargado — revisalo y guardá si te convence.', 'info');
+            mostrarToast('Título sugerido cargado — revisalo y guardá si te convence.', 'info'); actualizarLargoTituloDrawer();
             _tituloSugeridoPendiente = null;
         }
     } catch(e) { cont.innerHTML = '<div class="text-danger">Error al cargar.</div>'; }
 }
 
+function actualizarLargoTituloDrawer() {
+    const el = document.getElementById('drawer-titulo'), nota = document.getElementById('drawer-titulo-largo');
+    if (el && nota) nota.textContent = `· ${el.value.length} caracteres`;
+}
+
 async function guardarDrawerInfo() {
-    const body = {
-        titulo: document.getElementById('drawer-titulo').value,
-        precio: document.getElementById('drawer-precio').value,
-        estado: document.getElementById('drawer-estado').value,
-        precio_costo: document.getElementById('drawer-costo').value
-    };
+    const orig = window._drawerOriginal || {};
+    const titulo = document.getElementById('drawer-titulo').value.replace(/\s+/g, ' ').trim();
+    const precio = document.getElementById('drawer-precio').value;
+    const estado = document.getElementById('drawer-estado').value;
+    const costo = document.getElementById('drawer-costo').value;
+    // Lo que se va a cambiar en Mercado Libre se muestra antes, con el valor de antes y el de después (el costo es solo de CoreLux y no lo necesita)
+    const lineas = [];
+    if (titulo !== orig.titulo) lineas.push(`Título: «${orig.titulo}» → «${titulo}»`);
+    if (precio !== '' && Math.abs(Number(precio) - orig.precio) > 0.004) lineas.push(`Precio: ${UX.plata(orig.precio)} → ${UX.plata(Number(precio))}`);
+    if (estado !== orig.estado) lineas.push(`Estado: ${orig.estadoNombre} → ${estado === 'paused' ? 'Pausada' : 'Activa'}`);
+    if (lineas.length && !(await confirmarDecision('¿Cambiar esto en Mercado Libre?', 'Cambiar en Mercado Libre', lineas.join('\n')))) return;
+    const body = { titulo, precio, estado, precio_costo: costo };
     try {
         const resp = await fetch(`/api/drawer/guardar/${drawerIdActual}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
         const data = await resp.json();
-        mostrarToast(data.ok ? 'Cambios guardados en Mercado Libre' : (data.detalle || 'No se pudieron guardar los cambios'), data.ok ? 'success' : 'error');
-    } catch(e) { mostrarToast('Error guardando cambios', 'error'); }
+        if (!data.ok) { mostrarToast(data.detalle || 'No se pudieron guardar los cambios', 'error'); return; }
+        window._drawerOriginal = { titulo: data.titulo, precio: Number(precio) || orig.precio, estado, costo: Number(costo) || 0, estadoNombre: estado === 'paused' ? 'Pausada' : 'Activa' };
+        document.getElementById('drawer-titulo-header').textContent = data.titulo;
+        mostrarToast(data.cambios && data.cambios.length ? 'Listo: Mercado Libre aceptó el cambio.' : 'Costo guardado.', 'success');
+    } catch(e) { mostrarToast('No se pudo conectar. Probá de nuevo.', 'error'); }
 }
 
 // ---------- Efecto máquina de escribir (rápido) para texto generado por IA ----------

@@ -433,6 +433,25 @@ def sincronizacion_en_curso(cuenta_id):
     return cuenta_id in _sincronizando
 
 
+MINUTOS_SYNC_ATASCADA = 10     # sin nada corriendo después de tanto tiempo: la primera sincronización no está avanzando
+MINUTOS_SYNC_LENTA = 25        # corriendo, pero mucho más de lo habitual
+
+
+def diagnostico_sync_inicial(minutos, en_curso, cuenta_desconectada):
+    """
+    Cómo viene la PRIMERA sincronización, para decirle a quien espera algo útil en vez de dejar el mismo cartel para siempre:
+    "normal", "lenta" (sigue trabajando), "atascada" (nada corre: se reintenta sola cada 4 minutos pero conviene ofrecer reintentar ya) o
+    "desconectada" (Mercado Libre retiró el permiso: hay que reconectar, esperar no sirve).
+    """
+    if cuenta_desconectada:
+        return "desconectada"
+    if not en_curso and minutos >= MINUTOS_SYNC_ATASCADA:
+        return "atascada"
+    if minutos >= MINUTOS_SYNC_LENTA:
+        return "lenta"
+    return "normal"
+
+
 def sincronizar_todo(usuario_id, cuenta_id):
     """Corre la sincronización completa de la cuenta; si ya hay una en curso no arranca otra (devuelve False)."""
     with _candado_sincronizando:
@@ -469,7 +488,14 @@ def _sincronizar_todo_interno(usuario_id, cuenta_id):
         return
     seller_id = fila[0]
 
-    sincronizar_catalogo(usuario_id, cuenta_id)
+    # Si el catálogo falla (red, MeLi, base) las ventas igual se sincronizan, pero la cuenta NO se marca como completa: así la próxima pasada
+    # (4 minutos) lo reintenta en vez de mostrarle pantallas sin publicaciones a quien recién se conectó.
+    catalogo_ok = True
+    try:
+        sincronizar_catalogo(usuario_id, cuenta_id)
+    except Exception as e:
+        catalogo_ok = False
+        print(f"❌ [Error Catálogo] cuenta {cuenta_id}: {e}")
 
     try:
         ventas_sync.sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id)
@@ -492,6 +518,8 @@ def _sincronizar_todo_interno(usuario_id, cuenta_id):
     except Exception as e:
         print(f"❌ [Capacidades/Enriquecimiento] cuenta {cuenta_id}: {e}")
 
+    if not catalogo_ok:
+        return
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("UPDATE cuentas_meli SET sincronizacion_inicial_completa = true WHERE id = %s AND sincronizacion_inicial_completa = false", (cuenta_id,))

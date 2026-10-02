@@ -255,6 +255,14 @@
 <script>
 (function () {
     let _pendingForm = null;
+    let _pendingResolve = null;
+    // Versión con promesa, para acciones que no son un formulario: `if (await confirmarDecision('...', 'Guardar', 'detalle')) { ... }`
+    window.confirmarDecision = function (mensaje, etiquetaOk, sub) {
+        return new Promise(function (resolve) {
+            window.confirmarAccion(mensaje, null, etiquetaOk, sub);
+            _pendingResolve = resolve;
+        });
+    };
     window.confirmarAccion = function (mensaje, form, etiquetaOk, sub) {
         _pendingForm = form;
         const modal = document.getElementById('modal-confirmar');
@@ -268,9 +276,11 @@
     window.cerrarModalConfirmar = function () {
         _pendingForm = null;
         document.getElementById('modal-confirmar').style.display = 'none';
+        if (_pendingResolve) { const r = _pendingResolve; _pendingResolve = null; r(false); }
     };
     document.getElementById('modal-confirmar-ok').addEventListener('click', function () {
-        if (_pendingForm) { cerrarModalConfirmar(); _pendingForm.submit(); }
+        if (_pendingForm) { const f = _pendingForm; cerrarModalConfirmar(); f.submit(); }
+        else if (_pendingResolve) { const r = _pendingResolve; _pendingResolve = null; cerrarModalConfirmar(); r(true); }
     });
     document.getElementById('modal-confirmar').addEventListener('click', function (e) {
         if (e.target === this) cerrarModalConfirmar();

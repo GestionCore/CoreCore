@@ -29,3 +29,7 @@ docs/
 deploy/
 cosas.txt
 skills-lock.json
+
+# Scripts personales del dueño (no son parte de la app)
+enter.py
+enter.ps1
