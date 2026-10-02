@@ -50,3 +50,7 @@ Mercado Pago de punta a punta, planes con límites reales, factura propia, sopor
 - 2026-10-02: **A1** `desplegar.py` + versión en `/healthz` (hecho). **B** aviso de ganancia inflada por % de plata sin costo, Excel antes que Flex (hecho).
   **C** cuenta sintética de otro perfil (electrónica, sin FULL/Flex/Ads/catálogo, datos con nulos): 73 pantallas sin excepciones y oculta lo que no aplica;
   vocabulario adaptado ("talle" solo si la cuenta tiene talles reales, si no "variante") (hecho). Pendiente: menú, móvil, ayuda/feedback, capacidad (D).
+- 2026-10-02: **D (medición)** `medir_sync.py`. Desde la PC (latencia alta a la base): 70 llamadas, ~23 s y 24 conexiones por cuenta por ciclo → ~21 cuentas por ciclo de
+  4 min, ~1.050 llamadas/hora por cuenta. Lo más repetido: 41 consultas de stock de convivencia FULL (el `available_quantity` de MeLi es solo el stock FULL, así que no se
+  pueden saltear sin perder el stock propio) y 9 de reputación de reclamos. Pendiente: medir en Fly (`fly ssh console -a corecore -C "python medir_sync.py 3 2"`) y
+  decidir con ese número.
