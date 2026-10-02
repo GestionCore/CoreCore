@@ -486,6 +486,25 @@ Estado de cada punto en ese archivo (✅/◐). Lo que hay que saber para no romp
   `cache.leer()/guardar()` (nunca lanzan) y, antes de un deploy, correr `REDIS_URL=redis://localhost:6399/0 pytest` y el recorrido de pantallas con ese mismo valor.
 - `docs/RUNBOOK.md`: deploy, rollback, rotación de claves, tope de conexiones del pooler (`máquinas × workers × DB_POOL_MAX ≤ 12`), sync que no anda.
 
+## Plan de mejoras (`PLAN_MEJORAS.md`, 243 ítems) — lo que ya cambió y las reglas que dejó (2026-10-02)
+Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las decisiones técnicas y de UX (puliendo, no agregando).
+- **Navegación**: `nav_config.GRUPOS_NAV` define 7 secciones (Inicio, Día a día, Ventas y ganancia, Precios y costos, Stock, Publicaciones, Crecimiento);
+  cada pantalla pertenece a una sola y las demás de la sección salen como pestañas. Barra inferior en el celular. `tests/test_navegacion.py` exige que
+  todo `active_nav` esté en una sección. Para agregar una pantalla: sumarla ahí, no en el HTML del menú.
+- **Modo beta**: `config.PAGOS_HABILITADOS = bool(MP_ACCESS_TOKEN)`. Sin token, la prueba no bloquea el acceso, planes/suscripción dicen "beta gratuita" y Referidos se oculta.
+- **Celery ya no existe** (ni `rate_limiter.py`, `tasks/`, `motor_combos.py`). `app._en_segundo_plano(funcion, *args)` es un hilo. El `scheduler.py` (APScheduler) corre
+  con un advisory lock de Postgres: un solo proceso ejecuta los trabajos (sync cada 4 min, salud de tokens por hora, competencia/tendencias a diario).
+- **Panel de publicación** (`publicacion_edicion.py`): MeLi no deja cambiar el título de una publicación con ventas ni reabrir una cerrada ("closed" es irreversible);
+  el límite del título depende de la categoría. Stock absoluto (PUT), nunca incremental; un POST no se reintenta solo. Las publicaciones sin variantes se guardan como
+  variante `<id>_unica` y el stock va a nivel ítem. Las ventas manuales también descuentan stock en MeLi (`stock_meli.py`, migración 0034).
+- **Confirmar decisiones**: `confirmarDecision(...)` (modal de `base.html`, devuelve una Promesa) en lugar de `confirm()`; todo cambio de plata muestra antes/después.
+- **Tests de guarda** que fallan si se rompe un patrón: fechas, caché, `conexion_admin` solo en la lista permitida, `cuenta_id` en las conexiones, filtros de plantillas,
+  `type=` en los botones, navegación, imagen Docker (sin respaldos ni vistas previas) y `tests/test_javascript.py`.
+- ⚠️ **JavaScript sin compilador**: borrar una función que todavía se llama desde el arranque de `global.js` corta la inicialización de TODAS las pantallas (pasó con
+  `cargarHud()` y llegó a producción). `test_javascript.py` lo detecta; antes de dar un cambio de JS por bueno, mirar también la consola del navegador, no solo la pantalla.
+- ⚠️ Una captura tomada a mitad de una animación muestra números o elementos a medio dibujar: antes de reportar un bug visual, medirlo con el DOM, no con la captura.
+- Vistas previas con datos reales: cualquier carpeta `static/_prev` se borra antes de commitear/desplegar (está en `.gitignore` y `.dockerignore`).
+
 ## `cosas.txt` — bugs reportados por el usuario usando la app real
 Archivo en la raíz (no es código, son notas del usuario navegando la
 app real como usuario nuevo). Es la fuente de verdad de bugs
