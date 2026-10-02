@@ -19,6 +19,24 @@ def _detalle_venta(titulo):
     return modelo if talle == "Único" else f"{modelo} ({talle})"
 
 
+def ganancia_de_ayer_hasta_la_hora(ventas, ahora):
+    """
+    Ganancia neta de AYER entre las 00:00 y esta misma hora, para comparar la mañana de hoy con una mañana (contra el promedio del día entero,
+    toda mañana parece floja). `ventas` son las de calcular_ganancia_real (llevan "momento" en hora argentina y raw.ganancia_neta); `ahora` es la
+    hora argentina de hoy. Devuelve (ganancia, cantidad de ventas).
+    """
+    corte = (ahora - timedelta(days=1)).replace(tzinfo=None)
+    inicio = corte.replace(hour=0, minute=0, second=0, microsecond=0)
+    ganancia, cantidad = 0.0, 0
+    for v in ventas:
+        if not v.get("momento"):
+            continue
+        if inicio <= datetime.fromisoformat(v["momento"]) <= corte:
+            ganancia += v["raw"]["ganancia_neta"]
+            cantidad += 1
+    return round(ganancia, 2), cantidad
+
+
 def obtener_ventas_hoy(usuario_id, cuenta_id=None):
     arg_now = datetime.now(timezone.utc) - timedelta(hours=3)
     hoy_local = arg_now.strftime("%Y-%m-%d")

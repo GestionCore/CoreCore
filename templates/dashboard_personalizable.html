@@ -654,9 +654,22 @@
             const ratio = gProm > 0 ? gHoy / gProm : null;
             const hora = new Date().getHours();
             let tono = 'ok', frase;
+            // Por la mañana se compara con AYER A ESTA MISMA HORA: contra el promedio del día entero cualquier mañana parece floja.
+            const ayer = d.ayer_misma_hora || { ganancia: 0, ventas: 0 };
+            const esManana = hora < 18;
             if (negativo) {
                 tono = 'danger';
                 frase = `Hoy vas <b>en pérdida</b>: <b>${UX.plata(gHoy)}</b>. Revisá comisiones, envíos y publicidad de las ventas del día.`;
+            } else if (esManana && gHoy === 0) {
+                tono = 'info';
+                frase = 'Todavía no hay ventas hoy — <b>el día recién empieza</b>.' + (ayer.ventas > 0 ? ` Ayer a esta hora llevabas <b>${UX.plata(ayer.ganancia)}</b>.` : '');
+            } else if (esManana && ayer.ventas > 0) {
+                if (gHoy >= ayer.ganancia) {
+                    frase = `Llevás <b>${UX.plata(gHoy)}</b> de ganancia: <b>más que ayer a esta hora</b> (${UX.plata(ayer.ganancia)}).`;
+                } else {
+                    tono = 'info';
+                    frase = `Llevás <b>${UX.plata(gHoy)}</b> de ganancia. Ayer a esta hora llevabas <b>${UX.plata(ayer.ganancia)}</b>; el día recién empieza.`;
+                }
             } else if (ratio === null) {
                 tono = gHoy > 0 ? 'ok' : 'info';
                 frase = gHoy > 0 ? `Llevás <b>${UX.plata(gHoy)}</b> de ganancia neta hoy.` : 'Todavía no hay ventas hoy — <b>el día recién empieza</b>.';

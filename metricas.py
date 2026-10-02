@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 import db
 import ads
-from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina
+from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina, sql_momento_argentina
 
 _NOMBRES_MES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
@@ -208,9 +208,10 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         cursor = conexion.cursor(row_factory=dict_row)
         comparacion_anterior = _obtener_comparacion_periodo_anterior(cursor, fecha_desde, fecha_hasta)
 
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT id_orden, id_meli, titulo, cantidad, precio_venta, cargo_venta, costo_envio, fecha_venta, id_variante, envio_estado,
-                   COALESCE(costo_flex, 0) AS costo_flex, retenciones, neto_recibido, COALESCE(financiacion, 0) AS financiacion, cuotas
+                   COALESCE(costo_flex, 0) AS costo_flex, retenciones, neto_recibido, COALESCE(financiacion, 0) AS financiacion, cuotas,
+                   {sql_momento_argentina()} AS momento
             FROM ventas WHERE fecha_venta BETWEEN %s AND %s ORDER BY fecha_venta DESC
         """, (fecha_desde, fecha_hasta))
         ventas_db = cursor.fetchall()
@@ -322,6 +323,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
             "costo_ads": formatear_moneda(costo_ads_fila), "costo_fabricacion": formatear_moneda(costo_fabricacion_total),
             "ganancia_neta_formateada": formatear_moneda(ganancia_neta), "es_negativo": ganancia_neta < 0,
             "fecha": fecha_venta.strftime("%Y-%m-%d") if hasattr(fecha_venta, "strftime") else fecha_venta,
+            "momento": v["momento"].isoformat(timespec="minutes") if v.get("momento") else None,      # fecha y hora argentina ("2026-10-02T10:35")
             # Numeros reales (no texto formateado) para el export a Excel.
             "raw": {
                 "precio_venta": round(ingreso_bruto_operacion, 2), "cargo_venta": round(cargo_venta, 2),

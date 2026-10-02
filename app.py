@@ -934,8 +934,10 @@ def api_dashboard_ganancia_dia_vs_promedio():
     mejor = max(serie_14d, key=lambda s: s["ganancia"])
     mejor_dia = {"etiqueta": mejor["etiqueta"], "ganancia": mejor["ganancia"], "ganancia_f": _f(mejor["ganancia"])} if mejor["ventas"] else None
 
+    ganancia_ayer, ventas_ayer = dashboard_mod.ganancia_de_ayer_hasta_la_hora(datos["ventas"], hoy)
     return jsonify({
         "serie_14d": serie_14d, "mejor_dia": mejor_dia, "ventas_14d": sum(s["ventas"] for s in serie_14d),
+        "ayer_misma_hora": {"ganancia": ganancia_ayer, "ganancia_f": _f(ganancia_ayer), "ventas": ventas_ayer},
         "hoy": {
             "ganancia": round(ganancia_hoy, 2), "ganancia_f": _f(ganancia_hoy),
             "facturado": round(facturado_hoy, 2), "facturado_f": _f(facturado_hoy),
