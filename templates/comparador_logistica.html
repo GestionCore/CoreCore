@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_ux.html" import botones_periodo %}
 {% block title %}Propia vs FULL · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -26,9 +27,7 @@
         </div>
         <button type="submit" class="btn btn-denim">Ver este período</button>
         <div style="display:flex; gap:6px;">
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(7, this)">7 días</button>
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(14, this)">14 días</button>
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em;" onclick="aplicarUltimosDias(30, this)">30 días</button>
+        {{ botones_periodo("padding:8px 12px; font-size:0.85em;") }}
         </div>
     </form>
 </div>

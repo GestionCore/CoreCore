@@ -228,6 +228,26 @@ function aplicarUltimosDias(dias, boton) {
     form.submit();
 }
 
+/** "Este mes" (delta 0: del 1 hasta hoy) y "Mes pasado" (delta -1: el mes calendario completo). Fechas locales, igual que aplicarUltimosDias. */
+function _rangoDelMes(delta) {
+    const hoy = new Date();
+    const desde = new Date(hoy.getFullYear(), hoy.getMonth() + delta, 1);
+    const hasta = delta === 0 ? hoy : new Date(hoy.getFullYear(), hoy.getMonth() + delta + 1, 0);
+    const aISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { desde: aISO(desde), hasta: aISO(hasta) };
+}
+
+function aplicarMes(delta, boton) {
+    const form = boton.closest('form');
+    if (!form) return;
+    const { desde, hasta } = _rangoDelMes(delta);
+    form.querySelector('input[name="fecha_desde"]').value = desde;
+    form.querySelector('input[name="fecha_hasta"]').value = hasta;
+    form.querySelectorAll('button[onclick^="aplicarUltimosDias("], button[onclick^="aplicarMes("]').forEach(b => b.classList.remove('active'));
+    boton.classList.add('active');
+    form.submit();
+}
+
 /**
  * Al volver a cargar la página después de tocar "7/14/30 días" (o de
  * entrar con un período ya guardado), ninguno de esos botones quedaba
@@ -243,6 +263,15 @@ function marcarUltimosDiasActivo() {
         if (!form || !desdeStr || !hastaStr) return;
         const botones = form.querySelectorAll('button[onclick^="aplicarUltimosDias("]');
         if (!botones.length) return;
+        // Si el período es exactamente un mes (este mes o el pasado) se marca ese botón y no el de "30 días", que también podría coincidir
+        let esMes = false;
+        form.querySelectorAll('button[onclick^="aplicarMes("]').forEach(b => {
+            const delta = parseInt(b.getAttribute('onclick').match(/aplicarMes\((-?\d+)/)[1], 10);
+            const r = _rangoDelMes(delta);
+            const coincide = r.desde === desdeStr && r.hasta === hastaStr;
+            b.classList.toggle('active', coincide);
+            esMes = esMes || coincide;
+        });
         const desde = new Date(desdeStr + 'T00:00:00');
         const hasta = new Date(hastaStr + 'T00:00:00');
         const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
@@ -253,7 +282,7 @@ function marcarUltimosDiasActivo() {
         botones.forEach(b => {
             const m = b.getAttribute('onclick').match(/aplicarUltimosDias\((\d+)/);
             const n = m ? parseInt(m[1], 10) : null;
-            b.classList.toggle('active', terminaHoy && n !== null && Math.abs(n - dias) <= 1);
+            b.classList.toggle('active', !esMes && terminaHoy && n !== null && Math.abs(n - dias) <= 1);
         });
     });
 }

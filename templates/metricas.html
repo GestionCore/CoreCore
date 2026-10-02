@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_ux.html" import banner, kpi, delta, vacio %}
+{% from "_ux.html" import banner, kpi, delta, vacio, botones_periodo %}
 {% block title %}Ganancia Real · CoreLux{% endblock %}
 {% block content %}
 {% set rs = resumen.raw %}
@@ -26,9 +26,7 @@
 <!-- ── Período: lo primero, porque todo lo de abajo depende de esto ───────── -->
 <form action="/metricas" method="GET" class="ux-periodo no-imprimir">
     <div class="ux-periodo-botones">
-        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(7, this)">7 días</button>
-        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(14, this)">14 días</button>
-        <button type="button" class="btn btn-secondary" onclick="aplicarUltimosDias(30, this)">30 días</button>
+        {{ botones_periodo() }}
     </div>
     <div class="rango-fechas" id="rango-metricas" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
         <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-metricas')"></button>
