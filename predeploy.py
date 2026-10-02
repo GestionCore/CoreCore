@@ -20,7 +20,22 @@ import sys
 import time
 
 RAIZ = os.path.dirname(os.path.abspath(__file__))
-PY = sys.executable
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")      # la consola de Windows (cp1252) no puede imprimir los ✅/❌
+except Exception:
+    pass
+
+
+def _python_del_proyecto():
+    """El Python del venv del proyecto (donde están instaladas las dependencias); si no hay venv, el que corre este script."""
+    for ruta in (("venv", "Scripts", "python.exe"), ("venv", "bin", "python"), (".venv", "Scripts", "python.exe"), (".venv", "bin", "python")):
+        candidato = os.path.join(RAIZ, *ruta)
+        if os.path.exists(candidato):
+            return candidato
+    return sys.executable
+
+
+PY = _python_del_proyecto()
 SIN_REDIS = {"REDIS_URL": "redis://localhost:6399/0"}
 COMO_FLY = {**SIN_REDIS, "FLY_APP_NAME": "corecore", "FLY_REGION": "gru", "FLASK_DEBUG": "false", "DB_POOL_MAX": "3"}
 
@@ -73,8 +88,26 @@ sys.exit(1 if malas else 0)
 '''
 
 
+def _faltan_dependencias():
+    r = subprocess.run([PY, "-c", "import psycopg, flask, pytest, ruff"], cwd=RAIZ, capture_output=True, text=True)
+    if r.returncode == 0:
+        return False
+    print("❌ El Python que se está usando no tiene las dependencias instaladas:")
+    print(f"   {PY}")
+    print()
+    print("   Este proyecto corre dentro de su venv. Desde la carpeta del proyecto:")
+    print("     python -m venv venv                          (solo si todavía no existe la carpeta venv)")
+    print("     venv\\Scripts\\activate")
+    print("     pip install -r requirements-dev.txt")
+    print("     python predeploy.py")
+    return True
+
+
 def main():
     rapido = "--rapido" in sys.argv
+    print(f"Python: {PY}")
+    if _faltan_dependencias():
+        sys.exit(1)
     pasos = [
         correr("Lint (ruff)", [PY, "-m", "ruff", "check", "."]),
         correr("Pruebas", [PY, "-m", "pytest", "-q"]),
