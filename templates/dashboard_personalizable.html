@@ -10,6 +10,20 @@
     <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-settings"/></svg> Personalizar</button>
 </div>
 
+<!-- ── 0. PRIMEROS PASOS: arriba de todo mientras la cuenta no esté completa (se oculta solo al llegar al 100 %) ── -->
+<div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" role="button" tabindex="0" aria-expanded="true" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
+    <div class="panel-title">
+        <span>Completá tu perfil <span class="text-muted" id="checklist-contador" style="font-size:0.8em; font-weight:400;"></span></span>
+        <span class="chevron-colapsable">▾</span>
+    </div>
+    <div class="contenido-colapsable">
+        <div class="flex-gap" style="align-items:center;">
+            <div class="checklist-barra"><div class="checklist-fill" id="checklist-fill" style="width:0%;"></div></div>
+        </div>
+        <div class="checklist-items" id="checklist-items"></div>
+    </div>
+</div>
+
 <!-- ── 1. CÓMO VOY: ganancia neta real de hoy, teñida según cómo viene el día ─ -->
 <div class="ux-hero ux-info" id="hero-ganancia-dia">
     <div class="ux-hero-etiqueta">Ganancia neta real · hoy <span class="badge-en-vivo">En vivo</span></div>
@@ -79,19 +93,6 @@
 <div class="panel" id="panel-personalizar-dashboard" style="display:none;">
     <div class="panel-title">¿Qué más querés ver acá?</div>
     <div class="flex-gap" id="checks-widgets-dashboard" style="flex-wrap:wrap;"></div>
-</div>
-
-<div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" role="button" tabindex="0" aria-expanded="true" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto');">
-    <div class="panel-title">
-        <span>Completá tu perfil <span class="text-muted" id="checklist-contador" style="font-size:0.8em; font-weight:400;"></span></span>
-        <span class="chevron-colapsable">▾</span>
-    </div>
-    <div class="contenido-colapsable">
-        <div class="flex-gap" style="align-items:center;">
-            <div class="checklist-barra"><div class="checklist-fill" id="checklist-fill" style="width:0%;"></div></div>
-        </div>
-        <div class="checklist-items" id="checklist-items"></div>
-    </div>
 </div>
 
 <!-- ── 4. DETALLE: resultado de 14 días, gráficos, rankings ─────────────── -->
