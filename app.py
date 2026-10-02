@@ -241,6 +241,8 @@ import legal
 app.register_blueprint(legal.bp)
 import auditoria
 app.register_blueprint(auditoria.bp)
+import feedback
+app.register_blueprint(feedback.bp)
 import salud_sistema
 app.register_blueprint(salud_sistema.bp)
 

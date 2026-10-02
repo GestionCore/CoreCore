@@ -19,6 +19,7 @@ REGLAS = (
     (("/sincronizar_todo", "/api/flex/sincronizar"), {"POST"}, 4, 60, "usuario", "sync"),
     (("/api/costos/importar",), {"POST"}, 10, 60, "usuario", "importar"),
     (("/api/reactivar", "/api/precios"), {"POST"}, 10, 60, "usuario", "cambios"),
+    (("/api/feedback",), {"POST"}, 10, 60, "usuario", "feedback"),
     (("/admin",), None, 60, 60, "ip", "admin"),
 )
 GENERAL = (600, 60)       # por IP, para todo lo que no es estático, healthcheck ni webhook

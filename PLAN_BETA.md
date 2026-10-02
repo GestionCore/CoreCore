@@ -54,3 +54,5 @@ Mercado Pago de punta a punta, planes con límites reales, factura propia, sopor
   4 min, ~1.050 llamadas/hora por cuenta. Lo más repetido: 41 consultas de stock de convivencia FULL (el `available_quantity` de MeLi es solo el stock FULL, así que no se
   pueden saltear sin perder el stock propio) y 9 de reputación de reclamos. Pendiente: medir en Fly (`fly ssh console -a corecore -C "python medir_sync.py 3 2"`) y
   decidir con ese número.
+- 2026-10-02: **B/móvil** 33 pantallas a 375 px sin desbordes horizontales (verificado midiendo cada una). **B/feedback** «Enviar un comentario» en el menú: ventana con tipo
+  (algo no anda / idea / pregunta), llega con pantalla y versión a `/admin/feedback` (bandeja con «atendido»); tabla `feedback` (migración 0033), privada por usuario y solo-agregar.

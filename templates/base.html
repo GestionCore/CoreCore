@@ -331,9 +331,9 @@
 
         <div class="menu-lateral-section">
             <div class="menu-lateral-section-label">Soporte</div>
-            <a href="mailto:soporte@corelux.app?subject=Reporte%20de%20bug" class="menu-lateral-item">
+            <a href="#" class="menu-lateral-item" onclick="abrirComentario(); return false;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.6" fill="currentColor" stroke="none"/></svg>
-                <span>Reportar un problema</span>
+                <span>Enviar un comentario</span>
             </a>
             <a href="/cuenta/actividad" class="menu-lateral-item"><span>Actividad de mi cuenta</span></a>
             <a href="/terminos" class="menu-lateral-item"><span>Términos y condiciones</span></a>
@@ -494,5 +494,49 @@ document.addEventListener('keydown', e => {
 
 <script>window.CAPACIDADES = {{ (capacidades or {})|tojson }};</script>
 <script src="{{ url_for('static', filename='js/global.js') }}?v={{ static_v('js/global.js') }}"></script>
+
+<!-- Comentarios: ideas, problemas y preguntas de quien usa CoreLux (llegan a /admin/feedback) -->
+<div class="fb-overlay" id="fb-overlay" hidden onclick="if(event.target===this) cerrarComentario()">
+    <div class="fb-caja" role="dialog" aria-modal="true" aria-labelledby="fb-titulo">
+        <div class="fb-cabecera"><b id="fb-titulo">Contanos qué te parece</b><button type="button" class="fb-cerrar" onclick="cerrarComentario()" aria-label="Cerrar">&times;</button></div>
+        <div class="fb-tipos" role="radiogroup" aria-label="De qué se trata">
+            <button type="button" class="fb-tipo activo" data-tipo="problema" onclick="elegirTipoComentario(this)">Algo no anda</button>
+            <button type="button" class="fb-tipo" data-tipo="idea" onclick="elegirTipoComentario(this)">Una idea</button>
+            <button type="button" class="fb-tipo" data-tipo="pregunta" onclick="elegirTipoComentario(this)">Una pregunta</button>
+        </div>
+        <textarea id="fb-mensaje" rows="5" maxlength="2000" placeholder="Escribí lo que quieras: qué estabas haciendo, qué esperabas y qué pasó. Llega con la pantalla en la que estás." aria-label="Tu comentario"></textarea>
+        <div class="fb-pie"><span class="text-muted" id="fb-estado" style="font-size:0.85em;"></span><button type="button" class="btn btn-primary" id="fb-enviar" onclick="enviarComentario()">Enviar</button></div>
+    </div>
+</div>
+<script>
+(function () {
+    let tipo = 'problema';
+    const overlay = () => document.getElementById('fb-overlay');
+    window.abrirComentario = function () {
+        document.getElementById('fb-estado').textContent = '';
+        overlay().hidden = false;
+        setTimeout(() => document.getElementById('fb-mensaje').focus(), 50);
+    };
+    window.cerrarComentario = function () { overlay().hidden = true; };
+    window.elegirTipoComentario = function (boton) {
+        tipo = boton.dataset.tipo;
+        document.querySelectorAll('.fb-tipo').forEach(b => b.classList.toggle('activo', b === boton));
+    };
+    window.enviarComentario = async function () {
+        const caja = document.getElementById('fb-mensaje'), estado = document.getElementById('fb-estado'), boton = document.getElementById('fb-enviar');
+        boton.disabled = true; estado.textContent = 'Enviando…';
+        try {
+            const r = await fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo, mensaje: caja.value, pantalla: location.pathname }) });
+            const d = await r.json();
+            if (d.ok) {
+                caja.value = ''; cerrarComentario();
+                if (typeof mostrarToast === 'function') mostrarToast('¡Gracias! Lo leemos todos.', 'success');
+            } else { estado.textContent = d.detalle || 'No se pudo enviar. Probá de nuevo.'; }
+        } catch (e) { estado.textContent = 'No se pudo enviar. Revisá tu conexión.'; }
+        boton.disabled = false;
+    };
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay().hidden) cerrarComentario(); });
+})();
+</script>
 </body>
 </html>

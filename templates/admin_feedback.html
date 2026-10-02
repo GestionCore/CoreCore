@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_ux.html" import vacio %}
+{% block title %}Comentarios · CoreLux{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon" style="width:22px;height:22px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-chat"/></svg>Comentarios</h1>
+        <div class="page-subtitle">Lo que escriben las personas que usan CoreLux, con la pantalla y la versión · <a href="/admin">Usuarios</a> · <a href="/admin/salud">Salud del sistema</a></div>
+    </div>
+</div>
+
+{% if not comentarios %}
+{{ vacio("Todavía no hay comentarios", "Cuando alguien use «Enviar un comentario» del menú, aparece acá.", "chat", "info") }}
+{% else %}
+<div class="panel">
+    {% for c in comentarios %}
+    <div class="ux-paso" id="fb-{{ c.id }}" style="align-items:flex-start; {% if c.atendido %}opacity:0.55;{% endif %}">
+        <span class="ux-pill ux-{{ 'danger' if c.tipo == 'problema' else ('accion' if c.tipo == 'idea' else 'info') }} ux-pill-suave" style="flex-shrink:0;">{{ c.tipo_texto }}</span>
+        <div class="ux-paso-cuerpo">
+            <div style="white-space:pre-wrap; line-height:1.5;">{{ c.mensaje }}</div>
+            <div class="text-muted" style="font-size:0.8em; margin-top:4px;">
+                {{ c.cuando.strftime('%d/%m %H:%M') }} · {{ c.cuenta or c.email }} · <code>{{ c.pantalla or '—' }}</code> · versión {{ c.version or '—' }}
+            </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="atender({{ c.id }}, {{ 'false' if c.atendido else 'true' }}, this)">{{ 'Reabrir' if c.atendido else 'Atendido' }}</button>
+    </div>
+    {% endfor %}
+</div>
+<script>
+async function atender(id, atendido, boton) {
+    boton.disabled = true;
+    try {
+        const r = await fetch(`/admin/feedback/${id}/atendido`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ atendido }) });
+        if (r.ok) location.reload(); else boton.disabled = false;
+    } catch (e) { boton.disabled = false; }
+}
+</script>
+{% endif %}
+{% endblock %}

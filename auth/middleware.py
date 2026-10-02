@@ -23,7 +23,7 @@ _PERMITIDAS_DURANTE_ONBOARDING = {"logout", "reconectar", "conectar", "callback"
 _PERMITIDAS_SIN_SUSCRIPCION = {
     "logout", "landing", "planes_vista", "suscripcion_iniciar", "suscripcion_retorno",
     "suscripcion_vista", "suscripcion_cancelar", "webhook_mercadopago", "admin_panel",
-    "admin_usuarios", "admin_cambiar_plan", "salud_sistema.admin_salud", "legal.cuenta_eliminar",
+    "admin_usuarios", "admin_cambiar_plan", "salud_sistema.admin_salud", "feedback.admin_feedback", "feedback.marcar_atendido", "legal.cuenta_eliminar",
 }
 
 
