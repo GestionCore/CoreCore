@@ -289,6 +289,56 @@ def procesar_notificacion_webhook(topic, resource, meli_user_id):
         print(f"❌ [Webhook] Error procesando notificación (topic={topic}, resource={resource}): {e}")
 
 
+LIMITE_PAGINA_ITEMS = 100
+TOPE_OFFSET_MELI = 1000          # /users/{id}/items/search no pagina por offset más allá de 1000 resultados
+MAX_PAGINAS_SCAN = 500           # 50.000 publicaciones: un corte de seguridad contra un scroll que no termina
+
+
+def listar_ids_publicaciones(user_id, headers, cuenta_id=None, get=None):
+    """
+    Los ids de TODAS las publicaciones del vendedor. Hasta 1000 se pagina por offset; con más, Mercado Libre exige el modo `scan` con
+    `scroll_id` (antes el sync cortaba en 1000 y el resto de las publicaciones nunca se sincronizaba). `get` es meli_http.get (se inyecta en las pruebas).
+    """
+    get = get or meli_http.get
+    url = f"https://api.mercadolibre.com/users/{user_id}/items/search"
+    ids, offset, total = [], 0, 0
+    while True:
+        resp = get(url, headers=headers, params={"limit": LIMITE_PAGINA_ITEMS, "offset": offset}, timeout=8)
+        if resp.status_code != 200:
+            break
+        data = resp.json()
+        resultados = data.get("results", [])
+        if not resultados:
+            break
+        ids.extend(resultados)
+        total = (data.get("paging", {}) or {}).get("total", 0)
+        offset += LIMITE_PAGINA_ITEMS
+        if offset >= total or offset >= TOPE_OFFSET_MELI:
+            break
+    if total <= TOPE_OFFSET_MELI:
+        return ids
+
+    # Más de 1000: scan + scroll_id desde cero (el scroll devuelve todo, sin tope)
+    print(f"[Sincronizador] ℹ️ Cuenta {cuenta_id}: {total} publicaciones, más que el tope de paginación (1000): se usa el modo scan.")
+    vistos, ordenados, scroll_id = set(), [], None
+    for _ in range(MAX_PAGINAS_SCAN):
+        params = {"search_type": "scan", "limit": LIMITE_PAGINA_ITEMS}
+        if scroll_id:
+            params["scroll_id"] = scroll_id
+        resp = get(url, headers=headers, params=params, timeout=15)
+        if resp.status_code != 200:
+            print(f"[Sincronizador] ⚠️ Cuenta {cuenta_id}: el modo scan falló ({resp.status_code}); se usan las {len(ids)} ya obtenidas por offset.")
+            return ids
+        data = resp.json()
+        nuevos = [i for i in data.get("results", []) if i not in vistos]
+        if not nuevos:
+            break
+        vistos.update(nuevos)
+        ordenados.extend(nuevos)
+        scroll_id = data.get("scroll_id") or scroll_id
+    return ordenados or ids
+
+
 def sincronizar_catalogo(usuario_id, cuenta_id):
     candado = _obtener_candado(cuenta_id)
     if not candado.acquire(blocking=False):
@@ -310,36 +360,7 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
         user_id = fila[0]
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        # Antes esto era una sola llamada con limit=100 y sin offset — traía
-        # siempre los mismos primeros 100 ítems de /items/search sin importar
-        # cuántas veces se corriera el sync. Si la cuenta tiene más de 100
-        # publicaciones (muy probable con variantes de talle/color), el resto
-        # nunca se sincronizaba: por eso "modelos activos" quedaba clavado en
-        # el mismo número sin importar cuántas veces se le diera a
-        # "Sincronizar Todo". /items/search también topea el offset en 1000
-        # (igual que /orders/search) — un catálogo más grande que eso
-        # necesitaría la API de scroll, que queda fuera de este alcance.
-        lista_ids = []
-        offset_items = 0
-        LIMITE_PAGINA_ITEMS = 100
-        while True:
-            resp_search = meli_http.get(
-                f"https://api.mercadolibre.com/users/{user_id}/items/search",
-                headers=headers, params={"limit": LIMITE_PAGINA_ITEMS, "offset": offset_items}, timeout=8
-            )
-            if resp_search.status_code != 200:
-                break
-            data_search = resp_search.json()
-            resultados = data_search.get("results", [])
-            if not resultados:
-                break
-            lista_ids.extend(resultados)
-            total_items = (data_search.get("paging", {}) or {}).get("total", 0)
-            offset_items += LIMITE_PAGINA_ITEMS
-            if offset_items >= total_items or offset_items >= 1000:
-                if total_items > 1000:
-                    print(f"[Sincronizador] ⚠️ Cuenta {cuenta_id}: {total_items} publicaciones supera el tope de paginación de MeLi (1000) — quedan {total_items - 1000} sin sincronizar.")
-                break
+        lista_ids = listar_ids_publicaciones(user_id, headers, cuenta_id)
         if not lista_ids:
             return
 
