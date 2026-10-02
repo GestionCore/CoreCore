@@ -8,8 +8,6 @@ todavía no portado) queda afuera por ahora — se agrega cuando portemos
 ese módulo, sin romper nada mientras tanto.
 """
 import hashlib
-import threading
-import time
 from datetime import datetime, timedelta, timezone
 import analisis_stock
 import embudo_conversion
@@ -17,6 +15,7 @@ from utils import SQL_RECLAMO_AFECTA
 import tendencias as tendencias_mod
 import promociones as promociones_mod
 import ia_asistente
+import cache_db
 import db
 
 PRIORIDAD_ORDEN = {"urgente": 0, "importante": 1, "opcional": 2}
@@ -248,16 +247,13 @@ def generar_mensaje_coach(misiones):
     return resultado if ok else None
 
 
-# El mensaje del coach es una llamada a la IA (segundos y plata). Antes se
-# generaba en CADA carga de Logros y del Dashboard — hasta 9 s de espera por
-# página. Ahora se cachea por cuenta: mientras las misiones prioritarias no
-# cambien, se reutiliza el mismo mensaje (un caché por cuenta_id, no global:
-# el texto habla de los datos de esa cuenta). Se calcula sobre las misiones de
-# base de datos (sin las que consultan a MeLi) para que la página y el endpoint
-# asíncrono lleguen a la misma firma.
-_cache_coach = {}   # cuenta_id -> {"firma": str, "mensaje": str, "ts": float}
-_LOCK_COACH = threading.Lock()
+# El mensaje del coach es una llamada a la IA (segundos y plata). Se guarda en la base (cache_db), por cuenta y compartido entre todos los procesos:
+# antes era un diccionario en memoria y, con 2 máquinas x 2 procesos, 3 de cada 4 cargas lo volvían a pedir. Mientras las misiones prioritarias no
+# cambien se reutiliza el mismo mensaje; si la IA falla (a veces contesta vacío) se recuerda 10 minutos para no reintentar en cada carga de página.
+# Se calcula sobre las misiones de base de datos (sin las que consultan a MeLi) para que la página y el endpoint asíncrono lleguen a la misma firma.
+CLAVE_COACH = "coach_ia"
 TTL_COACH_SEGUNDOS = 6 * 3600
+TTL_COACH_FALLIDO_SEGUNDOS = 10 * 60
 
 
 def _top_misiones_coach(misiones_base):
@@ -268,29 +264,29 @@ def _firma_coach(top):
     return hashlib.sha1("|".join(f"{m['prioridad']}:{m['titulo']}" for m in top).encode("utf-8")).hexdigest()
 
 
-def mensaje_coach_en_cache(cuenta_id, misiones_base):
-    """El mensaje ya generado si sigue vigente para estas misiones, sin llamar a la IA."""
+def estado_coach(cursor, cuenta_id, misiones_base):
+    """(resuelto, mensaje): resuelto es True si no hace falta llamar a la IA (hay un mensaje vigente o un intento fallido reciente)."""
+    top = _top_misiones_coach(misiones_base)
+    if not top:
+        return True, None
+    return cache_db.leer(cursor, cuenta_id, CLAVE_COACH, _firma_coach(top), TTL_COACH_SEGUNDOS, TTL_COACH_FALLIDO_SEGUNDOS)
+
+
+def generar_y_cachear_mensaje_coach(usuario_id, cuenta_id, misiones_base):
+    """Devuelve el mensaje del coach, llamando a la IA solo si no hay uno vigente. Abre sus propias conexiones cortas: la IA corre SIN conexión tomada."""
     top = _top_misiones_coach(misiones_base)
     if not top:
         return None
-    with _LOCK_COACH:
-        hit = _cache_coach.get(cuenta_id)
-    if hit and hit["firma"] == _firma_coach(top) and time.time() - hit["ts"] < TTL_COACH_SEGUNDOS:
-        return hit["mensaje"]
-    return None
-
-
-def generar_y_cachear_mensaje_coach(cuenta_id, misiones_base):
-    top = _top_misiones_coach(misiones_base)
-    if not top:
-        return None
-    cacheado = mensaje_coach_en_cache(cuenta_id, misiones_base)
-    if cacheado:
-        return cacheado
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        resuelto, mensaje = cache_db.leer(conexion.cursor(), cuenta_id, CLAVE_COACH, _firma_coach(top), TTL_COACH_SEGUNDOS, TTL_COACH_FALLIDO_SEGUNDOS)
+    if resuelto:
+        return mensaje
     mensaje = generar_mensaje_coach(top)
-    if mensaje:
-        with _LOCK_COACH:
-            _cache_coach[cuenta_id] = {"firma": _firma_coach(top), "mensaje": mensaje, "ts": time.time()}
+    try:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            cache_db.guardar(conexion.cursor(), cuenta_id, CLAVE_COACH, mensaje, _firma_coach(top))
+    except Exception as e:
+        print(f"[Logros] ⚠️ No se pudo guardar el mensaje del coach en la caché: {e}")
     return mensaje
 
 
@@ -324,10 +320,10 @@ def obtener_logros(cursor, cuenta_id, headers=None):
 
     # Sin llamar a la IA acá: si hay un mensaje vigente se muestra al instante;
     # si no, la página lo pide aparte (/api/logros/coach) sin frenar la carga.
-    mensaje_coach = mensaje_coach_en_cache(cuenta_id, misiones_base)
+    coach_resuelto, mensaje_coach = estado_coach(cursor, cuenta_id, misiones_base)
     return {
         "misiones": misiones, "mensaje_todo_bien": None, "mensaje_coach": mensaje_coach,
-        "coach_pendiente": mensaje_coach is None and bool(misiones_base),
+        "coach_pendiente": not coach_resuelto and bool(misiones_base),
         "logros_resueltos": logros_resueltos, "recien_resueltas": len(recien_resueltas)
     }
 

@@ -463,6 +463,9 @@ Estado de cada punto en ese archivo (✅/◐). Lo que hay que saber para no romp
   `ADMIN_EMAIL` tiene que ser ese mismo email para entrar a `/admin` y `/admin/salud` (panel de salud del sistema, `salud_sistema.py`).
 - Horas de venta: Mercado Libre manda `-04:00` aunque Argentina es UTC-3; `ventas_sync._fecha_hora_argentina` convierte al ingresar y marca `ventas.hora_normalizada`.
   Las filas viejas (false) se corrigen con `normalizar_horas.py --aplicar` (vista previa por defecto, pendiente del OK del dueño).
+- IA: `deepseek-flash` RAZONA y con `max_tokens` chico (200) se quedaba sin presupuesto: respuesta vacía y 8 s (coach, optimizar título…). `ia_asistente.parametros_extra()`
+  apaga el razonamiento para DeepSeek (`IA_PARAMETROS_EXTRA` lo reemplaza) y los reintentos triplican el presupuesto. Ya no hay que subir los `max_tokens` a ojo.
+- `cache_db.py` (tabla `cache_valores`, migración 0032): caché compartida por cuenta y por todos los procesos. Preferirla a un `_cache_*` en memoria (4 copias en producción y riesgo de mezclar cuentas). El coach de IA ya la usa.
 - `docs/RUNBOOK.md`: deploy, rollback, rotación de claves, tope de conexiones del pooler (`máquinas × workers × DB_POOL_MAX ≤ 12`), sync que no anda.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real

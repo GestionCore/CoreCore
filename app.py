@@ -1529,7 +1529,7 @@ def api_logros_coach():
         cursor = conexion.cursor()
         misiones_base = logros_mod._detectar_misiones_base(cursor, g.cuenta_id)
     # La llamada a la IA va DESPUÉS de soltar la conexión del pool
-    return jsonify({"mensaje": logros_mod.generar_y_cachear_mensaje_coach(g.cuenta_id, misiones_base)})
+    return jsonify({"mensaje": logros_mod.generar_y_cachear_mensaje_coach(g.usuario_id, g.cuenta_id, misiones_base)})
 
 
 @app.route("/embudo_conversion")

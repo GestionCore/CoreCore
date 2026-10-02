@@ -1,3 +1,4 @@
+import json
 import os
 import requests
 from dotenv import load_dotenv
@@ -10,6 +11,26 @@ load_dotenv()
 IA_API_KEY = os.getenv("IA_API_KEY", "")
 IA_BASE_URL = os.getenv("IA_BASE_URL", "https://api.deepseek.com")
 IA_MODEL = os.getenv("IA_MODEL", "deepseek-flash")
+
+MAXIMO_TOKENS = 4000
+
+
+def parametros_extra():
+    """
+    Parámetros adicionales para el pedido al proveedor. deepseek-flash es un modelo de RAZONAMIENTO: gasta los max_tokens pensando y, con un
+    presupuesto chico (200), muchas veces no llega a escribir la respuesta (finish_reason "length" y contenido vacío) además de tardar ~8 s en
+    lugar de ~1 s. Para DeepSeek se apaga el razonamiento, que estas tareas (redactar un aviso, resumir datos, extraer un gasto) no necesitan.
+    IA_PARAMETROS_EXTRA (JSON) lo reemplaza para otro proveedor o para volver a activarlo: "{}" no manda nada.
+    """
+    crudo = os.getenv("IA_PARAMETROS_EXTRA")
+    if crudo is not None:
+        try:
+            extra = json.loads(crudo or "{}")
+            return extra if isinstance(extra, dict) else {}
+        except ValueError:
+            print("[IA] ⚠️ IA_PARAMETROS_EXTRA no es un JSON válido: se ignora.")
+            return {}
+    return {"thinking": {"type": "disabled"}} if "deepseek" in IA_BASE_URL.lower() else {}
 
 
 def preguntar_ia(prompt_sistema, prompt_usuario, max_tokens=500, temperatura=0.4):
@@ -34,7 +55,8 @@ def preguntar_ia_conversacion(prompt_sistema, historial_mensajes, max_tokens=500
     import time
     ultimo_error = "Error desconocido."
     for intento in range(reintentos + 1):
-        ok, resultado = _intentar_una_vez(prompt_sistema, historial_mensajes, max_tokens, temperatura)
+        # Si la respuesta vino vacía, a veces es porque el presupuesto se agotó antes de escribir (modelos que razonan): cada reintento lo triplica.
+        ok, resultado = _intentar_una_vez(prompt_sistema, historial_mensajes, min(max_tokens * (3 ** intento), MAXIMO_TOKENS), temperatura)
         if ok:
             return True, resultado
         ultimo_error = resultado
@@ -61,7 +83,8 @@ def _intentar_una_vez(prompt_sistema, historial_mensajes, max_tokens, temperatur
                 "model": IA_MODEL,
                 "messages": [{"role": "system", "content": prompt_sistema}] + historial_mensajes,
                 "temperature": temperatura,
-                "max_tokens": max_tokens
+                "max_tokens": max_tokens,
+                **parametros_extra(),
             },
             timeout=30
         )
