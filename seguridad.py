@@ -22,6 +22,15 @@ EN_PRODUCCION = bool(os.getenv("FLY_APP_NAME"))
 HOSTS_EXTRA = {h.strip() for h in os.getenv("HOSTS_PERMITIDOS", "").split(",") if h.strip()}
 
 
+def ip_del_cliente():
+    """
+    La IP real de quien hace el pedido. El dominio pasa por Cloudflare: ahí request.remote_addr es la IP del borde de Cloudflare (la comparten
+    muchísimos usuarios y un límite "por IP" bloquearía gente legítima), y la del visitante viene en CF-Connecting-IP. Sin Cloudflare (por ejemplo
+    corecore.fly.dev directo) se usa remote_addr, que con ProxyFix ya es la que informa Fly.
+    """
+    return request.headers.get("CF-Connecting-IP") or request.remote_addr
+
+
 def _host(valor):
     return (urlparse(valor).netloc or "").split(":")[0].lower()
 
@@ -63,7 +72,7 @@ def iniciar(app):
     def _limitar_pedidos():
         if app.config.get("TESTING"):
             return None
-        espera = limitador.revisar(request.path, request.method, session.get("usuario_id"), request.remote_addr)
+        espera = limitador.revisar(request.path, request.method, session.get("usuario_id"), ip_del_cliente())
         if espera:
             resp, codigo = _error(429, "Demasiados pedidos", f"Esperá {espera} segundos y volvé a intentar.")
             resp = make_response(resp, codigo)

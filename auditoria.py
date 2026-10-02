@@ -20,6 +20,7 @@ from flask import Blueprint, Response, g, jsonify, render_template, request
 
 import db
 from auth.middleware import login_requerido
+from seguridad import ip_del_cliente
 from utils import ARGENTINA
 
 log = logging.getLogger("corelux.auditoria")
@@ -103,7 +104,7 @@ def registrar(accion, detalle=None, usuario_id=None, cuenta_id=None):
         cuenta_id = cuenta_id or g.get("cuenta_id")
         if not usuario_id:
             return
-        ip = request.remote_addr if request else None
+        ip = ip_del_cliente() if request else None
         with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             conexion.cursor().execute(
                 "INSERT INTO auditoria (usuario_id, cuenta_id, accion, detalle, ip) VALUES (%s, %s, %s, %s::jsonb, %s)",

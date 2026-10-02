@@ -60,3 +60,13 @@ def test_paginas_de_error_en_espanol_y_json_en_api(cliente):
 def test_la_cookie_de_sesion_es_segura(cliente):
     cfg = cliente.application.config
     assert cfg["SESSION_COOKIE_HTTPONLY"] is True and cfg["SESSION_COOKIE_SAMESITE"] == "Lax"
+
+
+def test_la_ip_del_cliente_sale_de_cloudflare_si_esta_y_si_no_de_la_conexion():
+    from flask import Flask
+    import seguridad
+    app = Flask(__name__)
+    with app.test_request_context("/", headers={"CF-Connecting-IP": "181.1.2.3"}, environ_base={"REMOTE_ADDR": "172.70.0.1"}):
+        assert seguridad.ip_del_cliente() == "181.1.2.3"
+    with app.test_request_context("/", environ_base={"REMOTE_ADDR": "190.9.9.9"}):
+        assert seguridad.ip_del_cliente() == "190.9.9.9"

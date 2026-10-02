@@ -109,7 +109,7 @@ Supabase hace además sus propios respaldos diarios (según el plan). Probar de 
 
 ## 8. Límites de pedidos
 
-`limitador.py` responde `429` con `Retry-After` cuando se pasan: IA 20/min por usuario, sync manual 4/min, importar planillas 10/min, conexión con
+`limitador.py` (la IP del visitante sale de `CF-Connecting-IP`: el dominio pasa por Cloudflare) responde `429` con `Retry-After` cuando se pasan: IA 20/min por usuario, sync manual 4/min, importar planillas 10/min, conexión con
 Mercado Libre 20/min por IP, `/admin` 60/min por IP y 600/min por IP en general. Es por proceso (con 4 procesos, hasta 4 veces eso). Si un usuario
 legítimo choca con un límite, subir el valor en `REGLAS` de `limitador.py`.
 
