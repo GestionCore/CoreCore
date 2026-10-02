@@ -38,3 +38,9 @@ def test_explicar_respuesta_lee_el_cuerpo_y_tolera_que_no_sea_json():
     assert "ya tiene ventas" in e.explicar_respuesta(_Resp(400, {"cause": [{"code": "item.title.not_modifiable"}]}))
     assert "reconectar" in e.explicar_respuesta(_Resp(403, roto=True))
     assert "reconectar" in e.explicar_respuesta(_Resp(403, ["no", "es", "dict"]))
+
+
+def test_los_mensajes_conocidos_de_la_api_se_traducen():
+    assert "no tiene stock" in e.explicar_error_meli(400, {"message": "Item has no stock"})
+    assert "variante" in e.explicar_error_meli(400, {"message": "Item with variations: price must be set per variation"})
+    assert "Item" not in e.explicar_error_meli(400, {"message": "Item has no stock"})

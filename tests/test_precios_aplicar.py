@@ -77,7 +77,7 @@ def test_si_mercado_libre_rechaza_no_se_toca_la_base(monkeypatch):
     datos = _datos(precio=9000.0)
     cur = CursorFalso()
     res = precios.aplicar(cur, 1, "tok", [{"id": "MLA1", "precio": datos["items"][0]["recomendado"]}], datos)
-    assert res[0]["ok"] is False and "variation" in res[0]["detalle"]
+    assert res[0]["ok"] is False and "variante" in res[0]["detalle"]
     assert not any("UPDATE" in s or "INSERT" in s for s, _ in cur.consultas)
 
 

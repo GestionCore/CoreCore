@@ -52,7 +52,7 @@ def test_si_mercado_libre_rechaza_no_se_toca_la_base_y_se_informa_el_motivo(monk
     monkeypatch.setattr(reactivar.meli_http, "put", lambda url, **kw: RespuestaFalsa(400, {"message": "Item has no stock"}))
     cur = CursorFalso([_fila("MLA1", "out_of_stock")])
     res = reactivar.reactivar(cur, 7, "token", ["MLA1"])
-    assert res == [{"id": "MLA1", "ok": False, "detalle": "Item has no stock"}]
+    assert res == [{"id": "MLA1", "ok": False, "detalle": "La publicación no tiene stock disponible: cargale unidades antes de reactivarla."}]
     assert not any("UPDATE" in sql for sql, _ in cur.consultas)
 
 

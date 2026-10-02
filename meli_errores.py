@@ -10,6 +10,14 @@ CAUSAS = {
 }
 
 
+# Mensajes de la API (en inglés) que se repiten y sí le sirven a la persona: se traducen en vez de mostrarlos tal cual o perder el motivo.
+MENSAJES_CONOCIDOS = (
+    ("no stock", "La publicación no tiene stock disponible: cargale unidades antes de reactivarla."),
+    ("per variation", "Mercado Libre pide cambiar el precio de cada variante por separado: hacelo desde Mercado Libre."),
+    ("variations", "Es una publicación con variantes y Mercado Libre no deja cambiarla así: hacelo desde Mercado Libre."),
+)
+
+
 def cuerpo_de(respuesta):
     """El JSON de una respuesta de requests como dict, o None si no se puede leer."""
     try:
@@ -26,6 +34,10 @@ def explicar_error_meli(codigo, cuerpo):
     for causa in cuerpo.get("cause") or []:
         if isinstance(causa, dict) and causa.get("code") in CAUSAS:
             return CAUSAS[causa["code"]]
+    mensaje = str(cuerpo.get("message") or "").lower()
+    for fragmento, frase in MENSAJES_CONOCIDOS:
+        if fragmento in mensaje:
+            return frase
     if codigo in (401, 403):
         return "Mercado Libre no autorizó el cambio. Probá reconectar tu cuenta."
     if codigo == 404:
