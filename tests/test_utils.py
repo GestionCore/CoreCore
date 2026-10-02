@@ -33,3 +33,15 @@ def test_clave_de_modelo_agrupa_los_talles():
 
 def test_dos_productos_distintos_no_se_agrupan():
     assert limpiar_titulo_modelo("Pack 12 Medias") != limpiar_titulo_modelo("Pack 6 Medias")
+
+
+def test_html_seguro_deja_el_formato_y_descarta_lo_peligroso():
+    from utils import html_seguro
+    assert html_seguro("<b>3 reclamos</b> abiertos") == "<b>3 reclamos</b> abiertos"
+    assert html_seguro('<b>Ok</b><script>alert(1)</script>') == "<b>Ok</b>"
+    assert html_seguro('<img src=x onerror=alert(1)>hola') == "hola"
+    assert "onclick" not in html_seguro('<span class="a" onclick="x()">t</span>') and 'class="a"' in html_seguro('<span class="a" onclick="x()">t</span>')
+    assert "javascript" not in html_seguro('<a href="javascript:alert(1)">x</a>')
+    assert html_seguro('<a href="/stock">ir</a>') == '<a href="/stock">ir</a>'
+    assert html_seguro("5 < 6 & 7 > 2") == "5 &lt; 6 &amp; 7 &gt; 2"
+    assert html_seguro(None) == ""

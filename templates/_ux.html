@@ -10,7 +10,7 @@
 <div class="ux-banner ux-{{ tono }}" role="status">
     <div class="ux-banner-icono"><svg class="icon" aria-hidden="true"><use href="#icon-{{ icono }}"/></svg></div>
     <div class="ux-banner-cuerpo">
-        <div class="ux-banner-titulo">{{ titulo_html|safe }}</div>
+        <div class="ux-banner-titulo">{{ titulo_html|ux_seguro|safe }}</div>
         {% if detalle %}<div class="ux-banner-detalle">{{ detalle }}</div>{% endif %}
     </div>
     {% if cta_texto and cta_href %}<a class="btn {{ cta_clase }}" href="{{ cta_href }}">{{ cta_texto }}</a>{% endif %}
@@ -21,7 +21,7 @@
 <{{ 'a' if href else 'div' }} {% if href %}href="{{ href }}"{% endif %} {% if id %}id="{{ id }}"{% endif %} class="ux-kpi ux-{{ tono }}">
     <div class="ux-kpi-etiqueta"><svg class="icon" aria-hidden="true"><use href="#icon-{{ icono }}"/></svg>{{ etiqueta }}</div>
     <div class="ux-kpi-valor">{{ valor }}</div>
-    <div class="ux-kpi-sub">{{ sub_html|safe }}</div>
+    <div class="ux-kpi-sub">{{ sub_html|ux_seguro|safe }}</div>
 </{{ 'a' if href else 'div' }}>
 {% endmacro %}
 

@@ -126,6 +126,7 @@ except Exception as _e:
 app.add_template_filter(utils.plata, "plata")
 app.add_template_filter(utils.porcentaje, "pct")
 app.add_template_filter(utils.numero, "numero")
+app.add_template_filter(utils.html_seguro, "ux_seguro")
 
 
 @app.context_processor

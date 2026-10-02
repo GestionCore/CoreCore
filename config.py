@@ -67,6 +67,9 @@ FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "")
 # NUNCA la guardes en la base de datos ni en el repositorio — solo acá,
 # como variable de entorno del servidor.
 TOKEN_ENCRYPTION_KEY = os.getenv("TOKEN_ENCRYPTION_KEY", "")
+# Opcional: la clave (o varias, separadas por coma) que se usaba ANTES. Solo descifra; sirve para rotar TOKEN_ENCRYPTION_KEY sin
+# desconectar a nadie (ver rotar_clave.py y docs/RUNBOOK.md).
+TOKEN_ENCRYPTION_KEY_ANTERIOR = os.getenv("TOKEN_ENCRYPTION_KEY_ANTERIOR", "")
 
 # --- Mercado Pago (pagos de suscripción de CoreLux) ---
 # Credenciales PROPIAS de CoreLux en MercadoPago, para cobrar a los usuarios.

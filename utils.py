@@ -108,3 +108,63 @@ def numero(valor):
         return f"{float(valor):,.0f}".replace(",", ".")
     except (TypeError, ValueError):
         return "—"
+
+
+# ── HTML seguro para las macros de _ux.html ─────────────────────────────────────────────────────────────────────────────────────
+# Los textos de banners y KPI se arman con un poco de HTML ("<b>3 reclamos</b>") y a veces mezclan datos que vienen de afuera (títulos de
+# Mercado Libre, nombres de compradores). En vez de confiar en que cada llamador escape lo suyo, la macro deja pasar solo un conjunto
+# chico de etiquetas y atributos y escapa todo lo demás.
+import html as _html
+from html.parser import HTMLParser as _HTMLParser
+
+_ETIQUETAS_OK = {"b", "strong", "i", "em", "u", "small", "span", "br", "a"}
+_ATRIBUTOS_OK = {"class", "title", "style", "href", "target", "rel"}
+_DESCARTAR_CONTENIDO = {"script", "style", "iframe", "object", "embed"}
+
+
+def _atributo_seguro(nombre, valor):
+    valor = valor or ""
+    if nombre == "href":
+        return valor.startswith(("/", "#", "https://", "mailto:"))
+    if nombre == "style":
+        return not any(x in valor.lower() for x in ("url(", "javascript", "expression", "@import", "behavior"))
+    if nombre == "target":
+        return valor == "_blank"
+    return True
+
+
+class _Saneador(_HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.salida, self._saltar = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in _DESCARTAR_CONTENIDO:
+            self._saltar += 1
+            return
+        if tag not in _ETIQUETAS_OK or self._saltar:
+            return
+        atributos = "".join(f' {n}="{_html.escape(v or "", quote=True)}"' for n, v in attrs if n in _ATRIBUTOS_OK and _atributo_seguro(n, v))
+        if tag == "a" and 'target="_blank"' in atributos:
+            atributos += ' rel="noopener"'
+        self.salida.append(f"<{tag}{atributos}>")
+
+    def handle_endtag(self, tag):
+        if tag in _DESCARTAR_CONTENIDO:
+            self._saltar = max(0, self._saltar - 1)
+        elif tag in _ETIQUETAS_OK and tag != "br" and not self._saltar:
+            self.salida.append(f"</{tag}>")
+
+    def handle_data(self, data):
+        if not self._saltar:
+            self.salida.append(_html.escape(data, quote=False))
+
+
+def html_seguro(texto):
+    """Deja pasar solo <b>, <i>, <span>, <a>, <br>… con atributos inofensivos; todo lo demás se escapa o se descarta."""
+    if not texto:
+        return ""
+    p = _Saneador()
+    p.feed(str(texto))
+    p.close()
+    return "".join(p.salida)
