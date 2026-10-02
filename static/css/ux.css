@@ -527,3 +527,5 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 :root[data-theme="light"] .ux-modelo-cabecera { background: rgba(0, 0, 0, 0.025); }
 :root[data-theme="light"] .ux-pill:not(.ux-pill-suave) { color: #ffffff; }
 :root[data-theme="light"] .ux-pill.ux-warn:not(.ux-pill-suave), :root[data-theme="light"] .ux-pill.ux-gold:not(.ux-pill-suave) { color: #ffffff; }
+/* La regla `.ux-pill.ux-accion/.ux-neutral { color:#fff }` (más específica que .ux-pill-suave) dejaba "pocas ventas" o "Pausada" en blanco sobre fondo claro */
+:root[data-theme="light"] .ux-pill-suave.ux-accion, :root[data-theme="light"] .ux-pill-suave.ux-neutral { color: var(--ux-c); }

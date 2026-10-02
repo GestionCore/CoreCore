@@ -104,7 +104,7 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 72. 🟠 L · MEJORAR — **10 pantallas sin el rediseño UX v3:** admin, comparador de logística, conectar otra cuenta, error de conexión, onboarding, planes, reconectar, sincronizando, línea de tiempo de publicación y competencia.
 73. 🟠 S · QUITAR — **Pantallas que existen pero no se enlazan desde ningún lado:** `/comparador_logistica`, `/publicacion/<id>/timeline`, `/publicacion/<id>/exportar_red`. Enlazarlas desde el detalle de la publicación o borrarlas.
 74. ◐ 🟠 M · MEJORAR — **Accesibilidad:** 18 de las 38 plantillas sin ningún atributo `aria-`, una imagen sin `alt`, foco poco visible, la paleta Ctrl+K sin navegación completa por teclado.
-75. 🟠 M · MEJORAR — **Probar el tema claro** en las pantallas nuevas (Calidad, Precios, Opiniones, Cobros, Dashboard): se verificaron solo en oscuro.
+75. ✅ 🟠 M · MEJORAR — **Probar el tema claro** en las pantallas nuevas (Calidad, Precios, Opiniones, Cobros, Dashboard): se verificaron solo en oscuro.
 76. 🟠 M · MEJORAR — **Estados de carga y vacío no uniformes:** algunas pantallas usan `skeleton`, otras texto "Cargando…" o quedan en blanco si falla el fetch.
 77. 🟠 M · MEJORAR — **Móvil:** las tablas anchas (stock masivo, costos) no usan `ux-tabla-cards` en todas partes. Revisar cada pantalla a 375 px.
 78. 🟠 M · IMPLEMENTAR — **Checklist de primeros pasos con progreso** ("costos cargados 19 de 83", "Ads conectado", "cobros revisados") visible hasta completarlo.
