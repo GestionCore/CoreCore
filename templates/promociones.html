@@ -222,10 +222,10 @@
             const d = await (await fetch(`/api/simular_costo?precio=${precioDeal}&costo=${costo}&id_meli=${encodeURIComponent(opcion.value)}`)).json();
             if (mi !== _pedidoSim) return;
             if (d.error) { cont.innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No se pudo calcular</b>', detalle: d.error }); return; }
-            const tono = d.ganancia_neta < 0 ? 'danger' : (d.margen_pct < 15 ? 'warn' : 'ok');
+            const tono = d.ganancia_neta < 0 ? 'danger' : (d.margen_pct < window.MARGEN_MINIMO ? 'warn' : 'ok');
             const frase = d.ganancia_neta < 0
                 ? `<b>Vendés a pérdida:</b> perdés ${UX.plata(Math.abs(d.ganancia_neta), 0)} por unidad a este precio`
-                : `Con este precio te quedan <b>${UX.plata(d.ganancia_neta, 0)} por unidad</b> (${UX.pct(d.margen_pct, 1)})${d.margen_pct < 15 ? ' — <b>margen justo</b>' : ''}`;
+                : `Con este precio te quedan <b>${UX.plata(d.ganancia_neta, 0)} por unidad</b> (${UX.pct(d.margen_pct, 1)})${d.margen_pct < window.MARGEN_MINIMO ? ' — <b>margen justo</b>' : ''}`;
             cont.innerHTML = UX.banner({ tono, icono: tono === 'ok' ? 'check' : 'alert', tituloHtml: frase,
                 detalle: (descuento !== null ? `Es un ${UX.pct(descuento, 0)} menos que el precio actual (${UX.plata(precioActual)}). ` : '') + (costo === 0 ? 'Sin costo de fabricación cargado, el margen real es menor.' : '') });
         } catch (e) { if (mi === _pedidoSim) cont.innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No se pudo calcular ahora</b>', detalle: 'Probá de nuevo.' }); }

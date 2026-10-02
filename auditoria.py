@@ -56,6 +56,8 @@ ETIQUETAS = {
     "plan_cambiar": "Plan cambiado (admin)",
     "usuario_activar": "Usuario activado o desactivado (admin)",
     "trial_extender": "Prueba extendida (admin)",
+    "margen_minimo": "Margen mínimo cambiado",
+    "datos_descargar": "Datos descargados",
     "suscripcion_cancelar": "Suscripción cancelada",
 }
 

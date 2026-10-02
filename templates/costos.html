@@ -276,7 +276,7 @@
         if (!precio || isNaN(comision)) { cont.innerHTML = '<span class="text-muted" style="font-size:0.8em;">Sin datos de comisión todavía</span>'; return; }
         const ganancia = precio - comision - envio - costo;
         const margen = ganancia / precio * 100;
-        const tono = costo === 0 ? 'warn' : (ganancia < 0 ? 'danger' : (margen < 15 ? 'warn' : 'ok'));
+        const tono = costo === 0 ? 'warn' : (ganancia < 0 ? 'danger' : (margen < window.MARGEN_MINIMO ? 'warn' : 'ok'));
         const texto = costo === 0 ? 'Cargá el costo para ver tu ganancia'
             : (ganancia < 0 ? `Perdés ${UX.plata(Math.abs(ganancia))} por unidad` : `Ganás ${UX.plata(ganancia)} por unidad (${UX.pct(margen, 0)})`);
         cont.innerHTML = `<span class="ux-pill ux-${tono} ux-pill-suave">${texto}</span>`;

@@ -173,7 +173,7 @@ function pintarResultado(d) {
 
     // Con costo cargado el color dice si conviene (mismos umbrales que el resto de la app); sin costo es informativo
     const margen = costo > 0 ? neto / base * 100 : null;
-    const tono = margen === null ? 'info' : (neto < 0 ? 'danger' : (margen < 15 ? 'warn' : 'ok'));
+    const tono = margen === null ? 'info' : (neto < 0 ? 'danger' : (margen < window.MARGEN_MINIMO ? 'warn' : 'ok'));
     const titulo = margen === null ? 'Te queda de este precio' : 'Tu ganancia neta real';
     const numero = margen === null ? recibis : neto;
 

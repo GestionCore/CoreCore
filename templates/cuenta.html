@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Preferencias y datos · CoreLux{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-settings"/></svg>Preferencias y datos</h1>
+        <div class="page-subtitle">Cómo querés ver tu negocio, y qué hacemos con tus datos</div>
+    </div>
+</div>
+
+<!-- ── 1. TU PLAN ───────────────────────────────────────────────────────── -->
+<div class="ux-seccion ux-accion">Tu plan</div>
+<div class="panel cuenta-panel">
+    <div class="cuenta-fila">
+        <div>
+            <div style="font-weight:800; font-size:1.05em;">{{ nombre_plan }}</div>
+            <div class="text-muted" style="font-size:0.88em;">{{ email or 'Tu email se completa la próxima vez que entres con Mercado Libre' }}{% if dias_trial is not none and pagos_habilitados %} · te quedan {{ dias_trial|plural("día") }} de prueba{% elif plan == 'trial' %} · beta gratuita{% endif %}</div>
+        </div>
+        <a class="btn btn-secondary" href="/suscripcion">Ver mi suscripción</a>
+    </div>
+</div>
+
+<!-- ── 2. TUS CUENTAS DE MERCADO LIBRE ──────────────────────────────────── -->
+<div class="ux-seccion ux-info">Tus cuentas de Mercado Libre</div>
+<div class="panel cuenta-panel">
+    {% for c in cuentas_disponibles %}
+    <div class="cuenta-fila">
+        <div>
+            <div style="font-weight:700;">{{ c.nombre_negocio or c.nickname }}{% if cuenta_actual and c.id == cuenta_actual.id %} <span class="ux-pill ux-ok ux-pill-suave">la que estás viendo</span>{% endif %}</div>
+            <div class="text-muted" style="font-size:0.85em;">{{ c.nickname }}</div>
+        </div>
+        {% if not cuenta_actual or c.id != cuenta_actual.id %}
+        <form method="POST" action="/cambiar_cuenta" style="margin:0;"><input type="hidden" name="cuenta_id" value="{{ c.id }}"><button type="submit" class="btn btn-secondary">Ver esta cuenta</button></form>
+        {% endif %}
+    </div>
+    {% endfor %}
+    <div style="margin-top:14px;"><a class="btn btn-secondary" href="/conectar_otra_cuenta">Agregar otra cuenta</a></div>
+</div>
+
+<!-- ── 3. PREFERENCIAS ──────────────────────────────────────────────────── -->
+<div class="ux-seccion ux-gold">Preferencias</div>
+<div class="panel cuenta-panel">
+    <label class="field-label" for="input-margen-minimo"><b>Margen mínimo que querés ganar</b></label>
+    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin:4px 0 12px; max-width:640px;">
+        Es el porcentaje de lo que facturás que tiene que quedarte, como mínimo. Un modelo que deja menos que esto aparece <b>«al límite»</b>
+        en naranja; el que pierde plata, en rojo. Es una referencia para mirar: <b>no cambia ningún cálculo</b>. Se guarda para <b>{{ (cuenta_actual.nombre_negocio or cuenta_actual.nickname) if cuenta_actual else 'esta cuenta' }}</b>.
+    </div>
+    <div class="flex-gap" style="align-items:center;">
+        <input type="number" id="input-margen-minimo" min="0" max="60" step="0.5" inputmode="decimal" value="{{ margen_minimo|round(1) }}" style="width:110px; font-weight:800; text-align:right;" aria-describedby="margen-minimo-ayuda">
+        <span style="font-weight:700;">%</span>
+        <button type="button" class="btn btn-primary" id="btn-guardar-margen">Guardar</button>
+        <span class="text-muted" id="margen-minimo-ayuda" style="font-size:0.82em;">de 0 a 60 · hoy: {{ margen_minimo|pct }}</span>
+    </div>
+</div>
+
+<!-- ── 4. TUS DATOS ─────────────────────────────────────────────────────── -->
+<div class="ux-seccion ux-neutral">Tus datos</div>
+<div class="panel cuenta-panel">
+    <div class="cuenta-fila">
+        <div style="max-width:560px;">
+            <div style="font-weight:700;">Descargar mis datos</div>
+            <div class="text-muted" style="font-size:0.88em; line-height:1.5;">Un archivo con tus ventas, publicaciones, costos, gastos y reclamos: un CSV por cada tipo de dato y una carpeta por cuenta de Mercado Libre. Se abre con Excel.</div>
+        </div>
+        <form method="POST" action="/cuenta/descargar_datos" style="margin:0;"><button type="submit" class="btn btn-secondary"><svg class="icon" style="width:14px;height:14px;" aria-hidden="true"><use href="#icon-download"/></svg> Descargar</button></form>
+    </div>
+    <div class="cuenta-fila" style="border-top:1px solid var(--border-soft); margin-top:14px; padding-top:14px;">
+        <div style="max-width:560px;">
+            <div style="font-weight:700;">Eliminar mi cuenta</div>
+            <div class="text-muted" style="font-size:0.88em; line-height:1.5;">Borramos tu usuario y todos tus datos de CoreLux. No se puede deshacer; antes te pedimos confirmación.</div>
+        </div>
+        <a class="btn btn-danger" href="/cuenta/eliminar">Eliminar mi cuenta</a>
+    </div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:14px;">¿Alguna duda con tus datos? Escribinos a <b>{{ contacto }}</b>.</div>
+</div>
+
+<style>
+.cuenta-panel { max-width: 760px; }
+.cuenta-fila { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 6px 0; }
+</style>
+<script>
+document.getElementById('btn-guardar-margen').addEventListener('click', async (e) => {
+    const boton = e.currentTarget, entrada = document.getElementById('input-margen-minimo');
+    const valor = entrada.value.trim();
+    if (valor === '' || isNaN(Number(valor)) || Number(valor) < 0 || Number(valor) > 60) { mostrarToast('Escribí un porcentaje entre 0 y 60.', 'error'); return; }
+    boton.disabled = true;
+    try {
+        const r = await fetch('/api/cuenta/margen_minimo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor }) });
+        const d = await r.json();
+        if (d.ok) {
+            window.MARGEN_MINIMO = d.margen_minimo;
+            const texto = String(d.margen_minimo).replace('.', ',') + '%';
+            document.getElementById('margen-minimo-ayuda').textContent = 'de 0 a 60 · hoy: ' + texto;
+            mostrarToast('Listo: desde ahora, menos de ' + texto + ' se marca «al límite».', 'success');
+        } else {
+            mostrarToast(d.detalle || 'No se pudo guardar.', 'error');
+        }
+    } catch (err) {
+        mostrarToast('No hubo conexión con el servidor. Probá de nuevo.', 'error');
+    }
+    boton.disabled = false;
+});
+</script>
+{% endblock %}

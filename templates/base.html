@@ -283,6 +283,10 @@
 
         <div class="menu-lateral-section">
             <div class="menu-lateral-section-label">Cuenta</div>
+            <a href="/cuenta" class="menu-lateral-item {% if active_nav == 'cuenta' %}active{% endif %}">
+                <svg class="icon" style="width:18px;height:18px;"><use href="#icon-settings"/></svg>
+                <span>Preferencias y datos</span>
+            </a>
             <a href="/suscripcion" class="menu-lateral-item {% if active_nav == 'suscripcion' %}active{% endif %}">
                 <svg class="icon" style="width:18px;height:18px;"><use href="#icon-credit-card"/></svg>
                 <span>Suscripción</span>
@@ -475,7 +479,7 @@ document.addEventListener('keydown', e => {
 })();
 </script>
 
-<script>window.CAPACIDADES = {{ (capacidades or {})|tojson }};</script>
+<script>window.CAPACIDADES = {{ (capacidades or {})|tojson }}; window.MARGEN_MINIMO = {{ (margen_minimo if margen_minimo is defined else 15)|tojson }};</script>
 <script src="{{ url_for('static', filename='js/global.js') }}?v={{ static_v('js/global.js') }}"></script>
 
 <!-- Comentarios: ideas, problemas y preguntas de quien usa CoreLux (llegan a /admin/feedback) -->

@@ -2,6 +2,7 @@
 CoreLux — esqueleto inicial con el flujo completo de OAuth 2.0 contra
 Mercado Libre, multi-tenant, con Postgres/Supabase + Row Level Security.
 """
+import io
 import sys
 import os
 
@@ -66,6 +67,8 @@ import scheduler
 import ventas_manuales
 import pagos
 import admin_usuarios
+import mis_datos
+import preferencias
 import meli_errores
 import utils
 from utils import formatear_moneda, formatear_moneda_entera, SQL_RECLAMO_AFECTA, hoy_argentina, ARGENTINA, sql_momento_argentina
@@ -179,10 +182,10 @@ def _inyectar_cuentas_usuario():
     """
     if getattr(g, "mostrando_error", False):
         # Una página de error NUNCA puede consultar la base: el error suele ser justamente que la base no responde o no hay conexiones libres
-        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True)}
+        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO}
     if not getattr(g, "usuario_id", None):
         # Rutas públicas (/planes, /suscripcion/retorno...): base.html igual arma el menú si hay sesión y llama capacidades.get(...)
-        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True)}
+        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO}
     # Se pedía a la base en CADA página; cambia muy poco (al vincular una cuenta o refrescar capacidades): 60 s de caché, con el usuario en la clave
     clave_cuentas = construir_key("cuentas_usuario", g.usuario_id)
     cuentas = cache_leer(clave_cuentas)
@@ -191,12 +194,22 @@ def _inyectar_cuentas_usuario():
             cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
         except Exception as e:                      # la base no responde: la página se arma igual, sin selector de cuentas
             print(f"[Contexto] ⚠️ No se pudo leer la lista de cuentas: {e}")
-            return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True)}
+            return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO}
         cache_guardar(clave_cuentas, cuentas, timeout=60)
     cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
     # Qué usa esta cuenta (ads, flex, full, catalogo): las pantallas esconden solo lo que se confirmó que no aplica (ver capacidades.py)
     return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual, "capacidades": (cuenta_actual or {}).get("capacidades") or {},
-            "vocab": _vocabulario_de_la_cuenta(g.usuario_id, g.cuenta_id)}
+            "vocab": _vocabulario_de_la_cuenta(g.usuario_id, g.cuenta_id), "margen_minimo": _margen_minimo_de_la_cuenta(g.usuario_id, g.cuenta_id)}
+
+
+def _margen_minimo_de_la_cuenta(usuario_id, cuenta_id):
+    """El piso de margen de esta cuenta (Mi cuenta): lo que deja menos que eso se marca "al límite". 1 minuto en caché por usuario."""
+    clave = construir_key("margenes_usuario", usuario_id)
+    margenes = cache_leer(clave)
+    if margenes is None:
+        margenes = {str(k): v for k, v in preferencias.margenes_de_usuario(usuario_id).items()}
+        cache_guardar(clave, margenes, timeout=60)
+    return margenes.get(str(cuenta_id), preferencias.MARGEN_MINIMO_DEFECTO)
 
 
 def _vocabulario_de_la_cuenta(usuario_id, cuenta_id):
@@ -3577,6 +3590,51 @@ def planes_vista():
         "mp_error": "No pudimos conectar con Mercado Pago ahora. Probá de nuevo en unos minutos.",
     }
     return render_template("planes.html", plan_actual=plan_actual, dias_trial=dias_trial, aviso=avisos.get(request.args.get("aviso")), pagos_habilitados=config.PAGOS_HABILITADOS)
+
+
+@app.route("/cuenta")
+@login_requerido
+def cuenta_vista():
+    """Preferencias del negocio y datos de la persona: margen mínimo, descargar mis datos, eliminar la cuenta."""
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT plan, trial_termina_en, email FROM usuarios WHERE id = %s", (g.usuario_id,))
+        fila = cursor.fetchone()
+    if not fila:
+        return redirect(url_for("planes_vista"))
+    plan, trial_termina_en, email = fila
+    if (email or "").endswith("@pendiente.corelux.app"):
+        email = None                          # email provisorio hasta que se lea el real de Mercado Libre: no se le muestra a la persona
+    dias_trial = max(0, (trial_termina_en - datetime.now(timezone.utc)).days) if plan == "trial" and trial_termina_en else None
+    nombre_plan = {"trial": "Prueba gratuita", "base": "Plan Base", "elite": "Plan Elite", "cancelado": "Cancelado"}.get(plan, plan)
+    return render_template("cuenta.html", active_nav="cuenta", plan=plan, nombre_plan=nombre_plan, email=email, dias_trial=dias_trial,
+                           pagos_habilitados=config.PAGOS_HABILITADOS, contacto=legal.CONTACTO_EMAIL)
+
+
+@app.route("/api/cuenta/margen_minimo", methods=["POST"])
+@login_requerido
+@auditar("margen_minimo")
+def api_cuenta_margen_minimo():
+    margen = preferencias.normalizar_margen((request.get_json(silent=True) or {}).get("valor"))
+    if margen is None:
+        return jsonify({"ok": False, "detalle": "Escribí un porcentaje entre 0 y 60."}), 400
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            preferencias.guardar_margen_minimo(conexion.cursor(), g.cuenta_id, margen)
+    except Exception as e:
+        return jsonify({"ok": False, "detalle": _detalle_error(e)}), 500
+    cache_guardar(construir_key("margenes_usuario", g.usuario_id), {str(k): v for k, v in preferencias.margenes_de_usuario(g.usuario_id).items()}, timeout=60)
+    return jsonify({"ok": True, "margen_minimo": margen})
+
+
+@app.route("/cuenta/descargar_datos", methods=["POST"])
+@login_requerido
+@auditar("datos_descargar")
+def cuenta_descargar_datos():
+    """Un zip con los datos de la persona (una carpeta por cuenta de Mercado Libre). Se lee con su propia conexión: la seguridad por cuenta decide qué sale."""
+    cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
+    contenido, _ = mis_datos.armar_zip(g.usuario_id, cuentas)
+    return send_file(io.BytesIO(contenido), mimetype="application/zip", as_attachment=True, download_name=f"corelux_mis_datos_{hoy_argentina().strftime('%Y%m%d')}.zip")
 
 
 @app.route("/suscripcion")

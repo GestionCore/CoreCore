@@ -414,8 +414,8 @@
             grid.appendChild(w);
             fetch('/api/dashboard/costos_resumen').then(r => r.json()).then(d => {
                 if (d.margen_promedio === null) { w.innerHTML = '<div class="text-muted">Sin datos de costo cargados todavía.</div>'; return; }
-                // Mismos umbrales que la tabla de márgenes de Ganancia Real (≥15% ok, 0-15% al límite, <0% pierde)
-                const acento = d.margen_promedio >= 15 ? 'acento-success' : (d.margen_promedio >= 0 ? 'acento-warning' : 'acento-danger');
+                // Mismos umbrales que la tabla de márgenes de Ganancia Real (desde el margen mínimo de la cuenta ok, por debajo al límite, <0% pierde)
+                const acento = d.margen_promedio >= window.MARGEN_MINIMO ? 'acento-success' : (d.margen_promedio >= 0 ? 'acento-warning' : 'acento-danger');
                 w.innerHTML = `<div class="stat-chip-label">Margen promedio del catálogo</div><div class="hero-number ${acento}" style="font-size:1.9em;">${UX.esc(d.margen_promedio)}%</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">Más ajustado: ${UX.esc(d.peor.titulo.slice(0, 30))}… (${UX.esc(d.peor.margen_pct)}%)</div>`;
             });

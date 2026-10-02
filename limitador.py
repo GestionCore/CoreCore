@@ -20,6 +20,7 @@ REGLAS = (
     (("/api/costos/importar",), {"POST"}, 10, 60, "usuario", "importar"),
     (("/api/reactivar", "/api/precios"), {"POST"}, 10, 60, "usuario", "cambios"),
     (("/api/feedback",), {"POST"}, 10, 60, "usuario", "feedback"),
+    (("/cuenta/descargar_datos",), {"POST"}, 3, 60, "usuario", "descargar"),
     (("/admin",), None, 60, 60, "ip", "admin"),
 )
 GENERAL = (600, 60)       # por IP, para todo lo que no es estático, healthcheck ni webhook

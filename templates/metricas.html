@@ -6,10 +6,10 @@
 {% set total_costos = (rs.comision or 0) + (rs.envios or 0) + (rs.costo_ads or 0) + (rs.costo_fabricacion or 0) %}
 {% set hay_ventas = rs.facturado and rs.facturado > 0 %}
 {% set margen_pct = (rs.ganancia_neta / rs.facturado * 100) if hay_ventas else 0 %}
-{# Mismos umbrales que el resto de la app: ≥15% deja plata, 0–15% al límite, <0% pierde #}
+{# Mismos umbrales que el resto de la app: desde el margen mínimo de la cuenta (Mi cuenta; 15 % por defecto) deja plata, por debajo al límite, <0% pierde #}
 {% set falta_costo = hay_ventas and rs.costo_fabricacion == 0 %}
 {# Sin costo de fabricación cargado el margen es falso: nunca se pinta de verde "todo bien" #}
-{% set tono = 'danger' if rs.ganancia_neta < 0 else ('warn' if (falta_costo or margen_pct < 15) else 'ok') %}
+{% set tono = 'danger' if rs.ganancia_neta < 0 else ('warn' if (falta_costo or margen_pct < margen_minimo) else 'ok') %}
 {% set reclamos_total = posventa.devoluciones + posventa.reclamos + posventa.reclamos_sin_impacto %}
 
 <div class="page-header">
@@ -149,8 +149,8 @@
 </div>
 <div class="panel" data-mostrar-mas-scope>
     <div class="margen-leyenda">
-        <span><span class="margen-dot margen-dot-ok"></span>Deja plata (≥15%)</span>
-        <span><span class="margen-dot margen-dot-limite"></span>Al límite (0–15%)</span>
+        <span><span class="margen-dot margen-dot-ok"></span>Deja plata (≥{{ margen_minimo|pct }})</span>
+        <span><span class="margen-dot margen-dot-limite"></span>Al límite (0–{{ margen_minimo|pct }})</span>
         <span><span class="margen-dot margen-dot-pierde"></span>Pierde plata (&lt;0%)</span>
         <span class="text-muted">Promedios ponderados reales: total en pesos ÷ unidades.</span>
     </div>
@@ -160,9 +160,9 @@
             {% for c in consolidados %}
             {% set m = ((c.raw.neto_total / c.raw.total_facturado * 100) if c.raw.total_facturado else 0) %}
             {% set indice = loop.index %}
-            <tr class="ux-fila-{{ 'ok' if m >= 15 else ('warn' if m >= 0 else 'danger') }} {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
+            <tr class="ux-fila-{{ 'ok' if m >= margen_minimo else ('warn' if m >= 0 else 'danger') }} {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
                 <td style="width:50px; padding-right:0;">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="" class="thumb-sm" loading="lazy">{% endif %}</td>
-                <td class="ux-col-titulo"><strong>{{ c.titulo }}</strong>{% if m < 0 %} <span class="ux-pill ux-danger">Pierde plata</span>{% elif m < 15 %} <span class="ux-pill ux-warn">Al límite</span>{% endif %}
+                <td class="ux-col-titulo"><strong>{{ c.titulo }}</strong>{% if m < 0 %} <span class="ux-pill ux-danger">Pierde plata</span>{% elif m < margen_minimo %} <span class="ux-pill ux-warn">Al límite</span>{% endif %}
                     {% if c.raw.costo_u == 0 %} <a class="ux-pill ux-warn" href="/costos" title="La ganancia de este modelo no descuenta lo que cuesta fabricarlo">Sin costo cargado</a>{% endif %}
                     {% if c.variantes|length > 1 %}<div><button type="button" class="ux-toggle-variantes" data-variantes="{{ indice }}" aria-expanded="false">{{ c.variantes|length }} publicaciones · ver el detalle <span aria-hidden="true">▸</span></button></div>{% endif %}
                 </td>
@@ -240,7 +240,7 @@
                 {% if c.sin_datos %}
                 <div class="text-muted" style="font-size:0.8em;">Sin ventas por este canal.</div>
                 {% else %}
-                <div class="ux-barra ux-{{ 'danger' if c.margen_pct < 0 else ('ok' if c.margen_pct >= 15 else 'warn') }}" style="height:12px;"><span style="width:{{ [[c.margen_pct, 0]|max, 100]|min }}%;"></span></div>
+                <div class="ux-barra ux-{{ 'danger' if c.margen_pct < 0 else ('ok' if c.margen_pct >= margen_minimo else 'warn') }}" style="height:12px;"><span style="width:{{ [[c.margen_pct, 0]|max, 100]|min }}%;"></span></div>
                 <div class="canal-envio-valores">
                     <span>{{ c.unidades }} u.</span>
                     <span class="{% if c.margen_pct < 0 %}text-danger{% else %}text-success{% endif %}"><strong>${{ c.ganancia_neta_formateada }}</strong> · margen {{ c.margen_pct|string|replace('.', ',') }}%</span>
