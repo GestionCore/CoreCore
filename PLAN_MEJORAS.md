@@ -20,7 +20,7 @@ sin `DATABASE_URL`, respaldos con datos de todos los usuarios que entraban en la
 11. [M·M] 286 `print()` → `logging` con cuenta y módulo; nivel configurable.
 12. [M·M] 194 `except Exception` que solo imprimen → mandar a Sentry con contexto (cuenta, pantalla).
 13. [M·M] CI de GitHub corre sin base: las pruebas de RLS nunca corren ahí → servicio Postgres en CI con migraciones y rol `app_backend`.
-14. [A·S] `enter.py`/`enter.ps1` (script personal con pyautogui) están en el repo y en la imagen → sacarlos.
+14. [A·S] `enter.ps1` (script personal) está en el repo y `enter.py` (pyautogui, fuera del repo) viaja igual en la imagen de Docker → moverlos a otra carpeta o excluirlos en `.dockerignore`.
 15. [A·S] Webhooks de MeLi sin configurar (dueño) → tildar temas y URL en el panel; baja el sondeo cada 4 min.
 16. [A·S] Al vencer la prueba la persona queda en /planes sin poder pagar (Mercado Pago no está) → modo "beta" que extiende la prueba + botón "extender" en /admin.
 17. [A·S] /planes y /suscripcion ofrecen pagos que no funcionan → en la beta mostrar "Beta gratuita".
