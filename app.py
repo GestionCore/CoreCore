@@ -1058,8 +1058,17 @@ def dashboard_personalizable():
         proyeccion = dashboard_mod.obtener_proyeccion_mes(g.usuario_id, g.cuenta_id)
     except Exception as e:
         print(f"[Dashboard] ⚠️ Error calculando la proyección del mes: {e}")
+    # Una cuenta sin ninguna venta (vendedor nuevo) no ve una pared de ceros ni un "todo en orden" engañoso: ve el próximo paso
+    hay_ventas = True
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            cursor.execute("SELECT EXISTS (SELECT 1 FROM ventas WHERE eliminado_en IS NULL)")
+            hay_ventas = bool(cursor.fetchone()[0])
+    except Exception as e:
+        print(f"[Dashboard] ⚠️ No se pudo saber si la cuenta tiene ventas: {e}")
     return render_template(
-        "dashboard_personalizable.html", active_nav="dashboard", mono=mono,
+        "dashboard_personalizable.html", active_nav="dashboard", mono=mono, hay_ventas=hay_ventas,
         ventas_por_provincia=ventas_por_provincia, cuando_compran=cuando_compran, proyeccion=proyeccion,
     )
 
@@ -1516,6 +1525,8 @@ def logros_vista():
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
             resultado = logros_mod.obtener_logros(cursor, g.cuenta_id, headers)
+            cursor.execute("SELECT NOT EXISTS (SELECT 1 FROM ventas) AND NOT EXISTS (SELECT 1 FROM productos_padre)")
+            cuenta_sin_datos = bool(cursor.fetchone()[0])
     except Exception as e:
         print(f"[Logros] ❌ Error armando la página: {e}")
         return "No pudimos armar la página de Logros ahora mismo. Probá recargar en un rato — si sigue pasando, avisanos.", 502
@@ -1525,7 +1536,7 @@ def logros_vista():
         conteo_por_prioridad[m["prioridad"]] = conteo_por_prioridad.get(m["prioridad"], 0) + 1
 
     return render_template(
-        "logros.html", misiones=resultado["misiones"], mensaje_todo_bien=resultado["mensaje_todo_bien"],
+        "logros.html", misiones=resultado["misiones"], mensaje_todo_bien=resultado["mensaje_todo_bien"], cuenta_sin_datos=cuenta_sin_datos,
         mensaje_coach=resultado.get("mensaje_coach"), coach_pendiente=resultado.get("coach_pendiente", False),
         conteo_por_prioridad=conteo_por_prioridad,
         logros_resueltos=resultado.get("logros_resueltos", []), recien_resueltas=resultado.get("recien_resueltas", 0),

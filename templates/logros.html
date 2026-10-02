@@ -16,7 +16,9 @@
 {{ banner("ok", "check", "<b>¡Resolviste " ~ recien_resueltas ~ (" pendiente" if recien_resueltas == 1 else " pendientes") ~ " desde la última vez!</b> Buen trabajo", "Los que cerrás quedan abajo, en «Resueltos».") }}
 {% endif %}
 
-{% if mensaje_todo_bien %}
+{% if mensaje_todo_bien and cuenta_sin_datos %}
+{{ vacio("Todavía no hay nada para revisar", "Cuando se sincronicen tus publicaciones y tus ventas, acá aparece lo que conviene hacer: reclamos, stock por agotarse, preguntas sin responder, costos sin cargar…", "check", "info") }}
+{% elif mensaje_todo_bien %}
 <div class="ux-hero ux-ok" style="text-align:center;">
     <div class="ux-hero-numero" style="font-size:2.2em;">Todo en orden</div>
     <div class="ux-hero-frase">No detectamos nada pendiente en tu cuenta ahora mismo — lo estás haciendo bien. Volvé a revisar en unos días.</div>

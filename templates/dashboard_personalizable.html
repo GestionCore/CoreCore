@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_ux.html" import banner, kpi, delta %}
+{% from "_ux.html" import banner, kpi, delta, vacio %}
 {% block title %}Dashboard · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -24,6 +24,12 @@
     </div>
 </div>
 
+{% if not hay_ventas %}
+{{ vacio("Todavía no hay ventas para mostrar", "Cuando entre tu primera venta en Mercado Libre, acá vas a ver cuánto ganás de verdad: lo facturado menos comisiones, envíos, publicidad y el costo de fabricación. Mientras tanto, lo que más ayuda es cargar lo que te cuesta fabricar cada producto: así tu primera ganancia sale bien desde el día uno.", "box", "accion", "Cargar los costos", "/costos") }}
+{% endif %}
+
+{# Con ventas todo lo de abajo se ve normal; sin ventas queda escondido (los números en cero y un "todo en orden" no le sirven a nadie) #}
+<div id="dashboard-con-datos"{% if not hay_ventas %} hidden{% endif %}>
 <!-- ── 1. CÓMO VOY: ganancia neta real de hoy, teñida según cómo viene el día ─ -->
 <div class="ux-hero ux-info" id="hero-ganancia-dia">
     <div class="ux-hero-etiqueta">Ganancia neta real · hoy <span class="badge-en-vivo">En vivo</span></div>
@@ -277,6 +283,7 @@
     </div>
 </details>
 {% endif %}
+</div>
 
 <script src="/static/js/vendor/chart.umd.min.js?v=4.4.4"></script>
 <script>

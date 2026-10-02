@@ -17,6 +17,11 @@
     </div>
 </div>
 
+{% if not productos %}
+{{ vacio("Todavía no hay publicaciones sincronizadas", "Apenas CoreLux traiga tu catálogo de Mercado Libre, acá vas a ver qué tenés, dónde está y qué hay que reponer. Si recién conectaste tu cuenta, puede tardar unos minutos: se actualiza sola.", "box", "accion") }}
+{% endif %}
+{# Con catálogo todo se ve normal; sin catálogo queda escondido (un "stock sano" en verde y cinco ceros no le sirven a nadie) #}
+<div id="stock-con-datos"{% if not productos %} hidden{% endif %}>
 <!-- ── 1. CÓMO ESTÁ EL STOCK: el estado en una frase, con botón ──────────── -->
 <div id="estado-stock"></div>
 
@@ -211,6 +216,8 @@ async function reactivarAplicar() {
 
 <!-- ── 5. Los precios se cambian en Precios (con vista previa y freno por precio mínimo) ── -->
 <div class="text-muted" style="font-size:0.85em; margin-top:6px;">¿Querés subir o bajar los precios de varias publicaciones? Hacelo en <a href="/precios#ajuste"><b>Precios</b></a>: ves qué pasaría con cada una antes de cambiar nada.</div>
+
+</div>
 
 <script>
     const CLAVE_FILTRO_ESTADO = 'filtro_estado_stock';
