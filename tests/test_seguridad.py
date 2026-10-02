@@ -45,6 +45,16 @@ def test_cabeceras_de_seguridad(cliente):
     assert h["X-Content-Type-Options"] == "nosniff" and h["X-Frame-Options"] == "SAMEORIGIN"
 
 
+def test_la_politica_de_contenido_solo_deja_cargar_de_corelux(cliente):
+    csp = cliente.get("/healthz").headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp and "object-src 'none'" in csp and "frame-ancestors 'self'" in csp
+    assert "connect-src 'self'" in csp and "font-src 'self'" in csp
+    assert "script-src 'self' 'unsafe-inline'" in csp           # inline: las pantallas todavía tienen onclick y scripts propios
+    for tercero in ("googleapis", "gstatic", "jsdelivr", "cdnjs", "unpkg", "*"):
+        assert tercero not in csp.replace("https: http:", "")   # ningún servidor ajeno permitido para scripts, estilos, fuentes ni datos
+    assert "form-action" not in csp                              # Chrome lo aplica a las redirecciones: rompería el pago en Mercado Pago
+
+
 def test_estaticos_versionados_con_cache_largo(cliente):
     # el archivo no existe en esta app mínima (404), pero la regla de caché solo aplica a 200: se prueba la ruta real en test_app
     assert cliente.get("/healthz").json["ok"] is True

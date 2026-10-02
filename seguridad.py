@@ -55,6 +55,14 @@ def _origen_permitido():
     return _host(origen) in permitidos
 
 
+
+# Política de seguridad de contenido: el navegador solo carga código, estilos, fuentes y datos de CoreLux (ya no hay nada de terceros). Los scripts y estilos "inline"
+# siguen permitidos porque las pantallas los usan (cuando se saquen los onclick, se quita 'unsafe-inline' de script-src). Las fotos de las publicaciones vienen de
+# mlstatic.com (http y https). Sin form-action a propósito: Chrome también lo aplica a las redirecciones y rompería el pago en Mercado Pago.
+CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; "
+       "font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'")
+
+
 def iniciar(app):
     if EN_PRODUCCION:
         # Detrás del proxy de Fly el pedido llega por http: sin esto, request.url_root/is_secure y los enlaces absolutos saldrían con http://
@@ -91,6 +99,7 @@ def iniciar(app):
         resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        resp.headers.setdefault("Content-Security-Policy", CSP)
         if EN_PRODUCCION:
             resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
         if request.path.startswith("/static/") and "v" in request.args and resp.status_code == 200:
