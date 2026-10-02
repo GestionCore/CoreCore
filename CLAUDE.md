@@ -275,7 +275,7 @@ scopeado por cuenta_id antes de confiar en él.
   tal cual, 1 hora atrasada (una venta de 00:30 ART caía en el día anterior). Ahora
   `ventas_sync._fecha_hora_argentina` convierte al ingresar y marca `ventas.hora_normalizada`
   (migración 0031). Las filas viejas (false) se corrigen con `normalizar_horas.py --aplicar`
-  (vista previa por defecto; pendiente del OK del dueño). Para todo lo que dependa de la HORA
+  (vista previa por defecto; APLICADO por el dueño el 2026-10-02: las 2.641 ventas están normalizadas). Para todo lo que dependa de la HORA
   (mapa de horarios, "cuándo te compran", corte de Despacho) usar
   `utils.sql_momento_argentina()`: da lo mismo para filas viejas y nuevas, así el código es
   correcto antes y después de normalizar. NO volver a sumar "+1 hora" a mano en una consulta.
@@ -477,7 +477,7 @@ Estado de cada punto en ese archivo (✅/◐). Lo que hay que saber para no romp
   completan en su próximo login (`registro._completar_email_pendiente`, nunca pisa un email real ni uno ya tomado: `usuarios.email` es único).
   `ADMIN_EMAIL` tiene que ser ese mismo email para entrar a `/admin` y `/admin/salud` (panel de salud del sistema, `salud_sistema.py`).
 - Horas de venta: Mercado Libre manda `-04:00` aunque Argentina es UTC-3; `ventas_sync._fecha_hora_argentina` convierte al ingresar y marca `ventas.hora_normalizada`.
-  Las filas viejas (false) se corrigen con `normalizar_horas.py --aplicar` (vista previa por defecto, pendiente del OK del dueño).
+  Las filas viejas (false) se corrigen con `normalizar_horas.py --aplicar` (vista previa por defecto; aplicado el 2026-10-02).
 - IA: `deepseek-flash` RAZONA y con `max_tokens` chico (200) se quedaba sin presupuesto: respuesta vacía y 8 s (coach, optimizar título…). `ia_asistente.parametros_extra()`
   apaga el razonamiento para DeepSeek (`IA_PARAMETROS_EXTRA` lo reemplaza) y los reintentos triplican el presupuesto. Ya no hay que subir los `max_tokens` a ojo.
 - `cache_db.py` (tabla `cache_valores`, migración 0032): caché compartida por cuenta y por todos los procesos. Preferirla a un `_cache_*` en memoria (4 copias en producción y riesgo de mezclar cuentas). El coach de IA ya la usa.
