@@ -13,3 +13,6 @@ celerybeat-schedule-wal
 .agents/
 .claude/
 Procfile
+
+# Vistas previas locales con datos reales (nunca a producción)
+static/_prev/
