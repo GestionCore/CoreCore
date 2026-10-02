@@ -99,7 +99,9 @@ _REQUERIDAS = {
     "TOKEN_ENCRYPTION_KEY": TOKEN_ENCRYPTION_KEY,
 }
 _faltantes = [nombre for nombre, valor in _REQUERIDAS.items() if not valor]
-if _faltantes:
+# CORELUX_PRUEBAS lo pone tests/conftest.py: el CI no tiene .env y las pruebas de lógica pura no necesitan las credenciales. Nunca se define
+# en un entorno real: ahí la falta de una variable obligatoria sigue frenando el arranque.
+if _faltantes and not os.getenv("CORELUX_PRUEBAS"):
     raise RuntimeError(
         "Falta configurar en tu .env: " + ", ".join(_faltantes) + "\n"
         "Revisá que el archivo se llame exactamente '.env' (no '.env.txt') y esté en la misma carpeta que app.py, "

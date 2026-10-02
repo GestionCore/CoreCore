@@ -2,6 +2,8 @@ import os
 import sys
 
 # Las pruebas se corren desde la raíz del proyecto: los módulos (utils, precios, cobros…) viven ahí.
+os.environ.setdefault("CORELUX_PRUEBAS", "1")     # antes de importar config: sin .env (CI) no aborta por variables faltantes
+
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
