@@ -8,7 +8,7 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-users"/></svg>Opiniones de compradores</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-users"/></svg>Opiniones de compradores</h1>
         <div class="page-subtitle">Qué calificación tienen tus productos y <strong>qué dicen quienes no quedaron conformes</strong> — para corregir lo que baja tus ventas</div>
     </div>
 </div>
@@ -63,7 +63,7 @@
 <div class="panel" data-mostrar-mas-scope>
     {% for c in criticas %}
     <div class="ux-opinion {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
-        <div class="ux-opinion-cab">{{ estrellas(c.estrellas) }} <span class="text-muted" style="font-size:0.8em;">{{ c.fecha }}</span></div>
+        <div class="ux-opinion-cab">{{ estrellas(c.estrellas) }} <span class="text-muted" style="font-size:0.8em;">{{ c.fecha|fecha }}</span></div>
         {% if c.titulo %}<div class="ux-opinion-titulo">{{ c.titulo }}</div>{% endif %}
         {% if c.texto %}<div class="ux-opinion-texto">{{ c.texto }}</div>{% endif %}
         <div class="text-muted" style="font-size:0.78em; margin-top:4px;">sobre {% if c.permalink %}<a href="{{ c.permalink }}" target="_blank" rel="noopener">{{ c.producto }} ↗</a>{% else %}{{ c.producto }}{% endif %}</div>

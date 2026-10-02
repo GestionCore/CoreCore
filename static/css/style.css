@@ -65,8 +65,12 @@
     --semantic-danger-glow: rgba(244, 63, 94, 0.35);
 
     --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-display: 'Source Serif Pro', 'Source Serif 4', Georgia, serif;
-    --font-data: 'Space Mono', 'JetBrains Mono', monospace;
+    --font-display: 'Source Serif 4', 'Source Serif Pro', Georgia, serif;
+    /* Cifras: Inter con dígitos tabulares (todos del mismo ancho, así las columnas y los montos que cambian no "bailan").
+       Antes era Space Mono: una letra de máquina de escribir que hacía ver cada número como código y ocupaba un 30% más,
+       por eso los KPI de 5 columnas se cortaban. */
+    --font-data: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
 
     /* ---------- Escala tipográfica (8 pasos, en orden creciente) ---------- */
     --text-2xs: 0.70em;   /* etiquetas muy pequeñas, pies de tabla */
@@ -274,7 +278,7 @@ a { color: inherit; text-decoration: none; }
     justify-self: center;
 }
 .buscador-central:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(139,92,246,0.2); }
-.buscador-central kbd { margin-left: auto; background: rgba(255,255,255,0.08); border-radius: 4px; padding: 2px 6px; font-family: var(--font-data); font-size: 0.85em; }
+.buscador-central kbd { margin-left: auto; background: rgba(255,255,255,0.08); border-radius: 4px; padding: 2px 6px; font-family: var(--font-mono); font-size: 0.8em; }
 @media (max-width: 900px) { .buscador-central span { display: none; } .buscador-central { min-width: auto; } }
 /* Entre ~900 y ~1300px el ancho mínimo combinado de logo + buscador +
    4 links de nav + botón de sync no entraba en una sola fila — sin
@@ -329,10 +333,17 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* Layout & Panels */
-.page-container { max-width: 1440px; margin: 0 auto; padding: 34px 24px; animation: fadeInUp 0.3s cubic-bezier(0.16,1,0.3,1); }
+.page-container { max-width: 1440px; margin: 0 auto; padding: 34px 24px 104px; animation: fadeInUp 0.3s cubic-bezier(0.16,1,0.3,1); }
 .page-container.saliendo { opacity: 0; transform: translateY(-6px); transition: opacity 0.18s ease, transform 0.18s ease; }
 .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
-.page-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; margin: 0 0 6px 0; letter-spacing: 0; }
+.page-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; margin: 0 0 8px 0; letter-spacing: -0.015em; line-height: 1.15; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; text-wrap: balance; }
+/* Cada pantalla con su ícono (el mismo que tiene en el menú), en una baldosa violeta: antes la mitad lo tenía suelto y la otra mitad no tenía. */
+.page-title-icono {
+    width: 40px; height: 40px; padding: 9px; box-sizing: border-box; flex-shrink: 0; border-radius: 12px;
+    color: var(--accent-primary); background: color-mix(in srgb, var(--accent-primary) 13%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, transparent);
+}
+@media (max-width: 640px) { .page-title { gap: 10px; } .page-title-icono { width: 34px; height: 34px; padding: 7px; border-radius: 10px; } }
 .page-subtitle { color: var(--text-secondary); font-size: 0.9em; }
 
 .panel {
@@ -353,13 +364,16 @@ a { color: inherit; text-decoration: none; }
 .panel:nth-of-type(4) { animation-delay: 0.17s; }
 .panel:nth-of-type(5) { animation-delay: 0.22s; }
 .panel:nth-of-type(n+6) { animation-delay: 0.26s; }
-.panel:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-elevated), 0 0 24px -8px var(--accent-primary-glow);
-    border-color: rgba(139, 92, 246, 0.4);
-}
-.panel-title { font-size: var(--text-md); font-weight: 700; margin: 0 0 20px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+/* Un panel es un contenedor, no un botón: antes TODOS se levantaban y brillaban en violeta al pasar el mouse, y eso le dice a la persona
+   "esto se puede clickear" cuando no. El hover queda para lo que sí lleva a algún lado (a.panel, .widget-dashboard, a.ux-kpi). */
+a.panel:hover, .panel.clickeable:hover { border-color: color-mix(in srgb, var(--accent-primary) 40%, var(--glass-border)); }
+/* Título de panel: alineado a la izquierda. Con space-between, "ícono + título + nota" dejaba el título CENTRADO y "ícono + título"
+   mandaba el texto al extremo derecho. Lo que va al final (una nota, un botón, un formulario, el chevron) se empuja a la derecha. */
+.panel-title { font-size: var(--text-md); font-weight: 700; margin: 0 0 20px 0; display: flex; justify-content: flex-start; align-items: center; gap: 8px; flex-wrap: wrap; letter-spacing: -0.01em; }
 .panel-title .icon { color: var(--accent-primary); }
+.panel-title > .text-muted:last-child, .panel-title > .btn:last-child, .panel-title > button:last-child,
+.panel-title > form:last-child, .panel-title > a:last-child, .panel-title > .chevron-colapsable { margin-left: auto; }
+.panel-title > .text-muted:last-child { font-weight: 500; font-size: 0.78em; }
 
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .anim-entrada-js { animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -385,12 +399,12 @@ a { color: inherit; text-decoration: none; }
     animation: fadeInUp 0.4s ease backwards;
     transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
 }
-.stat-chip:hover { transform: translateY(-3px); box-shadow: var(--shadow-elevated); border-color: rgba(139, 92, 246, 0.35); }
+a.stat-chip:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated); border-color: rgba(139, 92, 246, 0.35); }
 .stat-chip:nth-child(1) { animation-delay: 0.02s; } .stat-chip:nth-child(2) { animation-delay: 0.07s; }
 .stat-chip:nth-child(3) { animation-delay: 0.12s; } .stat-chip:nth-child(4) { animation-delay: 0.17s; }
 .stat-chip:nth-child(5) { animation-delay: 0.22s; } .stat-chip:nth-child(6) { animation-delay: 0.27s; }
 .stat-chip-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 7px; font-weight: 600; }
-.stat-chip-value { font-family: var(--font-data); font-size: var(--text-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat-chip-value { font-family: var(--font-data); font-size: var(--text-lg); font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 
 /* ---------- Filas de lista limpias (reemplazo de tablas toscas en
    widgets angostos: Últimas Ventas, etc.) — fila espaciada, badge
@@ -483,35 +497,24 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- Hero Numbers: la cifra que más importa en cada pantalla ---------- */
 .hero-number {
-    font-family: var(--font-display);
+    font-family: var(--font-data);
     font-variant-numeric: tabular-nums;
-    font-weight: 700;
+    font-weight: 800;
     font-size: var(--text-hero);
     line-height: 1.05;
-    letter-spacing: 0;
-    background: linear-gradient(135deg, var(--text-primary) 25%, var(--accent-cyan) 80%, var(--accent-primary) 130%);
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--text-primary) 35%, color-mix(in srgb, var(--accent-primary) 70%, var(--text-primary)) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 18px var(--accent-primary-glow));
 }
 .hero-number.acento-primario {
     background: linear-gradient(135deg, var(--text-primary) 20%, var(--accent-primary) 90%);
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 18px var(--accent-primary-glow));
 }
-.hero-number.acento-danger {
-    background: none; -webkit-text-fill-color: var(--danger); color: var(--danger);
-    filter: drop-shadow(0 0 18px var(--semantic-danger-glow));
-}
-.hero-number.acento-success {
-    background: none; -webkit-text-fill-color: var(--success); color: var(--success);
-    filter: drop-shadow(0 0 18px rgba(34, 197, 94, 0.4));
-}
-.hero-number.acento-warning {
-    background: none; -webkit-text-fill-color: var(--semantic-warning); color: var(--semantic-warning);
-    filter: drop-shadow(0 0 18px var(--semantic-warning-bg));
-}
+.hero-number.acento-danger { background: none; -webkit-text-fill-color: var(--danger); color: var(--danger); }
+.hero-number.acento-success { background: none; -webkit-text-fill-color: var(--success); color: var(--success); }
+.hero-number.acento-warning { background: none; -webkit-text-fill-color: var(--semantic-warning); color: var(--semantic-warning); }
 /* Para casos con color calculado en JS (score en gradiente rojo→verde,
    por ejemplo) en vez de un acento fijo — el color final lo pone el
    caller vía style="color:...", esta clase solo saca el gradiente base. */
@@ -539,7 +542,10 @@ table.data-table th { text-align: left; font-size: 0.76em; text-transform: upper
 table.data-table td { padding: 17px 16px; border-bottom: 1px solid var(--border-soft); font-size: 0.9em; vertical-align: middle; }
 table.data-table tbody tr { transition: background 0.15s; }
 table.data-table tbody tr:hover { background: rgba(255,255,255,0.03); }
-table.data-table td.num, table.data-table th.num { text-align: right; font-family: var(--font-data); }
+table.data-table td.num, table.data-table th.num { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+/* Los costos de cada venta son lo esperable, no una alarma: van en gris y el color queda para el resultado (verde gana, rojo pierde).
+   Con todas las columnas de costo en rojo, la fila que de verdad pierde plata no se distinguía de las demás. */
+table.data-table td.costo { color: var(--text-secondary); }
 tr.row-alert { background: rgba(239, 68, 68, 0.05); }
 
 /* Buttons & Inputs */
@@ -697,7 +703,7 @@ select option { background: #14162a; color: var(--text-primary); }
 .command-item:hover, .command-item.activo { background: rgba(255,255,255,0.05); }
 .command-empty { padding: 20px; text-align: center; color: var(--text-faint); font-size: 0.85em; }
 .command-footer { display: flex; gap: 14px; padding: 10px 20px; border-top: 1px solid var(--glass-border); font-size: 0.75em; color: var(--text-faint); }
-.command-footer kbd { background: rgba(255,255,255,0.08); border-radius: 4px; padding: 1px 6px; font-family: var(--font-data); margin-right: 4px; }
+.command-footer kbd { background: rgba(255,255,255,0.08); border-radius: 4px; padding: 1px 6px; font-family: var(--font-mono); margin-right: 4px; }
 
 /* IDs copiables + toast */
 .id-copiable { border-bottom: 1px dotted var(--text-faint); cursor: pointer; transition: color 0.15s; }
@@ -709,8 +715,8 @@ select option { background: #14162a; color: var(--text-primary); }
 }
 
 /* Floating AI Chat Widget */
-.chat-fab { position: fixed; bottom: 26px; right: 26px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-gold), var(--accent-primary)); border: none; cursor: pointer; box-shadow: 0 8px 25px var(--accent-primary-glow); display: flex; align-items: center; justify-content: center; z-index: 100; transition: transform 0.2s; }
-.chat-fab:hover { transform: scale(1.08); }
+.chat-fab { position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); color: #fff; border: 1px solid color-mix(in srgb, #fff 18%, transparent); cursor: pointer; box-shadow: 0 10px 28px -6px var(--accent-primary-glow), 0 2px 8px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 100; transition: transform var(--transition-fast), box-shadow var(--transition-fast); }
+.chat-fab:hover { transform: translateY(-2px); box-shadow: 0 14px 34px -6px var(--accent-primary-glow), 0 2px 8px rgba(0,0,0,0.35); }
 .chat-window { position: fixed; bottom: 94px; right: 26px; width: 390px; height: 510px; background: var(--glass-bg-alt); border: 1px solid var(--glass-border); backdrop-filter: blur(18px); border-radius: var(--radius-md); box-shadow: var(--shadow-elevated); display: none; flex-direction: column; z-index: 100; overflow: hidden; }
 .chat-window.open { display: flex; animation: fadeInUp 0.2s ease; }
 .chat-header { padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--glass-border); font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
@@ -796,7 +802,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 @media (max-width: 760px) {
     .only-desktop { display: none !important; }
     .only-mobile { display: block; }
-    .page-container { padding: 16px; }
+    .page-container { padding: 16px 16px 96px; }
     .topnav-inner { padding: 0 14px; }
     .ticker-bar { padding: 6px 14px; }
 }
@@ -977,8 +983,8 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 
 /* ---------- Estado "presionado" de botones filtro ---------- */
 .btn-secondary.active {
-    background: var(--accent-gold); color: #0c0e14; border-color: var(--accent-gold);
-    font-weight: 700;
+    background: var(--accent-primary); color: #fff; border-color: var(--accent-primary);
+    box-shadow: 0 2px 12px -2px var(--accent-primary-glow);
 }
 
 /* ---------- Panel colapsable (alerta de agotamiento y otros) ---------- */
@@ -1040,7 +1046,7 @@ body.modo-despacho-limpio .page-header .page-subtitle,
 body.modo-despacho-limpio .panel:has(form[action="/despacho"]) {
     display: none !important;
 }
-body.modo-despacho-limpio .page-title { font-size: 2em; text-align: center; width: 100%; }
+body.modo-despacho-limpio .page-title { font-size: 2em; text-align: center; width: 100%; justify-content: center; }
 body.modo-despacho-limpio #btn-modo-limpio {
     position: fixed; top: 12px; right: 12px; z-index: 999; font-size: 1.1em; padding: 12px 20px;
 }
@@ -1113,26 +1119,10 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 .checklist-item.completo { color: var(--text-secondary); }
 .checklist-item.completo .checklist-check { background: var(--success); border-color: var(--success); color: #06201a; }
 .checklist-item.completo .checklist-texto { text-decoration: line-through; text-decoration-color: var(--text-faint); }
-
-/* ---------- HUD fijo: números críticos visibles en cualquier pantalla ---------- */
-.hud-fijo { position: fixed; bottom: 26px; left: 26px; z-index: 99; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 10px; }
-.hud-toggle {
-    width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--glass-border);
-    background: var(--glass-bg-alt); backdrop-filter: blur(14px); cursor: pointer; font-size: 1.15em;
-    display: flex; align-items: center; justify-content: center; transition: box-shadow 0.2s, transform 0.2s;
-    box-shadow: var(--shadow-card);
-}
-.hud-toggle:hover { box-shadow: var(--shadow-glow-cyan); transform: translateY(-2px); }
-.hud-contenido {
-    background: var(--glass-bg-alt); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 14px 18px;
-    box-shadow: var(--shadow-elevated), 0 0 24px -6px var(--accent-cyan-glow);
-    min-width: 200px; animation: fadeInUp 0.25s cubic-bezier(0.16,1,0.3,1);
-}
-.hud-fila { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 5px 0; font-size: 0.82em; }
-.hud-label { color: var(--text-secondary); }
-.hud-valor { font-family: var(--font-data); font-weight: 700; color: var(--text-primary); }
-@media (max-width: 640px) { .hud-fijo { bottom: 16px; left: 16px; } }
+.checklist-texto { flex: 1; min-width: 0; }
+.checklist-ir { flex-shrink: 0; font-size: 0.82em; font-weight: 700; color: var(--accent-primary); opacity: 0.85; transition: opacity var(--transition-fast), transform var(--transition-fast); }
+a.checklist-item:hover .checklist-ir { opacity: 1; transform: translateX(2px); }
+a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in srgb, var(--accent-primary) 55%, transparent); }
 
 /* ---------- Tooltips ricos de la barra superior ---------- */
 .tooltip-ticker {
@@ -1163,11 +1153,11 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg-base); }
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, var(--accent-primary-dim), var(--accent-cyan));
+    background: color-mix(in srgb, var(--text-secondary) 30%, transparent);
     border-radius: 99px; border: 2px solid var(--bg-base);
 }
-::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--accent-primary), var(--accent-cyan)); }
-* { scrollbar-width: thin; scrollbar-color: var(--accent-primary-dim) var(--bg-base); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-primary); }
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text-secondary) 30%, transparent) var(--bg-base); }
 
 /* ---------- Orbe de salud pulsante (más visual que el puntito genérico) ---------- */
 .orbe-salud {
@@ -1210,10 +1200,19 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 .seo-score-bajo { border-color: var(--danger); color: var(--danger); box-shadow: 0 0 12px -2px rgba(244,63,94,0.4); }
 
 /* ---------- Dashboard personalizable ---------- */
-.grid-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+/* Dos columnas parejas: cada tarjeta ocupa una, y si la última queda sola toma todo el ancho (antes quedaba media fila vacía al lado). */
+.grid-dashboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 24px; }
+.grid-dashboard > .panel { margin-bottom: 0; }
+.grid-dashboard > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+.grid-dashboard > :last-child:nth-child(odd) .mini-list { columns: 2; column-gap: 36px; }
+.grid-dashboard > :last-child:nth-child(odd) .mini-list-row { break-inside: avoid; }
+@media (max-width: 860px) {
+    .grid-dashboard { grid-template-columns: minmax(0, 1fr); }
+    .grid-dashboard > :last-child:nth-child(odd) .mini-list { columns: 1; }
+}
 .widget-dashboard { display: block; text-decoration: none; color: inherit; cursor: pointer; min-height: 110px; }
 .widget-dashboard:hover { border-color: rgba(139,92,246,0.4); }
-.widget-dashboard-ancho { grid-column: span 2; cursor: default; position: relative; }
+.widget-dashboard-ancho { cursor: default; position: relative; }
 .widget-dashboard-ancho:hover { border-color: var(--glass-border); }
 .btn-descargar-grafico {
     position: absolute; top: 14px; right: 14px; width: 26px; height: 26px; border-radius: 7px;
@@ -1324,11 +1323,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
     transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
     animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
-.card-hero:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-elevated), 0 0 56px -8px var(--accent-primary-glow);
-    border-color: rgba(139, 92, 246, 0.5);
-}
+
 
 /* Nivel 2 — Panel: agrupador estándar (alias semántico de .panel) */
 .card-panel {
@@ -1340,11 +1335,7 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
     transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
     animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
-.card-panel:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-elevated), 0 0 24px -8px var(--accent-primary-glow);
-    border-color: rgba(139, 92, 246, 0.4);
-}
+
 
 /* Nivel 3 — Detail: soporte y contexto, mínima elevación */
 .card-detail {
@@ -1396,8 +1387,10 @@ a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 .rango-fechas { position: relative; }
 .rango-fechas-boton {
     background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: var(--text-primary);
-    padding: 10px 14px; border-radius: var(--radius-sm); font-family: var(--font-data); font-size: 0.9em;
-    cursor: pointer; white-space: nowrap; min-width: 220px; text-align: left; transition: border-color 0.2s;
+    padding: 10px 14px 10px 38px; border-radius: var(--radius-sm); font-family: var(--font-ui); font-size: 0.9em; font-weight: 600;
+    cursor: pointer; white-space: nowrap; min-width: 200px; text-align: left; transition: border-color 0.2s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3Cline x1='8' y1='3' x2='8' y2='7'/%3E%3Cline x1='16' y1='3' x2='16' y2='7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: 13px center; background-size: 16px;
 }
 .rango-fechas-boton:hover, .rango-fechas.abierto .rango-fechas-boton { border-color: var(--accent-primary); }
 .rango-fechas-popup {

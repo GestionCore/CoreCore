@@ -7,7 +7,7 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Facturación de Mercado Libre</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-receipt"/></svg>Facturación de Mercado Libre</h1>
         <div class="page-subtitle">Lo que MeLi te cobra en cada período — <strong>el dato oficial</strong>, tal cual te lo factura</div>
     </div>
 </div>
@@ -18,7 +18,7 @@
     <label class="field-label" for="select-periodo" style="margin:0;"><b>Período de facturación</b></label>
     <select id="select-periodo" name="key" onchange="this.form.submit()" style="max-width:340px;">
         {% for p in periodos %}
-        <option value="{{ p.key }}" {% if p.key == key_seleccionada %}selected{% endif %}>{{ p.date_from }} a {{ p.date_to }}{% if p.en_curso %} (en curso){% endif %}</option>
+        <option value="{{ p.key }}" {% if p.key == key_seleccionada %}selected{% endif %}>{{ rango_fechas(p.date_from, p.date_to) }}{% if p.en_curso %} (en curso){% endif %}</option>
         {% endfor %}
     </select>
 </form>

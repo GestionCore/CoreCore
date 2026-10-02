@@ -49,7 +49,7 @@
 .ux-hero-etiqueta { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 800; color: var(--text-secondary); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ux-hero-numero {
     font-family: var(--font-data); font-weight: 800; font-size: clamp(2.4em, 7vw, 3.6em); line-height: 1.05;
-    color: var(--ux-c); margin: 8px 0 4px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+    color: var(--ux-c); margin: 8px 0 4px; letter-spacing: -0.035em; font-variant-numeric: tabular-nums;
 }
 .ux-hero-frase { font-size: 1.02em; color: var(--text-primary); margin-top: 6px; line-height: 1.45; }
 .ux-hero-frase b, .ux-hero-frase strong { font-weight: 800; color: var(--ux-c); }
@@ -87,10 +87,10 @@ html.modo-privacidad .ux-rank-valor:hover, html.modo-privacidad .ux-dist-val:hov
     transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 a.ux-kpi { display: block; color: inherit; text-decoration: none; }
-.ux-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated), 0 0 28px -10px color-mix(in srgb, var(--ux-c) 55%, transparent); }
+a.ux-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated), 0 0 28px -10px color-mix(in srgb, var(--ux-c) 55%, transparent); }
 .ux-kpi-etiqueta { display: flex; align-items: center; gap: 8px; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; color: var(--text-secondary); }
 .ux-kpi-etiqueta .icon { width: 15px; height: 15px; color: var(--ux-c); }
-.ux-kpi-valor { font-family: var(--font-data); font-weight: 800; font-size: 1.9em; line-height: 1.15; margin: 8px 0 4px; color: var(--ux-c); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.ux-kpi-valor { font-family: var(--font-data); font-weight: 800; font-size: 1.9em; line-height: 1.15; margin: 8px 0 4px; color: var(--ux-c); font-variant-numeric: tabular-nums; letter-spacing: -0.025em; overflow-wrap: anywhere; }
 .ux-kpi-sub { font-size: 0.8em; color: var(--text-secondary); min-height: 1.2em; }
 .ux-kpi-sub b, .ux-kpi-sub strong { color: var(--text-primary); }
 

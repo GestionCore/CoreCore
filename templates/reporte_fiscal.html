@@ -9,7 +9,7 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-file-text"/></svg>Reporte fiscal</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-file-text"/></svg>Reporte fiscal</h1>
         <div class="page-subtitle">Resumen mensual para tu contador — facturación, cargos y ganancia estimada del año</div>
     </div>
     <a href="/reporte_fiscal/exportar?anio={{ anio_seleccionado }}" class="btn btn-primary btn-lg no-imprimir">
@@ -74,8 +74,8 @@
                 <td class="num">{{ m.ordenes }}</td>
                 <td class="num">{{ m.unidades }}</td>
                 <td class="num"><b>{{ m.facturacion|plata }}</b></td>
-                <td class="num text-danger">{{ m.comisiones|plata }}</td>
-                <td class="num text-danger">{{ m.envios|plata }}</td>
+                <td class="num costo">{{ m.comisiones|plata }}</td>
+                <td class="num costo">{{ m.envios|plata }}</td>
                 <td class="num" style="color:var(--semantic-warning);">{{ m.gastos|plata }}</td>
                 <td class="num text-muted">{{ m.costo_fabricacion|plata }}</td>
                 <td style="min-width:200px;">
@@ -97,8 +97,8 @@
                 <td class="num">{{ totales.ordenes }}</td>
                 <td class="num">{{ totales.unidades }}</td>
                 <td class="num">{{ totales.facturacion|plata }}</td>
-                <td class="num text-danger">{{ totales.comisiones|plata }}</td>
-                <td class="num text-danger">{{ totales.envios|plata }}</td>
+                <td class="num costo">{{ totales.comisiones|plata }}</td>
+                <td class="num costo">{{ totales.envios|plata }}</td>
                 <td class="num" style="color:var(--semantic-warning);">{{ totales.gastos|plata }}</td>
                 <td class="num text-muted">{{ totales.costo_fabricacion|plata }}</td>
                 <td class="{{ 'text-success' if totales.ganancia_estimada >= 0 else 'text-danger' }}" style="font-size:1.05em;">{{ totales.ganancia_estimada|plata }}</td>

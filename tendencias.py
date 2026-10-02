@@ -17,7 +17,7 @@ import threading
 import meli_http
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
-from utils import hoy_argentina
+from utils import hoy_argentina, plural
 
 # Palabras que no distinguen un producto de otro en ningún rubro (para comparar títulos entre sí)
 PALABRAS_GENERICAS = {
@@ -983,7 +983,7 @@ def calcular_seo_score_titulo(titulo, palabras_tendencia_actuales):
     if palabras_tendencia_en_titulo:
         bonus = min(len(palabras_tendencia_en_titulo) * 10, 20)
         score += bonus
-        razones.append(f"+{bonus}: incluye {len(palabras_tendencia_en_titulo)} palabra(s) que están en tendencia esta semana")
+        razones.append(f"+{bonus}: incluye {plural(len(palabras_tendencia_en_titulo), 'palabra')} que está{'' if len(palabras_tendencia_en_titulo) == 1 else 'n'} en tendencia esta semana")
 
     score = max(0, min(100, score))
     return {"score": score, "razones": razones}

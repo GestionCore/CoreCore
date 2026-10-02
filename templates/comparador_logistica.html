@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Logística Propia vs FULL</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-truck"/></svg>Logística Propia vs FULL</h1>
         <div class="page-subtitle">Qué te deja más margen neto, según cómo despachás cada venta</div>
     </div>
 </div>
@@ -48,11 +48,11 @@
         <table class="data-table">
             <tbody>
                 <tr><td>Facturado</td><td class="num">${{ g.facturado_formateado }}</td></tr>
-                <tr><td>Comisión MeLi</td><td class="num text-danger">-${{ g.comision_formateada }}</td></tr>
-                <tr><td>Envío</td><td class="num text-danger">-${{ g.envio_formateado }}</td></tr>
-                <tr><td>Costo de fábrica</td><td class="num text-danger">-${{ g.costo_fab_formateado }}</td></tr>
+                <tr><td>Comisión MeLi</td><td class="num costo">-${{ g.comision_formateada }}</td></tr>
+                <tr><td>Envío</td><td class="num costo">-${{ g.envio_formateado }}</td></tr>
+                <tr><td>Costo de fábrica</td><td class="num costo">-${{ g.costo_fab_formateado }}</td></tr>
                 {% if g.almacenamiento_formateado %}
-                <tr><td>Almacenamiento prolongado FULL</td><td class="num text-danger">-${{ g.almacenamiento_formateado }}</td></tr>
+                <tr><td>Almacenamiento prolongado FULL</td><td class="num costo">-${{ g.almacenamiento_formateado }}</td></tr>
                 {% endif %}
                 <tr><td><strong>Ganancia neta / unidad</strong></td><td class="num text-success"><strong>${{ g.ganancia_por_unidad_formateada }}</strong></td></tr>
                 <tr><td><strong>Margen</strong></td><td class="num"><strong>{{ g.margen_pct }}%</strong></td></tr>

@@ -14,8 +14,8 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Ganancia Real</h1>
-        <div class="page-subtitle">Lo que realmente te queda de cada venta — <strong>{{ fecha_desde }}</strong> al <strong>{{ fecha_hasta }}</strong></div>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-coin"/></svg>Ganancia Real</h1>
+        <div class="page-subtitle">Lo que realmente te queda de cada venta — <strong>{{ rango_fechas(fecha_desde, fecha_hasta) }}</strong></div>
     </div>
     <div class="flex-gap no-imprimir">
         <a class="btn btn-secondary" href="/metricas/exportar_excel?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> Excel</a>
@@ -93,9 +93,9 @@
 {% set hay_retenido = posventa.dinero_retenido not in ('0,00', '0', 0) %}
 {% set por_gestionar = posventa.devoluciones + posventa.reclamos_sin_impacto %}
 {% if posventa.reclamos > 0 %}
-{{ banner("danger", "alert", ("<b>%d reclamo(s)</b> en este período"|format(posventa.reclamos)) ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Revisá los que siguen abiertos: un reclamo sin resolver puede sumar a tu reputación negativa.", "Ver detalle", "#seccion-reclamos", "btn-urgente") }}
+{{ banner("danger", "alert", ("<b>" ~ posventa.reclamos|plural("reclamo") ~ "</b> en este período") ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Revisá los que siguen abiertos: un reclamo sin resolver puede sumar a tu reputación negativa.", "Ver detalle", "#seccion-reclamos", "btn-urgente") }}
 {% elif por_gestionar > 0 %}
-{{ banner("info", "refresh", ("<b>%d devolución(es) o reclamo(s) por gestionar</b> en este período"|format(por_gestionar)) ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Mercado Libre indica que no afectan tu reputación: conviene gestionarlos a tiempo para que no se compliquen.", "Ver detalle", "#seccion-reclamos") }}
+{{ banner("info", "refresh", ("<b>" ~ (("1 devolución o reclamo" if por_gestionar == 1 else por_gestionar ~ " devoluciones o reclamos")) ~ " por gestionar</b> en este período") ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Mercado Libre indica que no afectan tu reputación: conviene gestionarlos a tiempo para que no se compliquen.", "Ver detalle", "#seccion-reclamos") }}
 {% endif %}
 {% if flex_resumen and flex_resumen.sin_zona %}
 {{ banner("warn", "truck", "<b>" ~ flex_resumen.sin_zona ~ " envío" ~ ("s" if flex_resumen.sin_zona != 1) ~ " Flex sin costo de entrega</b> en este período — todavía no está en tu ganancia", "Cargá lo que te cobra tu logística por zona para que la ganancia sea la real.", "Cargar costo de entrega", "/costos#entrega-flex", "btn-alerta") }}
@@ -110,7 +110,7 @@
 
 <!-- ── 3. NÚMEROS CLAVE ─────────────────────────────────────────────────── -->
 <div class="ux-kpis">
-    {{ kpi("Facturado", rs.facturado|plata, "accion", "coin", "vs. período anterior (" ~ comparacion_anterior.desde ~ " al " ~ comparacion_anterior.hasta ~ ")") }}
+    {{ kpi("Facturado", rs.facturado|plata, "accion", "coin", "vs. período anterior (" ~ rango_fechas(comparacion_anterior.desde, comparacion_anterior.hasta) ~ ")") }}
     {{ kpi("Unidades vendidas", total_unidades_periodo|numero, "info", "box", "en el período") }}
     {% if ganancia_por_unidad %}
     {{ kpi("Ganancia por unidad", "$" ~ ganancia_por_unidad, "ok" if rs.ganancia_neta >= 0 else "danger", "wallet", "promedio real, ya descontado todo") }}
@@ -166,10 +166,10 @@
                 <td class="ux-col-titulo"><strong>{{ c.titulo }}</strong>{% if m < 0 %} <span class="ux-pill ux-danger">Pierde plata</span>{% elif m < 15 %} <span class="ux-pill ux-warn">Al límite</span>{% endif %}</td>
                 <td class="num">{{ c.unidades }}</td>
                 <td class="num">${{ c.precio_promedio }}</td>
-                <td class="num text-danger">${{ c.cargo_u }}</td>
-                <td class="num text-danger">${{ c.envio_u }}</td>
-                <td class="num text-danger">${{ c.ads_u }}</td>
-                <td class="num text-danger">${{ c.costo_u }}</td>
+                <td class="num costo">${{ c.cargo_u }}</td>
+                <td class="num costo">${{ c.envio_u }}</td>
+                <td class="num costo">${{ c.ads_u }}</td>
+                <td class="num costo">${{ c.costo_u }}</td>
                 <td class="num {{ 'text-danger' if m < 0 else 'text-success' }}"><strong>${{ c.neto_u }}</strong></td>
                 <td class="num {{ 'text-danger' if m < 0 else 'text-success' }}"><strong>${{ c.neto_total }}</strong></td>
             </tr>
@@ -348,7 +348,7 @@
             <tbody>
                 {% for item in posventa.lista %}
                 <tr {% if loop.index > 5 %}class="oculto-mostrar-mas"{% endif %}>
-                    <td class="text-muted">{{ item.fecha }}</td>
+                    <td class="text-muted">{{ item.fecha|fecha }}</td>
                     <td><span class="ux-pill {{ 'ux-info' if (item.tipo == 'RECLAMO' and item.sin_impacto) else ('ux-danger' if item.tipo == 'RECLAMO' else ('ux-warn' if item.tipo == 'DEVOLUCIÓN' else 'ux-neutral ux-pill-suave')) }}">{{ item.tipo }}</span>{% if item.tipo == 'RECLAMO' and item.sin_impacto %}<div class="text-muted" style="font-size:0.72em; margin-top:2px;">no afecta tu reputación</div>{% endif %}</td>
                     <td><a href="{{ item.link }}" target="_blank" rel="noopener" class="badge badge-neutral" style="text-decoration:none;">#{{ item.id_orden }} ↗</a></td>
                     <td>{{ item.motivo }}</td>
@@ -367,7 +367,7 @@
 </details>
 
 <details class="ux-detalle">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Lo que te facturó Mercado Libre {% if factura_meli %}<span class="ux-detalle-nota">{{ factura_meli.date_from }} al {{ factura_meli.date_to }} · {{ 'en curso' if factura_meli.en_curso else 'cerrada' }}</span>{% endif %}</summary>
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Lo que te facturó Mercado Libre {% if factura_meli %}<span class="ux-detalle-nota">{{ rango_fechas(factura_meli.date_from, factura_meli.date_to) }} · {{ 'en curso' if factura_meli.en_curso else 'cerrada' }}</span>{% endif %}</summary>
     <div class="ux-detalle-cuerpo">
         {% if factura_meli %}
         <table class="data-table">
@@ -440,15 +440,15 @@
             <tbody>
                 {% for v in ventas %}
                 <tr class="{% if v.es_negativo %}ux-fila-danger{% endif %} {% if loop.index > 10 %}oculto-mostrar-mas{% endif %}">
-                    <td class="text-muted">{{ v.fecha }}</td>
+                    <td class="text-muted">{{ v.fecha|fecha }}</td>
                     <td>{{ v.titulo }}</td>
                     <td>{{ v.talle }}</td>
                     <td class="num">{{ v.cantidad }}</td>
                     <td class="num">${{ v.precio_venta }}</td>
-                    <td class="num text-danger">${{ v.cargo_venta }}</td>
-                    <td class="num text-danger">${{ v.costo_envio }}{% if v.envio_pendiente %} <span class="ux-pill ux-warn">pendiente</span>{% endif %}</td>
-                    <td class="num text-danger">${{ v.costo_ads }}</td>
-                    <td class="num text-danger">${{ v.costo_fabricacion }}</td>
+                    <td class="num costo">${{ v.cargo_venta }}</td>
+                    <td class="num costo">${{ v.costo_envio }}{% if v.envio_pendiente %} <span class="ux-pill ux-warn">pendiente</span>{% endif %}</td>
+                    <td class="num costo">${{ v.costo_ads }}</td>
+                    <td class="num costo">${{ v.costo_fabricacion }}</td>
                     <td class="num {% if v.es_negativo %}text-danger{% else %}text-success{% endif %}"><strong>${{ v.ganancia_neta_formateada }}</strong></td>
                 </tr>
                 {% endfor %}

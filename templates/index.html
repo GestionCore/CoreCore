@@ -9,7 +9,7 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Stock</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-package"/></svg>Stock</h1>
         <div class="page-subtitle">Qué tenés, dónde está y qué hay que reponer — <strong>se actualiza solo cada 4 minutos</strong></div>
     </div>
     <div class="flex-gap">
@@ -90,7 +90,7 @@ async function reactivarAplicar() {
             estado.style.color = x.ok ? 'var(--success)' : 'var(--danger)';
             if (x.ok) { const c = fila.querySelector('input'); c.checked = false; c.disabled = true; }
         });
-        if (typeof mostrarToast === 'function') mostrarToast(d.ok ? `${d.reactivadas} publicación(es) reactivada(s)` + (d.fallidas ? `, ${d.fallidas} con error` : '') : (d.detalle || 'No se pudo reactivar'), d.ok ? 'success' : 'error');
+        if (typeof mostrarToast === 'function') mostrarToast(d.ok ? (d.reactivadas === 1 ? '1 publicación reactivada' : `${d.reactivadas} publicaciones reactivadas`) + (d.fallidas ? `, ${d.fallidas} con error` : '') : (d.detalle || 'No se pudo reactivar'), d.ok ? 'success' : 'error');
     } catch (e) {
         if (typeof mostrarToast === 'function') mostrarToast('Error de red', 'error');
     }

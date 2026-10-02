@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Reputación</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-star"/></svg>Reputación</h1>
         <div class="page-subtitle">Tu nivel en Mercado Libre — <strong>datos oficiales de tu cuenta</strong>. Es lo que más pesa en tu visibilidad y en la confianza de los compradores.</div>
     </div>
 </div>
@@ -45,12 +45,14 @@
 
 <!-- ── 2. NÚMEROS ─────────────────────────────────────────────────────── -->
 <div class="ux-kpis">
-    {{ kpi("Tasa de cancelación", rep.tasa_cancelacion|pct, "danger" if rep.tasa_cancelacion > 5 else "ok", "x", "canceladas o devueltas sobre el total") }}
+    {# Primero las tres métricas con las que Mercado Libre arma tu nivel: son las que importan #}
+    {% if rep.reclamos.tasa is not none %}{{ kpi("Reclamos", (rep.reclamos.tasa * 100)|pct(2), "info", "alert", "métrica que arma tu nivel") }}{% endif %}
+    {% if rep.demora_en_despacho.tasa is not none %}{{ kpi("Demora en el despacho", (rep.demora_en_despacho.tasa * 100)|pct(2), "info", "truck", "métrica que arma tu nivel") }}{% endif %}
+    {% if rep.cancelaciones_metrica.tasa is not none %}{{ kpi("Cancelaciones", (rep.cancelaciones_metrica.tasa * 100)|pct(2), "info", "x", "métrica que arma tu nivel") }}{% endif %}
     {# Con muy pocas calificaciones el porcentaje no dice nada (1 calificación = 0% o 100%): se muestra neutro y se aclara #}
     {% if pct_positivas is not none %}{{ kpi("Calificaciones positivas", pct_positivas|pct(0), ("ok" if pct_positivas >= 90 else ("warn" if pct_positivas >= 75 else "danger")) if total_calif >= 10 else "neutral", "star", total_calif|numero ~ (" calificación recibida — muestra muy chica" if total_calif == 1 else " calificaciones recibidas" ~ (" — muestra chica" if total_calif < 10 else ""))) }}{% endif %}
-    {% if rep.reclamos.tasa is not none %}{{ kpi("Tasa de reclamos", (rep.reclamos.tasa * 100)|pct(2), "info", "alert", "métrica que arma tu nivel") }}{% endif %}
-    {% if rep.demora_en_despacho.tasa is not none %}{{ kpi("Demora en el despacho", (rep.demora_en_despacho.tasa * 100)|pct(2), "info", "truck", "métrica que arma tu nivel") }}{% endif %}
-    {% if rep.cancelaciones_metrica.tasa is not none %}{{ kpi("Cancelaciones (métrica de nivel)", (rep.cancelaciones_metrica.tasa * 100)|pct(2), "info", "x", "métrica que arma tu nivel") }}{% endif %}
+    {# El total histórico de canceladas incluye las que cancela el comprador y NO es la métrica del nivel: se muestra como contexto, sin alarma #}
+    {{ kpi("Ventas canceladas", rep.tasa_cancelacion|pct, "neutral", "x", "histórico total, incluye las que canceló el comprador") }}
 </div>
 
 {% if incidencias_por_tipo.devoluciones or incidencias_por_tipo.reclamos or incidencias_por_tipo.reclamos_sin_impacto or incidencias_por_tipo.cancelaciones %}

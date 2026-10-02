@@ -138,7 +138,7 @@ def evaluar_categoria(usuario_id, cuenta_id):
         if meses_para_cruzar < meses_hasta_ventana:
             alertas.append({
                 "tipo": "proyeccion",
-                "texto": f"Al ritmo de crecimiento de tus últimas ventas, podrías superar el techo de tu categoría en unos {meses_para_cruzar} mes(es) — antes de la próxima ventana de recategorización de AFIP ({MESES_VENTANA_RECATEGORIZACION[proxima_ventana.month]} {proxima_ventana.year}). Vale la pena tenerlo en el radar."
+                "texto": f"Al ritmo de crecimiento de tus últimas ventas, podrías superar el techo de tu categoría en {'un mes' if meses_para_cruzar == 1 else f'unos {meses_para_cruzar} meses'} — antes de la próxima ventana de recategorización de AFIP ({MESES_VENTANA_RECATEGORIZACION[proxima_ventana.month]} {proxima_ventana.year}). Vale la pena tenerlo en el radar."
             })
 
     if precio_maximo_vendido > PRECIO_UNITARIO_MAXIMO:

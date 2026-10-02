@@ -64,3 +64,51 @@ def test_vocabulario_segun_la_cuenta():
     assert vocabulario(True) == {"v1": "talle", "vN": "talles", "V1": "Talle", "VN": "Talles"}
     v = vocabulario(False)
     assert (v["v1"], v["vN"], v["V1"], v["VN"]) == ("variante", "variantes", "Variante", "Variantes")
+
+
+@pytest.mark.parametrize("valor, esperado", [
+    (1234567.89, "1.234.568"),      # sin centavos: en análisis no cambian ninguna decisión
+    (-0.4, "0"),                     # nunca "-0"
+    (-1500.5, "-1.500"),
+    (None, "0"),
+    ("no es número", "0"),
+])
+def test_formatear_moneda_en_pesos_enteros(valor, esperado):
+    import utils
+    assert utils.formatear_moneda(valor) == esperado
+
+
+def test_plural_nunca_deja_la_s_entre_parentesis():
+    import utils
+    assert utils.plural(1, "venta") == "1 venta"
+    assert utils.plural(3, "venta") == "3 ventas"
+    assert utils.plural(2, "devolución", "devoluciones") == "2 devoluciones"
+    assert utils.plural(1500, "unidad", "unidades") == "1.500 unidades"
+
+
+@pytest.mark.parametrize("viejo, nuevo", [
+    ("1 reclamo(s) sin resolver", "1 reclamo sin resolver"),
+    ("3 devolución(es) o reclamo(s) por gestionar", "3 devoluciones o reclamos por gestionar"),
+    ("2 promoción(es) activa(s) sin impacto real", "2 promociones activas sin impacto real"),
+    ("Sin paréntesis", "Sin paréntesis"),
+])
+def test_corregir_plurales_de_textos_guardados(viejo, nuevo):
+    import utils
+    assert utils.corregir_plurales(viejo) == nuevo
+
+
+def test_fechas_para_mostrar(monkeypatch):
+    import datetime as dt
+    import utils
+    monkeypatch.setattr(utils, "hoy_argentina", lambda: dt.date(2026, 10, 2))
+    assert utils.fecha_corta("2026-09-02") == "2 sep"
+    assert utils.fecha_corta(dt.date(2025, 12, 28)) == "28 dic 2025"       # de otro año: con el año
+    assert utils.fecha_corta("hace 2 días") == "hace 2 días"                # un texto que no es fecha se muestra tal cual
+    assert utils.fecha_corta(None) == "—"
+    assert utils.rango_fechas("2026-09-02", "2026-10-02") == "2 sep – 2 oct"
+    assert utils.rango_fechas("2026-10-05", "2026-10-12") == "5 – 12 oct"
+    assert utils.rango_fechas("2025-12-28", "2026-01-03") == "28 dic 2025 – 3 ene"
+    assert utils.cuando_corto(dt.datetime(2026, 10, 2, 14, 32)) == "Hoy 14:32"
+    assert utils.cuando_corto(dt.datetime(2026, 10, 1, 21, 5)) == "Ayer 21:05"
+    assert utils.cuando_corto(dt.datetime(2026, 9, 28, 9, 0)) == "28 sep 09:00"
+    assert utils.cuando_corto(dt.datetime(2026, 9, 28, 0, 0), con_hora=False) == "28 sep"

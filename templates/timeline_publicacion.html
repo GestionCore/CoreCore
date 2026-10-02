@@ -5,7 +5,7 @@
     <div class="flex-gap" style="align-items:center;">
         {% if thumbnail %}<img src="{{ thumbnail }}" style="width:56px;height:56px;border-radius:8px;">{% endif %}
         <div>
-            <h1 class="page-title">{{ titulo }}</h1>
+            <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-calendar"/></svg>{{ titulo }}</h1>
             <div class="page-subtitle">Línea de tiempo completa — {{ id_meli }}</div>
         </div>
     </div>

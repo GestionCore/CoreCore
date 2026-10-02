@@ -7,7 +7,7 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-percent"/></svg>Publicidad</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-bolt"/></svg>Publicidad</h1>
         <div class="page-subtitle">Product Ads — <strong>si tu pauta te deja plata o te la come</strong></div>
     </div>
 </div>
@@ -62,7 +62,7 @@
 
     {% if anterior %}
     <div class="ux-comparativa">
-        <span class="text-muted">Contra el período anterior ({{ anterior.desde }} al {{ anterior.hasta }}):</span>
+        <span class="text-muted">Contra el período anterior ({{ rango_fechas(anterior.desde, anterior.hasta) }}):</span>
         {% if anterior.roas_diff is not none %}<span class="ux-delta {{ 'ux-ok' if anterior.roas_diff >= 0 else 'ux-danger' }}">ROAS {{ '▲' if anterior.roas_diff >= 0 else '▼' }} {{ anterior.roas_diff|abs|string|replace('.', ',') }}x</span>{% endif %}
         {% if anterior.costo_pct is not none %}<span class="ux-delta ux-neutral">Inversión {{ '▲' if anterior.costo_pct >= 0 else '▼' }} {{ anterior.costo_pct|abs|string|replace('.', ',') }}%</span>{% endif %}
         {% if anterior.ventas_pct is not none %}<span class="ux-delta {{ 'ux-ok' if anterior.ventas_pct >= 0 else 'ux-danger' }}">Ventas por Ads {{ '▲' if anterior.ventas_pct >= 0 else '▼' }} {{ anterior.ventas_pct|abs|string|replace('.', ',') }}%</span>{% endif %}

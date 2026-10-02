@@ -1,7 +1,7 @@
 """Score de Salud de Cuenta — portado de Santi Mens."""
 from datetime import timedelta
 import analisis_stock
-from utils import SQL_RECLAMO_AFECTA, hoy_argentina
+from utils import SQL_RECLAMO_AFECTA, hoy_argentina, plural
 
 
 def calcular_score_salud(cursor):
@@ -14,7 +14,7 @@ def calcular_score_salud(cursor):
     if reclamos_activos > 0:
         resta = min(reclamos_activos * 15, 45)
         score -= resta
-        detalle.append(f"-{resta} por {reclamos_activos} reclamo(s) activo(s)")
+        detalle.append(f"-{resta} por {plural(reclamos_activos, 'reclamo activo', 'reclamos activos')}")
 
     cursor.execute("""
         SELECT COALESCE(v.stock_propio,0) + COALESCE(v.stock_full,0) as stock_talle
@@ -40,7 +40,7 @@ def calcular_score_salud(cursor):
         if modelos_con_curva_rota > 0:
             resta = min(modelos_con_curva_rota * 10, 20)
             score -= resta
-            detalle.append(f"-{resta} por {modelos_con_curva_rota} modelo(s) con curva de talles rota")
+            detalle.append(f"-{resta} por {plural(modelos_con_curva_rota, 'modelo')} con curva de talles rota")
     except Exception as e:
         print(f"[Salud] ⚠️ No se pudo evaluar la curva de talles: {e}")
 
@@ -66,7 +66,7 @@ def calcular_score_salud(cursor):
     preguntas_viejas = cursor.fetchone()[0] or 0
     if preguntas_viejas > 0:
         score -= 10
-        detalle.append(f"-10 por {preguntas_viejas} pregunta(s) sin responder hace más de 24hs")
+        detalle.append(f"-10 por {plural(preguntas_viejas, 'pregunta')} sin responder hace más de 24 h")
 
     score = max(0, min(100, score))
 

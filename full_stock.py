@@ -5,11 +5,17 @@ enriquecimiento.refrescar_full desde GET /inventories/{inventory_id}/stock/fulfi
 Varias publicaciones pueden compartir el mismo inventario: las unidades se cuentan UNA vez por inventory_id.
 """
 
+# (una unidad, varias): "1 perdida", "3 perdidas"
 MOTIVOS = {
-    "lost": "perdidas", "damage": "dañadas", "damaged": "dañadas", "noFiscalCoverage": "sin cobertura fiscal",
+    "lost": ("perdida", "perdidas"), "damage": ("dañada", "dañadas"), "damaged": ("dañada", "dañadas"), "noFiscalCoverage": "sin cobertura fiscal",
     "withdrawal": "en retiro", "internalProcess": "en proceso interno de Mercado Libre", "internal_process": "en proceso interno de Mercado Libre",
     "transfer": "en traslado entre bodegas",
 }
+
+
+def _motivo(estado, cantidad):
+    texto = MOTIVOS.get(estado, str(estado or "otro motivo"))
+    return (texto[0] if cantidad == 1 else texto[1]) if isinstance(texto, tuple) else texto
 
 
 def unidades_no_disponibles(cursor, cuenta_id):
@@ -22,7 +28,7 @@ def unidades_no_disponibles(cursor, cuenta_id):
     """, (cuenta_id,))
     items = []
     for _inv, titulo, thumbnail, permalink, estado, cantidad, detalle in cursor.fetchall():
-        motivos = [{"texto": MOTIVOS.get(d.get("status"), str(d.get("status") or "otro motivo")), "cantidad": int(d.get("quantity") or 0)}
+        motivos = [{"texto": _motivo(d.get("status"), int(d.get("quantity") or 0)), "cantidad": int(d.get("quantity") or 0)}
                    for d in (detalle if isinstance(detalle, list) else []) if int(d.get("quantity") or 0) > 0]
         items.append({"titulo": titulo, "thumbnail": thumbnail, "permalink": permalink, "estado": estado, "cantidad": int(cantidad), "motivos": motivos})
     items.sort(key=lambda i: -i["cantidad"])

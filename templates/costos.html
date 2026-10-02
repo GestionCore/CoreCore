@@ -10,7 +10,7 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Costos</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-wallet"/></svg>Costos</h1>
         <div class="page-subtitle">Lo que te cuesta fabricar y mantener el negocio — <strong>sin esto, la ganancia real no es real</strong></div>
     </div>
     <a class="btn btn-secondary" href="/calculadora"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-calculator"/></svg> Calculadora de comisiones</a>
@@ -21,7 +21,7 @@
 {% if sin_costo %}
 {{ banner("warn", "alert", "<b>Falta el costo de fabricación de " ~ sin_costo|length ~ " de tus " ~ activos|length ~ " publicaciones activas</b>", "Mientras falte, tu ganancia neta real es más alta que la verdadera. Cargá el costo de uno y copialo a los demás del modelo.", "Cargar costos", "#costos-fabricacion", "btn-alerta") }}
 {% elif con_perdida %}
-{{ banner("danger", "alert", "<b>" ~ con_perdida|length ~ " publicación(es) venden por debajo de su costo</b> con los precios actuales", "Revisá el precio o el costo de las que aparecen en rojo abajo.", "Ver cuáles", "#costos-fabricacion", "btn-urgente") }}
+{{ banner("danger", "alert", "<b>" ~ (con_perdida|length)|plural("publicación vende", "publicaciones venden") ~ " por debajo de su costo</b> con los precios actuales", "Revisá el precio o el costo de las que aparecen en rojo abajo.", "Ver cuáles", "#costos-fabricacion", "btn-urgente") }}
 {% else %}
 {{ banner("ok", "check", "<b>Todas tus publicaciones tienen costo cargado</b> y ninguna vende a pérdida", "Tu ganancia neta real se calcula con datos completos.") }}
 {% endif %}
@@ -32,7 +32,7 @@
     {{ kpi("Venden a pérdida", con_perdida|length, "danger" if con_perdida else "ok", "alert", "precio menor que todos los costos") }}
     {{ kpi("Gastos fijos", "$" ~ stats.fijos.split(',')[0], "accion", "wallet", "alquiler, sueldos, abonos…") }}
     {{ kpi("Gastos variables", "$" ~ stats.variables.split(',')[0], "info", "receipt", "bolsas, embalaje, etc.") }}
-    {{ kpi("Gastos del período", "$" ~ stats.total.split(',')[0], "neutral", "coin", "fijos + variables · " ~ fecha_desde ~ " al " ~ fecha_hasta) }}
+    {{ kpi("Gastos del período", "$" ~ stats.total.split(',')[0], "neutral", "coin", "fijos + variables · " ~ rango_fechas(fecha_desde, fecha_hasta)) }}
 </div>
 
 <!-- ── 2. COSTO DE FABRICACIÓN POR MODELO ───────────────────────────────── -->
@@ -237,7 +237,7 @@
         <tbody>
             {% for g in gastos %}
             <tr>
-                <td class="text-muted">{{ g.fecha }}</td>
+                <td class="text-muted">{{ g.fecha|fecha }}</td>
                 <td><b>{{ g.concepto }}</b>{% if g.recurrente %} <span class="ux-pill ux-info ux-pill-suave" title="Se repite todos los meses: {{ g.monto_mensual_formateado }} por mes">Recurrente</span>{% endif %}</td>
                 <td><span class="ux-pill {{ 'ux-accion ux-pill-suave' if g.categoria == 'fijo' else 'ux-warn ux-pill-suave' }}">{{ g.categoria|capitalize }}</span></td>
                 <td class="num"><b>${{ g.monto_formateado }}</b></td>

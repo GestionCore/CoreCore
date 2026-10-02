@@ -5,8 +5,8 @@
 {% set pendientes = total - listos %}
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-package"/></svg>Despacho</h1>
-        <div class="page-subtitle">Flex y Correo del <strong>{{ fecha }}</strong> — corte a las <strong>{{ hora_corte }}:00</strong> <span id="cuenta-regresiva-corte"></span></div>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-truck"/></svg>Despacho</h1>
+        <div class="page-subtitle">Flex y Correo del <strong>{{ fecha|fecha }}</strong> — corte a las <strong>{{ hora_corte }}:00</strong> <span id="cuenta-regresiva-corte"></span></div>
     </div>
     <button type="button" class="btn btn-secondary" onclick="alternarModoDespachoLimpio()" id="btn-modo-limpio"><svg class="icon" style="width:14px;height:14px;" id="icono-modo-limpio"><use href="#icon-bolt"/></svg><span id="label-modo-limpio">Modo foco</span></button>
 </div>

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-home"/></svg>Dashboard</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-home"/></svg>Dashboard</h1>
         <div class="page-subtitle" id="dashboard-fecha"><strong>Hoy</strong> — tu resumen del día</div>
     </div>
     <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-settings"/></svg> Personalizar</button>
@@ -263,7 +263,7 @@
             <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Guardar</button>
         </form>
 
-        <div class="text-muted" style="font-size:0.76em;">Escalas vigentes desde {{ mono.vigente_desde }} para "venta de cosas muebles" — esto avisa y sugiere; la decisión final siempre conviene confirmarla con tu contador.</div>
+        <div class="text-muted" style="font-size:0.76em;">Escalas vigentes desde el {{ mono.vigente_desde|fecha(true) }} para "venta de cosas muebles" — esto avisa y sugiere; la decisión final siempre conviene confirmarla con tu contador.</div>
     </div>
 </details>
 {% endif %}
@@ -365,9 +365,10 @@
                 w.innerHTML = `
                     <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
                         <div class="stat-chip-label">Facturación — últimos ${d.serie.length} días</div>
-                        <div class="hero-number" style="font-size:1.5em; margin-bottom:16px;">$${UX.esc(d.total_formateado)}<span class="hero-number-label">total del período</span></div>
+                        <div class="hero-number" style="font-size:1.7em;">$${UX.esc(sinCentavos(d.total_formateado))}</div>
+                        <div class="text-muted" style="font-size:0.8em; margin:2px 0 14px;">facturado en total</div>
                         <div style="position:relative; height:120px;"><canvas id="${canvasId}" role="img" aria-label="Facturación diaria de los últimos ${d.serie.length} días"></canvas></div>
-                        <div class="grafico-tendencia-ejes" style="margin-top:6px;"><span>${UX.esc(d.serie[0].fecha)}</span><span>Prom. diario: $${UX.esc(d.promedio_diario_formateado)}</span><span>${UX.esc(d.serie[d.serie.length - 1].fecha)}</span></div>
+                        <div class="grafico-tendencia-ejes" style="margin-top:6px;"><span>${UX.esc(d.serie[0].fecha)}</span><span>Promedio diario: $${UX.esc(sinCentavos(d.promedio_diario_formateado))}</span><span>${UX.esc(d.serie[d.serie.length - 1].fecha)}</span></div>
                     </a>`;
                 requestAnimationFrame(() => {
                     const canvas = document.getElementById(canvasId);
@@ -459,7 +460,7 @@
                 w.innerHTML = `
                     <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
                         <div class="stat-chip-label">Últimas ventas</div>
-                        <div style="margin-top:6px;">
+                        <div class="mini-list" style="margin-top:6px;">
                             ${d.map(v => `
                             <div class="mini-list-row">
                                 <span class="mini-list-qty">×${UX.esc(v.cantidad)}</span>
@@ -486,6 +487,7 @@
                 return `<${tag} ${href} class="checklist-item ${p.completo ? 'completo' : ''}">
                     <span class="checklist-check">${p.completo ? '✓' : ''}</span>
                     <span class="checklist-texto">${UX.esc(p.texto)}${p.detalle && !p.completo ? `<span class="text-muted" style="display:block; font-size:0.82em; font-weight:400;">${UX.esc(p.detalle)}</span>` : ''}</span>
+                    ${tag === 'a' ? '<span class="checklist-ir">Hacerlo →</span>' : ''}
                 </${tag}>`;
             }).join('');
         } catch (e) { console.error(e); }
@@ -664,6 +666,7 @@
             const set = (id, txt) => { const el = document.getElementById(id); el.textContent = txt; el.classList.remove('skeleton'); };
             set('hero-facturado-hoy', UX.plata(facturadoHoy));
             set('hero-costos-hoy', UX.plata(costosHoy));
+            document.getElementById('hero-costos-hoy').classList.toggle('text-danger', costosHoy > 0);
             set('hero-queda-hoy', UX.plata(gHoy));
             const queda = document.getElementById('hero-queda-hoy');
             queda.style.color = negativo ? 'var(--danger)' : 'var(--success)';
@@ -672,7 +675,7 @@
             // Barras hoy vs. promedio: el mayor valor absoluto marca el 100%
             const maxAbs = Math.max(Math.abs(gHoy), Math.abs(gProm), 1);
             const barraHoy = document.getElementById('barra-hoy');
-            barraHoy.style.width = Math.max(4, Math.round(Math.abs(gHoy) / maxAbs * 100)) + '%';
+            barraHoy.style.width = (gHoy === 0 ? 0 : Math.max(3, Math.round(Math.abs(gHoy) / maxAbs * 100))) + '%';
             barraHoy.parentElement.className = 'ux-barra ux-' + (negativo ? 'danger' : 'ok');
             document.getElementById('barra-promedio').style.width = Math.max(4, Math.round(Math.abs(gProm) / maxAbs * 100)) + '%';
             document.getElementById('valor-hoy').textContent = d.hoy.ganancia_f;

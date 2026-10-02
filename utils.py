@@ -53,11 +53,16 @@ def formatear_estado_incidencia(estado):
 
 
 def formatear_moneda(valor):
+    """
+    "1.234.567" — pesos enteros con punto de miles, sin el "$" (cada pantalla lo antepone). Antes llevaba centavos ("1.234.567,89") y las pantallas
+    mezclaban montos con y sin ",00" una al lado de la otra: en análisis de ventas los centavos no cambian ninguna decisión y solo agregan ruido.
+    Los exports (Excel) usan los valores numéricos, no este texto.
+    """
     try:
-        val = float(valor or 0.0)
-        return f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        val = round(float(valor or 0.0))                # round() da un int: nunca "-0" para un -0,4
+        return f"{val:,}".replace(",", ".")
     except (TypeError, ValueError):
-        return "0,00"
+        return "0"
 
 
 def formatear_moneda_entera(valor):
@@ -139,6 +144,92 @@ def numero(valor):
         return f"{float(valor):,.0f}".replace(",", ".")
     except (TypeError, ValueError):
         return "—"
+
+
+def plural(cantidad, singular, plural_=None):
+    """'1 venta' / '3 ventas' / '2 devoluciones' (con el plural explícito cuando no alcanza con agregar una s). Nunca 'venta(s)'."""
+    try:
+        n = float(cantidad)
+    except (TypeError, ValueError):
+        n = 0
+    palabra = singular if n == 1 else (plural_ or singular + "s")
+    return f"{numero(cantidad)} {palabra}"
+
+
+_RE_PLURAL_VIEJO = re.compile(r"(\w+)\((es|s)\)")
+
+
+def corregir_plurales(texto):
+    """
+    Para textos YA GUARDADOS con el formato viejo ("1 reclamo(s) sin resolver", "3 devolución(es)"): decide singular o plural según el primer
+    número del texto. Los textos nuevos se arman con plural(); esto es solo para lo que quedó en la base (historial de Logros).
+    """
+    if not texto or "(" not in texto:
+        return texto
+    m = re.search(r"\d+", texto)
+    uno = bool(m) and m.group() == "1"
+
+    def reemplazar(r):
+        palabra, sufijo = r.group(1), r.group(2)
+        if uno:
+            return palabra
+        if sufijo == "es" and palabra.endswith("ón"):
+            return palabra[:-2] + "ones"
+        return palabra + sufijo
+
+    return _RE_PLURAL_VIEJO.sub(reemplazar, texto)
+
+
+# ── Fechas para mostrar ───────────────────────────────────────────────────────────────────────────────────────────────────────
+# En pantalla una fecha se lee como "2 sep" o "2 sep – 2 oct", nunca "2026-09-02": el formato ISO es para la base, no para personas.
+MESES_CORTOS = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+
+
+def _a_fecha(valor):
+    if valor is None or valor == "":
+        return None
+    if isinstance(valor, datetime):
+        return valor.date()
+    if hasattr(valor, "year") and hasattr(valor, "month"):
+        return valor
+    try:
+        return datetime.strptime(str(valor)[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def fecha_corta(valor, con_anio=None):
+    """'2 sep' (o '2 sep 2025' si no es de este año o se pide). Acepta date, datetime o 'AAAA-MM-DD'. '—' si no hay dato."""
+    d = _a_fecha(valor)
+    if not d:
+        return str(valor) if valor not in (None, "") else "—"       # un texto que no es fecha ISO ("hace 2 días") se muestra tal cual
+    if con_anio is None:
+        con_anio = d.year != hoy_argentina().year
+    return f"{d.day} {MESES_CORTOS[d.month - 1]}" + (f" {d.year}" if con_anio else "")
+
+
+def rango_fechas(desde, hasta):
+    """'2 sep – 2 oct', '5 – 12 oct' (mismo mes), '28 dic 2025 – 3 ene' (cruza de año). '—' si falta alguna punta."""
+    a, b = _a_fecha(desde), _a_fecha(hasta)
+    if not a or not b:
+        return "—"
+    if a == b:
+        return fecha_corta(a)
+    if a.year == b.year and a.month == b.month:
+        return f"{a.day} – {fecha_corta(b)}"
+    return f"{fecha_corta(a, con_anio=a.year != b.year or None)} – {fecha_corta(b)}"
+
+
+def cuando_corto(momento, con_hora=True):
+    """Para listas de actividad: 'Hoy 14:32', 'Ayer 21:05', '30 sep 18:10'. Sin hora conocida, solo el día."""
+    if momento is None:
+        return "—"
+    d = _a_fecha(momento)
+    hoy = hoy_argentina()
+    dia = "Hoy" if d == hoy else ("Ayer" if d == hoy - timedelta(days=1) else fecha_corta(d))
+    if con_hora and isinstance(momento, datetime):
+        return f"{dia} {momento:%H:%M}"
+    return dia
 
 
 # ── HTML seguro para las macros de _ux.html ─────────────────────────────────────────────────────────────────────────────────────

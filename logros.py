@@ -11,7 +11,7 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 import analisis_stock
 import embudo_conversion
-from utils import SQL_RECLAMO_AFECTA, hoy_argentina
+from utils import SQL_RECLAMO_AFECTA, corregir_plurales, hoy_argentina, plural
 import tendencias as tendencias_mod
 import promociones as promociones_mod
 import ia_asistente
@@ -63,7 +63,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
         if curva_rota:
             misiones.append({
                 "id": "curva_rota", "categoria": "stock", "icono": "⚖️", "prioridad": "importante",
-                "titulo": f"{len(curva_rota)} modelo(s) con la curva de talles rota",
+                "titulo": f"{plural(len(curva_rota), 'modelo')} con la curva de talles rota",
                 "descripcion": "Se están quedando sin los talles centrales (M/L/XL) mientras sobran los extremos — frena la venta del modelo entero.",
                 "link": "/stock", "link_texto": "Ver modelos"
             })
@@ -78,7 +78,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
             monto_retenido_fmt = f"{float(monto_retenido):,.0f}".replace(",", ".")
             misiones.append({
                 "id": "reclamos_abiertos", "categoria": "reclamos", "icono": "⚠️", "prioridad": "urgente" if cant_reclamos >= 3 else "importante",
-                "titulo": f"{cant_reclamos} reclamo(s) sin resolver",
+                "titulo": f"{plural(cant_reclamos, 'reclamo')} sin resolver",
                 "descripcion": (f"Hay ${monto_retenido_fmt} retenidos esperando resolución — cada día que pasa sin responder puede sumar a tu reputación negativa." if monto_retenido else "Cada día que pasa sin responder puede sumar a tu reputación negativa."),
                 "link": "/metricas", "link_texto": "Ver reclamos"
             })
@@ -93,7 +93,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
         if cant_devoluciones > 0:
             misiones.append({
                 "id": "devoluciones_abiertas", "categoria": "reclamos", "icono": "↩️", "prioridad": "importante" if cant_devoluciones >= 3 else "opcional",
-                "titulo": f"{cant_devoluciones} devolución(es) o reclamo(s) por gestionar",
+                "titulo": ("1 devolución o reclamo por gestionar" if cant_devoluciones == 1 else f"{cant_devoluciones} devoluciones o reclamos por gestionar"),
                 "descripcion": "Mercado Libre indica que no afectan tu reputación, pero conviene resolverlos a tiempo para que no se compliquen.",
                 "link": "/metricas#seccion-reclamos", "link_texto": "Ver devoluciones"
             })
@@ -107,7 +107,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
         if preguntas_viejas > 0:
             misiones.append({
                 "id": "preguntas_viejas", "categoria": "atencion", "icono": "❓", "prioridad": "importante",
-                "titulo": f"{preguntas_viejas} pregunta(s) sin responder hace más de 24hs",
+                "titulo": f"{plural(preguntas_viejas, 'pregunta')} sin responder hace más de 24 h",
                 "descripcion": "Una pregunta sin responder es una venta que se enfría.",
                 "link": "/preguntas", "link_texto": "Responder preguntas"
             })
@@ -121,7 +121,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
             top = canibalismo[0]
             misiones.append({
                 "id": "canibalismo", "categoria": "seo", "icono": "⚔️", "prioridad": "opcional",
-                "titulo": f"{len(canibalismo)} par(es) de publicaciones compitiendo entre sí",
+                "titulo": f"{plural(len(canibalismo), 'par', 'pares')} de publicaciones compitiendo entre sí",
                 "descripcion": f"'{top['modelo_a']}' y '{top['modelo_b']}' comparten {top['similitud_pct']}% de palabras — podrían estar dividiéndose las búsquedas.",
                 "link": "/tendencias", "link_texto": "Ver detalle"
             })
@@ -154,7 +154,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
         if muy_bajos:
             misiones.append({
                 "id": "seo_bajo", "categoria": "seo", "icono": "📝", "prioridad": "opcional",
-                "titulo": f"{len(muy_bajos)} título(s) con score de SEO bajo",
+                "titulo": f"{plural(len(muy_bajos), 'título')} con puntaje de SEO bajo",
                 "descripcion": f"'{muy_bajos[0]['titulo'][:40]}...' tiene {muy_bajos[0]['score']}/100 — hay margen real de mejora en cómo te encuentran.",
                 "link": "/tendencias", "link_texto": "Ver Score de SEO"
             })
@@ -184,7 +184,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
             p = promos_sin_efecto[0]
             misiones.append({
                 "id": "promo_sin_efecto", "categoria": "financiero", "icono": "🏷️", "prioridad": "importante",
-                "titulo": f"{len(promos_sin_efecto)} promoción(es) activa(s) sin impacto real",
+                "titulo": ("1 promoción activa sin impacto real" if len(promos_sin_efecto) == 1 else f"{len(promos_sin_efecto)} promociones activas sin impacto real"),
                 "descripcion": f"'{p['titulo']}' no aumentó significativamente el ritmo de venta desde que arrancó — estás regalando margen sin resultado a cambio.",
                 "link": "/promociones", "link_texto": "Ver Promociones"
             })
@@ -224,7 +224,7 @@ def obtener_logros_resueltos(cursor, cuenta_id, limite=10):
     resultado = []
     for titulo, fecha_resuelta in cursor.fetchall():
         fecha_fmt = fecha_resuelta.strftime("%Y-%m-%d") if hasattr(fecha_resuelta, "strftime") else fecha_resuelta
-        resultado.append({"titulo": titulo, "fecha_resuelta": fecha_fmt})
+        resultado.append({"titulo": corregir_plurales(titulo), "fecha_resuelta": fecha_fmt})
     return resultado
 
 
@@ -300,7 +300,7 @@ def obtener_logros(cursor, cuenta_id, headers=None):
             if zombies:
                 misiones.append({
                     "id": "zombies", "categoria": "seo", "icono": "💀", "prioridad": "opcional",
-                    "titulo": f"{len(zombies)} publicación(es) sin visitas ni ventas en 60 días",
+                    "titulo": f"{plural(len(zombies), 'publicación', 'publicaciones')} sin visitas ni ventas en 60 días",
                     "descripcion": "Están activas pero no aportan nada — ocupan lugar en tu catálogo sin resultado.",
                     "link": "/embudo_conversion", "link_texto": "Ver detalle"
                 })

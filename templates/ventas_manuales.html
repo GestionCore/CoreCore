@@ -4,13 +4,14 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Ventas fuera de Mercado Libre</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-edit"/></svg>Ventas fuera de Mercado Libre</h1>
         <div class="page-subtitle">Mostrador, Instagram, canal directo — <strong>entran a Ganancia Real y al Dashboard</strong> igual que una venta de MeLi</div>
     </div>
 </div>
 
 {% if error %}
-{{ banner("danger", "alert", "<b>No se pudo registrar la venta:</b> " ~ error|e, "Revisá los datos y probá de nuevo.") }}
+{# El error va en el detalle (se escapa solo): concatenarlo ya escapado al título escapaba también el <b> y se veía escrito #}
+{{ banner("danger", "alert", "<b>No se pudo registrar la venta</b>", error ~ " Revisá los datos y probá de nuevo.") }}
 {% endif %}
 
 <!-- ── 1. REGISTRAR: el formulario es lo principal de esta pantalla ───────── -->

@@ -409,7 +409,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
     resumen_posventa = {
         "devoluciones": total_devoluciones, "cancelaciones": total_cancelaciones, "reclamos": total_reclamos, "reclamos_sin_impacto": reclamos_sin_impacto,
         "financiacion": resumen_financiacion, "ventas_retiradas": int(retiradas["ordenes"] or 0), "monto_retirado": formatear_moneda(retiradas["monto"]),
-        "dinero_retenido": formatear_moneda(total_dinero_retenido),
+        "dinero_retenido": formatear_moneda(total_dinero_retenido), "dinero_retenido_monto": round(total_dinero_retenido, 2),
         "ranking_motivos_devolucion": ranking_motivos_devolucion,
         "lista": [
             {
@@ -501,7 +501,7 @@ def generar_excel_balance(datos, fecha_desde, fecha_hasta):
     ws_resumen.append(["Devoluciones", p["devoluciones"]])
     ws_resumen.append(["Cancelaciones", p["cancelaciones"]])
     ws_resumen.append(["Reclamos", p["reclamos"]])
-    ws_resumen.append(["Dinero retenido ($)", float(p["dinero_retenido"].replace(".", "").replace(",", "."))])
+    ws_resumen.append(["Dinero retenido ($)", p["dinero_retenido_monto"]])
     for col, ancho in [("A", 26), ("B", 16)]:
         ws_resumen.column_dimensions[col].width = ancho
 

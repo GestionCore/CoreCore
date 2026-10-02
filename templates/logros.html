@@ -7,7 +7,7 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-gold);"><use href="#icon-trophy"/></svg>Logros</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-trophy"/></svg>Logros</h1>
         <div class="page-subtitle">Tareas concretas, sacadas de <strong>los datos reales de tu cuenta</strong> — resolverlas es plata y reputación</div>
     </div>
 </div>
@@ -41,7 +41,8 @@
 // Si no llega, se muestra la primera misión tal cual — el resto de la pantalla no depende de esto.
 (function () {
     const el = document.getElementById('coach-texto');
-    const respaldo = {{ ('<b>' ~ (misiones[0].titulo|e) ~ '</b> — ' ~ (misiones[0].descripcion|e))|tojson }};
+    // Se arma acá y no en Jinja: con autoescape, '<b>' ~ (texto|e) escapaba también las etiquetas y la persona veía "<b>" escrito
+    const respaldo = '<b>' + UX.esc({{ misiones[0].titulo|tojson }}) + '</b> — ' + UX.esc({{ misiones[0].descripcion|tojson }});
     fetch('/api/logros/coach').then(r => r.json()).then(d => {
         if (d && d.mensaje) el.textContent = d.mensaje; else el.innerHTML = respaldo;
     }).catch(() => { el.innerHTML = respaldo; });
@@ -73,7 +74,7 @@
     {% for l in logros_resueltos %}
     <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border-soft); font-size:0.9em;">
         <span><svg class="icon" style="width:15px;height:15px;vertical-align:middle;margin-right:8px;color:var(--accent-gold);"><use href="#icon-trophy"/></svg><b>{{ l.titulo }}</b></span>
-        <span class="ux-pill ux-ok ux-pill-suave">Resuelto {{ l.fecha_resuelta }}</span>
+        <span class="ux-pill ux-ok ux-pill-suave">Resuelto el {{ l.fecha_resuelta|fecha }}</span>
     </div>
     {% endfor %}
     {% if logros_resueltos|length > 5 %}

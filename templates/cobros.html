@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-calendar"/></svg>Cobros</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-calendar"/></svg>Cobros</h1>
         <div class="page-subtitle">Cuándo te acredita Mercado Libre <strong>lo que ya vendiste</strong> y cuánta plata está retenida por reclamos</div>
     </div>
 </div>
@@ -58,7 +58,7 @@
 {% if factura.deuda_cerrada %}
 {{ banner("danger", "alert", "<b>Tenés " ~ (factura.deuda_cerrada.monto|plata) ~ " sin pagar</b> de la factura del " ~ factura.deuda_cerrada.desde ~ " al " ~ factura.deuda_cerrada.hasta, "Según Mercado Libre vencía el " ~ factura.deuda_cerrada.vence ~ ". Pagala desde tu cuenta para evitar recargos.") }}
 {% endif %}
-<div class="ux-seccion ux-info">La factura de Mercado Libre <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ factura.desde }} al {{ factura.hasta }}{% if factura.abierto %} · período en curso{% endif %}</span></div>
+<div class="ux-seccion ux-info">La factura de Mercado Libre <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ rango_fechas(factura.desde, factura.hasta) }}{% if factura.abierto %} · período en curso{% endif %}</span></div>
 <div class="panel">
     <div class="ux-dist-fila">
         <span class="ux-dist-etq" style="width:150px;">Ya descontado</span>

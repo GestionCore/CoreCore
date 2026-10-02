@@ -139,6 +139,9 @@ except Exception as _e:
 app.add_template_filter(utils.plata, "plata")
 app.add_template_filter(utils.porcentaje, "pct")
 app.add_template_filter(utils.numero, "numero")
+app.add_template_filter(utils.fecha_corta, "fecha")
+app.add_template_filter(utils.plural, "plural")
+app.add_template_global(utils.rango_fechas, "rango_fechas")
 app.add_template_filter(utils.html_seguro, "ux_seguro")
 
 
@@ -453,7 +456,7 @@ def actualizar_precios_masivo():
             cursor.execute("UPDATE productos_padre SET precio = %s WHERE id_meli = %s", (nuevo_precio, id_meli))
             actualizados += 1
 
-    mensaje = f"{actualizados} publicación(es) actualizada(s)."
+    mensaje = "1 publicación actualizada." if actualizados == 1 else f"{actualizados} publicaciones actualizadas."
     if fallidos:
         mensaje += f" {fallidos} con error."
     tipo = "success" if (actualizados and not fallidos) else ("error" if not actualizados else "info")
@@ -1057,24 +1060,26 @@ def api_dashboard_top_productos():
 def api_dashboard_ultimas_ventas():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("""
+        # fecha_venta es solo el DÍA: ordenar por ella dejaba las ventas de un mismo día en cualquier orden y mostraba todas a las 00:00
+        cursor.execute(f"""
             SELECT
                 COALESCE(titulo, 'Sin nombre') AS nombre,
                 cantidad,
                 precio_venta,
-                fecha_venta
+                {utils.sql_momento_argentina()} AS momento,
+                hora_venta IS NOT NULL AS con_hora
             FROM ventas
             WHERE cuenta_id = %s
               AND eliminado_en IS NULL
-            ORDER BY fecha_venta DESC
+            ORDER BY momento DESC
             LIMIT 8
         """, (g.cuenta_id,))
         filas = cursor.fetchall()
     return jsonify([{
         "nombre": f[0],
         "cantidad": int(f[1]),
-        "precio_f": f"${float(f[2]):,.0f}".replace(",", "."),
-        "fecha": f[3].strftime("%d/%m %H:%M") if f[3] else "—",
+        "precio_f": utils.plata(f[2]),
+        "fecha": utils.cuando_corto(f[3], con_hora=f[4]),
     } for f in filas])
 
 
@@ -2707,7 +2712,7 @@ def actualizar_stock_multiple():
             )
             actualizados += 1
 
-    partes = [f"{actualizados} actualizada(s)"]
+    partes = ["1 actualizada" if actualizados == 1 else f"{actualizados} actualizadas"]
     if saltados:
         partes.append(f"{saltados} con varios colores (revisalas a mano en MeLi)")
     if fallidos:
@@ -3175,7 +3180,7 @@ def api_drawer_salud(id_meli):
         if preguntas_viejas > 0:
             score -= min(preguntas_viejas * 8, 20)
             recomendaciones.append(
-                f"Tenés {preguntas_viejas} pregunta(s) sin responder hace más de 24hs — responder rápido mejora el ranking."
+                f"Tenés {utils.plural(preguntas_viejas, 'pregunta')} sin responder hace más de 24 h — responder rápido mejora el ranking."
             )
 
         # Sin ventas en los últimos 30 días
@@ -3203,7 +3208,7 @@ def api_drawer_salud(id_meli):
             recomendaciones.append("Stock en cero — la publicación activa sin stock tiene mala posición en MeLi.")
         elif stock_total <= 3 and estado == "active":
             score -= 8
-            recomendaciones.append(f"Stock muy bajo ({stock_total} unidad(es)) — considerá reponer antes de quedarte sin.")
+            recomendaciones.append(f"Stock muy bajo ({utils.plural(stock_total, 'unidad', 'unidades')}) — considerá reponer antes de quedarte sin.")
 
         score = max(0, min(100, score))
 

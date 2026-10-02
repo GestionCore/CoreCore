@@ -137,24 +137,6 @@ document.addEventListener('click', function (e) {
     setTimeout(() => ripple.remove(), 600);
 });
 
-// ---------- HUD fijo (números críticos en cualquier pantalla) ----------
-function alternarHud() {
-    const cont = document.getElementById('hud-contenido');
-    const abrir = cont.style.display === 'none';
-    if (abrir) { mostrarPanelConAnimacion(cont); cargarHud(); } else { cont.style.display = 'none'; }
-}
-
-async function cargarHud() {
-    try {
-        const resp = await fetch('/api/resumen_diario');
-        const d = await resp.json();
-        if (!d) return;
-        document.getElementById('hud-facturado').textContent = '$' + d.facturado_formateado;
-        document.getElementById('hud-reclamos').textContent = d.incidencias_abiertas;
-        document.getElementById('hud-riesgo').textContent = d.en_riesgo_stock;
-    } catch (e) { /* silencioso — el HUD es un extra, no algo crítico */ }
-}
-
 // ---------- Celebración breve (confeti) al completar algo al 100% ----------
 function celebrarConfeti() {
     const colores = ['139, 92, 246', '56, 189, 248', '242, 201, 76', '34, 197, 94'];
@@ -335,10 +317,12 @@ const RangoFechas = {
         return `${anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
     },
 
+    // "2 sep" (con el año solo si no es el actual): se lee de un vistazo, a diferencia de "02/09/2026"
+    MESES_CORTOS: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'],
     _formatearCorto(iso) {
         if (!iso) return '';
-        const [a, m, d] = iso.split('-');
-        return `${d}/${m}/${a}`;
+        const [a, m, d] = iso.split('-').map(Number);
+        return `${d} ${this.MESES_CORTOS[m - 1]}` + (a !== new Date().getFullYear() ? ` ${a}` : '');
     },
 
     inicializar(id) {
@@ -428,8 +412,8 @@ const RangoFechas = {
         if (inputHasta) inputHasta.value = est.fin || '';
         if (boton) {
             boton.textContent = (est.inicio && est.fin)
-                ? `${this._formatearCorto(est.inicio)} → ${this._formatearCorto(est.fin)}`
-                : (est.inicio ? `${this._formatearCorto(est.inicio)} → elegí el fin...` : 'Elegí un rango...');
+                ? `${this._formatearCorto(est.inicio)} – ${this._formatearCorto(est.fin)}`
+                : (est.inicio ? `${this._formatearCorto(est.inicio)} – elegí el fin` : 'Elegí un rango');
         }
     },
 
@@ -846,7 +830,7 @@ async function actualizarTicker() {
         const elLiberacion = document.getElementById('ticker-liberacion');
         elVentas.classList.remove('skeleton');
         elLiberacion.classList.remove('skeleton');
-        elVentas.textContent = `Hoy: ${data.ventas_hoy} venta(s) ($${data.facturado_hoy})`;
+        elVentas.textContent = `Hoy: ${data.ventas_hoy} ${Number(data.ventas_hoy) === 1 ? 'venta' : 'ventas'} · $${String(data.facturado_hoy).split(',')[0]}`;
         // Lo que MeLi va a acreditar: mañana si hay algo, y si no el próximo depósito (las acreditaciones caen en pocos días sueltos)
         const sinCentavos = (s) => String(s).split(',')[0];
         if (data.hay_liberaciones && data.liberacion_manana && sinCentavos(data.liberacion_manana) !== '0') elLiberacion.textContent = `Mañana te acreditan: $${sinCentavos(data.liberacion_manana)}`;
