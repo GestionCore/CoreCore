@@ -43,12 +43,16 @@ COMO_FLY = {**SIN_REDIS, "FLY_APP_NAME": "corecore", "FLY_REGION": "gru", "FLASK
 OMITIR = ("/static", "/logout", "/callback", "/conectar", "/reconectar", "/webhook", "/admin", "/healthz")
 
 
-def correr(titulo, comando, entorno=None):
+def correr(titulo, comando, entorno=None, sin_omitidas=False):
     print(f"\n▶ {titulo}")
     t0 = time.time()
     r = subprocess.run(comando, cwd=RAIZ, env={**os.environ, "PYTHONIOENCODING": "utf-8", **(entorno or {})}, capture_output=True, text=True, encoding="utf-8", errors="replace")
     salida = (r.stdout + r.stderr).strip().splitlines()
     ok = r.returncode == 0
+    # Una prueba omitida es una prueba que no corrió: pasó con las 16 de aislamiento entre cuentas (RLS) y la corrida igual daba verde
+    if ok and sin_omitidas and salida and "skipped" in salida[-1]:
+        ok = False
+        salida.append("Hay pruebas OMITIDAS (¿falta DATABASE_URL en el .env?): antes de desplegar tienen que correr todas.")
     print(f"  {'✅' if ok else '❌'} {time.time() - t0:.0f} s — " + (salida[-1] if salida else ""))
     if not ok:
         print("\n".join("    " + l for l in salida[-25:]))
@@ -110,8 +114,8 @@ def main():
         sys.exit(1)
     pasos = [
         correr("Lint (ruff)", [PY, "-m", "ruff", "check", "."]),
-        correr("Pruebas", [PY, "-m", "pytest", "-q"]),
-        correr("Pruebas sin Redis", [PY, "-m", "pytest", "-q"], SIN_REDIS),
+        correr("Pruebas", [PY, "-m", "pytest", "-q"], sin_omitidas=True),
+        correr("Pruebas sin Redis", [PY, "-m", "pytest", "-q"], SIN_REDIS, sin_omitidas=True),
     ]
     if not rapido:
         pasos.append(correr("Recorrido de pantallas (sin Redis, como en Fly)", [PY, "-c", RECORRIDO.format(omitir=OMITIR)], COMO_FLY))
