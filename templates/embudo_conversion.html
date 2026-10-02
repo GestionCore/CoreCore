@@ -5,7 +5,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Embudo de conversión</h1>
-        <div class="page-subtitle">Visitas → preguntas → ventas de los últimos 30 días — <strong>ordenado por lo que más conviene arreglar primero</strong></div>
+        <div class="page-subtitle">Visitas → preguntas → ventas de las últimas 4 semanas — <strong>ordenado por lo que más conviene arreglar primero</strong></div>
     </div>
 </div>
 
@@ -50,9 +50,9 @@
 {% endif %}
 
 <div class="ux-kpis">
-    {{ kpi("Visitas (30 d)", total_visitas|numero, "info", "eye", "a todas tus publicaciones") }}
-    {{ kpi("Preguntas (30 d)", total_preguntas|numero, "accion", "chat", (total_preguntas / total_visitas * 100)|pct ~ " de las visitas" if total_visitas else "") }}
-    {{ kpi("Ventas (30 d)", total_ventas|numero, "ok", "box", "unidades vendidas") }}
+    {{ kpi("Visitas (4 sem.)", total_visitas|numero, "info", "eye", "a todas tus publicaciones") }}
+    {{ kpi("Preguntas (4 sem.)", total_preguntas|numero, "accion", "chat", (total_preguntas / total_visitas * 100)|pct ~ " de las visitas" if total_visitas else "") }}
+    {{ kpi("Ventas (4 sem.)", total_ventas|numero, "ok", "box", "unidades vendidas") }}
     {{ kpi("Conversión global", conversion_global|pct(2), "ok" if conversion_global >= 1.5 else ("warn" if conversion_global >= 0.5 else "danger"), "percent", "ventas sobre visitas") }}
     {{ kpi("Para revisar ficha", a_revisar|length, "danger" if a_revisar else "ok", "alert", "visitas sin ventas") }}
 </div>
@@ -64,7 +64,7 @@
 {% set w1 = max_w %}{% set w2 = [pct_preg * max_w, 28]|max %}{% set w3 = [pct_vnt * max_w, 18]|max %}
 {% set y2 = sh + gap %}{% set y3 = (sh + gap) * 2 %}
 <details class="ux-detalle" open>
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-eye"/></svg> Tu embudo de los últimos 30 días</summary>
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-eye"/></svg> Tu embudo de las últimas 4 semanas</summary>
     <div class="ux-detalle-cuerpo">
         <svg viewBox="0 0 600 {{ sh * 3 + gap * 2 + 10 }}" style="width:100%; max-width:600px; display:block; margin:6px auto 0; overflow:visible;" role="img" aria-label="Embudo: {{ total_visitas|int }} visitas, {{ total_preguntas|int }} preguntas, {{ total_ventas|int }} ventas">
             <polygon points="{{ cx - w1/2 }},0 {{ cx + w1/2 }},0 {{ cx + w2/2 }},{{ sh }} {{ cx - w2/2 }},{{ sh }}" fill="var(--accent-cyan)" fill-opacity="0.3" stroke="var(--accent-cyan)" stroke-opacity="0.8" stroke-width="1.5" stroke-linejoin="round"/>

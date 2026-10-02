@@ -91,7 +91,41 @@ def detectar_publicaciones_zombie(headers, cuenta_id, cursor, dias=60):
     return zombies
 
 
-def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=30):
+DIAS_EMBUDO = 28     # = las visitas de 14 días + las de los 14 anteriores que ya guarda enriquecimiento.py (sin llamar a la API por publicación)
+
+
+def contar_preguntas_por_publicacion(headers, seller_id, dias):
+    """
+    {item_id: cantidad de preguntas} de los últimos `dias` días, en pocas llamadas: se listan las preguntas del vendedor (de a 50, de la más
+    nueva a la más vieja) hasta pasar la fecha de corte. Antes era una llamada por publicación. None si Mercado Libre no respondió.
+    """
+    corte = datetime.now().astimezone() - timedelta(days=dias)
+    conteo, offset = {}, 0
+    while offset < 2000:
+        try:
+            resp = meli_http.get("https://api.mercadolibre.com/questions/search", headers=headers, timeout=10,
+                                 params={"seller_id": seller_id, "limit": 50, "offset": offset, "sort_fields": "date_created", "sort_types": "DESC"})
+        except Exception as e:
+            print(f"[Embudo] ⚠️ No se pudieron traer las preguntas: {e}")
+            return None
+        if resp.status_code != 200:
+            return None
+        pagina = resp.json().get("questions") or []
+        for q in pagina:
+            try:
+                if datetime.fromisoformat(q["date_created"]) < corte:
+                    return conteo
+            except (KeyError, ValueError):
+                continue
+            if q.get("item_id"):
+                conteo[q["item_id"]] = conteo.get(q["item_id"], 0) + 1
+        if len(pagina) < 50:
+            break
+        offset += 50
+    return conteo
+
+
+def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=DIAS_EMBUDO):
     ahora = time.time()
     cacheado = _cache_embudo.get(cuenta_id)
     if cacheado and (ahora - cacheado["timestamp"]) < TTL_SEGUNDOS:
@@ -112,21 +146,29 @@ def calcular_embudo_conversion(headers, cuenta_id, cursor, dias=30):
     if not activos:
         return []
 
-    ids_lista = [a[0] for a in activos]
-    visitas_por_item = obtener_visitas_items(headers, ids_lista, fecha_desde, fecha_hasta)
+    # Visitas: las guardadas por el enriquecimiento (14 días + los 14 anteriores). Solo lo que todavía no tiene dato se pide a la API.
+    visitas_por_item = {a[0]: (a[5] or 0) + (a[6] or 0) for a in activos if a[5] is not None}
+    faltan = [a[0] for a in activos if a[5] is None]
+    if faltan:
+        visitas_por_item.update(obtener_visitas_items(headers, faltan, fecha_desde, fecha_hasta))
 
     cursor.execute("SELECT id_meli, COALESCE(SUM(cantidad), 0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s GROUP BY id_meli", (fecha_desde, fecha_hasta))
     ventas_por_item = dict(cursor.fetchall())
 
-    preguntas_por_item = {}
-    with ThreadPoolExecutor(max_workers=6) as pool:
-        futuros = {pool.submit(_obtener_cantidad_preguntas, headers, id_meli): id_meli for id_meli, *_resto in activos}
-        for futuro in as_completed(futuros):
-            id_meli = futuros[futuro]
-            try:
-                preguntas_por_item[id_meli] = futuro.result()
-            except Exception:
-                preguntas_por_item[id_meli] = 0
+    cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (cuenta_id,))
+    fila_cuenta = cursor.fetchone()
+    preguntas_por_item = contar_preguntas_por_publicacion(headers, fila_cuenta[0], dias) if fila_cuenta else None
+    if preguntas_por_item is None:
+        # Sin el listado completo se cae a la consulta por publicación (más lenta, pero igual de correcta)
+        preguntas_por_item = {}
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            futuros = {pool.submit(_obtener_cantidad_preguntas, headers, id_meli): id_meli for id_meli, *_resto in activos}
+            for futuro in as_completed(futuros):
+                id_meli = futuros[futuro]
+                try:
+                    preguntas_por_item[id_meli] = futuro.result()
+                except Exception:
+                    preguntas_por_item[id_meli] = 0
 
     resultado = []
     for id_meli, titulo, thumbnail, precio, stock_total, visitas_14d, visitas_previas in activos:
