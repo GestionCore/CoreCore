@@ -3170,6 +3170,30 @@ def precios_vista():
     return render_template("precios.html", active_nav="precios", **datos)
 
 
+@app.route("/api/precios/aplicar", methods=["POST"])
+@login_requerido
+@auditar("precios_guiado")
+def api_precios_aplicar():
+    """Sube a Mercado Libre el precio recomendado de las publicaciones que la persona revisó y confirmó (ver precios.aplicar)."""
+    cuerpo = request.get_json(silent=True) or {}
+    cambios = cuerpo.get("cambios")
+    if not isinstance(cambios, list) or not cambios:
+        return jsonify({"ok": False, "detalle": "Elegí al menos una publicación."}), 400
+    if not cuerpo.get("confirmado"):
+        return jsonify({"ok": False, "detalle": "Falta la confirmación."}), 400
+    margen, publicidad = precios_mod.parametros(cuerpo.get("margen"), cuerpo.get("publicidad"))
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "detalle": "Tu cuenta de Mercado Libre se desconectó. Volvé a conectarla."}), 401
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        datos = precios_mod.obtener_datos(cursor, g.cuenta_id, margen, publicidad)
+        resultados = precios_mod.aplicar(cursor, g.cuenta_id, access_token, cambios, datos)
+    cambiadas = sum(1 for r in resultados if r["ok"])
+    return jsonify({"ok": cambiadas > 0, "cambiadas": cambiadas, "fallidas": len(resultados) - cambiadas, "resultados": resultados})
+
+
 @app.route("/cobros")
 @login_requerido
 def cobros_vista():

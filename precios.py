@@ -14,10 +14,15 @@ Sirve a cualquier rubro: no depende de talles, categorías ni de un tipo de log�
 """
 import math
 
+import meli_http
+
 VENTANA_DIAS = 90
 MIN_UNIDADES_PROPIAS = 3          # con menos ventas el cálculo se muestra como orientativo ("pocas ventas")
 MARGEN_OBJETIVO_DEFECTO = 20.0
 REDONDEO = 10                     # los precios se redondean hacia arriba al múltiplo de $10
+MAX_SUBA_PCT = 60                 # una suba mayor casi siempre es un costo de fabricación mal cargado: no se aplica sin revisarlo
+MAXIMO_POR_PEDIDO = 50
+URL_ITEM = "https://api.mercadolibre.com/items/{}"
 
 
 def _subir(precio):
@@ -98,6 +103,9 @@ def obtener_datos(cursor, cuenta_id, margen_objetivo=MARGEN_OBJETIVO_DEFECTO, pu
         i["pos_recomendado"] = round((i["recomendado"] or 0) / tope * 100, 1) if i["recomendado"] else None
         i["pos_actual"] = round(i["precio"] / tope * 100, 1)
         i["diferencia"] = (i["recomendado"] - i["precio"]) if i["recomendado"] else None
+        i["suba_pct"] = round((i["recomendado"] / i["precio"] - 1) * 100, 1) if i["recomendado"] and i["recomendado"] > i["precio"] else None
+        i["suba_excesiva"] = bool(i["suba_pct"] and i["suba_pct"] > MAX_SUBA_PCT)
+        i["aplicable"] = bool(i["suba_pct"]) and not i["suba_excesiva"]
 
     orden = {"pierde": 0, "justo": 1, "ok": 2}
     items.sort(key=lambda i: (orden[i["estado"]], -i["perdida_mensual"], -i["unidades"], i["titulo"]))
@@ -109,3 +117,58 @@ def obtener_datos(cursor, cuenta_id, margen_objetivo=MARGEN_OBJETIVO_DEFECTO, pu
         "margen_objetivo": margen_objetivo, "publicidad_pct": publicidad_pct, "ventana_dias": VENTANA_DIAS,
         "pocas_ventas": sum(1 for i in items if i["estimado"]),
     }
+
+
+def aplicables(datos):
+    """Publicaciones a las que se puede aplicar el precio recomendado: pierden o tienen margen justo, el recomendado es más alto y la suba es razonable."""
+    return {i["id_meli"]: i for i in datos["pierden"] + datos["justos"] if i["aplicable"]}
+
+
+def _mensaje_de_error(respuesta):
+    try:
+        cuerpo = respuesta.json()
+        return str(cuerpo.get("message") or cuerpo.get("error") or respuesta.status_code)[:160]
+    except Exception:
+        return f"Mercado Libre respondió {respuesta.status_code}"
+
+
+def aplicar(cursor, cuenta_id, access_token, cambios, datos):
+    """
+    Sube el precio de las publicaciones pedidas al recomendado. `cambios` es [{"id", "precio"}] y se valida contra `datos` (recalculado en el
+    servidor): solo se acepta el precio recomendado exacto de una publicación aplicable, nunca un valor arbitrario ni uno que quedó viejo
+    porque cambió el costo o el margen. Devuelve [{"id", "ok", "detalle", "precio"}]; una que falla no corta a las demás.
+    """
+    permitidas = aplicables(datos)
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+    resultados, vistos = [], set()
+    for c in (cambios or [])[:MAXIMO_POR_PEDIDO]:
+        id_meli = str((c or {}).get("id") or "")
+        if not id_meli or id_meli in vistos:
+            continue
+        vistos.add(id_meli)
+        item = permitidas.get(id_meli)
+        try:
+            pedido = float((c or {}).get("precio"))
+        except (TypeError, ValueError):
+            pedido = None
+        if item is None:
+            resultados.append({"id": id_meli, "ok": False, "detalle": "Ya no es aplicable: el precio, el costo o el margen cambiaron. Recargá la página."})
+            continue
+        if pedido is None or abs(pedido - item["recomendado"]) > 0.005:
+            resultados.append({"id": id_meli, "ok": False, "detalle": "El precio recomendado cambió desde que lo viste. Recargá la página."})
+            continue
+        try:
+            r = meli_http.put(URL_ITEM.format(id_meli), headers=headers, json={"price": item["recomendado"]})
+        except Exception as e:
+            resultados.append({"id": id_meli, "ok": False, "detalle": f"No se pudo conectar con Mercado Libre: {e}"[:160]})
+            continue
+        if r.status_code not in (200, 201):
+            resultados.append({"id": id_meli, "ok": False, "detalle": _mensaje_de_error(r)})
+            continue
+        cursor.execute("UPDATE productos_padre SET precio = %s WHERE cuenta_id = %s AND id_meli = %s", (item["recomendado"], cuenta_id, id_meli))
+        cursor.execute(
+            "INSERT INTO historial_precios (cuenta_id, id_meli, precio_anterior, precio_nuevo, fecha_cambio) VALUES (%s, %s, %s, %s, now())",
+            (cuenta_id, id_meli, item["precio"], item["recomendado"]),
+        )
+        resultados.append({"id": id_meli, "ok": True, "detalle": "Precio actualizado", "precio": item["recomendado"]})
+    return resultados

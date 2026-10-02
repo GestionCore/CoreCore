@@ -541,3 +541,9 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-paso-hecho .ux-paso-titulo { color: var(--text-secondary); }
 .ux-paso-cuerpo { flex: 1; min-width: 0; }
 .ux-paso-titulo { font-weight: 700; }
+
+/* ── Cambio de precios guiado (/precios) ────────────────────────────────────────────────────────────────────────────── */
+.ux-precios-barra { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.ux-precios-barra .text-muted { flex: 1; min-width: 200px; }
+.precio-check { flex-shrink: 0; width: 18px; height: 18px; margin-right: 4px; cursor: pointer; }
+.ux-precios-barra[hidden], .ux-pasos[hidden] { display: none; }
