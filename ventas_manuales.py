@@ -23,7 +23,7 @@ from utils import formatear_moneda
 
 def obtener_catalogo_para_selector(usuario_id, cuenta_id):
     """Variantes activas con stock propio, para el <select> del formulario."""
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT pv.id_variante, pp.id_meli, pp.titulo, pv.talle, pv.color, pv.stock_propio, pp.precio
@@ -48,7 +48,7 @@ def registrar_venta_manual(usuario_id, cuenta_id, id_variante, cantidad, precio_
     if cantidad <= 0 or precio_venta <= 0:
         return False, "Cantidad y precio tienen que ser mayores a cero."
 
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT pv.id_variante, pp.id_meli, pp.titulo
@@ -84,7 +84,7 @@ def registrar_venta_manual(usuario_id, cuenta_id, id_variante, cantidad, precio_
 
 
 def obtener_ventas_manuales_recientes(usuario_id, cuenta_id, limite=25):
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT v.id, v.id_orden, v.titulo, v.id_variante, v.cantidad, v.precio_venta, v.fecha_venta, v.comprador_nombre, p.thumbnail
@@ -105,7 +105,7 @@ def obtener_ventas_manuales_recientes(usuario_id, cuenta_id, limite=25):
 
 def eliminar_venta_manual(usuario_id, cuenta_id, id_venta):
     """Borra una venta manual y le devuelve el stock a la variante — deshacer una carga por error."""
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute(
             "SELECT id_variante, cantidad FROM ventas WHERE cuenta_id = %s AND id = %s AND origen = 'manual'",

@@ -63,6 +63,8 @@
                 <th class="num">Gastos op.</th>
                 <th class="num">Costo fab. (est.)</th>
                 <th>Ganancia neta (est.)</th>
+                <th class="num" title="IIBB, SIRTAC y similares que Mercado Libre retiene al acreditar. No se restan de la ganancia: son pago anticipado de impuestos.">Retenciones*</th>
+                <th class="no-imprimir"></th>
             </tr>
         </thead>
         <tbody>
@@ -84,6 +86,8 @@
                     </div>
                     {% else %}—{% endif %}
                 </td>
+                <td class="num text-muted">{{ m.retenciones|plata if m.retenciones else '—' }}</td>
+                <td class="no-imprimir">{% if m.ordenes %}<a class="btn btn-secondary btn-sm" href="/reporte_fiscal/detalle?anio={{ anio_seleccionado }}&mes={{ m.mes }}" title="Descargar las ventas de {{ m.nombre }} línea por línea"><svg class="icon" style="width:13px;height:13px;"><use href="#icon-download"/></svg> Detalle</a>{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -98,9 +102,12 @@
                 <td class="num" style="color:var(--semantic-warning);">{{ totales.gastos|plata }}</td>
                 <td class="num text-muted">{{ totales.costo_fabricacion|plata }}</td>
                 <td class="{{ 'text-success' if totales.ganancia_estimada >= 0 else 'text-danger' }}" style="font-size:1.05em;">{{ totales.ganancia_estimada|plata }}</td>
+                <td class="num text-muted">{{ totales.retenciones|plata if totales.retenciones else '—' }}</td>
+                <td class="no-imprimir"></td>
             </tr>
         </tfoot>
     </table>
     </div>
 </div>
+<div class="text-muted" style="font-size:0.85em; margin-top:10px; line-height:1.5;">* Las retenciones (IIBB, SIRTAC y similares) las descuenta Mercado Libre al acreditar tus ventas. No se restan de la ganancia porque son un pago anticipado de impuestos: <b>consultá con tu contador</b> cómo computarlas. El botón <b>Detalle</b> baja las ventas del mes línea por línea.</div>
 {% endblock %}

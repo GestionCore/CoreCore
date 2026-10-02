@@ -61,7 +61,8 @@ def calcular_reporte_anual(usuario_id, anio: int, cuenta_id=None):
                 COALESCE(SUM(cargo_venta), 0)                    AS comisiones,
                 COALESCE(SUM(costo_envio), 0)                    AS envios,
                 COALESCE(SUM(cantidad), 0)                       AS unidades,
-                COUNT(DISTINCT id_orden)                         AS ordenes
+                COUNT(DISTINCT id_orden)                         AS ordenes,
+                COALESCE(SUM(retenciones), 0)                    AS retenciones
             FROM ventas
             WHERE fecha_venta BETWEEN %s AND %s
             GROUP BY EXTRACT(MONTH FROM fecha_venta)
@@ -126,6 +127,7 @@ def calcular_reporte_anual(usuario_id, anio: int, cuenta_id=None):
         envios      = float(fila[3]) if fila else 0.0
         unidades    = int(fila[4])   if fila else 0
         ordenes     = int(fila[5])   if fila else 0
+        retenciones = float(fila[6]) if fila else 0.0
 
         costo_fab_total = float(fab_por_mes.get(mes_num, 0))
         gastos          = float(gastos_por_mes.get(mes_num, 0))
@@ -145,6 +147,7 @@ def calcular_reporte_anual(usuario_id, anio: int, cuenta_id=None):
             "costo_fabricacion": costo_fab_total,
             "ordenes": ordenes,
             "unidades": unidades,
+            "retenciones": retenciones,
             "ganancia_estimada": ganancia_estimada,
             "facturacion_f": formatear_moneda(facturacion),
             "comisiones_f":  formatear_moneda(comisiones),
@@ -152,6 +155,7 @@ def calcular_reporte_anual(usuario_id, anio: int, cuenta_id=None):
             "gastos_f":      formatear_moneda(gastos),
             "costo_fab_f":   formatear_moneda(costo_fab_total),
             "ganancia_f":    formatear_moneda(ganancia_estimada),
+            "retenciones_f": formatear_moneda(retenciones),
         })
 
     return resultado
@@ -174,6 +178,7 @@ def generar_excel_fiscal(meses_data, anio):
         "Comisiones MeLi", "Costo Envíos", "Total Cargos MeLi",
         "Gastos Operativos", "Costo Fabricación (est.)",
         "Ganancia Neta Estimada",
+        "Retenciones de impuestos (informativo)",
     ]
     ws.append(columnas)
     for cell in ws[1]:
@@ -181,14 +186,14 @@ def generar_excel_fiscal(meses_data, anio):
         cell.fill = encabezado_fill
         cell.alignment = Alignment(horizontal="center")
 
-    totales = {k: 0.0 for k in ("facturacion","comisiones","envios","cargos_totales","gastos","costo_fabricacion","ganancia_estimada")}
+    totales = {k: 0.0 for k in ("facturacion","comisiones","envios","cargos_totales","gastos","costo_fabricacion","ganancia_estimada","retenciones")}
     total_ordenes = total_unidades = 0
 
     for m in meses_data:
         ws.append([
             m["nombre"], m["ordenes"], m["unidades"],
             m["facturacion"], m["comisiones"], m["envios"], m["cargos_totales"],
-            m["gastos"], m["costo_fabricacion"], m["ganancia_estimada"],
+            m["gastos"], m["costo_fabricacion"], m["ganancia_estimada"], m["retenciones"],
         ])
         for k in totales:
             totales[k] += m[k]
@@ -198,7 +203,7 @@ def generar_excel_fiscal(meses_data, anio):
     ws.append([
         "TOTAL AÑO", total_ordenes, total_unidades,
         totales["facturacion"], totales["comisiones"], totales["envios"], totales["cargos_totales"],
-        totales["gastos"], totales["costo_fabricacion"], totales["ganancia_estimada"],
+        totales["gastos"], totales["costo_fabricacion"], totales["ganancia_estimada"], totales["retenciones"],
     ])
     fila_total = ws.max_row
     total_font = Font(bold=True, color="29E6B0")
@@ -206,14 +211,66 @@ def generar_excel_fiscal(meses_data, anio):
         cell.font = total_font
 
     fmt_moneda = '#,##0.00'
-    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=4, max_col=10):
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=4, max_col=11):
         for cell in row:
             cell.number_format = fmt_moneda
 
-    anchos = [14, 9, 10, 20, 18, 15, 18, 20, 24, 24]
+    anchos = [14, 9, 10, 20, 18, 15, 18, 20, 24, 24, 34]
     for i, ancho in enumerate(anchos, 1):
         ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = ancho
 
+    ws.append([])
+    ws.append(["Las retenciones (IIBB, SIRTAC y similares) las descuenta Mercado Libre al acreditar: no se restan de la ganancia porque son pago anticipado de impuestos. Confirmá su tratamiento con tu contador."])
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
+def detalle_del_mes(usuario_id, anio: int, mes: int, cuenta_id=None):
+    """Una fila por línea de venta del mes (el "libro de ventas" que suele pedir el contador). Sin datos personales de compradores."""
+    desde = date(anio, mes, 1)
+    hasta = (date(anio + 1, 1, 1) if mes == 12 else date(anio, mes + 1, 1)) - timedelta(days=1)
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT fecha_venta, id_orden, titulo, cantidad, precio_venta, cargo_venta, costo_envio, retenciones, neto_recibido, origen
+            FROM ventas WHERE fecha_venta BETWEEN %s AND %s ORDER BY fecha_venta, id_orden, id
+        """, (desde, hasta))
+        filas = cursor.fetchall()
+    return [{"fecha": f, "orden": o, "producto": t, "cantidad": int(c or 0), "importe": float(p or 0) * int(c or 0), "cargo_meli": float(cv or 0),
+             "envio": float(ce or 0), "retenciones": float(r or 0), "neto_recibido": float(n) if n is not None else None, "origen": og}
+            for f, o, t, c, p, cv, ce, r, n, og in filas]
+
+
+def generar_excel_detalle(filas, anio: int, mes: int):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"Ventas {_NOMBRES_MES[mes - 1]} {anio}"[:31]
+    ws.append(["Fecha", "N.º de orden", "Producto", "Cantidad", "Importe de la venta", "Cargo de Mercado Libre", "Envío", "Retenciones", "Neto acreditado", "Origen"])
+    for celda in ws[1]:
+        celda.font = Font(bold=True)
+        celda.alignment = Alignment(horizontal="center")
+    for f in filas:
+        ws.append([f["fecha"], f["orden"], f["producto"], f["cantidad"], f["importe"], f["cargo_meli"], f["envio"], f["retenciones"],
+                   f["neto_recibido"], "Mercado Libre" if f["origen"] == "meli" else "Manual"])
+    ultima = ws.max_row
+    ws.append(["TOTAL", "", "", sum(f["cantidad"] for f in filas), sum(f["importe"] for f in filas), sum(f["cargo_meli"] for f in filas),
+               sum(f["envio"] for f in filas), sum(f["retenciones"] for f in filas), sum(f["neto_recibido"] or 0 for f in filas), ""])
+    for celda in ws[ws.max_row]:
+        celda.font = Font(bold=True)
+    for fila in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=5, max_col=9):
+        for celda in fila:
+            celda.number_format = "#,##0.00"
+    for fila in ws.iter_rows(min_row=2, max_row=ultima, min_col=1, max_col=1):
+        fila[0].number_format = "dd/mm/yyyy"
+    for i, ancho in enumerate([12, 20, 52, 10, 20, 22, 14, 14, 16, 14], 1):
+        ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = ancho
+    ws.freeze_panes = "A2"
     buf = BytesIO()
     wb.save(buf)
     buf.seek(0)

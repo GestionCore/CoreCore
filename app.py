@@ -2758,7 +2758,9 @@ def calculadora_vista():
 def reporte_fiscal_vista():
     import reporte_fiscal as rf
     anio_actual = datetime.now().year
-    anio_seleccionado = int(request.args.get("anio", anio_actual))
+    anio_seleccionado = request.args.get("anio", anio_actual, type=int)
+    if not 2000 <= anio_seleccionado <= anio_actual + 1:
+        anio_seleccionado = anio_actual
     # Ofrece los últimos 3 años como opciones
     anios_disponibles = [anio_actual, anio_actual - 1, anio_actual - 2]
 
@@ -2772,6 +2774,7 @@ def reporte_fiscal_vista():
         "gastos":      sum(m["gastos"] for m in meses),
         "costo_fabricacion": sum(m["costo_fabricacion"] for m in meses),
         "ganancia_estimada": sum(m["ganancia_estimada"] for m in meses),
+        "retenciones": sum(m["retenciones"] for m in meses),
         "ordenes":  sum(m["ordenes"] for m in meses),
         "unidades": sum(m["unidades"] for m in meses),
     }
@@ -2797,7 +2800,9 @@ def reporte_fiscal_vista():
 @login_requerido
 def reporte_fiscal_exportar():
     import reporte_fiscal as rf
-    anio = int(request.args.get("anio", datetime.now().year))
+    anio = request.args.get("anio", datetime.now().year, type=int)
+    if not 2000 <= anio <= datetime.now().year + 1:
+        return jsonify({"ok": False, "detalle": "Año inválido."}), 400
     meses = rf.calcular_reporte_anual(g.usuario_id, anio, g.cuenta_id)
     buf = rf.generar_excel_fiscal(meses, anio)
     return send_file(
@@ -2805,6 +2810,24 @@ def reporte_fiscal_exportar():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         as_attachment=True,
         download_name=f"reporte_fiscal_{anio}.xlsx",
+    )
+
+
+@app.route("/reporte_fiscal/detalle")
+@login_requerido
+def reporte_fiscal_detalle():
+    """Las ventas de un mes, línea por línea (libro de ventas para el contador)."""
+    import reporte_fiscal as rf
+    anio = request.args.get("anio", type=int)
+    mes = request.args.get("mes", type=int)
+    if not anio or not mes or not 2000 <= anio <= datetime.now().year + 1 or not 1 <= mes <= 12:
+        return jsonify({"ok": False, "detalle": "Año o mes inválido."}), 400
+    buf = rf.generar_excel_detalle(rf.detalle_del_mes(g.usuario_id, anio, mes, g.cuenta_id), anio, mes)
+    return send_file(
+        buf,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=f"ventas_{anio}_{mes:02d}.xlsx",
     )
 
 
