@@ -28,6 +28,7 @@
         <input type="text" id="input-buscador-masivo" placeholder="Buscar modelo, color o {{ vocab.v1 }}" aria-label="Buscar" onkeyup="filtrarAcordeon()">
     </div>
     <div class="ux-periodo-botones">
+        <button type="button" class="btn btn-secondary" id="btn-abrir-todos" onclick="alternarTodos()">Abrir todos</button>
         <button type="button" class="btn btn-secondary" id="btn-solo-editables" onclick="alternarSoloEditables()" {% if not editables %}disabled{% endif %}>Solo los que puedo editar <span class="ux-pill ux-accion" style="padding:1px 8px;">{{ editables|length }}</span></button>
     </div>
 </div>
@@ -38,7 +39,9 @@
         <div id="acordeon-sin-resultados" style="display:none;">{{ vacio("No encontramos ningún modelo con eso", "Probá con otro nombre o color.", "search", "info") }}</div>
         {% for m in modelos %}
         {% set hay_editable = m.variantes|rejectattr('full')|list|length > 0 %}
-        <div class="panel acordeon-item {% if hay_editable %}abierto{% endif %}" data-editable="{{ 1 if hay_editable else 0 }}" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}" style="padding:0; overflow:hidden;">
+        {# Sin stock = editable (no sale por FULL) y en 0: es lo que más probablemente haya que reponer #}
+        {% set sin_stock = m.variantes|rejectattr('full')|selectattr('propio', 'equalto', 0)|list|length %}
+        <div class="panel acordeon-item" data-editable="{{ 1 if hay_editable else 0 }}" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}" style="padding:0; overflow:hidden;">
             <div class="acordeon-header" onclick="toggleAcordeon(this)" style="padding:16px 20px;">
                 <div class="row-flex">
                     {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}
@@ -51,11 +54,11 @@
                 </div>
                 <span class="flex-gap">
                     <span class="ux-pill ux-accion ux-pill-suave" data-cambios-modelo style="display:none;"></span>
-                    {% if not hay_editable %}<span class="ux-pill ux-info ux-pill-suave">Solo FULL</span>{% endif %}
+                    {% if not hay_editable %}<span class="ux-pill ux-info ux-pill-suave">Solo FULL</span>{% elif sin_stock %}<span class="ux-pill ux-warn ux-pill-suave">{{ sin_stock }} sin stock</span>{% endif %}
                     <span class="acordeon-chevron">▾</span>
                 </span>
             </div>
-            <div class="acordeon-body" style="display:{{ 'block' if hay_editable else 'none' }}; padding:0 20px 16px;">
+            <div class="acordeon-body" style="display:none; padding:0 20px 16px;">
                 <div style="overflow-x:auto;">
                 <table class="data-table">
                     <thead><tr><th>{{ vocab.V1 }}</th><th>Estado</th><th class="num">Depósito propio</th><th class="num">FULL</th></tr></thead>
@@ -106,12 +109,22 @@
 <script>
     let soloEditables = false;
 
+    function abrirItem(item, abrir) {
+        item.querySelector('.acordeon-body').style.display = abrir ? 'block' : 'none';
+        item.classList.toggle('abierto', abrir);
+    }
+
     function toggleAcordeon(header) {
         const item = header.closest('.acordeon-item');
-        const body = header.nextElementSibling;
-        const abierto = body.style.display !== 'none';
-        body.style.display = abierto ? 'none' : 'block';
-        item.classList.toggle('abierto', !abierto);
+        abrirItem(item, !item.classList.contains('abierto'));
+    }
+
+    // Todos los modelos vienen plegados (una línea cada uno): este botón los abre o los cierra de una vez
+    function alternarTodos() {
+        const items = [...document.querySelectorAll('.acordeon-item')].filter(i => i.style.display !== 'none');
+        const abrir = items.some(i => !i.classList.contains('abierto'));
+        items.forEach(i => abrirItem(i, abrir));
+        document.getElementById('btn-abrir-todos').textContent = abrir ? 'Cerrar todos' : 'Abrir todos';
     }
 
     function filtrarAcordeon() {
@@ -121,6 +134,7 @@
             const coincide = coincideBusqueda(item.dataset.buscar, q) && (!soloEditables || item.dataset.editable === '1');
             item.style.display = coincide ? '' : 'none';
             if (coincide) visibles++;
+            if (coincide && q.trim()) abrirItem(item, true);          // al buscar, lo que se encuentra se muestra abierto
         });
         const vacio = document.getElementById('acordeon-sin-resultados');
         if (vacio) vacio.style.display = visibles === 0 ? '' : 'none';
