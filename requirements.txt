@@ -11,7 +11,7 @@ openpyxl>=3.1.5
 
 # --- Infraestructura F0 ---
 redis>=5.0.0
-sentry-sdk[flask]>=2.0.0
+sentry-sdk[flask]>=2.71.0
 waitress>=3.0.0
 
 # --- Producción en Linux (Waitress arriba es solo para Windows) ---
