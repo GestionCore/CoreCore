@@ -461,6 +461,8 @@ Estado de cada punto en ese archivo (✅/◐). Lo que hay que saber para no romp
 - Email del usuario: se lee de `/users/me` de Mercado Libre al crear la cuenta; los usuarios viejos con `meli-<id>@pendiente.corelux.app` lo
   completan en su próximo login (`registro._completar_email_pendiente`, nunca pisa un email real ni uno ya tomado: `usuarios.email` es único).
   `ADMIN_EMAIL` tiene que ser ese mismo email para entrar a `/admin` y `/admin/salud` (panel de salud del sistema, `salud_sistema.py`).
+- Horas de venta: Mercado Libre manda `-04:00` aunque Argentina es UTC-3; `ventas_sync._fecha_hora_argentina` convierte al ingresar y marca `ventas.hora_normalizada`.
+  Las filas viejas (false) se corrigen con `normalizar_horas.py --aplicar` (vista previa por defecto, pendiente del OK del dueño).
 - `docs/RUNBOOK.md`: deploy, rollback, rotación de claves, tope de conexiones del pooler (`máquinas × workers × DB_POOL_MAX ≤ 12`), sync que no anda.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real

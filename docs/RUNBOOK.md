@@ -121,6 +121,8 @@ legítimo choca con un límite, subir el valor en `REGLAS` de `limitador.py`.
 
 ## 10. Pendientes que dependen del dueño
 
+- **Corregir la hora de las ventas viejas** (una hora atrasadas respecto de Argentina; 35 de 1.092 ventas caen en el día anterior): después del próximo deploy, `python normalizar_horas.py` muestra cuántas cambian (no modifica nada) y `python normalizar_horas.py --aplicar` las corrige. Es seguro repetirlo. Las ventas nuevas ya entran bien.
+
 - `SENTRY_DSN` (para enterarse de errores sin mirar los logs), `MP_ACCESS_TOKEN` (cobro de suscripciones) y `MP_WEBHOOK_SECRET` (la "clave secreta" del panel de webhooks de Mercado Pago: con ella el webhook solo acepta avisos firmados por Mercado Pago).
 - Revisión de los términos y la política de privacidad (`legal.py`) por un abogado antes del lanzamiento.
 - Un monitor externo de `/healthz/db`.

@@ -33,8 +33,8 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 16. ✅ 🟠 S · MEJORAR — **Publicidad: error 400 "no más de 90 días"** al pedir el gasto de Ads de un período largo (evolución de 6 meses, reporte anual). Partir en tramos de ≤ 90 días.
 17. 🟠 M · OPTIMIZAR — **El coach de IA tarda 8 s y a veces devuelve respuesta vacía** (3 reintentos en la prueba). Cachearlo por día y degradarlo con elegancia (el timeout de 30 s ya existe; el problema son los reintentos por respuesta vacía).
 18. ◐ 🟠 M · MEJORAR — **17 `except …: pass` silenciosos.** Cada uno esconde un error posible; como mínimo loguearlos.
-19. 🟠 M · MEJORAR — **Las horas de venta están en UTC−4, no en hora argentina** (1 h atrasadas; una venta de 00:30 queda en el día anterior). Normalizar al ingresar y migrar el histórico en una sola operación.
-20. 🟠 S · MEJORAR — **Despacho arma el día de despacho con `hora_venta` desfasada** (ver 19): las ventas de la franja del corte pueden caer un día antes. Revisar junto con el punto 19.
+19. ◐ 🟠 M · MEJORAR — **Las horas de venta están en UTC−4, no en hora argentina** (1 h atrasadas; una venta de 00:30 queda en el día anterior). Normalizar al ingresar y migrar el histórico en una sola operación.
+20. ◐ 🟠 S · MEJORAR — **Despacho arma el día de despacho con `hora_venta` desfasada** (ver 19): las ventas de la franja del corte pueden caer un día antes. Revisar junto con el punto 19.
 21. ✅ 🟠 M · MEJORAR — **`devoluciones_sync`, `sincronizador` y el webhook abren `conexion_usuario(usuario_id)` sin `cuenta_id`.** Con Plan Elite (dos cuentas) funciona por el modo de compatibilidad de RLS, pero no cierra el aislamiento por cuenta. Pasar siempre `cuenta_id`.
 22. ✅ 🔴 M · MEJORAR — **Si el worker que tiene el scheduler cae, nadie lo retoma:** los demás workers decidieron al arrancar "otro lo tiene" y no reintentan el lock. La sincronización se detiene hasta el próximo reinicio.
 23. ✅ 🟠 M · OPTIMIZAR — **El scheduler recorre las cuentas en serie cada 4 min** y APScheduler descarta la corrida si la anterior sigue. Con ~15 cuentas el ciclo ya no entra. Paralelizar y escalonar por cuenta.

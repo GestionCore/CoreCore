@@ -260,6 +260,23 @@ def _precargar_costos_envio(ordenes, access_token):
             list(pool.map(lambda pid: _datos_de_pago(access_token, pid), ids_pagos))
 
 
+ARGENTINA = timezone(timedelta(hours=-3))      # sin horario de verano
+
+
+def _fecha_hora_argentina(fecha_iso):
+    """
+    ("YYYY-MM-DD", "HH:MM:SS") en hora argentina de la fecha que informa Mercado Libre. MeLi manda "2026-09-30T23:30:00.000-04:00": el offset es
+    -04:00 aunque Argentina es UTC-3, así que tomar la hora tal cual la dejaba una hora atrasada (y una venta de 00:30 caía en el día anterior).
+    Sin offset se asume que ya viene en hora argentina; si no se puede leer, se usa el momento actual.
+    """
+    try:
+        dt = datetime.fromisoformat(fecha_iso.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        dt = datetime.now(timezone.utc)
+    dt = dt.astimezone(ARGENTINA) if dt.tzinfo else dt.replace(tzinfo=ARGENTINA)
+    return dt.date().isoformat(), dt.time().strftime("%H:%M:%S")
+
+
 def _extraer_filas_de_orden(orden, access_token):
     """Una orden puede tener más de un ítem — cada uno es una fila de `ventas`."""
     id_orden = str(orden.get("id"))
@@ -267,11 +284,7 @@ def _extraer_filas_de_orden(orden, access_token):
     if status in ("cancelled", "invalid"):
         return []
 
-    fecha_creada_raw = orden.get("date_created", "")
-    try:
-        fecha_dt = datetime.fromisoformat(fecha_creada_raw.replace("Z", "+00:00"))
-    except (ValueError, AttributeError):
-        fecha_dt = datetime.now(timezone.utc)
+    fecha_venta, hora_venta = _fecha_hora_argentina(orden.get("date_created", ""))
 
     items = orden.get("order_items", []) or []
     if not items:
@@ -338,7 +351,7 @@ def _extraer_filas_de_orden(orden, access_token):
             "id_orden": id_orden, "id_meli": id_meli, "id_variante": str(item_info.get("variation_id") or ""),
             "titulo": item_info.get("title"), "cantidad": cantidad, "precio_venta": precio_unitario,
             "cargo_venta": cargo_venta, "costo_envio": costo_envio_item,
-            "fecha_venta": fecha_dt.date().isoformat(), "hora_venta": fecha_dt.time().strftime("%H:%M:%S"),
+            "fecha_venta": fecha_venta, "hora_venta": hora_venta,
             "shipment_id": str(shipment_id) if shipment_id else None,
             "envio_estado": shipping_info.get("status"),
             "despachado": shipping_info.get("status") in ("shipped", "delivered"),
@@ -363,12 +376,14 @@ def _escribir_pagina(cursor, cuenta_id, ordenes, access_token):
                                      cargo_venta, costo_envio, fecha_venta, hora_venta, shipment_id, envio_estado,
                                      despachado, comprador_nickname, comprador_nombre, cuotas, provincia, tipo_logistica,
                                      codigo_postal, localidad, destino_lat, destino_lon,
-                                     envio_shipment_total, retenciones, neto_recibido, fecha_liberacion, monto_liberacion, pago_id, cupones, financiacion)
+                                     envio_shipment_total, retenciones, neto_recibido, fecha_liberacion, monto_liberacion, pago_id, cupones, financiacion,
+                                     hora_normalizada)
                 VALUES (%(cuenta_id)s, %(id_orden)s, %(id_meli)s, %(id_variante)s, %(titulo)s, %(cantidad)s,
                         %(precio_venta)s, %(cargo_venta)s, %(costo_envio)s, %(fecha_venta)s, %(hora_venta)s,
                         %(shipment_id)s, %(envio_estado)s, %(despachado)s, %(comprador_nickname)s, %(comprador_nombre)s, %(cuotas)s, %(provincia)s, %(tipo_logistica)s,
                         %(codigo_postal)s, %(localidad)s, %(destino_lat)s, %(destino_lon)s,
-                        %(envio_shipment_total)s, %(retenciones)s, %(neto_recibido)s, %(fecha_liberacion)s, %(neto_recibido)s, %(pago_id)s, %(cupones)s, %(financiacion)s)
+                        %(envio_shipment_total)s, %(retenciones)s, %(neto_recibido)s, %(fecha_liberacion)s, %(neto_recibido)s, %(pago_id)s, %(cupones)s, %(financiacion)s,
+                        true)
                 ON CONFLICT (cuenta_id, id_orden, id_meli) DO UPDATE SET
                     cantidad = excluded.cantidad, precio_venta = excluded.precio_venta,
                     cargo_venta = CASE
