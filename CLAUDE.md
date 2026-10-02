@@ -504,6 +504,17 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
   `cargarHud()` y llegó a producción). `test_javascript.py` lo detecta; antes de dar un cambio de JS por bueno, mirar también la consola del navegador, no solo la pantalla.
 - ⚠️ Una captura tomada a mitad de una animación muestra números o elementos a medio dibujar: antes de reportar un bug visual, medirlo con el DOM, no con la captura.
 - Vistas previas con datos reales: cualquier carpeta `static/_prev` se borra antes de commitear/desplegar (está en `.gitignore` y `.dockerignore`).
+- **Hechos verificados contra MeLi real (2026-10-02)**: (a) `seller_reputation.transactions.ratings` llega como `positive 0 / neutral 1 / negative 0` = "100 % neutral" =
+  MeLi ya no informa calificaciones de vendedor: `reputacion.interpretar_ratings` lo trata como "sin dato" y se enlaza a Opiniones. (b) `GET /categories/{id}` da
+  `max_title_length = 60` pero los títulos reales miden 62-113 (MeLi los arma desde el nombre de familia): no existe un "MeLi trunca a 60"; el puntaje SEO solo penaliza
+  lo corto, el texto promocional y las palabras repetidas. (c) `GET /trends/MLA/{categoría raíz}` trae ruido ajeno al rubro ("slots casino"); las categorías hoja de la
+  cuenta (`productos_padre.category_id`, sin llamadas a MeLi) dan términos del rubro: `tendencias.obtener_tendencias_del_catalogo`, cacheado 6 h en `cache_db`.
+- **Rankings siempre por MODELO**, nunca por publicación/talle: `dashboard.top_modelos` (clave `utils.limpiar_titulo_modelo`). Si aparece otro "top" por título, es el mismo error.
+- **Dashboard**: orden hoy → qué hago → números → este mes → 14 días → detalle → "Más análisis" (plegado). Hasta las 18 el hero compara con AYER A ESTA HORA
+  (`dashboard.ganancia_de_ayer_hasta_la_hora`; cada venta de `calcular_ganancia_real` lleva `momento` en hora argentina), después con el promedio de 14 días.
+- **/admin**: `admin_usuarios.py` (días de prueba, activos en 7 días, `extender_prueba`); `POST /admin/usuario/<id>/extender_trial` está auditado. Los usuarios viejos con
+  email `…@pendiente.corelux.app` no pueden entrar a /admin hasta que su email real se complete en el próximo login.
+- **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real
 Archivo en la raíz (no es código, son notas del usuario navegando la
