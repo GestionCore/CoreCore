@@ -12,7 +12,9 @@ Seguridad y errores de la app web, en un solo lugar (se activa con seguridad.ini
 import os
 from datetime import timedelta
 from urllib.parse import urlparse
-from flask import request, jsonify, render_template
+from flask import request, jsonify, render_template, session, make_response
+
+import limitador
 
 METODOS_QUE_ESCRIBEN = {"POST", "PUT", "PATCH", "DELETE"}
 RUTAS_EXENTAS = {"/notificaciones_meli", "/webhook", "/webhook/mercadopago"}
@@ -56,6 +58,18 @@ def iniciar(app):
     def _verificar_origen():
         if request.method in METODOS_QUE_ESCRIBEN and request.path not in RUTAS_EXENTAS and not _origen_permitido():
             return _error(403, "Pedido bloqueado", "El pedido no vino de CoreLux. Volvé a intentarlo desde la página.")
+
+    @app.before_request
+    def _limitar_pedidos():
+        if app.config.get("TESTING"):
+            return None
+        espera = limitador.revisar(request.path, request.method, session.get("usuario_id"), request.remote_addr)
+        if espera:
+            resp, codigo = _error(429, "Demasiados pedidos", f"Esperá {espera} segundos y volvé a intentar.")
+            resp = make_response(resp, codigo)
+            resp.headers["Retry-After"] = str(espera)
+            return resp
+        return None
 
     @app.after_request
     def _cabeceras(resp):

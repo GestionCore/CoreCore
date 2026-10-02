@@ -1,6 +1,6 @@
 """
 Aislamiento entre cuentas y entre usuarios con Row Level Security, contra una base REAL. Se omite si no hay DATABASE_URL.
-Lectura solamente: no escribe nada.
+Lectura solamente: no deja nada escrito (los intentos de escritura de prueba se rechazan).
 """
 import os
 import pytest
@@ -45,3 +45,27 @@ def test_la_cuenta_propia_si_ve_sus_datos():
         cur = c.cursor()
         cur.execute("SELECT count(*) FROM productos_padre")
         assert cur.fetchone()[0] > 0
+
+
+def test_la_auditoria_es_solo_de_agregar():
+    """El rol de la app puede insertar y leer el registro de actividad, no modificarlo ni borrarlo."""
+    usuario_id, cuenta_id = _primer_usuario_con_cuenta()
+    for sql in ("UPDATE auditoria SET accion = 'x'", "DELETE FROM auditoria"):
+        with pytest.raises(Exception, match="permission denied"):
+            with db.conexion_usuario(usuario_id, cuenta_id) as c:
+                c.cursor().execute(sql)
+
+
+def test_la_auditoria_no_deja_escribir_a_nombre_de_otro_usuario():
+    usuario_id, cuenta_id = _primer_usuario_con_cuenta()
+    with pytest.raises(Exception, match="row-level security"):
+        with db.conexion_usuario(usuario_id, cuenta_id) as c:
+            c.cursor().execute("INSERT INTO auditoria (usuario_id, accion) VALUES (%s, 'intruso')", (usuario_id + 1000000,))
+
+
+def test_un_usuario_ajeno_no_ve_la_auditoria():
+    _usuario, cuenta_id = _primer_usuario_con_cuenta()
+    with db.conexion_usuario(999999999, cuenta_id) as c:
+        cur = c.cursor()
+        cur.execute("SELECT count(*) FROM auditoria")
+        assert cur.fetchone()[0] == 0

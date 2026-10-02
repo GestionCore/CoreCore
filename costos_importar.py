@@ -11,6 +11,7 @@ import io
 import re
 from flask import Blueprint, request, jsonify, send_file, g
 from auth.middleware import login_requerido
+from auditoria import auditar
 import db
 
 bp = Blueprint("costos_importar", __name__)
@@ -177,6 +178,7 @@ def vista_previa():
 
 @bp.route("/api/costos/importar/aplicar", methods=["POST"])
 @login_requerido
+@auditar("costos_importar")
 def aplicar_cambios():
     cambios = (request.get_json(silent=True) or {}).get("cambios") or []
     if not isinstance(cambios, list) or not cambios:

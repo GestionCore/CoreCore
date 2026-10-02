@@ -20,6 +20,7 @@ from flask import Flask, request, session, redirect, url_for, render_template, g
 import config
 from auth import oauth_meli, registro, token_manager
 from auth.middleware import login_requerido, admin_requerido, iniciar_sesion, cerrar_sesion, cambiar_cuenta_activa
+from auditoria import auditar
 import catalogo
 import metricas as metricas_mod
 import facturacion
@@ -209,6 +210,8 @@ seguridad.iniciar(app)
 
 import legal
 app.register_blueprint(legal.bp)
+import auditoria
+app.register_blueprint(auditoria.bp)
 
 import costos_importar
 app.register_blueprint(costos_importar.bp)
@@ -338,6 +341,7 @@ def exportar_planilla_stock():
 
 @app.route("/actualizar_precios_masivo", methods=["POST"])
 @login_requerido
+@auditar("precios_masivo")
 def actualizar_precios_masivo():
     """
     "Aplicar Masivo" en Stock (subir/bajar % el precio de todo el
@@ -1253,6 +1257,7 @@ def promociones_vista():
 
 @app.route("/promociones/crear_descuento", methods=["POST"])
 @login_requerido
+@auditar("descuento_crear")
 def crear_descuento():
     import db
     try:
@@ -1278,6 +1283,7 @@ def crear_descuento():
 
 @app.route("/promociones/eliminar_descuento/<id_meli>", methods=["POST"])
 @login_requerido
+@auditar("descuento_eliminar")
 def eliminar_descuento(id_meli):
     import db
     try:
@@ -1842,6 +1848,7 @@ def monotributo_vista():
 
 @app.route("/monotributo/declarar", methods=["POST"])
 @login_requerido
+@auditar("monotributo_declarar")
 def monotributo_declarar():
     categoria = request.form.get("categoria_monotributo") or None
     monotributo.guardar_categoria_declarada(g.usuario_id, g.cuenta_id, categoria)
@@ -1864,6 +1871,7 @@ def api_costos_chat():
 
 @app.route("/api/costos_chat/confirmar", methods=["POST"])
 @login_requerido
+@auditar("costos_chat")
 def api_costos_chat_confirmar():
     datos = request.get_json(silent=True) or {}
     propuestas = datos.get("propuestas")
@@ -2115,6 +2123,7 @@ def api_flex_sincronizar():
 
 @app.route("/api/flex/umbrales", methods=["POST"])
 @login_requerido
+@auditar("flex_umbrales")
 def api_flex_umbrales():
     """Guarda los umbrales (precio + zonas que cubre cada uno). No toca ninguna venta: devuelve la vista previa de lo que aplicaría."""
     datos = request.get_json(silent=True) or {}
@@ -2135,6 +2144,7 @@ def api_flex_vista_previa():
 
 @app.route("/api/flex/aplicar", methods=["POST"])
 @login_requerido
+@auditar("flex_aplicar")
 def api_flex_aplicar():
     """Aplica los umbrales a los envíos Flex (los sin costo cargado y, si el usuario lo pide, también los ya valuados). Lo confirma el usuario tras ver la vista previa."""
     datos = request.get_json(silent=True) or {}
@@ -2145,6 +2155,7 @@ def api_flex_aplicar():
 
 @app.route("/api/flex/zona", methods=["POST"])
 @login_requerido
+@auditar("flex_zona")
 def api_flex_zona():
     """Elige a mano el umbral de UNA orden Flex (0 = sin costo). Mueve el costo de entrega de esa venta."""
     datos = request.get_json(silent=True) or {}
@@ -2174,6 +2185,7 @@ def ventas_manuales_vista():
 
 @app.route("/ventas_manuales/agregar", methods=["POST"])
 @login_requerido
+@auditar("venta_manual_agregar")
 def ventas_manuales_agregar():
     ok, error = ventas_manuales.registrar_venta_manual(
         g.usuario_id, g.cuenta_id,
@@ -2193,6 +2205,7 @@ def ventas_manuales_agregar():
 
 @app.route("/ventas_manuales/eliminar/<int:id_venta>", methods=["POST"])
 @login_requerido
+@auditar("venta_manual_eliminar")
 def ventas_manuales_eliminar(id_venta):
     ventas_manuales.eliminar_venta_manual(g.usuario_id, g.cuenta_id, id_venta)
     return redirect(url_for("ventas_manuales_vista"))
@@ -2200,6 +2213,7 @@ def ventas_manuales_eliminar(id_venta):
 
 @app.route("/agregar_gasto", methods=["POST"])
 @login_requerido
+@auditar("gasto_agregar")
 def agregar_gasto():
     import db
     concepto = request.form.get("concepto", "").strip()
@@ -2215,6 +2229,7 @@ def agregar_gasto():
 
 @app.route("/guardar_costo_producto/<id_meli>", methods=["POST"])
 @login_requerido
+@auditar("costo_producto")
 def guardar_costo_producto(id_meli):
     import db
     nuevo_costo = float(request.form.get("precio_costo", 0.0))
@@ -2226,6 +2241,7 @@ def guardar_costo_producto(id_meli):
 
 @app.route("/guardar_costos_masivo", methods=["POST"])
 @login_requerido
+@auditar("costos_masivo")
 def guardar_costos_masivo():
     import db
     data = request.get_json(silent=True) or {}
@@ -2250,6 +2266,7 @@ def guardar_costos_masivo():
 
 @app.route("/eliminar_gasto/<int:id_gasto>", methods=["POST"])
 @login_requerido
+@auditar("gasto_eliminar")
 def eliminar_gasto(id_gasto):
     import db
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
@@ -2516,6 +2533,7 @@ def stock_masivo_vista():
 
 @app.route("/actualizar_stock_multiple", methods=["POST"])
 @login_requerido
+@auditar("stock_masivo")
 def actualizar_stock_multiple():
     """
     "Aplicar cambios a Mercado Libre" en Stock Masivo — nunca había
@@ -2811,6 +2829,7 @@ def api_drawer_info(id_meli):
 
 @app.route("/api/drawer/guardar/<id_meli>", methods=["POST"])
 @login_requerido
+@auditar("publicacion_editar")
 def api_drawer_guardar(id_meli):
     import db
     data = request.get_json(silent=True) or {}
@@ -2852,6 +2871,7 @@ def api_drawer_guardar(id_meli):
 
 @app.route("/api/drawer/guardar_descripcion/<id_meli>", methods=["POST"])
 @login_requerido
+@auditar("publicacion_descripcion")
 def api_drawer_guardar_descripcion(id_meli):
     data = request.get_json(silent=True) or {}
     descripcion = (data.get("descripcion") or "").strip()
@@ -2873,6 +2893,7 @@ def api_drawer_guardar_descripcion(id_meli):
 
 @app.route("/api/drawer/guardar_atributos/<id_meli>", methods=["POST"])
 @login_requerido
+@auditar("publicacion_atributos")
 def api_drawer_guardar_atributos(id_meli):
     data = request.get_json(silent=True) or {}
     atributos = data.get("atributos") or []
@@ -2948,6 +2969,7 @@ def api_drawer_preguntas(id_meli):
 
 @app.route("/api/drawer/responder_pregunta", methods=["POST"])
 @login_requerido
+@auditar("pregunta_responder")
 def api_drawer_responder_pregunta():
     import db
     data = request.get_json(silent=True) or {}
@@ -3207,6 +3229,7 @@ def api_preguntas_lista():
 
 @app.route("/api/preguntas/responder", methods=["POST"])
 @login_requerido
+@auditar("pregunta_responder")
 def api_preguntas_responder():
     data = request.get_json(silent=True) or {}
     question_id = data.get("question_id")
@@ -3365,6 +3388,7 @@ def admin_panel():
 @app.route("/admin/usuario/<int:uid>/plan", methods=["POST"])
 @login_requerido
 @admin_requerido
+@auditar("plan_cambiar")
 def admin_cambiar_plan(uid):
     nuevo_plan = (request.get_json(silent=True) or {}).get("plan", "")
     planes_validos = {"trial", "base", "elite", "cancelado"}
@@ -3382,6 +3406,7 @@ def admin_cambiar_plan(uid):
 @app.route("/admin/usuario/<int:uid>/toggle_activo", methods=["POST"])
 @login_requerido
 @admin_requerido
+@auditar("usuario_activar")
 def admin_toggle_activo(uid):
     with db.conexion_admin() as conexion:
         cursor = conexion.cursor()
@@ -3533,6 +3558,7 @@ def suscripcion_retorno():
 
 @app.route("/suscripcion/cancelar", methods=["POST"])
 @login_requerido
+@auditar("suscripcion_cancelar")
 def suscripcion_cancelar():
     """Cancela la suscripción activa en MP y actualiza el plan."""
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:

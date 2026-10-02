@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_ux.html" import banner, vacio %}
+{% block title %}Actividad · CoreLux{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon" style="width:24px;height:24px;margin-right:10px;vertical-align:middle;color:var(--accent-primary);"><use href="#icon-file-text"/></svg>Actividad</h1>
+        <div class="page-subtitle">Un registro de <strong>lo que cambiaste</strong> en tu cuenta: precios, stock, costos, descuentos y más</div>
+    </div>
+</div>
+
+{% if not eventos %}
+{{ vacio("Todavía no hay actividad registrada", "Cada vez que cambies precios, stock, costos o una publicación, queda anotado acá con la fecha y hora.", "file-text", "info", "Ir al Dashboard", "/dashboard") }}
+{% else %}
+<div class="panel">
+    <div class="panel-title">Últimos {{ eventos|length }} cambios</div>
+    <div style="overflow-x:auto;">
+        <table class="data-table ux-tabla-cards">
+            <thead><tr><th>Cuándo</th><th>Qué</th><th>Desde</th><th></th></tr></thead>
+            <tbody>
+            {% for e in eventos %}
+                <tr>
+                    <td data-label="Cuándo"><b>{{ e.cuando.strftime('%d/%m/%Y') }}</b> <span class="text-muted">{{ e.cuando.strftime('%H:%M') }}</span></td>
+                    <td data-label="Qué">{{ e.etiqueta }}</td>
+                    <td data-label="Desde" class="text-muted">{{ e.ip or '—' }}</td>
+                    <td data-label="Detalle">
+                        {% if e.detalle.pedido is defined or e.detalle.ids is defined %}
+                        <details class="ux-detalle"><summary>Ver detalle</summary><pre style="white-space:pre-wrap; font-size:0.8em; margin:8px 0 0;">{{ e.detalle|tojson(indent=1) }}</pre></details>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="text-muted" style="font-size:0.85em; margin-top:10px;">Las horas están en horario de Argentina. Este registro solo se puede leer: no se edita ni se borra.</div>
+{% endif %}
+{% endblock %}
