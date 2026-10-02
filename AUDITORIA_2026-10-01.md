@@ -18,9 +18,9 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 4. ◐ 🟠 M · IMPLEMENTAR — **Faltan cabeceras de seguridad** (CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, HSTS). La CSP exige antes resolver el punto 55 (26 plantillas con `<script>` inline).
 5. ✅ 🟠 S · IMPLEMENTAR — **Sin límite de pedidos en rutas públicas** (`/conectar`, `/callback`, los dos webhooks, `/r/<code>`). `rate_limiter.py` solo protege las llamadas salientes a MeLi (y usa Redis, que no existe en producción).
 6. ✅ 🟠 M · IMPLEMENTAR — **Sin registro de auditoría** de acciones que escriben en Mercado Libre o cambian planes (precios masivos, stock masivo, cambio de plan desde `/admin`): quién, cuándo, qué valor antes/después.
-7. 🟠 S · MEJORAR — **`/admin` usa `conexion_admin`** (salta RLS), contra la regla de CLAUDE.md que la limita a `token_manager.py`. Aceptable para un panel de dueño, pero hay que documentarlo como excepción y registrar sus accesos.
-8. 🟠 S · MEJORAR — **El webhook de Mercado Pago no verifica la firma `x-signature`.** Hoy mitiga re-consultando el estado en la API (bien), pero sigue aceptando cualquier POST y llamando a MP por cada uno.
-9. 🟢 S · MEJORAR — **El webhook de MeLi acepta notificaciones sin `application_id`** (se dejó por compatibilidad). Con las notificaciones ya llegando, exigirlo.
+7. ✅ 🟠 S · MEJORAR — **`/admin` usa `conexion_admin`** (salta RLS), contra la regla de CLAUDE.md que la limita a `token_manager.py`. Aceptable para un panel de dueño, pero hay que documentarlo como excepción y registrar sus accesos.
+8. ✅ 🟠 S · MEJORAR — **El webhook de Mercado Pago no verifica la firma `x-signature`.** Hoy mitiga re-consultando el estado en la API (bien), pero sigue aceptando cualquier POST y llamando a MP por cada uno.
+9. ✅ 🟢 S · MEJORAR — **El webhook de MeLi acepta notificaciones sin `application_id`** (se dejó por compatibilidad). Con las notificaciones ya llegando, exigirlo.
 10. ✅ 🟠 S · MEJORAR — **`|safe` en `_ux.html`** (`titulo_html`, `sub_html`): seguro solo si cada llamador escapa lo externo. Auditar las llamadas con títulos de MeLi/compradores o escapar dentro de la macro.
 11. ✅ 🟠 S · IMPLEMENTAR — **La sesión no expira** (no hay `PERMANENT_SESSION_LIFETIME` ni cierre por inactividad). Importante en computadoras compartidas del negocio.
 12. ✅ 🟠 S · MEJORAR — **Mensajes de error que exponen la excepción** (p. ej. `facturacion_vista` devuelve `"No se pudo traer … ({e})"`). Mostrar un mensaje genérico y mandar el detalle a Sentry.

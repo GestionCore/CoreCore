@@ -14,6 +14,8 @@ El flujo completo:
 4. Cada cobro mensual exitoso → MP actualiza el preapproval a "authorized"
 5. Fallo de cobro / cancelación → MP lo pone en "cancelled" o "paused"
 """
+import hashlib
+import hmac
 import requests
 import config
 
@@ -106,6 +108,26 @@ def cancelar_suscripcion(preapproval_id):
         timeout=10,
     )
     return resp.status_code == 200
+
+
+def firma_valida(x_signature, x_request_id, data_id, secreto):
+    """
+    Verifica la firma que Mercado Pago pone en cada webhook (cabecera x-signature = "ts=...,v1=<hmac>"): HMAC-SHA256, con el secreto de la
+    integración, del texto "id:<data.id>;request-id:<x-request-id>;ts:<ts>;". Así solo se procesan avisos que realmente mandó Mercado Pago.
+    Si no hay secreto configurado devuelve True (no se puede verificar): el webhook igual re-consulta el estado a la API de MP.
+    """
+    if not secreto:
+        return True
+    partes = dict(p.strip().split("=", 1) for p in (x_signature or "").split(",") if "=" in p)
+    ts, recibida = partes.get("ts"), partes.get("v1")
+    if not ts or not recibida:
+        return False
+    data_id = str(data_id or "")
+    if data_id.isalnum():
+        data_id = data_id.lower()                  # MP firma el id en minúsculas cuando es alfanumérico
+    manifiesto = f"id:{data_id};request-id:{x_request_id or ''};ts:{ts};"
+    esperada = hmac.new(secreto.encode(), manifiesto.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(esperada, recibida)
 
 
 def procesar_webhook(data):

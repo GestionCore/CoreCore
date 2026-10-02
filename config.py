@@ -79,6 +79,8 @@ TOKEN_ENCRYPTION_KEY_ANTERIOR = os.getenv("TOKEN_ENCRYPTION_KEY_ANTERIOR", "")
 # No confundir con las credenciales de MeLi de cada usuario vendedor.
 # Obtené el access token en https://www.mercadopago.com.ar/developers/panel
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN", "")
+# Clave secreta de los webhooks de Mercado Pago (panel de la integración > Webhooks > "Clave secreta"): con ella se verifica x-signature.
+MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET", "")
 
 DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
@@ -115,6 +117,7 @@ VARIABLES_OBLIGATORIAS = ("DATABASE_URL", "DATABASE_URL_ADMIN", "MELI_CLIENT_ID"
 VARIABLES_RECOMENDADAS = {
     "SENTRY_DSN": "sin esto no te enterás de los errores en producción",
     "MP_ACCESS_TOKEN": "sin esto no se pueden cobrar las suscripciones",
+    "MP_WEBHOOK_SECRET": "sin esto el webhook de Mercado Pago acepta cualquier pedido (igual re-consulta el estado a la API)",
     "IA_API_KEY": "sin esto no funcionan el chat, los costos por chat ni las respuestas sugeridas",
     "ADMIN_EMAIL": "sin esto nadie puede entrar a /admin",
 }

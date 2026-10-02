@@ -3626,6 +3626,10 @@ def webhook_mercadopago():
     No requiere login — MP lo llama directamente.
     """
     data = request.get_json(silent=True) or {}
+    data_id = request.args.get("data.id") or (data.get("data") or {}).get("id") or data.get("id")
+    if not pagos.firma_valida(request.headers.get("x-signature"), request.headers.get("x-request-id"), data_id, config.MP_WEBHOOK_SECRET):
+        app.logger.warning("Webhook de Mercado Pago con firma inválida (data.id=%s): se ignora.", data_id)
+        return "", 401
     resultado = pagos.procesar_webhook(data)
     if not resultado:
         return "", 200  # MP espera 200 aunque ignoremos el evento

@@ -121,6 +121,6 @@ legítimo choca con un límite, subir el valor en `REGLAS` de `limitador.py`.
 
 ## 10. Pendientes que dependen del dueño
 
-- `SENTRY_DSN` (para enterarse de errores sin mirar los logs) y `MP_ACCESS_TOKEN` (cobro de suscripciones).
+- `SENTRY_DSN` (para enterarse de errores sin mirar los logs), `MP_ACCESS_TOKEN` (cobro de suscripciones) y `MP_WEBHOOK_SECRET` (la "clave secreta" del panel de webhooks de Mercado Pago: con ella el webhook solo acepta avisos firmados por Mercado Pago).
 - Revisión de los términos y la política de privacidad (`legal.py`) por un abogado antes del lanzamiento.
 - Un monitor externo de `/healthz/db`.
