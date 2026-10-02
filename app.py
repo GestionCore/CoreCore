@@ -106,7 +106,7 @@ if config.SENTRY_DSN:
             _sdk.set_user({"id": str(_g.usuario_id)})
 
 # ── Flask-Caching ─────────────────────────────────────────────────────────
-from cache import cache, construir_key
+from cache import cache, construir_key, leer as cache_leer, guardar as cache_guardar
 
 _cache_config = {
     "CACHE_TYPE": config.CACHE_TYPE,
@@ -114,7 +114,12 @@ _cache_config = {
     "CACHE_KEY_PREFIX": config.CACHE_KEY_PREFIX,
 }
 if config.CACHE_TYPE == "RedisCache":
-    _cache_config["CACHE_REDIS_URL"] = config.REDIS_URL
+    # Redis no se conecta al iniciar: sin esta comprobación, con Redis inalcanzable (Fly no tiene) cada cache.get() lanzaba ConnectionError
+    if scheduler._redis_disponible():
+        _cache_config["CACHE_REDIS_URL"] = config.REDIS_URL
+    else:
+        print("[Cache] ℹ️  Redis no disponible: se usa una caché en memoria por proceso.")
+        _cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": config.CACHE_DEFAULT_TIMEOUT, "CACHE_KEY_PREFIX": config.CACHE_KEY_PREFIX}
 
 try:
     cache.init_app(app, config=_cache_config)
@@ -157,10 +162,10 @@ def _inyectar_cuentas_usuario():
         return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None}
     # Se pedía a la base en CADA página; cambia muy poco (al vincular una cuenta o refrescar capacidades): 60 s de caché, con el usuario en la clave
     clave_cuentas = construir_key("cuentas_usuario", g.usuario_id)
-    cuentas = cache.get(clave_cuentas)
+    cuentas = cache_leer(clave_cuentas)
     if cuentas is None:
         cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
-        cache.set(clave_cuentas, cuentas, timeout=60)
+        cache_guardar(clave_cuentas, cuentas, timeout=60)
     cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
     # Qué usa esta cuenta (ads, flex, full, catalogo): las pantallas esconden solo lo que se confirmó que no aplica (ver capacidades.py)
     return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual, "capacidades": (cuenta_actual or {}).get("capacidades") or {}}
@@ -2408,13 +2413,13 @@ def api_calculadora_categorias():
     import db
     # Una llamada a MeLi por publicación (1,7 s): las categorías de un catálogo casi no cambian, se guardan 6 horas por cuenta
     clave = construir_key("categorias_calculadora", g.cuenta_id)
-    categorias = cache.get(clave)
+    categorias = cache_leer(clave)
     if categorias is None:
         headers = {"Authorization": f"Bearer {access_token}"}
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
             categorias = calculadora_costos.obtener_categorias_del_catalogo(headers, cursor)
-        cache.set(clave, categorias, timeout=6 * 3600)
+        cache_guardar(clave, categorias, timeout=6 * 3600)
     return jsonify(categorias)
 
 
@@ -3230,14 +3235,14 @@ def preguntas_vista():
 def api_mensajes_sin_leer():
     """Mensajes de compradores sin leer (se consulta a Mercado Libre como mucho 1 vez por minuto por cuenta)."""
     clave = construir_key("mensajes_sin_leer", g.cuenta_id)
-    datos = cache.get(clave)
+    datos = cache_leer(clave)
     if datos is None:
         try:
             access_token = token_manager.asegurar_token_valido(g.cuenta_id)
         except token_manager.CuentaDesconectada:
             return jsonify({"total": 0, "conversaciones": []})
         datos = mensajes_mod.sin_leer(access_token) or {"total": 0, "conversaciones": []}
-        cache.set(clave, datos, timeout=60)
+        cache_guardar(clave, datos, timeout=60)
     return jsonify(datos)
 
 
@@ -3246,7 +3251,7 @@ def api_mensajes_sin_leer():
 def api_preguntas_tiempo_respuesta():
     """Cuánto tardás en responder (mediana de las últimas respondidas). Caché de 30 minutos por cuenta."""
     clave = construir_key("tiempo_respuesta", g.cuenta_id)
-    datos = cache.get(clave)
+    datos = cache_leer(clave)
     if datos is None:
         try:
             access_token = token_manager.asegurar_token_valido(g.cuenta_id)
@@ -3257,7 +3262,7 @@ def api_preguntas_tiempo_respuesta():
         except token_manager.CuentaDesconectada:
             return jsonify(None)
         datos = (tiempo_respuesta_mod.calcular(access_token, fila[0]) if fila else None) or {}
-        cache.set(clave, datos, timeout=1800)
+        cache_guardar(clave, datos, timeout=1800)
     return jsonify(datos or None)
 
 

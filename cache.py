@@ -12,13 +12,34 @@ Estrategia de keys:
   a otra aunque el servidor Redis sea compartido.
 
 Fallback automático:
-  Si Redis no está disponible al arrancar, Flask-Caching cae a
-  SimpleCache (en memoria del proceso). Funciona bien para un solo worker;
-  con múltiples workers cada uno tiene su propio cache. Aceptable para dev.
+  Si Redis no está disponible al arrancar, app.py usa SimpleCache (en memoria del proceso): sin esto cada cache.get() lanzaba ConnectionError y
+  rompía las páginas (Fly no tiene Redis). Con varios procesos cada uno tiene su propia copia, así que NO se guarda acá nada que tenga que
+  coincidir entre procesos (para eso está cache_db).
+
+  Aunque Redis se caiga con la app andando, usar leer()/guardar() en vez de cache.get()/cache.set(): una caché que falla nunca debe romper la página.
 """
+import logging
+
 from flask_caching import Cache
 
 cache = Cache()
+log = logging.getLogger("corelux.cache")
+
+
+def leer(clave):
+    """El valor guardado o None; si la caché falla, None (la página lo calcula como si no hubiera caché)."""
+    try:
+        return cache.get(clave)
+    except Exception as e:
+        log.warning("La caché no respondió al leer '%s': %s", clave, e)
+        return None
+
+
+def guardar(clave, valor, timeout=None):
+    try:
+        cache.set(clave, valor, timeout=timeout)
+    except Exception as e:
+        log.warning("La caché no respondió al guardar '%s': %s", clave, e)
 
 
 def construir_key(*partes):
