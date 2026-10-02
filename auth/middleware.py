@@ -122,13 +122,13 @@ def admin_requerido(vista):
     """
     @wraps(vista)
     def envoltorio(*args, **kwargs):
-        if not config.ADMIN_EMAIL:
+        if not config.ADMIN_EMAILS:
             abort(403)
         with db.conexion_usuario(g.usuario_id) as conexion:
             cursor = conexion.cursor()
             cursor.execute("SELECT email FROM usuarios WHERE id = %s", (g.usuario_id,))
             fila = cursor.fetchone()
-        if not fila or fila[0].lower() != config.ADMIN_EMAIL.lower():
+        if not fila or not config.es_admin(fila[0]):
             abort(403)
         return vista(*args, **kwargs)
     return envoltorio

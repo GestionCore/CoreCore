@@ -3,6 +3,7 @@ Configuración central de CoreLux — todo lo que viene de variables de
 entorno vive acá, nunca hardcodeado en el resto del código.
 """
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -88,8 +89,20 @@ MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET", "")
 DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
 # Panel de administración — email del dueño de CoreLux. Agregar a .env:
-#   ADMIN_EMAIL=tu@email.com
+#   ADMIN_EMAIL=tu@email.com            (varios: ADMIN_EMAIL=uno@x.com,otro@y.com)
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
+
+
+def emails_admin(valor):
+    """Los emails de administrador de un valor como 'uno@x.com, "Otro@Y.com"': separados por coma, punto y coma o espacio, sin comillas ni mayúsculas."""
+    return {e.strip().strip("'\"").lower() for e in re.split(r"[,;\s]+", valor or "") if e.strip().strip("'\"")}
+
+
+ADMIN_EMAILS = emails_admin(ADMIN_EMAIL)
+
+
+def es_admin(email):
+    return bool(email) and email.strip().lower() in ADMIN_EMAILS
 
 # --- Validación al arranque ---
 # Sin esto, una variable vacía se manifiesta como un error 500 críptico

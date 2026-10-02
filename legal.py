@@ -80,7 +80,7 @@ def cuenta_eliminar():
         cursor.execute("SELECT email, plan, mp_suscripcion_id FROM usuarios WHERE id = %s", (g.usuario_id,))
         email, plan, mp_id = cursor.fetchone()
 
-    es_dueno = bool(config.ADMIN_EMAIL) and (email or "").lower() == config.ADMIN_EMAIL.lower()
+    es_dueno = config.es_admin(email)
     if request.method == "GET":
         return render_template("cuenta_eliminar.html", email=email, plan=plan, con_suscripcion=bool(mp_id) and plan in ("base", "elite"),
                                es_dueno=es_dueno, frase=FRASE_CONFIRMACION, contacto=CONTACTO_EMAIL)
