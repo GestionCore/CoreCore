@@ -69,6 +69,7 @@ from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
+app.config["SECRET_KEY_FALLBACKS"] = [k.strip() for k in config.FLASK_SECRET_KEY_ANTERIOR.split(",") if k.strip()]
 
 # Validación al arrancar: en producción, si falta una variable obligatoria no se arranca (mejor caer al desplegar que fallar a medias).
 _faltan, _recomendadas = config.validar()

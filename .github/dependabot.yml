@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Dependabot abre un pull request por cada actualización de seguridad o de versión; el CI (ruff + pytest) lo valida antes de aceptarlo.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      menores-y-parches:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly

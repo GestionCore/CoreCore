@@ -60,6 +60,9 @@ CACHE_KEY_PREFIX = "corelux_"
 # Clave de Flask para firmar la cookie de sesión — generá una real con:
 #   python -c "import secrets; print(secrets.token_hex(32))"
 FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "")
+# Opcional: la clave (o varias, separadas por coma) que se usaba antes. Las sesiones firmadas con ella siguen valiendo, así que se puede
+# rotar FLASK_SECRET_KEY sin desloguear a nadie (ver docs/RUNBOOK.md).
+FLASK_SECRET_KEY_ANTERIOR = os.getenv("FLASK_SECRET_KEY_ANTERIOR", "")
 
 # Clave de cifrado para los tokens de MeLi guardados en la base — generá
 # una real con:

@@ -4,7 +4,8 @@ Aplicación web para vendedores de Mercado Libre: ganancia real, stock, despacho
 Es multi-tenant: cada cuenta ve solo sus datos (Row Level Security de Postgres).
 
 > El contexto de decisiones, bugs ya resueltos y reglas de negocio está en [`CLAUDE.md`](CLAUDE.md). Léelo antes de tocar cálculos de plata,
-> la sincronización o el aislamiento entre cuentas. La lista de mejoras pendientes está en [`AUDITORIA_2026-10-01.md`](AUDITORIA_2026-10-01.md).
+> la sincronización o el aislamiento entre cuentas. La lista de mejoras pendientes está en [`AUDITORIA_2026-10-01.md`](AUDITORIA_2026-10-01.md) y qué hacer cuando algo pasa en producción
+> (deploy, rollback, rotar claves, pooler lleno, sync que no anda) en [`docs/RUNBOOK.md`](docs/RUNBOOK.md).
 
 ## Stack
 
@@ -41,7 +42,9 @@ GitHub Actions corre las dos en cada push (`.github/workflows/ci.yml`).
 | Dónde | Qué |
 |---|---|
 | `app.py` | Rutas de la web (en proceso de dividirse en Blueprints: ver `legal.py`, `costos_importar.py`) |
-| `seguridad.py` | CSRF por origen, cookies, cabeceras, páginas de error, `/healthz` |
+| `seguridad.py`, `limitador.py` | CSRF por origen, cookies, cabeceras, páginas de error, `/healthz`, límite de pedidos (429) |
+| `auditoria.py` | Registro de actividad de solo-agregar (`@auditar`) y la pantalla `/cuenta/actividad` |
+| `crypto_utils.py`, `rotar_clave.py` | Cifrado de tokens con rotación de clave sin desconectar a nadie |
 | `db.py`, `auth/` | Conexiones con RLS, OAuth de Mercado Libre, sesión, tokens cifrados |
 | `sincronizador.py`, `ventas_sync.py`, `devoluciones_sync.py`, `enriquecimiento.py` | Qué se trae de Mercado Libre y cada cuánto |
 | `metricas.py`, `precios.py`, `cobros.py`, `dashboard.py`… | Cálculos y datos de cada pantalla |
@@ -69,4 +72,6 @@ fly logs -a corecore
 ## Seguridad y datos personales
 
 - Los pedidos que escriben (POST/PUT/DELETE) solo se aceptan del mismo sitio; los webhooks de Mercado Libre y Mercado Pago están exentos.
+- Límite de pedidos por usuario/IP en lo que cuesta plata (IA, sync manual, importar) y en el inicio de sesión; las acciones que cambian datos o plata
+  quedan registradas (`/cuenta/actividad`). Dependabot y `pip-audit` vigilan las dependencias.
 - Cada usuario puede eliminar su cuenta y todos sus datos desde `/cuenta/eliminar`. Términos en `/terminos`, privacidad en `/privacidad`.

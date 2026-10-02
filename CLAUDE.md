@@ -446,6 +446,20 @@ paralelo**: si vas a pasar a otra sesión (nube ↔ local), pusheá y
 avisá ANTES de que la otra arranque a divergir mucho, o al menos
 dejalo documentado en este archivo apenas pase.
 
+## Seguridad y operación (2026-10-01, auditoría de 100 puntos: `AUDITORIA_2026-10-01.md`)
+Estado de cada punto en ese archivo (✅/◐). Lo que hay que saber para no romperlo:
+- `seguridad.py` (se activa con `seguridad.iniciar(app)`): anti-CSRF por `Sec-Fetch-Site`/`Origin` en todo POST/PUT/PATCH/DELETE (exentos los
+  webhooks `/notificaciones_meli`, `/webhook`, `/webhook/mercadopago`), cookie HttpOnly/SameSite=Lax/Secure en Fly, cabeceras, `/healthz` y
+  `/healthz/db`, páginas de error (JSON en `/api/*`). Todo lo que cambia estado es POST: nunca poner una acción que escribe en un GET.
+- `limitador.py`: 429 por ventana deslizante en memoria (IA, sync manual, importar, OAuth, /admin y un tope general por IP). Por proceso, no exacto.
+- `auditoria.py` + tabla `auditoria` (migración 0029, solo INSERT/SELECT para el rol de la app): poner `@auditar("accion")` DEBAJO de
+  `@login_requerido` en toda ruta nueva que cambie datos reales o plata y agregar su etiqueta en `ETIQUETAS` (un test lo exige). Tacha tokens/claves.
+- Macros de `_ux.html`: `titulo_html`/`sub_html` pasan por `utils.html_seguro` (lista de etiquetas permitidas): igual, escapar lo externo antes.
+- Claves rotables sin cortar a nadie: `TOKEN_ENCRYPTION_KEY` (+ `_ANTERIOR`, `rotar_clave.py`) y `FLASK_SECRET_KEY` (+ `_ANTERIOR` → `SECRET_KEY_FALLBACKS`).
+- Los syncs/tareas abren `db.conexion_usuario(usuario_id, cuenta_id)` SIEMPRE con `cuenta_id` (RLS por cuenta activa, migración 0010).
+- Dependencias: rangos acotados en `requirements.txt` (no `==`), Dependabot semanal y `pip-audit` en CI; al subir Flask/cryptography/psycopg probar un sync real.
+- `docs/RUNBOOK.md`: deploy, rollback, rotación de claves, tope de conexiones del pooler (`máquinas × workers × DB_POOL_MAX ≤ 12`), sync que no anda.
+
 ## `cosas.txt` — bugs reportados por el usuario usando la app real
 Archivo en la raíz (no es código, son notas del usuario navegando la
 app real como usuario nuevo). Es la fuente de verdad de bugs

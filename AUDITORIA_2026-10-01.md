@@ -16,16 +16,16 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 2. ✅ 🔴 S · MEJORAR — **GETs que cambian estado:** `/cambiar_cuenta/<id>`, `/sincronizar_hoy` y `/sincronizar_todo` (esta última bloquea la petición 26 s). Una imagen en cualquier sitio puede dispararlas. Pasarlas a POST.
 3. ✅ 🔴 S · MEJORAR — **La cookie de sesión no declara `Secure`, `SameSite` ni `HttpOnly`** (`app.config` no tiene `SESSION_COOKIE_*`; el default de Flask es `SameSite=None`). Fijar `Secure=True`, `SameSite=Lax`, `HttpOnly=True` en producción.
 4. ◐ 🟠 M · IMPLEMENTAR — **Faltan cabeceras de seguridad** (CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, HSTS). La CSP exige antes resolver el punto 55 (26 plantillas con `<script>` inline).
-5. 🟠 S · IMPLEMENTAR — **Sin límite de pedidos en rutas públicas** (`/conectar`, `/callback`, los dos webhooks, `/r/<code>`). `rate_limiter.py` solo protege las llamadas salientes a MeLi (y usa Redis, que no existe en producción).
-6. 🟠 M · IMPLEMENTAR — **Sin registro de auditoría** de acciones que escriben en Mercado Libre o cambian planes (precios masivos, stock masivo, cambio de plan desde `/admin`): quién, cuándo, qué valor antes/después.
+5. ✅ 🟠 S · IMPLEMENTAR — **Sin límite de pedidos en rutas públicas** (`/conectar`, `/callback`, los dos webhooks, `/r/<code>`). `rate_limiter.py` solo protege las llamadas salientes a MeLi (y usa Redis, que no existe en producción).
+6. ✅ 🟠 M · IMPLEMENTAR — **Sin registro de auditoría** de acciones que escriben en Mercado Libre o cambian planes (precios masivos, stock masivo, cambio de plan desde `/admin`): quién, cuándo, qué valor antes/después.
 7. 🟠 S · MEJORAR — **`/admin` usa `conexion_admin`** (salta RLS), contra la regla de CLAUDE.md que la limita a `token_manager.py`. Aceptable para un panel de dueño, pero hay que documentarlo como excepción y registrar sus accesos.
 8. 🟠 S · MEJORAR — **El webhook de Mercado Pago no verifica la firma `x-signature`.** Hoy mitiga re-consultando el estado en la API (bien), pero sigue aceptando cualquier POST y llamando a MP por cada uno.
 9. 🟢 S · MEJORAR — **El webhook de MeLi acepta notificaciones sin `application_id`** (se dejó por compatibilidad). Con las notificaciones ya llegando, exigirlo.
-10. 🟠 S · MEJORAR — **`|safe` en `_ux.html`** (`titulo_html`, `sub_html`): seguro solo si cada llamador escapa lo externo. Auditar las llamadas con títulos de MeLi/compradores o escapar dentro de la macro.
+10. ✅ 🟠 S · MEJORAR — **`|safe` en `_ux.html`** (`titulo_html`, `sub_html`): seguro solo si cada llamador escapa lo externo. Auditar las llamadas con títulos de MeLi/compradores o escapar dentro de la macro.
 11. ✅ 🟠 S · IMPLEMENTAR — **La sesión no expira** (no hay `PERMANENT_SESSION_LIFETIME` ni cierre por inactividad). Importante en computadoras compartidas del negocio.
 12. ✅ 🟠 S · MEJORAR — **Mensajes de error que exponen la excepción** (p. ej. `facturacion_vista` devuelve `"No se pudo traer … ({e})"`). Mostrar un mensaje genérico y mandar el detalle a Sentry.
-13. 🟠 M · IMPLEMENTAR — **Sin plan de rotación de `TOKEN_ENCRYPTION_KEY`** (cifra los tokens de MeLi). Pasar a `MultiFernet` para poder rotar sin desconectar a todos.
-14. 🟠 S · MEJORAR — **Dependencias sin fijar ni escanear:** 10 paquetes con `>=`, sin `pip-audit` ni Dependabot. Fijar versiones y activar el escaneo.
+13. ✅ 🟠 M · IMPLEMENTAR — **Sin plan de rotación de `TOKEN_ENCRYPTION_KEY`** (cifra los tokens de MeLi). Pasar a `MultiFernet` para poder rotar sin desconectar a todos.
+14. ✅ 🟠 S · MEJORAR — **Dependencias sin fijar ni escanear:** 10 paquetes con `>=`, sin `pip-audit` ni Dependabot. Fijar versiones y activar el escaneo.
 
 ## 2. Errores y estabilidad (15-27)
 
@@ -35,7 +35,7 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 18. ◐ 🟠 M · MEJORAR — **17 `except …: pass` silenciosos.** Cada uno esconde un error posible; como mínimo loguearlos.
 19. 🟠 M · MEJORAR — **Las horas de venta están en UTC−4, no en hora argentina** (1 h atrasadas; una venta de 00:30 queda en el día anterior). Normalizar al ingresar y migrar el histórico en una sola operación.
 20. 🟠 S · MEJORAR — **Despacho arma el día de despacho con `hora_venta` desfasada** (ver 19): las ventas de la franja del corte pueden caer un día antes. Revisar junto con el punto 19.
-21. 🟠 M · MEJORAR — **`devoluciones_sync`, `sincronizador` y el webhook abren `conexion_usuario(usuario_id)` sin `cuenta_id`.** Con Plan Elite (dos cuentas) funciona por el modo de compatibilidad de RLS, pero no cierra el aislamiento por cuenta. Pasar siempre `cuenta_id`.
+21. ✅ 🟠 M · MEJORAR — **`devoluciones_sync`, `sincronizador` y el webhook abren `conexion_usuario(usuario_id)` sin `cuenta_id`.** Con Plan Elite (dos cuentas) funciona por el modo de compatibilidad de RLS, pero no cierra el aislamiento por cuenta. Pasar siempre `cuenta_id`.
 22. ✅ 🔴 M · MEJORAR — **Si el worker que tiene el scheduler cae, nadie lo retoma:** los demás workers decidieron al arrancar "otro lo tiene" y no reintentan el lock. La sincronización se detiene hasta el próximo reinicio.
 23. ✅ 🟠 M · OPTIMIZAR — **El scheduler recorre las cuentas en serie cada 4 min** y APScheduler descarta la corrida si la anterior sigue. Con ~15 cuentas el ciclo ya no entra. Paralelizar y escalonar por cuenta.
 24. 🟠 L · OPTIMIZAR — **25 cachés en memoria por proceso** (`_cache_*`). Con 2 máquinas × 2 workers hay 4 copias independientes: la caché casi no sirve y cada una es un riesgo de mezclar cuentas (ya pasó 12 veces). Moverlas a Flask-Caching con backend compartido o a la base.
@@ -96,7 +96,7 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 67. ✅ 🟠 S · IMPLEMENTAR — **Las migraciones no corren solas en el deploy.** Agregar `release_command = "python migrate.py"` en `fly.toml`.
 68. 🟠 S · IMPLEMENTAR — **Faltan secretos en Fly:** `MP_ACCESS_TOKEN` (sin él el cobro de suscripciones no funciona) y `SENTRY_DSN`.
 69. 🟠 M · IMPLEMENTAR — **No hay entorno de pruebas (staging)**: toda prueba toca la base real.
-70. 🟠 M · IMPLEMENTAR — **Sin monitoreo externo ni runbook:** un chequeo de disponibilidad (UptimeRobot) y una guía de qué hacer si el pooler se llena, un token vence o MeLi cae.
+70. ◐ 🟠 M · IMPLEMENTAR — **Sin monitoreo externo ni runbook:** un chequeo de disponibilidad (UptimeRobot) y una guía de qué hacer si el pooler se llena, un token vence o MeLi cae.
 
 ## 7. UX y diseño (71-86)
 
@@ -131,7 +131,7 @@ Leyenda — **Prioridad**: 🔴 alta (riesgo real hoy) · 🟠 media · 🟢 baj
 96. 🟠 M · IMPLEMENTAR — **Reporte mensual para el contador** con percepciones y retenciones de IIBB ya guardadas (hoy el fiscal es anual).
 97. 🟠 M · IMPLEMENTAR — **Centro de notificaciones con historial** (nueva pregunta, reclamo, devolución, mensaje) alimentado por los webhooks que ya llegan.
 98. 🟠 M · IMPLEMENTAR — **Panel de salud del sistema para el dueño:** estado del sync por cuenta, errores recientes, cuentas desconectadas, versión desplegada.
-99. 🔴 M · IMPLEMENTAR — **Pruebas automáticas de aislamiento entre cuentas** (dos cuentas de prueba: ninguna pantalla ni API puede mostrar datos de la otra). Es el riesgo que más caro sale en un SaaS.
+99. ✅ 🔴 M · IMPLEMENTAR — **Pruebas automáticas de aislamiento entre cuentas** (dos cuentas de prueba: ninguna pantalla ni API puede mostrar datos de la otra). Es el riesgo que más caro sale en un SaaS.
 100. 🟢 L · IMPLEMENTAR — **Abstraer el canal de venta** (hoy todo asume Mercado Libre) para sumar Tiendanube u otros más adelante.
 
 ---
