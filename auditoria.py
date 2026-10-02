@@ -55,6 +55,7 @@ ETIQUETAS = {
     "monotributo_declarar": "Categoría de Monotributo declarada",
     "plan_cambiar": "Plan cambiado (admin)",
     "usuario_activar": "Usuario activado o desactivado (admin)",
+    "trial_extender": "Prueba extendida (admin)",
     "suscripcion_cancelar": "Suscripción cancelada",
 }
 

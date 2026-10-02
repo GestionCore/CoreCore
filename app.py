@@ -65,6 +65,7 @@ import exportador_redes
 import scheduler
 import ventas_manuales
 import pagos
+import admin_usuarios
 import utils
 from utils import formatear_moneda, formatear_moneda_entera, SQL_RECLAMO_AFECTA, hoy_argentina, ARGENTINA, sql_momento_argentina
 from datetime import datetime, timedelta, timezone
@@ -141,6 +142,7 @@ app.add_template_filter(utils.plata, "plata")
 app.add_template_filter(utils.porcentaje, "pct")
 app.add_template_filter(utils.numero, "numero")
 app.add_template_filter(utils.fecha_corta, "fecha")
+app.add_template_filter(utils.cuando_corto, "cuando")
 app.add_template_filter(utils.plural, "plural")
 app.add_template_global(utils.rango_fechas, "rango_fechas")
 app.add_template_global(utils.ver_mas, "ver_mas")
@@ -3461,7 +3463,8 @@ def admin_panel():
                 COUNT(c.id)                                   AS num_cuentas,
                 MAX(c.ultima_sincronizacion_ventas)           AS ultima_sync,
                 MAX(c.racha_dias)                             AS racha_dias,
-                MAX(c.sincronizacion_inicial_completa::int)   AS sync_completa
+                MAX(c.sincronizacion_inicial_completa::int)   AS sync_completa,
+                MAX(c.racha_ultimo_dia)                       AS ultima_visita
             FROM usuarios u
             LEFT JOIN cuentas_meli c ON c.usuario_id = u.id
             GROUP BY u.id, u.email, u.nombre, u.plan, u.activo,
@@ -3470,28 +3473,7 @@ def admin_panel():
         """)
         filas = cursor.fetchall()
 
-    usuarios_lista = []
-    for f in filas:
-        usuarios_lista.append({
-            "id": f[0], "email": f[1], "nombre": f[2],
-            "plan": f[3], "activo": f[4],
-            "creado_en": f[5].strftime("%Y-%m-%d") if f[5] and hasattr(f[5], "strftime") else str(f[5] or ""),
-            "trial_termina_en": f[6].strftime("%Y-%m-%d") if f[6] and hasattr(f[6], "strftime") else "",
-            "onboarding_completo": bool(f[7]),
-            "num_cuentas": int(f[8] or 0),
-            "ultima_sync": f[9].strftime("%Y-%m-%d %H:%M") if f[9] and hasattr(f[9], "strftime") else "—",
-            "racha_dias": int(f[10] or 0),
-            "sync_completa": bool(f[11]),
-        })
-
-    stats = {
-        "total": len(usuarios_lista),
-        "trial": sum(1 for u in usuarios_lista if u["plan"] == "trial"),
-        "base": sum(1 for u in usuarios_lista if u["plan"] == "base"),
-        "elite": sum(1 for u in usuarios_lista if u["plan"] == "elite"),
-        "cancelado": sum(1 for u in usuarios_lista if u["plan"] == "cancelado"),
-        "inactivos": sum(1 for u in usuarios_lista if not u["activo"]),
-    }
+    usuarios_lista, stats = admin_usuarios.armar_usuarios(filas, hoy_argentina(), datetime.now(timezone.utc))
     return render_template("admin_panel.html", active_nav="admin",
                            usuarios=usuarios_lista, stats=stats)
 
@@ -3512,6 +3494,25 @@ def admin_cambiar_plan(uid):
             (nuevo_plan, uid),
         )
     return jsonify({"ok": True})
+
+
+@app.route("/admin/usuario/<int:uid>/extender_trial", methods=["POST"])
+@login_requerido
+@admin_requerido
+@auditar("trial_extender")
+def admin_extender_trial(uid):
+    """Suma días a la prueba de un usuario en trial: desde hoy si ya venció, desde su fecha de fin si todavía no."""
+    try:
+        dias = int((request.get_json(silent=True) or {}).get("dias", 7))
+    except (TypeError, ValueError):
+        dias = 0
+    if not 1 <= dias <= 60:
+        return jsonify({"ok": False, "detalle": "Los días tienen que ser entre 1 y 60."}), 400
+    with db.conexion_admin() as conexion:
+        fin = admin_usuarios.extender_prueba(conexion.cursor(), uid, dias)
+    if not fin:
+        return jsonify({"ok": False, "detalle": "Solo se extiende la prueba de quien está en el plan trial."}), 404
+    return jsonify({"ok": True, "trial_termina_en": utils.fecha_corta(fin), "dias": dias})
 
 
 @app.route("/admin/usuario/<int:uid>/toggle_activo", methods=["POST"])

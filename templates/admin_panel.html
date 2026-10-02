@@ -1,38 +1,29 @@
 {% extends "base.html" %}
+{% from "_ux.html" import kpi, banner %}
 {% block title %}Admin · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
         <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-settings"/></svg>Panel de Administración</h1>
-        <div class="page-subtitle">Gestión de usuarios y suscripciones de CoreLux · <a href="/admin/salud">Salud del sistema</a> · <a href="/admin/feedback">Comentarios</a></div>
+        <div class="page-subtitle">Usuarios y pruebas de CoreLux · <a href="/admin/salud">Salud del sistema</a> · <a href="/admin/feedback">Comentarios</a></div>
     </div>
 </div>
 
-<div class="stat-strip" style="margin-bottom:24px;">
-    <div class="stat-chip accent-primary">
-        <div class="stat-chip-label">Total usuarios</div>
-        <div class="stat-chip-value">{{ stats.total }}</div>
-    </div>
-    <div class="stat-chip" style="border-color:var(--semantic-warning);">
-        <div class="stat-chip-label">En trial</div>
-        <div class="stat-chip-value" style="color:var(--semantic-warning);">{{ stats.trial }}</div>
-    </div>
-    <div class="stat-chip accent-success">
-        <div class="stat-chip-label">Plan Base</div>
-        <div class="stat-chip-value">{{ stats.base }}</div>
-    </div>
-    <div class="stat-chip" style="border-color:var(--accent-brand);">
-        <div class="stat-chip-label">Plan Elite</div>
-        <div class="stat-chip-value" style="color:var(--accent-brand);">{{ stats.elite }}</div>
-    </div>
-    <div class="stat-chip">
-        <div class="stat-chip-label">Cancelados</div>
-        <div class="stat-chip-value text-muted">{{ stats.cancelado }}</div>
-    </div>
-    <div class="stat-chip" style="{% if stats.inactivos > 0 %}border-color:var(--danger);{% endif %}">
-        <div class="stat-chip-label">Inactivos</div>
-        <div class="stat-chip-value {% if stats.inactivos > 0 %}text-danger{% else %}text-muted{% endif %}">{{ stats.inactivos }}</div>
-    </div>
+{% if stats.por_vencer or stats.vencidas %}
+{{ banner("warn", "calendar",
+          (("<b>" ~ (stats.por_vencer|plural("prueba")) ~ "</b> por vencer en los próximos 3 días") if stats.por_vencer else "") ~
+          (" · " if stats.por_vencer and stats.vencidas else "") ~
+          (("<b>" ~ (stats.vencidas|plural("prueba")) ~ "</b> ya vencida" ~ ("s" if stats.vencidas != 1 else "")) if stats.vencidas else ""),
+          "Podés sumarles días con el botón «+7 días» de cada fila.") }}
+{% endif %}
+
+<div class="ux-kpis" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));">
+    {{ kpi("Usuarios", stats.total, "accion", "users", sub_html=(stats.activos_7d|plural("activo")) ~ " en 7 días") }}
+    {{ kpi("En prueba", stats.trial, "warn", "calendar", sub_html=("<b>" ~ stats.por_vencer ~ "</b> vencen en 3 días") if stats.por_vencer else "ninguna vence pronto") }}
+    {{ kpi("Plan Base", stats.base, "ok", "check") }}
+    {{ kpi("Plan Elite", stats.elite, "gold", "star") }}
+    {{ kpi("Cancelados", stats.cancelado, "neutral", "x") }}
+    {{ kpi("Inactivos", stats.inactivos, "danger" if stats.inactivos else "neutral", "lock") }}
 </div>
 
 <div class="panel" style="overflow-x:auto;">
@@ -40,40 +31,42 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Email</th>
+                <th>Usuario</th>
                 <th class="num">Plan</th>
-                <th class="num">Trial hasta</th>
+                <th class="num">Prueba</th>
                 <th class="num">Cuentas</th>
+                <th class="num">Última visita</th>
                 <th class="num">Última sync</th>
-                <th class="num">Racha</th>
                 <th class="num">Onboarding</th>
                 <th class="num">Activo</th>
-                <th class="num">Registrado</th>
                 <th class="num">Acciones</th>
             </tr>
         </thead>
         <tbody>
             {% for u in usuarios %}
             <tr id="fila-u{{ u.id }}" {% if not u.activo %}style="opacity:0.5;"{% endif %}>
-                <td class="text-muted" style="font-size:0.8em;">{{ u.id }}</td>
                 <td>
-                    <div style="font-size:0.9em;">{{ u.email }}</div>
-                    {% if u.nombre %}<div class="text-muted" style="font-size:0.82em;">{{ u.nombre }}</div>{% endif %}
+                    <div style="font-size:0.9em; overflow-wrap:anywhere;">{{ u.email }}</div>
+                    <div class="text-muted" style="font-size:0.82em;">{% if u.nombre %}{{ u.nombre }} · {% endif %}n.º {{ u.id }} · desde el {{ u.creado_en|fecha }}</div>
                 </td>
                 <td class="num">
                     <span id="badge-plan-{{ u.id }}" class="badge {% if u.plan == 'elite' %}badge-brand{% elif u.plan == 'base' %}badge-success{% elif u.plan == 'trial' %}badge-warning{% else %}badge-neutral{% endif %}">{{ u.plan }}</span>
                 </td>
-                <td class="num" style="font-size:0.82em; color:var(--text-secondary);">
-                    {% if u.trial_termina_en %}{{ u.trial_termina_en }}{% else %}—{% endif %}
+                <td class="num" id="prueba-{{ u.id }}" style="font-size:0.82em;">
+                    {% if u.dias_trial is none %}<span class="text-muted">—</span>
+                    {% else %}
+                    <div style="color:var(--text-secondary);">hasta el {{ u.trial_termina_en|fecha }}</div>
+                    <span class="ux-pill {{ 'ux-danger' if u.dias_trial < 0 else ('ux-warn' if u.dias_trial <= 3 else 'ux-ok') }}">
+                        {% if u.dias_trial < 0 %}vencida{% elif u.dias_trial == 0 %}vence hoy{% else %}{{ u.dias_trial|plural("día") }}{% endif %}
+                    </span>
+                    {% endif %}
                 </td>
                 <td class="num">{{ u.num_cuentas }}</td>
-                <td class="num" style="font-size:0.8em; color:var(--text-secondary);">{{ u.ultima_sync }}</td>
-                <td class="num" style="font-size:0.85em;">
-                    {% if u.racha_dias > 0 %}
-                    <svg class="icon" style="width:11px;height:11px;color:var(--accent-brand);vertical-align:middle;"><use href="#icon-flame"/></svg> {{ u.racha_dias }}d
-                    {% else %}—{% endif %}
+                <td class="num" style="font-size:0.82em; color:var(--text-secondary);">
+                    {{ u.ultima_visita|cuando(false) if u.ultima_visita else "—" }}
+                    {% if u.racha_dias > 0 %}<div style="color:var(--text-primary);"><svg class="icon" style="width:11px;height:11px;color:var(--accent-brand);vertical-align:middle;" aria-hidden="true"><use href="#icon-flame"/></svg> {{ u.racha_dias|plural("día") }} seguidos</div>{% endif %}
                 </td>
+                <td class="num" style="font-size:0.82em; color:var(--text-secondary);">{{ u.ultima_sync|cuando if u.ultima_sync else "—" }}</td>
                 <td class="num">
                     {% if u.onboarding_completo %}<svg class="icon" style="width:14px;height:14px;color:var(--success);"><use href="#icon-check"/></svg>{% else %}<span class="text-muted">—</span>{% endif %}
                 </td>
@@ -85,8 +78,8 @@
                         {% if u.activo %}Activo{% else %}Inactivo{% endif %}
                     </button>
                 </td>
-                <td class="num" style="font-size:0.8em; color:var(--text-secondary);">{{ u.creado_en }}</td>
                 <td class="num" style="white-space:nowrap;">
+                    {% if u.plan == 'trial' %}<button type="button" class="btn btn-secondary" style="font-size:0.82em; padding:3px 8px;" onclick="extenderPrueba({{ u.id }})">+7 días</button>{% endif %}
                     <select class="btn btn-secondary" style="font-size:0.82em; padding:3px 6px;" onchange="cambiarPlan({{ u.id }}, this)">
                         <option value="">Cambiar plan...</option>
                         <option value="trial" {% if u.plan == 'trial' %}disabled{% endif %}>→ Trial</option>
@@ -105,7 +98,7 @@
 async function cambiarPlan(uid, sel) {
     const nuevo = sel.value;
     if (!nuevo) return;
-    if (!confirm(`¿Cambiar el plan del usuario ${uid} a "${nuevo}"?`)) {
+    if (!(await confirmarDecision(`¿Cambiar el plan del usuario ${uid} a "${nuevo}"?`, 'Cambiar plan'))) {
         sel.value = '';
         return;
     }
@@ -125,20 +118,40 @@ async function cambiarPlan(uid, sel) {
                     trial: 'badge-warning', cancelado: 'badge-neutral'
                 }[nuevo];
             }
-            mostrarToast(`Plan actualizado a "${nuevo}"`);
+            mostrarToast(`Plan actualizado a "${nuevo}"`, 'success');
         } else {
-            mostrarToast(d.detalle || 'Error al cambiar plan', 'error');
+            mostrarToast(d.detalle || 'No se pudo cambiar el plan.', 'error');
         }
     } catch(e) {
-        mostrarToast('Error de red', 'error');
+        mostrarToast('No hubo conexión con el servidor. Probá de nuevo.', 'error');
     }
     sel.value = '';
+}
+
+async function extenderPrueba(uid) {
+    if (!(await confirmarDecision(`¿Sumarle 7 días de prueba al usuario ${uid}?`, 'Sumar 7 días', 'Si la prueba ya venció, los 7 días cuentan desde hoy.'))) return;
+    try {
+        const r = await fetch(`/admin/usuario/${uid}/extender_trial`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({dias: 7}),
+        });
+        const d = await r.json();
+        if (d.ok) {
+            mostrarToast(`Prueba extendida: ahora vence el ${d.trial_termina_en}.`, 'success');
+            setTimeout(() => location.reload(), 900);
+        } else {
+            mostrarToast(d.detalle || 'No se pudo extender la prueba.', 'error');
+        }
+    } catch(e) {
+        mostrarToast('No hubo conexión con el servidor. Probá de nuevo.', 'error');
+    }
 }
 
 async function toggleActivo(uid, btn) {
     const esActivo = btn.textContent.trim() === 'Activo';
     const accion = esActivo ? 'desactivar' : 'activar';
-    if (!confirm(`¿Querés ${accion} al usuario ${uid}?`)) return;
+    if (!(await confirmarDecision(`¿Querés ${accion} al usuario ${uid}?`, esActivo ? 'Desactivar' : 'Activar'))) return;
     try {
         const r = await fetch(`/admin/usuario/${uid}/toggle_activo`, {method: 'POST'});
         const d = await r.json();
@@ -147,12 +160,12 @@ async function toggleActivo(uid, btn) {
             btn.className = 'badge ' + (d.activo ? 'badge-success' : 'badge-neutral');
             const fila = document.getElementById(`fila-u${uid}`);
             if (fila) fila.style.opacity = d.activo ? '' : '0.5';
-            mostrarToast(d.activo ? 'Usuario activado' : 'Usuario desactivado');
+            mostrarToast(d.activo ? 'Usuario activado.' : 'Usuario desactivado.', 'success');
         } else {
-            mostrarToast(d.detalle || 'Error', 'error');
+            mostrarToast(d.detalle || 'No se pudo cambiar el estado del usuario.', 'error');
         }
     } catch(e) {
-        mostrarToast('Error de red', 'error');
+        mostrarToast('No hubo conexión con el servidor. Probá de nuevo.', 'error');
     }
 }
 </script>

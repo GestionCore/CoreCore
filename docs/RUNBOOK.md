@@ -88,11 +88,18 @@ los tokens ya emitidos siguen funcionando hasta que se refresquen.
 ### Respaldo
 
 ```bash
-python respaldo.py                 # zip de CSV en respaldos/ (no se sube a git)
-python respaldo.py --con-tokens    # incluye meli_tokens (cifrados): guardarlo como un secreto
+python respaldo.py --generar-clave # una sola vez: guardar la clave en RESPALDO_CLAVE (.env) Y en el gestor de contraseñas
+python respaldo.py                 # ~/CoreLux-respaldos/AAAAMMDD_HHMM.zip.cifrado (con RESPALDO_CLAVE; sin ella, .zip en claro y un aviso)
+python respaldo.py --con-tokens    # incluye meli_tokens (ya cifrados con TOKEN_ENCRYPTION_KEY): guardarlo como un secreto
+python respaldo.py --descifrar RUTA.zip.cifrado   # deja el .zip al lado para abrirlo
 ```
 
-Supabase hace además sus propios respaldos diarios (según el plan). Probar de vez en cuando que un zip abre y tiene filas.
+- Se guarda **fuera del proyecto** (`~/CoreLux-respaldos`, o `RESPALDOS_CARPETA`) y se niega a escribir adentro: el zip tiene los datos de todos los
+  usuarios y ya llegó a una imagen de Docker una vez. Con clave, el zip en claro nunca se escribe a disco. Perder la clave = perder el respaldo.
+- **Semanal automático en la PC del dueño** (Windows, el domingo a las 22:00; ajustar las rutas):
+  `schtasks /Create /SC WEEKLY /D SUN /ST 22:00 /TN "CoreLux respaldo" /TR "C:\RUTA\CoreLux-SaaS\venv\Scripts\python.exe C:\RUTA\CoreLux-SaaS\respaldo.py"`
+  (el `.env` se busca junto al script, no importa desde dónde corra la tarea). Copiar de vez en cuando la carpeta a un disco externo.
+- Supabase hace además sus propios respaldos diarios (según el plan: confirmarlo en Dashboard → Database → Backups). Probar cada tanto que un respaldo abre y tiene filas.
 
 ## 6. Sincronización con Mercado Libre
 
