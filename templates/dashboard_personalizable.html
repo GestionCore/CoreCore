@@ -430,31 +430,36 @@
             });
         }
 
+        // Cada fila de estos dos widgets abre el panel de su publicación (data-abrir): antes toda la tarjeta llevaba a Ganancia Real.
+        const abrirPublicacionDe = (w) => w.addEventListener('click', (e) => { const f = e.target.closest('[data-abrir]'); if (f) abrirDrawer(f.dataset.abrir); });
+
         if (prefs.top_productos) {
             const w = crearTarjetaWidgetDiv('top_productos');
             w.classList.add('widget-dashboard-ancho');
             grid.appendChild(w);
+            abrirPublicacionDe(w);
             fetch('/api/dashboard/top_productos').then(r => r.json()).then(d => {
-                if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Top productos</div><div class="text-muted" style="margin-top:10px;">Sin ventas este mes.</div>'; return; }
+                if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Modelos que más facturaron</div><div class="text-muted" style="margin-top:10px;">Sin ventas este mes.</div>'; return; }
                 const maxPct = d[0].pct || 1;
                 w.innerHTML = `
-                    <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
-                        <div class="stat-chip-label">Top productos — últimos 30 días</div>
-                        <div style="margin-top:14px; display:flex; flex-direction:column; gap:12px;">
-                            ${d.map((p, i) => `
-                                <div style="display:flex; align-items:center; gap:10px;">
-                                    <span style="width:22px; text-align:center; font-size:0.85em; font-weight:800; color:${i === 0 ? 'var(--accent-gold)' : 'var(--text-faint)'};">${i + 1}</span>
-                                    <div style="flex:1; min-width:0;">
-                                        <div style="font-size:0.88em; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${UX.esc(p.nombre)}</div>
-                                        <div class="ux-barra ux-accion" style="height:6px; margin-top:5px;"><span class="top-prod-barra" data-w="${Math.round(p.pct / maxPct * 100)}" style="width:0%;"></span></div>
-                                    </div>
-                                    <div style="text-align:right; white-space:nowrap;">
-                                        <div style="font-size:0.88em; font-weight:800;">${UX.esc(p.facturado_f)}</div>
-                                        <div style="font-size:0.8em; color:var(--text-faint);">${UX.esc(p.unidades)} u.</div>
-                                    </div>
-                                </div>`).join('')}
-                        </div>
-                    </a>`;
+                    <div class="ux-panel-cab"><div class="stat-chip-label">Modelos que más facturaron — últimos 30 días</div><a href="/metricas" class="text-muted" style="font-size:0.82em; font-weight:700;">Ver ganancia →</a></div>
+                    <div class="top-prod-lista">
+                        ${d.map((p, i) => {
+                            const tag = p.id_meli ? 'button' : 'div';
+                            return `<${tag} ${p.id_meli ? `type="button" data-abrir="${UX.esc(p.id_meli)}"` : ''} class="top-prod-fila">
+                                <span class="top-prod-pos ${i === 0 ? 'oro' : ''}">${i + 1}</span>
+                                ${p.miniatura ? `<img class="top-prod-foto" src="${UX.esc(p.miniatura)}" alt="" loading="lazy">` : '<span class="top-prod-foto vacia"></span>'}
+                                <div class="top-prod-cuerpo">
+                                    <div class="top-prod-nombre" title="${UX.esc(p.nombre)}">${UX.esc(p.nombre)}</div>
+                                    <div class="ux-barra ux-accion" style="height:6px; margin-top:5px;"><span class="top-prod-barra" data-w="${Math.round(p.pct / maxPct * 100)}" style="width:0%;"></span></div>
+                                </div>
+                                <div class="top-prod-cifras">
+                                    <div class="top-prod-plata">${UX.esc(p.facturado_f)}</div>
+                                    <div class="top-prod-u">${UX.esc(p.unidades)} u.${p.publicaciones > 1 ? ' · ' + UX.esc(p.publicaciones) + ' publicaciones' : ''}</div>
+                                </div>
+                            </${tag}>`;
+                        }).join('')}
+                    </div>`;
                 requestAnimationFrame(() => requestAnimationFrame(() => {
                     w.querySelectorAll('.top-prod-barra').forEach(el => { el.style.width = el.dataset.w + '%'; });
                 }));
@@ -465,21 +470,23 @@
             const w = crearTarjetaWidgetDiv('ultimas_ventas');
             w.classList.add('widget-dashboard-ancho');
             grid.appendChild(w);
+            abrirPublicacionDe(w);
             fetch('/api/dashboard/ultimas_ventas').then(r => r.json()).then(d => {
                 if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Últimas ventas</div><div class="text-muted" style="margin-top:10px;">Sin ventas recientes.</div>'; return; }
                 w.innerHTML = `
-                    <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
-                        <div class="stat-chip-label">Últimas ventas</div>
-                        <div class="mini-list" style="margin-top:6px;">
-                            ${d.map(v => `
-                            <div class="mini-list-row">
+                    <div class="ux-panel-cab"><div class="stat-chip-label">Últimas ventas</div><a href="/metricas" class="text-muted" style="font-size:0.82em; font-weight:700;">Ver todas →</a></div>
+                    <div class="mini-list" style="margin-top:6px;">
+                        ${d.map(v => {
+                            const tag = v.id_meli ? 'button' : 'div';
+                            return `<${tag} ${v.id_meli ? `type="button" data-abrir="${UX.esc(v.id_meli)}"` : ''} class="mini-list-row ${v.id_meli ? 'clickeable' : ''}">
                                 <span class="mini-list-qty">×${UX.esc(v.cantidad)}</span>
-                                <span class="mini-list-titulo">${UX.esc(v.nombre)}</span>
+                                ${v.talle ? `<span class="mini-list-talle">${UX.esc(v.talle)}</span>` : ''}
+                                <span class="mini-list-titulo" title="${UX.esc(v.nombre)}${v.talle ? ' · ' + UX.esc(v.talle) : ''}">${UX.esc(v.nombre)}</span>
                                 <span class="mini-list-precio">${UX.esc(v.precio_f)}</span>
                                 <span class="mini-list-fecha">${UX.esc(v.fecha)}</span>
-                            </div>`).join('')}
-                        </div>
-                    </a>`;
+                            </${tag}>`;
+                        }).join('')}
+                    </div>`;
             });
         }
     }

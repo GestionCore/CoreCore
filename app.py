@@ -964,32 +964,23 @@ def api_dashboard_ganancia_dia_vs_promedio():
 @app.route("/api/dashboard/top_productos")
 @login_requerido
 def api_dashboard_top_productos():
-    from datetime import timedelta
+    """Los 5 modelos que más facturaron en 30 días. Consolidado POR MODELO (todos los talles/variantes juntos), no por publicación: la misma campera en
+    cuatro talles ocupaba cuatro puestos del ranking."""
     desde = (hoy_argentina() - timedelta(days=30)).isoformat()
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
-            SELECT
-                COALESCE(titulo, 'Sin nombre') AS nombre,
-                SUM(cantidad) AS unidades,
-                SUM(precio_venta * cantidad) AS facturado
-            FROM ventas
-            WHERE cuenta_id = %s
-              AND DATE(fecha_venta) >= %s
-              AND eliminado_en IS NULL
-            GROUP BY nombre
-            ORDER BY facturado DESC
-            LIMIT 5
+            SELECT COALESCE(v.titulo, ''), v.id_meli, SUM(v.cantidad), SUM(v.precio_venta * v.cantidad), MAX(p.thumbnail), BOOL_OR(p.id_meli IS NOT NULL)
+            FROM ventas v
+            LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            WHERE v.cuenta_id = %s AND DATE(v.fecha_venta) >= %s AND v.eliminado_en IS NULL
+            GROUP BY v.titulo, v.id_meli
         """, (g.cuenta_id, desde))
         filas = cursor.fetchall()
-    total = sum(float(f[2]) for f in filas) or 1
     return jsonify([{
-        "nombre": f[0],
-        "unidades": int(f[1]),
-        "facturado": float(f[2]),
-        "facturado_f": f"${float(f[2]):,.0f}".replace(",", "."),
-        "pct": round(float(f[2]) / total * 100),
-    } for f in filas])
+        "nombre": m["nombre"], "unidades": m["unidades"], "facturado": m["facturado"], "facturado_f": utils.plata(m["facturado"]), "pct": m["pct"],
+        "publicaciones": m["publicaciones"], "id_meli": m["id_meli"], "miniatura": m["miniatura"],
+    } for m in dashboard_mod.top_modelos(filas)])
 
 
 @app.route("/api/dashboard/ultimas_ventas")
@@ -1000,23 +991,27 @@ def api_dashboard_ultimas_ventas():
         # fecha_venta es solo el DÍA: ordenar por ella dejaba las ventas de un mismo día en cualquier orden y mostraba todas a las 00:00
         cursor.execute(f"""
             SELECT
-                COALESCE(titulo, 'Sin nombre') AS nombre,
-                cantidad,
-                precio_venta,
-                {utils.sql_momento_argentina()} AS momento,
-                hora_venta IS NOT NULL AS con_hora
-            FROM ventas
-            WHERE cuenta_id = %s
-              AND eliminado_en IS NULL
+                COALESCE(v.titulo, 'Sin nombre') AS nombre,
+                v.cantidad,
+                v.precio_venta,
+                {utils.sql_momento_argentina("v")} AS momento,
+                v.hora_venta IS NOT NULL AS con_hora,
+                p.id_meli
+            FROM ventas v
+            LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            WHERE v.cuenta_id = %s
+              AND v.eliminado_en IS NULL
             ORDER BY momento DESC
             LIMIT 8
         """, (g.cuenta_id,))
         filas = cursor.fetchall()
     return jsonify([{
-        "nombre": f[0],
+        "nombre": utils.limpiar_titulo_modelo(f[0]) or f[0],
+        "talle": (lambda talle: None if talle == "Único" else talle)(utils.extraer_talle(f[0])),       # lo que distingue una fila de otra; nada si no tiene talle
         "cantidad": int(f[1]),
         "precio_f": utils.plata(f[2]),
         "fecha": utils.cuando_corto(f[3], con_hora=f[4]),
+        "id_meli": f[5],
     } for f in filas])
 
 

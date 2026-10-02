@@ -19,6 +19,27 @@ def _detalle_venta(titulo):
     return modelo if talle == "Único" else f"{modelo} ({talle})"
 
 
+def top_modelos(filas, maximo=5):
+    """
+    Los modelos que más facturaron, con todos sus talles/variantes JUNTOS (la clave de modelo es utils.limpiar_titulo_modelo). Cada fila:
+    (titulo, id_meli, unidades, facturado, miniatura, existe_en_la_base). La foto y la publicación que abre el panel son las de la publicación del
+    modelo que más facturó; `pct` es la parte del total facturado (de TODOS los modelos, no solo de los que se muestran).
+    """
+    modelos = {}
+    for titulo, id_meli, unidades, facturado, miniatura, existe in filas:
+        nombre = limpiar_titulo_modelo(titulo) or "Sin nombre"
+        m = modelos.setdefault(nombre.lower(), {"nombre": nombre, "unidades": 0, "facturado": 0.0, "publicaciones": 0, "mejor": -1.0, "id_meli": None, "miniatura": None})
+        facturado = float(facturado or 0)
+        m["unidades"] += int(unidades or 0)
+        m["facturado"] += facturado
+        m["publicaciones"] += 1
+        if facturado > m["mejor"]:
+            m["mejor"], m["miniatura"], m["id_meli"] = facturado, miniatura, (id_meli if existe else None)
+    total = sum(m["facturado"] for m in modelos.values()) or 1
+    top = sorted(modelos.values(), key=lambda m: -m["facturado"])[:maximo]
+    return [{**{k: m[k] for k in ("nombre", "unidades", "facturado", "publicaciones", "id_meli", "miniatura")}, "pct": round(m["facturado"] / total * 100)} for m in top]
+
+
 def ganancia_de_ayer_hasta_la_hora(ventas, ahora):
     """
     Ganancia neta de AYER entre las 00:00 y esta misma hora, para comparar la mañana de hoy con una mañana (contra el promedio del día entero,

@@ -30,3 +30,35 @@ def test_una_perdida_de_ayer_resta():
 def test_sin_ventas_o_sin_momento_da_cero():
     assert d.ganancia_de_ayer_hasta_la_hora([], AHORA) == (0.0, 0)
     assert d.ganancia_de_ayer_hasta_la_hora([_venta(None, 100.0), {"raw": {"ganancia_neta": 5}}], AHORA) == (0.0, 0)
+
+
+# ── Top de modelos: siempre por modelo, nunca por talle ───────────────────────────────────────────────────────────────────────
+
+def _fila(titulo, id_meli, unidades, facturado, miniatura="foto.jpg", existe=True):
+    return (titulo, id_meli, unidades, facturado, miniatura, existe)
+
+
+def test_los_talles_de_un_modelo_se_suman_en_un_solo_puesto():
+    filas = [
+        _fila("Campera De Jean Hombre Negra Talle L", "MLA1", 59, 3000000),
+        _fila("Campera De Jean Hombre Negra Talle XL", "MLA2", 49, 2600000),
+        _fila("Campera De Jean Hombre Negra Talle M", "MLA3", 44, 2400000),
+        _fila("Medias Corta Hombre Pack", "MLA9", 2, 15000),
+    ]
+    top = d.top_modelos(filas)
+    assert [m["nombre"] for m in top] == ["Campera De Jean Hombre Negra", "Medias Corta Hombre Pack"]
+    assert top[0]["unidades"] == 152 and top[0]["publicaciones"] == 3 and top[0]["facturado"] == 8000000
+    assert top[0]["id_meli"] == "MLA1"                      # la publicación que más facturó del modelo abre el panel
+    assert top[0]["pct"] == 100 and top[1]["pct"] == 0
+
+
+def test_pct_es_del_total_de_todos_los_modelos_no_solo_del_top():
+    filas = [_fila(f"Modelo {chr(65 + i)} Premium", f"MLA{i}", 1, 100) for i in range(8)]
+    top = d.top_modelos(filas, maximo=5)
+    assert len(top) == 5 and all(m["pct"] == 12 for m in top)      # 100 de 800 = 12,5 %: no 20 % como saldría repartiendo solo entre los 5
+
+
+def test_sin_titulo_y_publicacion_borrada():
+    top = d.top_modelos([_fila("", None, 1, 500, None, False), _fila("Remera Lisa", "MLA5", 3, 900, None, False)])
+    assert top[0]["nombre"] == "Remera Lisa" and top[0]["id_meli"] is None          # no existe en la base: no se ofrece abrir el panel
+    assert top[1]["nombre"] == "Sin nombre"
