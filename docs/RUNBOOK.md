@@ -27,13 +27,21 @@ python desplegar.py            # verifica carpeta y git, corre predeploy, despli
   pendientes; unos 2 minutos, no escribe nada). Con `--rapido` salta el recorrido. Existe porque Fly no tiene Redis y esta PC sí: un error que solo aparece
   sin Redis pasa todas las pruebas locales y rompería todas las páginas en producción.
 - Hacer deploy solo con el CI en verde (`ruff` + `pytest`).
+- **La imagen se niega a construirse** si falta una dependencia o el worker de producción (gunicorn + gevent) no carga (`verificar_dependencias.py`, un `RUN` del Dockerfile): el
+  deploy se corta antes de tocar las máquinas. Existe por el incidente del 2026-10-06 (falta `packaging` al sacar Celery: la imagen arrancaba y se caía, las dos máquinas quedaron
+  apagadas y producción estuvo caída). Si `fly deploy` falla en ese paso, el mensaje dice qué módulo falta: agregarlo a `requirements.txt`.
+- **`desplegar.py` vuelve solo atrás** si el deploy falla y `/healthz` no responde: busca la última release que terminó bien, la despliega con `--strategy immediate` y levanta las
+  máquinas que hayan quedado apagadas. Si Fly no llegó a reemplazar nada y la versión vieja sigue sirviendo, no hace nada.
+- Cuidado con el estado `stopped`: la estrategia rolling de Fly da por "buena" una máquina que se apagó después de agotar sus reinicios. Después de un deploy mirar `fly status -a corecore`
+  (ambas `started` y `1 passing`), no solo que el comando termine.
 - Después del deploy: abrir `/healthz/db`, entrar a la app y mirar `fly logs -a corecore` un par de minutos.
 
 **Volver atrás** si la versión nueva anda mal:
 
 ```bash
 fly releases -a corecore            # lista de versiones
-fly deploy -a corecore --image <imagen de la versión anterior que figura en fly releases>
+fly deploy -a corecore --image <imagen de la versión anterior que figura en fly releases> --strategy immediate
+fly machine start <id>              # si alguna máquina quedó apagada (fly status -a corecore)
 ```
 
 Las migraciones solo agregan (tablas, columnas, índices): una versión vieja del código sigue funcionando sobre el esquema nuevo.
