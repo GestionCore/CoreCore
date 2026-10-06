@@ -43,6 +43,9 @@ ARG GIT_SHA=desconocida
 ENV CORELUX_VERSION=${GIT_SHA}
 
 ENV PORT=8080
+# Sin esto Python junta los print() en un búfer cuando no hay terminal: el registro de Fly mostraba los avisos de la sincronización minutos tarde (y un error
+# podía no aparecer hasta que se llenara el búfer).
+ENV PYTHONUNBUFFERED=1
 EXPOSE 8080
 
 # gunicorn.conf.py trae ajustes de producción reales (preload_app=False
