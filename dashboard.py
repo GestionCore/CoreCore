@@ -238,6 +238,36 @@ def obtener_proyeccion_mes(usuario_id, cuenta_id=None, hoy=None):
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
 
 
+def armar_avisos(preguntas, reclamos, devoluciones, sin_stock):
+    """
+    Lo que la persona tiene que mirar ya, para la campana de la barra superior y los contadores del menú. Orden: lo que más urge primero.
+    Cada aviso: clave, cantidad, texto (en castellano, con el número ya dicho), tono (danger/warn/info), href e icono.
+    """
+    def _mas(n, uno, varios):
+        return uno if n == 1 else varios.format(n=n)
+
+    candidatos = [
+        ("reclamos", reclamos, _mas(reclamos, "1 reclamo que afecta tu reputación", "{n} reclamos que afectan tu reputación"), "danger", "/metricas#seccion-reclamos", "alert"),
+        ("preguntas", preguntas, _mas(preguntas, "1 pregunta sin responder", "{n} preguntas sin responder"), "warn", "/preguntas", "chat"),
+        ("sin_stock", sin_stock, _mas(sin_stock, "1 publicación activa sin stock", "{n} publicaciones activas sin stock"), "warn", "/stock", "box"),
+        ("devoluciones", devoluciones, _mas(devoluciones, "1 devolución por gestionar", "{n} devoluciones por gestionar"), "info", "/metricas#seccion-reclamos", "refresh"),
+    ]
+    items = [{"clave": c, "cantidad": int(n), "texto": t, "tono": tono, "href": href, "icono": icono} for c, n, t, tono, href, icono in candidatos if n and int(n) > 0]
+    return {"total": sum(i["cantidad"] for i in items), "items": items}
+
+
+def contar_preguntas_y_sin_stock(cursor):
+    """(preguntas sin responder, publicaciones activas sin una sola unidad). Dos consultas livianas a la base; no llaman a Mercado Libre."""
+    cursor.execute("SELECT COUNT(*) FROM preguntas_pendientes WHERE estado = 'pendiente'")
+    preguntas = int(cursor.fetchone()[0] or 0)
+    cursor.execute("""
+        SELECT COUNT(*) FROM productos_padre p
+        WHERE p.estado = 'active'
+          AND COALESCE((SELECT SUM(COALESCE(v.stock_propio, 0) + COALESCE(v.stock_full, 0)) FROM productos_variantes v WHERE v.id_padre = p.id), 0) = 0
+    """)
+    return preguntas, int(cursor.fetchone()[0] or 0)
+
+
 def obtener_ticker(usuario_id, cuenta_id=None):
     # Mismo criterio que obtener_ventas_hoy: "hoy" es el día en Argentina
     # (UTC-3), no el del reloj del sistema donde corra el proceso — si
@@ -288,6 +318,7 @@ def obtener_ticker(usuario_id, cuenta_id=None):
         incidencias_activas, devoluciones_activas, reclamos_sin_impacto = (int(x or 0) for x in cursor.fetchone())
 
         salud = salud_cuenta.calcular_score_salud(cursor)
+        preguntas_sin_responder, publicaciones_sin_stock = contar_preguntas_y_sin_stock(cursor)
 
         # Ojo: si la migración de racha_dias todavía no corrió, esto
         # tira error — a propósito no hay try/except acá adentro: un
@@ -306,7 +337,8 @@ def obtener_ticker(usuario_id, cuenta_id=None):
         "a_liberar_total": formatear_moneda(a_liberar_total), "hay_liberaciones": a_liberar_total > 0, "bridge_activo": False,
         "incidencias_activas": incidencias_activas, "devoluciones_activas": devoluciones_activas, "reclamos_sin_impacto": reclamos_sin_impacto, "salud_score": salud["score"], "racha_dias": racha_dias,
         "salud_etiqueta": salud["etiqueta"], "salud_detalle": salud["detalle"],
-        "ventas_hoy_detalle": ventas_hoy_detalle
+        "ventas_hoy_detalle": ventas_hoy_detalle,
+        "avisos": armar_avisos(preguntas_sin_responder, incidencias_activas, devoluciones_activas, publicaciones_sin_stock),
     }
 
 

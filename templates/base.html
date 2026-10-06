@@ -28,7 +28,7 @@
         })();
     </script>
 </head>
-<body {% if session.get('mostrar_tutorial') %}data-mostrar-tutorial="1"{% endif %}>
+<body {% if session.get('mostrar_tutorial') %}data-mostrar-tutorial="1"{% endif %}{% if cuenta_actual %} data-cuenta="{{ cuenta_actual.id }}"{% endif %}>
 <a href="#contenido-principal" class="saltar-al-contenido">Saltar al contenido</a>
 <!-- El canvas de partículas (static/js/particulas.js) queda en el repo
      por si hace falta revertir, pero se dejó de incluir acá: era la pieza
@@ -134,7 +134,17 @@
     <div class="topbar-estado" id="tour-estado">
         <span class="ticker-pill" id="ticker-ventas-pill" onmouseenter="mostrarTooltipVentas(this)" onmouseleave="ocultarTooltipTicker()"><span class="ticker-dot dot-emerald"></span><span id="ticker-ventas" class="skeleton">Cargando…</span></span>
         <span class="ticker-pill ticker-pill-secundario"><span class="ticker-dot dot-blue"></span><span id="ticker-liberacion" class="skeleton">Cargando…</span></span>
-        <span class="ticker-pill" id="ticker-incidencias-pill" style="display:none;"><span class="ticker-dot" style="background:var(--danger); box-shadow:0 0 6px var(--danger);"></span><span id="ticker-incidencias-texto">0 incidencias</span></span>
+    </div>
+    <!-- Campana: lo que hay para mirar ya (reclamos, preguntas, publicaciones sin stock, devoluciones). Se arma en global.js con los datos de /api/ticker -->
+    <div class="avisos-wrap">
+        <button type="button" class="btn-icono-barra btn-avisos" id="btn-avisos" aria-label="Avisos: nada pendiente" aria-haspopup="true" aria-expanded="false" aria-controls="panel-avisos" title="Lo que tenés para mirar">
+            <svg class="icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#icon-bell"/></svg>
+            <span class="avisos-cuenta" id="avisos-cuenta" hidden></span>
+        </button>
+        <div class="avisos-panel" id="panel-avisos" role="region" aria-label="Avisos" hidden>
+            <div class="avisos-cabecera">Para mirar ya</div>
+            <div class="avisos-lista" id="avisos-lista"></div>
+        </div>
     </div>
     <button type="button" class="btn-icono-barra btn-privacidad" onclick="alternarModoPrivacidad()" title="Ocultar los montos (modo privacidad)" aria-label="Modo privacidad"><svg class="icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#icon-eye"/></svg></button>
     <button type="button" class="btn btn-denim btn-sync-todo" id="btn-sincronizar-todo" onclick="ejecutarSincronizarTodo()" aria-label="Actualizar con Mercado Libre" title="Trae lo último de Mercado Libre ahora (se actualiza solo cada 4 minutos)">

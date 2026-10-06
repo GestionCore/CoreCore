@@ -81,6 +81,41 @@
 }
 .btn-icono-barra:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
 .btn-sync-todo { padding: 8px 14px; font-size: 0.85em; flex-shrink: 0; }
+
+/* ── Campana de avisos ─────────────────────────────────────── */
+.avisos-wrap { position: relative; flex-shrink: 0; }
+.btn-avisos { position: relative; }
+.btn-avisos[aria-expanded="true"] { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+.btn-avisos.avisos-urgente { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.avisos-cuenta {
+    position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: grid; place-items: center;
+    background: var(--danger); color: #fff; font-size: 11px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; border: 2px solid var(--bg-base);
+}
+.avisos-cuenta[hidden], .avisos-panel[hidden] { display: none; }
+.avisos-panel {
+    position: absolute; top: calc(100% + 10px); right: 0; z-index: 70; width: 360px; max-width: calc(100vw - 24px); overflow: hidden;
+    background: var(--bg-surface); border: 1px solid var(--glass-border); border-radius: var(--radius-md); box-shadow: var(--shadow-elevated);
+}
+.avisos-cabecera { padding: 12px 16px 10px; font-size: 0.78em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); border-bottom: 1px solid var(--border-soft); }
+.avisos-lista { display: flex; flex-direction: column; max-height: min(420px, 70vh); overflow-y: auto; }
+.aviso-fila {
+    --av-c: var(--semantic-info); display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: var(--text-primary); font-size: 0.9em; line-height: 1.35;
+    border-bottom: 1px solid var(--border-soft); text-decoration: none;
+}
+.aviso-fila:last-child { border-bottom: 0; }
+a.aviso-fila:hover { background: rgba(255,255,255,0.05); }
+.aviso-danger { --av-c: var(--danger); }
+.aviso-warn { --av-c: var(--semantic-warning); }
+.aviso-info { --av-c: var(--semantic-info); }
+.aviso-icono { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--av-c); background: color-mix(in srgb, var(--av-c) 16%, transparent); }
+.aviso-icono .icon { width: 16px; height: 16px; }
+.aviso-cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aviso-cuerpo b { font-weight: 650; }
+.aviso-cuerpo span { color: var(--text-secondary); font-size: 0.92em; }
+.aviso-listo { flex-shrink: 0; padding: 5px 10px; border-radius: var(--radius-pill); border: 1px solid var(--glass-border); background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.85em; font-weight: 600; cursor: pointer; }
+.aviso-listo:hover { color: var(--text-primary); background: rgba(255,255,255,0.08); }
+.avisos-vacio { display: flex; align-items: center; gap: 10px; padding: 18px 16px; color: var(--text-secondary); font-size: 0.9em; }
+.avisos-vacio .icon { width: 18px; height: 18px; color: var(--success); flex-shrink: 0; }
 .cuenta-btn { display: inline-flex; align-items: center; gap: 9px; padding: 4px 12px 4px 4px; border-radius: var(--radius-pill); cursor: pointer; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-primary); font: inherit; font-size: 0.85em; font-weight: 600; max-width: 220px; }
 .cuenta-btn:hover { background: rgba(255,255,255,0.09); }
 .cuenta-inicial { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; font-weight: 800; font-size: 0.9em; color: #fff; background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); }
@@ -111,6 +146,7 @@
     .sidebar { padding: 18px 10px 14px; align-items: center; }
     .sidebar-brand { padding: 4px 0 20px; }
     .sidebar-brand .sidebar-texto, .sidebar-item-texto, .sidebar-cuenta, .sidebar-pie .sidebar-item-texto { display: none; }
+    .sidebar-nav { align-self: stretch; }   /* si no, el menú mide lo que los íconos y la burbuja de avisos cae encima del ícono */
     .sidebar-item { justify-content: center; padding: 11px 0; }
     .sidebar-item .nav-badge { position: absolute; top: 4px; right: 6px; margin: 0; }
     .sidebar-item.active::before { left: -10px; }
@@ -130,6 +166,9 @@
     .buscador-central { flex: 0 0 auto; padding: 8px 12px; }
     .buscador-central span, .buscador-central kbd { display: none; }
     .topbar-estado .ticker-pill-secundario, .cuenta-nombre { display: none; }
+    /* En celular el panel ocupa el ancho de la pantalla, colgado de la barra superior (no de la campana) */
+    .avisos-wrap { position: static; }
+    .avisos-panel { left: 12px; right: 12px; top: calc(100% + 6px); width: auto; max-width: none; }
     .btn-sync-todo .btn-sync-texto { display: none; }
     .btn-sync-todo { padding: 8px 10px; }
     .cuenta-btn { padding: 4px; }
@@ -154,7 +193,8 @@
 /* ── Tema claro ────────────────────────────────────────────── */
 :root[data-theme="light"] .sidebar { background: #ffffff; }
 :root[data-theme="light"] .topbar, :root[data-theme="light"] .subnav-tabs { background: rgba(255, 255, 255, 0.88); }
-:root[data-theme="light"] .sidebar-item:hover, :root[data-theme="light"] .btn-icono-barra:hover, :root[data-theme="light"] .cuenta-btn:hover { background: rgba(0, 0, 0, 0.05); }
+:root[data-theme="light"] .sidebar-item:hover, :root[data-theme="light"] .btn-icono-barra:hover, :root[data-theme="light"] .cuenta-btn:hover, :root[data-theme="light"] a.aviso-fila:hover, :root[data-theme="light"] .aviso-listo:hover { background: rgba(0, 0, 0, 0.05); }
+:root[data-theme="light"] .btn-avisos[aria-expanded="true"] { background: rgba(0, 0, 0, 0.07); }
 :root[data-theme="light"] .bottombar { background: rgba(255, 255, 255, 0.94); }
 
 /* ── Modo foco de Despacho y papel ─────────────────────────── */

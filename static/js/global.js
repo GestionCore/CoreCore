@@ -142,11 +142,126 @@ function _actualizarBadgeNav(n) {
     }
 }
 
+// ---------- Campana de avisos ----------
+// Dos fuentes, un solo panel: lo que el ticker calcula en cada pasada (reclamos, preguntas, publicaciones sin stock, devoluciones, salud) y las alertas que el
+// sistema guardó para la persona (hoy, la salud de la conexión con Mercado Libre), que se descartan con "Listo".
+const _avisos = { derivados: [], guardados: [] };
+
+function _totalAvisos() {
+    return _avisos.derivados.reduce((suma, a) => suma + a.cantidad, 0) + _avisos.guardados.length;
+}
+
+function _filaAviso(icono, tono, texto, detalle, href) {
+    const fila = document.createElement(href ? 'a' : 'div');
+    fila.className = `aviso-fila aviso-${tono}`;
+    if (href) fila.href = href;
+    const ico = document.createElement('span');
+    ico.className = 'aviso-icono';
+    ico.innerHTML = `<svg class="icon" aria-hidden="true"><use href="#icon-${icono}"/></svg>`;
+    const cuerpo = document.createElement('span');
+    cuerpo.className = 'aviso-cuerpo';
+    const t = document.createElement('b');
+    t.textContent = texto;
+    cuerpo.appendChild(t);
+    if (detalle) { const d = document.createElement('span'); d.textContent = detalle; cuerpo.appendChild(d); }
+    fila.append(ico, cuerpo);
+    return fila;
+}
+
+function _pintarAvisos() {
+    const total = _totalAvisos();
+    const cuenta = document.getElementById('avisos-cuenta');
+    const boton = document.getElementById('btn-avisos');
+    const lista = document.getElementById('avisos-lista');
+    if (cuenta) { cuenta.hidden = total <= 0; cuenta.textContent = total > 9 ? '9+' : String(total); }
+    if (boton) {
+        boton.classList.toggle('avisos-urgente', _avisos.derivados.some(a => a.tono === 'danger') || _avisos.guardados.length > 0);
+        boton.setAttribute('aria-label', total > 0 ? `Avisos: ${total} para mirar` : 'Avisos: nada pendiente');
+    }
+    _actualizarBadgeNav(total);
+    if (!lista) return;
+    lista.replaceChildren();
+    for (const a of _avisos.derivados) lista.appendChild(_filaAviso(a.icono, a.tono, a.texto, '', a.href));
+    for (const g of _avisos.guardados) {
+        const fila = _filaAviso('alert', 'danger', g.titulo, g.mensaje, g.accion_url || '');
+        const listo = document.createElement('button');
+        listo.type = 'button';
+        listo.className = 'aviso-listo';
+        listo.textContent = 'Listo';
+        listo.title = 'Ya lo vi: sacarlo de la lista';
+        listo.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); marcarAvisoLeido(g.id); });
+        fila.appendChild(listo);
+        lista.appendChild(fila);
+    }
+    if (total <= 0) {
+        const vacio = document.createElement('div');
+        vacio.className = 'avisos-vacio';
+        vacio.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg>';
+        const texto = document.createElement('span');
+        texto.textContent = 'Todo al día: no hay nada pendiente.';
+        vacio.appendChild(texto);
+        lista.appendChild(vacio);
+    }
+}
+
+async function marcarAvisoLeido(id) {
+    _avisos.guardados = _avisos.guardados.filter(g => g.id !== id);
+    _pintarAvisos();
+    try { await fetch(`/api/alertas/${id}/leer`, { method: 'POST' }); } catch (e) { /* si no se pudo, vuelve a aparecer en la próxima consulta */ }
+}
+
+// Aviso emergente SOLO cuando algo subió desde la última vez que se miró (en otra pantalla o hace un rato): la primera lectura de la sesión no avisa nada,
+// porque lo que ya estaba lo muestra la campana.
+function _avisarNovedades(derivados) {
+    const clave = `corelux_avisos_${document.body.dataset.cuenta || ''}`;
+    let antes = null;
+    try { antes = JSON.parse(sessionStorage.getItem(clave)); } catch (e) { /* sin almacenamiento: no se avisa */ }
+    const ahora = {};
+    derivados.forEach(a => { ahora[a.clave] = a.cantidad; });
+    try { sessionStorage.setItem(clave, JSON.stringify(ahora)); } catch (e) { /* idem */ }
+    if (!antes) return;
+    const nuevos = derivados.filter(a => a.clave !== 'salud' && a.cantidad > (antes[a.clave] || 0));
+    // 'warning' y no 'error': el de error suena, y esto llega solo, sin que la persona haya hecho nada
+    if (nuevos.length) mostrarToast(nuevos.map(a => a.texto).join(' · '), 'warning');
+}
+
+function _avisosDelTicker(data) {
+    const derivados = ((data.avisos || {}).items || []).slice();
+    if (data.salud_score !== undefined && data.salud_score < 65) {
+        derivados.push({ clave: 'salud', cantidad: 1, texto: `La salud de tu cuenta está en ${data.salud_score} (${data.salud_etiqueta || 'a mejorar'})`, tono: data.salud_score < 45 ? 'danger' : 'warn', href: '/dashboard', icono: 'alert' });
+    }
+    return derivados;
+}
+
+function _cerrarAvisos() {
+    const panel = document.getElementById('panel-avisos');
+    const boton = document.getElementById('btn-avisos');
+    if (panel) panel.hidden = true;
+    if (boton) boton.setAttribute('aria-expanded', 'false');
+}
+
+function inicializarAvisos() {
+    const panel = document.getElementById('panel-avisos');
+    const boton = document.getElementById('btn-avisos');
+    if (!panel || !boton) return;
+    boton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const abrir = panel.hidden;
+        panel.hidden = !abrir;
+        boton.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    });
+    // Un aviso que lleva a la pantalla donde ya estás (solo cambia el #ancla) no recarga la página: el panel se cierra igual
+    document.addEventListener('click', (e) => { if (!panel.hidden && (!panel.contains(e.target) || e.target.closest('a.aviso-fila'))) _cerrarAvisos(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) { _cerrarAvisos(); boton.focus(); } });
+    _pintarAvisos();
+}
+
 async function cargarAlertasPendientes() {
     try {
         const resp = await fetch('/api/alertas/pendientes');
         const d = await resp.json();
-        if (d.total > 0) _actualizarBadgeNav(d.total);
+        _avisos.guardados = d.alertas || [];
+        _pintarAvisos();
     } catch (e) { /* silencioso */ }
 }
 
@@ -825,17 +940,6 @@ async function actualizarTicker() {
         elLiberacion.title = data.hay_liberaciones ? `En total te falta acreditar $${sinCentavos(data.a_liberar_total)}` : '';
 
 
-        const pillInc = document.getElementById('ticker-incidencias-pill');
-        const txtInc = document.getElementById('ticker-incidencias-texto');
-        if (pillInc && txtInc) {
-            if (data.incidencias_activas > 0) {
-                pillInc.style.display = 'inline-flex';
-                txtInc.textContent = `${data.incidencias_activas} reclamo${data.incidencias_activas === 1 ? '' : 's'} activo${data.incidencias_activas === 1 ? '' : 's'}`;
-            } else {
-                pillInc.style.display = 'none';
-            }
-        }
-
         const dotSalud = document.getElementById('ticker-salud-dot');
         const txtSalud = document.getElementById('ticker-salud-texto');
         if (dotSalud && txtSalud && data.salud_score !== undefined) {
@@ -858,8 +962,11 @@ async function actualizarTicker() {
             }
         }
 
-        // Badge en el nav: incidencias operativas del ticker
-        _actualizarBadgeNav((data.incidencias_activas || 0) + (data.salud_score !== undefined && data.salud_score < 65 ? 1 : 0));
+        // Campana y contador del menú: lo que hay para mirar ya
+        const derivados = _avisosDelTicker(data);
+        _avisos.derivados = derivados;
+        _pintarAvisos();
+        _avisarNovedades(derivados);
 
         window._ultimoTickerData = data;
     } catch (e) {
@@ -1464,6 +1571,7 @@ document.addEventListener('DOMContentLoaded', () => {
     _inicializarIconoTema();
     envolverIdsCopiables(document.body);
     inicializarComando();
+    inicializarAvisos();
     actualizarTicker();
     revisarMensajeEnURL();
     marcarCurvaRota();

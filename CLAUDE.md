@@ -528,6 +528,11 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
 - **Errores de MeLi**: `meli_errores.explicar_respuesta(r)` es la única forma de contarle un rechazo a la persona (sin códigos, JSON ni inglés). Toda escritura a MeLi tiene que mirar el
   resultado: crear/eliminar descuentos lo ignoraban y parecía que había funcionado.
 - ⚠️ Al correr pruebas y commitear en el mismo comando: nunca con `;` ni detrás de un pipe (`| tail` esconde el código de salida): ya se subió un commit con pruebas en rojo.
+- **Campana de avisos (2026-10-06)**: UN solo lugar para "qué tengo que mirar ya". `dashboard.armar_avisos` arma, en `/api/ticker`, reclamos que afectan la reputación,
+  preguntas sin responder, publicaciones activas sin stock y devoluciones (más la salud <65, que suma el JS); `global.js` los junta con las alertas guardadas
+  (`/api/alertas/pendientes`, hoy la salud de tokens, con "Listo") en `_avisos` y de ahí salen la campana, los contadores del menú (`_actualizarBadgeNav`) y un toast SOLO cuando
+  algo subió (la primera lectura de la sesión no avisa). Para sumar un aviso nuevo: un candidato más en `armar_avisos` (con su prueba), no otro contador en el HTML.
+  Los textos externos entran por `textContent`. No hay mails ni notificaciones del navegador todavía (falta definir proveedor de mail).
 - **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real
