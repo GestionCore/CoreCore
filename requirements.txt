@@ -17,3 +17,5 @@ waitress>=3.0.0
 # --- Producción en Linux (Waitress arriba es solo para Windows) ---
 gunicorn>=23.0.0
 gevent>=24.11.1
+# gunicorn (worker gevent) importa `packaging` pero las versiones recientes no lo declaran: antes llegaba de rebote con Celery. Sin esto la imagen arranca y se cae.
+packaging>=23.0

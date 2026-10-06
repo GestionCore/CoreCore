@@ -34,6 +34,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Si falta cualquier dependencia (o el worker de gunicorn no carga), la imagen NO se construye y el deploy se corta antes de tocar producción
+# (ver verificar_dependencias.py: pasó con `packaging` y las dos máquinas quedaron apagadas).
+RUN python verificar_dependencias.py
+
 # Versión (commit) que corre: la pasa desplegar.py con --build-arg y /healthz la informa, así se puede confirmar qué código quedó en producción.
 ARG GIT_SHA=desconocida
 ENV CORELUX_VERSION=${GIT_SHA}

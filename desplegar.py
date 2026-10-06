@@ -134,6 +134,59 @@ def probar_rutas():
     return ok
 
 
+def _json(fly, *args):
+    """La salida --json de un comando de fly, o None si no se pudo leer."""
+    r = subprocess.run([fly, *args, "--json"], cwd=RAIZ, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    try:
+        return json.loads(r.stdout)
+    except ValueError:
+        return None
+
+
+def produccion_responde(intentos=6, espera=10):
+    """¿/healthz contesta 200 (con la versión que sea)? Se reintenta: una máquina que recién arranca tarda unos segundos."""
+    for i in range(intentos):
+        codigo, _ = pedir("/healthz")
+        if codigo == 200:
+            return True
+        if i < intentos - 1:
+            time.sleep(espera)
+    return False
+
+
+def ultima_release_buena(releases):
+    """La release más reciente que terminó bien (Fly las lista de la más nueva a la más vieja). Devuelve su imagen o None."""
+    for r in releases or []:
+        if str(r.get("Status", "")).lower() == "complete" and r.get("ImageRef"):
+            return r["ImageRef"]
+    return None
+
+
+def volver_atras(fly):
+    """
+    Producción quedó caída después de un deploy (pasó el 2026-10-06: la imagen nueva no arrancaba y las dos máquinas se apagaron): vuelve a la última release
+    que funcionó, levanta las máquinas que hayan quedado apagadas y confirma que responda. Devuelve True si producción volvió.
+    """
+    imagen = ultima_release_buena(_json(fly, "releases", "-a", APP, "--image"))
+    if not imagen:
+        print("  ❌ No encontré una release anterior que haya terminado bien. Hacelo a mano: fly releases -a corecore --image")
+        return False
+    print(f"  Volviendo a {imagen}")
+    subprocess.run([fly, "deploy", "-a", APP, "--image", imagen, "--strategy", "immediate"], cwd=RAIZ)
+    for maquina in _json(fly, "machines", "list", "-a", APP) or []:
+        if maquina.get("state") == "stopped":
+            subprocess.run([fly, "machine", "start", maquina["id"], "-a", APP], cwd=RAIZ)
+    return produccion_responde()
+
+
+def rescatar_si_esta_caida(fly):
+    if produccion_responde(intentos=3, espera=10):
+        print("\nProducción sigue respondiendo con la versión anterior: Fly no reemplazó las máquinas. No hay nada que deshacer.")
+        return
+    print("\n⚠️ Producción NO responde. Vuelvo a la última versión que funcionaba.")
+    print("  ✅ Producción volvió a responder con la versión anterior." if volver_atras(fly) else "  ❌ Producción sigue sin responder: mirá `fly status -a corecore` y `fly logs -a corecore`.")
+
+
 def main():
     rapido = "--rapido" in sys.argv
     py, fly = _python(), _fly()
@@ -148,16 +201,17 @@ def main():
     codigo, antes = pedir("/healthz")
     print(f"\n▶ Desplegando (fly deploy, versión {version})")
     if subprocess.run([fly, "deploy", "-a", APP, "--build-arg", f"GIT_SHA={version}"], cwd=RAIZ).returncode != 0:
-        print("\nEl deploy falló. Fly mantiene las máquinas anteriores si no pasaron el chequeo de salud: mirá `fly status` y `fly logs`.")
+        print("\nEl deploy falló. Mirá `fly logs -a corecore` para ver por qué.")
+        rescatar_si_esta_caida(fly)
         sys.exit(1)
 
     if esperar_version(version) and probar_rutas():
         print(f"\n✅ Desplegado y verificado: {URL} corre la versión {version}.")
         return
-    print("\n❌ El deploy terminó pero producción no quedó bien. Para volver a la versión anterior:")
-    print(f"     {os.path.basename(fly)} releases -a {APP} --image          (buscá la imagen de la release anterior)")
-    print(f"     {os.path.basename(fly)} deploy -a {APP} --image <esa imagen>")
-    print(f"   y mirá qué pasó con: {os.path.basename(fly)} logs -a {APP}")
+    print("\n❌ El deploy terminó pero producción no quedó bien.")
+    rescatar_si_esta_caida(fly)
+    print(f"   Si responde pero con problemas, para volver a la versión anterior: {os.path.basename(fly)} releases -a {APP} --image  y  {os.path.basename(fly)} deploy -a {APP} --image <imagen>")
+    print(f"   Mirá qué pasó con: {os.path.basename(fly)} logs -a {APP}")
     sys.exit(1)
 
 
