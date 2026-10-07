@@ -6,7 +6,8 @@ dueño) las tareas se delegaban a Celery y el sistema se portaba distinto que en
   · cada 30 minutos (SYNC_INTERVALO_MINUTOS): barredora de seguridad de todas las cuentas activas. El motor principal es el webhook de Mercado Libre
     (/notificaciones_meli: items, órdenes, envíos, preguntas, reclamos), que en producción llega varias veces por minuto
   · cada 4 minutos: SOLO las cuentas cuya primera sincronización todavía no terminó (reintento rápido de las recién conectadas; normalmente ninguna)
-  · cada hora: verificación de los permisos de Mercado Libre (salud_tokens)
+  · cada hora: verificación de los permisos de Mercado Libre (salud_tokens) y limpieza de vinculaciones de OAuth abandonadas
+  · cada madrugada (03:30 de Argentina): borrado físico de lo «eliminado» hace más de un día (soft deletes)
   · cada 24 horas: relevamiento de competencia y de tendencias
 """
 import os
@@ -158,6 +159,25 @@ def _tarea_limpiar_vinculaciones_oauth():
         print(f"[Scheduler] 🧹 {borrados} vinculación(es) de OAuth abandonada(s) borrada(s).")
 
 
+def _tarea_limpiar_soft_deletes():
+    """
+    Borrado físico de lo que se «eliminó» (eliminado_en) hace más de un día: el patrón de migraciones/0002 oculta la fila para poder deshacer, pero nadie la purgaba.
+    Hoy ninguna pantalla marca `eliminado_en` (el borrado de gastos y ventas manuales es físico), así que esto no encuentra nada: queda listo para cuando alguna lo use.
+    Una sola transacción para las dos tablas, con la conexión de administración (no hay una persona detrás: es mantenimiento).
+    """
+    with db.conexion_admin() as conexion:
+        cursor = conexion.cursor()
+        borrados = {}
+        for tabla in TABLAS_CON_SOFT_DELETE:
+            cursor.execute(f"DELETE FROM {tabla} WHERE eliminado_en IS NOT NULL AND eliminado_en < now() - interval '1 day'")
+            borrados[tabla] = cursor.rowcount
+    if any(borrados.values()):
+        print(f"[Scheduler] 🧹 Soft deletes purgados: {borrados}")
+
+
+TABLAS_CON_SOFT_DELETE = ("gastos_operativos", "ventas")
+
+
 def iniciar_scheduler():
     """
     Punto de entrada llamado desde app.py al importarse (una vez por proceso). Solo un proceso tiene el lock y corre las tareas; los demás
@@ -205,5 +225,7 @@ def _arrancar_apscheduler():
     _scheduler_apscheduler.add_job(_tarea_relevar_tendencias, "interval", hours=24, id="relevar_tendencias")
     _scheduler_apscheduler.add_job(_tarea_verificar_tokens, "interval", hours=1, id="verificar_tokens", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_limpiar_vinculaciones_oauth, "interval", hours=1, id="limpiar_oauth", max_instances=1, coalesce=True)
+    # De madrugada: 06:30 UTC = 03:30 en Argentina (sin horario de verano). En UTC a propósito: no depende de que el sistema tenga la base de zonas horarias
+    _scheduler_apscheduler.add_job(_tarea_limpiar_soft_deletes, "cron", hour=6, minute=30, timezone="UTC", id="limpiar_soft_deletes", max_instances=1, coalesce=True)
     _scheduler_apscheduler.start()
     print(f"[Scheduler] ✅ APScheduler iniciado (barredora cada {_intervalo_barredora()} min para todas las cuentas; cada {INTERVALO_CUENTAS_NUEVAS_MINUTOS} min solo las de primera sincronización pendiente).")

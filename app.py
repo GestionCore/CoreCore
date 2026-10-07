@@ -670,15 +670,19 @@ def notificaciones_meli():
     Developers desde acá), así que ambas quedan cubiertas en vez de
     apostar a una sola.
     """
-    datos = request.get_json(silent=True) or {}
+    datos = request.get_json(silent=True)
+    datos = datos if isinstance(datos, dict) else {}
     topic = datos.get("topic")
     resource = datos.get("resource")
     meli_user_id = datos.get("user_id")
+    # Una línea por notificación, solo con el TEMA (sin ids ni datos de nadie): es lo que permite ver en los logs qué temas manda Mercado Libre de verdad
+    print(f"[Webhook] tema={topic}")
 
     # Las notificaciones de otra aplicación (o una inventada) no disparan nada: el contenido tampoco se toma como dato,
     # solo avisa QUÉ volver a pedirle a Mercado Libre para esa cuenta.
     application_id = datos.get("application_id")
     if application_id is not None and config.MELI_CLIENT_ID and str(application_id) != str(config.MELI_CLIENT_ID):
+        print(f"[Webhook] ignorada: es de otra aplicación (tema={topic})")
         return "", 200
 
     if topic and meli_user_id:
