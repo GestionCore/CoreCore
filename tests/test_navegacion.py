@@ -15,8 +15,8 @@ SIN_SECCION = {"admin", "suscripcion", "referidos", "cuenta"}
 
 def test_cada_pantalla_aparece_una_sola_vez_en_el_menu():
     claves = [p["nav_key"] for _, p in TODAS]
-    endpoints = [p["endpoint"] for _, p in TODAS]
-    assert len(claves) == len(set(claves)) and len(endpoints) == len(set(endpoints))
+    destinos = [(p["endpoint"], p.get("ancla")) for _, p in TODAS]                 # varias pestañas pueden vivir en una misma pantalla (mismo endpoint, distinta ancla)
+    assert len(claves) == len(set(claves)) and len(destinos) == len(set(destinos))
 
 
 def test_cada_pantalla_del_menu_tiene_su_ruta_y_su_vista():

@@ -1,11 +1,9 @@
-{% extends "base.html" %}
+{# Sección «despacho» de /dia (antes era la pantalla /despacho): el contexto lo arma app._contexto_despacho(). #}
 {% from "_ux.html" import banner, vacio %}
-{% block title %}Despacho · CoreLux{% endblock %}
-{% block content %}
 {% set pendientes = total - listos %}
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-truck"/></svg>Despacho</h1>
+        <h2 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-truck"/></svg>Despacho</h2>
         <div class="page-subtitle">Flex y Correo del <strong>{{ fecha|fecha }}</strong> — corte a las <strong>{{ hora_corte }}:00</strong> <span id="cuenta-regresiva-corte"></span></div>
     </div>
     <button type="button" class="btn btn-secondary" onclick="alternarModoDespachoLimpio()" id="btn-modo-limpio"><svg class="icon" style="width:14px;height:14px;" id="icono-modo-limpio"><use href="#icon-bolt"/></svg><span id="label-modo-limpio">Modo foco</span></button>
@@ -42,7 +40,7 @@
 </div>
 {% endif %}
 
-<form action="/despacho" method="GET" class="ux-periodo no-imprimir" style="margin-bottom:16px;">
+<form action="/dia#despacho" method="GET" class="ux-periodo no-imprimir" style="margin-bottom:16px;">
     <label class="field-label" for="fecha-despacho" style="margin:0;"><b>Ver otro día</b></label>
     <input type="date" id="fecha-despacho" name="fecha" value="{{ fecha }}" onchange="this.form.submit()" style="max-width:190px;">
     {% if total > 0 %}
@@ -180,4 +178,3 @@
         });
     }
 </script>
-{% endblock %}

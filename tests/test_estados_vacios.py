@@ -41,7 +41,7 @@ def test_stock_sin_catalogo_no_dice_stock_sano():
 def test_pendientes_de_una_cuenta_sin_datos_no_felicita():
     contexto = dict(misiones=[], mensaje_todo_bien=True, mensaje_coach=None, coach_pendiente=False, conteo_por_prioridad={"urgente": 0, "importante": 0, "opcional": 0},
                     logros_resueltos=[], recien_resueltas=0)
-    sin_datos = _render("logros.html", cuenta_sin_datos=True, **contexto)
+    sin_datos = _render("_dia_pendientes.html", cuenta_sin_datos=True, **contexto)
     assert "Todavía no hay nada para revisar" in sin_datos and "lo estás haciendo bien" not in sin_datos
-    con_datos = _render("logros.html", cuenta_sin_datos=False, **contexto)
+    con_datos = _render("_dia_pendientes.html", cuenta_sin_datos=False, **contexto)
     assert "Todo en orden" in con_datos and "lo estás haciendo bien" in con_datos

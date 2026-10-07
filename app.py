@@ -1531,9 +1531,20 @@ def api_tendencias_estimar_margen():
     return jsonify(resultado)
 
 
-@app.route("/logros")
-@login_requerido
-def logros_vista():
+class _Salir(Exception):
+    """Una sección de «Día a día» que no puede armarse sin sacar a la persona de la página (la cuenta de Mercado Libre está desconectada): lleva la respuesta a devolver."""
+    def __init__(self, respuesta):
+        super().__init__()
+        self.respuesta = respuesta
+
+
+def _url_dia(ancla, **parametros):
+    """/dia?…#ancla: a dónde mandar lo que antes eran pantallas sueltas (despacho, preguntas, pendientes, reputación)."""
+    consulta = urlencode({k: v for k, v in parametros.items() if v})
+    return "/dia" + (f"?{consulta}" if consulta else "") + f"#{ancla}"
+
+
+def _contexto_logros():
     import db
     headers = None
     try:
@@ -1549,20 +1560,45 @@ def logros_vista():
             cursor.execute("SELECT NOT EXISTS (SELECT 1 FROM ventas) AND NOT EXISTS (SELECT 1 FROM productos_padre)")
             cuenta_sin_datos = bool(cursor.fetchone()[0])
     except Exception as e:
-        print(f"[Logros] ❌ Error armando la página: {e}")
-        return "No pudimos armar la página de Logros ahora mismo. Probá recargar en un rato — si sigue pasando, avisanos.", 502
+        print(f"[Logros] ❌ Error armando la sección: {e}")
+        raise
 
     conteo_por_prioridad = {"urgente": 0, "importante": 0, "opcional": 0}
     for m in resultado["misiones"]:
         conteo_por_prioridad[m["prioridad"]] = conteo_por_prioridad.get(m["prioridad"], 0) + 1
 
-    return render_template(
-        "logros.html", misiones=resultado["misiones"], mensaje_todo_bien=resultado["mensaje_todo_bien"], cuenta_sin_datos=cuenta_sin_datos,
+    return dict(
+        misiones=resultado["misiones"], mensaje_todo_bien=resultado["mensaje_todo_bien"], cuenta_sin_datos=cuenta_sin_datos,
         mensaje_coach=resultado.get("mensaje_coach"), coach_pendiente=resultado.get("coach_pendiente", False),
         conteo_por_prioridad=conteo_por_prioridad,
         logros_resueltos=resultado.get("logros_resueltos", []), recien_resueltas=resultado.get("recien_resueltas", 0),
-        active_nav="logros"
     )
+
+
+@app.route("/dia")
+@login_requerido
+def dia_vista():
+    """
+    «Día a día» en UNA pantalla: despacho, preguntas, pendientes y reputación, una debajo de la otra. Las pestañas de arriba no cambian de página: saltan a cada parte.
+    Si una sección no se puede armar, las demás se muestran igual (con un aviso en la que falló); si la cuenta de Mercado Libre está desconectada, se manda a reconectarla.
+    """
+    contexto, errores = {}, {}
+    for clave, armar in (("despacho", _contexto_despacho), ("pendientes", _contexto_logros), ("reputacion", _contexto_reputacion)):
+        try:
+            contexto.update(armar())
+        except _Salir as salida:
+            return salida.respuesta
+        except Exception as e:
+            print(f"[Día a día] ❌ No se pudo armar «{clave}»: {type(e).__name__}: {e}")
+            errores[clave] = True
+    return render_template("dia.html", active_nav="despacho", errores=errores, **contexto)
+
+
+@app.route("/logros")
+@login_requerido
+def logros_vista():
+    """Ahora vive dentro de «Día a día» (/dia): el link viejo lleva a esa sección."""
+    return redirect(_url_dia("pendientes"))
 
 
 @app.route("/api/logros/coach")
@@ -1595,21 +1631,19 @@ def embudo_conversion_vista():
     return render_template("embudo_conversion.html", embudo=embudo, zombies=zombies, active_nav="embudo_conversion")
 
 
-@app.route("/reputacion")
-@login_requerido
-def reputacion_vista():
+def _contexto_reputacion():
     import db
     try:
         access_token = token_manager.asegurar_token_valido(g.cuenta_id)
     except token_manager.CuentaDesconectada:
-        return redirect(url_for("reconectar"))
+        raise _Salir(redirect(url_for("reconectar")))
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (g.cuenta_id,))
         fila = cursor.fetchone()
     if not fila:
-        return "No se encontró tu cuenta.", 401
+        raise _Salir(("No se encontró tu cuenta.", 401))
 
     datos = reputacion_mod.obtener_reputacion(access_token, fila[0])
 
@@ -1635,7 +1669,14 @@ def reputacion_vista():
     incidencias_por_tipo["reclamos_sin_impacto"] = reclamos_sin
     incidencias_por_tipo["cancelaciones"] = conteo_tipo.get("cancelacion", (0, 0))[0]
 
-    return render_template("reputacion.html", rep=datos, incidencias_por_tipo=incidencias_por_tipo, active_nav="reputacion")
+    return dict(rep=datos, incidencias_por_tipo=incidencias_por_tipo)
+
+
+@app.route("/reputacion")
+@login_requerido
+def reputacion_vista():
+    """Ahora vive dentro de «Día a día» (/dia): el link viejo lleva a esa sección."""
+    return redirect(_url_dia("reputacion"))
 
 
 @app.route("/competencia")
@@ -2335,9 +2376,7 @@ def eliminar_gasto(id_gasto):
     return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}")
 
 
-@app.route("/despacho")
-@login_requerido
-def despacho_vista():
+def _contexto_despacho():
     import db
     fecha = request.args.get("fecha") or hoy_argentina().strftime("%Y-%m-%d")
 
@@ -2347,7 +2386,7 @@ def despacho_vista():
     try:
         access_token = token_manager.asegurar_token_valido(g.cuenta_id)
     except token_manager.CuentaDesconectada:
-        return redirect(url_for("reconectar"))
+        raise _Salir(redirect(url_for("reconectar")))
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -2374,11 +2413,17 @@ def despacho_vista():
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             umbrales_flex = flex.umbrales_para_vista(flex.obtener_config(conexion.cursor(), g.cuenta_id))
 
-    return render_template(
-        "despacho.html", paquetes=paquetes, fecha=fecha, total=total, listos=listos,
-        cantidad_shipments=cantidad_shipments, hora_corte=hora_corte,
-        flex_habilitado=flex_habilitado, umbrales_flex=umbrales_flex, active_nav="despacho"
+    return dict(
+        paquetes=paquetes, fecha=fecha, total=total, listos=listos, cantidad_shipments=cantidad_shipments, hora_corte=hora_corte,
+        flex_habilitado=flex_habilitado, umbrales_flex=umbrales_flex,
     )
+
+
+@app.route("/despacho")
+@login_requerido
+def despacho_vista():
+    """Ahora vive dentro de «Día a día» (/dia): el link viejo lleva a esa sección (con la fecha, si traía una)."""
+    return redirect(_url_dia("despacho", fecha=request.args.get("fecha")))
 
 
 @app.route("/despacho/etiquetas_pdf")
@@ -3287,7 +3332,8 @@ def calidad_vista():
 @app.route("/preguntas")
 @login_requerido
 def preguntas_vista():
-    return render_template("preguntas.html", active_nav="preguntas")
+    """Ahora vive dentro de «Día a día» (/dia): el link viejo lleva a esa sección."""
+    return redirect(_url_dia("preguntas"))
 
 
 @app.route("/api/mensajes/sin_leer")

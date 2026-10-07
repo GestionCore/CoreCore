@@ -17,11 +17,13 @@ GRUPOS_NAV = {
     },
     "dia": {
         "label": "Día a día", "icono": "bolt",
+        # una sola pantalla con cuatro partes (las pestañas saltan a cada una): no hay una «más usada» que destacar
+        "una_pantalla": True,
         "paginas": [
-            {"nav_key": "despacho", "label": "Despacho", "href": "/despacho", "endpoint": "despacho_vista"},
-            {"nav_key": "preguntas", "label": "Preguntas", "href": "/preguntas", "endpoint": "preguntas_vista"},
-            {"nav_key": "logros", "label": "Pendientes", "href": "/logros", "endpoint": "logros_vista"},
-            {"nav_key": "reputacion", "label": "Reputación", "href": "/reputacion", "endpoint": "reputacion_vista"},
+            {"nav_key": "despacho", "label": "Despacho", "href": "/dia", "ancla": "despacho", "endpoint": "dia_vista"},
+            {"nav_key": "preguntas", "label": "Preguntas", "href": "/dia", "ancla": "preguntas", "endpoint": "dia_vista"},
+            {"nav_key": "logros", "label": "Pendientes", "href": "/dia", "ancla": "pendientes", "endpoint": "dia_vista"},
+            {"nav_key": "reputacion", "label": "Reputación", "href": "/dia", "ancla": "reputacion", "endpoint": "dia_vista"},
         ],
     },
     "ventas": {
@@ -93,7 +95,7 @@ def calcular_mas_usado(contadores_por_nav_key):
     """
     resultado = {}
     for grupo, datos in GRUPOS_NAV.items():
-        if len(datos["paginas"]) < 2:
+        if len(datos["paginas"]) < 2 or datos.get("una_pantalla"):
             continue                      # con una sola pantalla no hay nada que destacar
         mejor_key, mejor_contador = None, 0
         for item in datos["paginas"]:

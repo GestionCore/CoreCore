@@ -1,10 +1,8 @@
-{% extends "base.html" %}
+{# Sección «reputacion» de /dia (antes era la pantalla /reputacion): el contexto lo arma app._contexto_reputacion(). #}
 {% from "_ux.html" import banner, kpi, vacio %}
-{% block title %}Reputación · CoreLux{% endblock %}
-{% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-star"/></svg>Reputación</h1>
+        <h2 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-star"/></svg>Reputación</h2>
         <div class="page-subtitle">Tu nivel en Mercado Libre — <strong>datos oficiales de tu cuenta</strong>. Es lo que más pesa en tu visibilidad y en la confianza de los compradores.</div>
     </div>
 </div>
@@ -120,4 +118,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 {% endif %}
-{% endblock %}

@@ -551,6 +551,12 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
   sin declarar no esconde nada y la pantalla pregunta en vez de calcular; el panel de Monotributo del Dashboard solo aparece para monotributistas declarados. Cualquier cosa nueva que dependa de la condición
   fiscal tiene que mirar `fiscal.obtener(...)`. Mercado Libre da el CUIT/DNI (`GET /users/me` → `identification`) pero NO la condición ante ARCA (se probó: no hay endpoint). Confirmarla sin preguntar
   requeriría el padrón de ARCA (constancia de inscripción) con un certificado propio de CoreLux y el CUIT que da MeLi: pendiente, lo tiene que gestionar el dueño. Los textos nuevos dicen ARCA (ex AFIP).
+- **«Día a día» es UNA pantalla (2026-10-07)**: `/dia` (`dia_vista`) junta Despacho, Preguntas, Pendientes y Reputación una debajo de la otra; las 4 pestañas de la sección tienen `href: /dia` + `ancla` en
+  `nav_config` (la sección lleva `una_pantalla: True`: no hay «más usada») y saltan a cada parte, marcándose solas según lo que se mira (script de `dia.html`). Cada parte es una plantilla parcial
+  `_dia_<parte>.html` (antes eran las pantallas `despacho.html`, `preguntas.html`, `logros.html`, `reputacion.html`, que ya no existen) con su contexto en `app._contexto_despacho/_contexto_logros/_contexto_reputacion`
+  (Preguntas carga todo por fetch). Si una parte falla, las demás se muestran (`errores`); la cuenta desconectada se manda a reconectar (`_Salir`). Los links viejos (`/despacho?fecha=`, `/preguntas`, `/logros`,
+  `/reputacion`) redirigen a su ancla (`_url_dia`). Para sumar una parte: plantilla `_dia_*.html`, su contexto, su `<section id>` en `dia.html` y su pestaña. Los ids y los `const/let` globales de los scripts de
+  las partes no pueden repetirse (una prueba lo exige).
 - **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real

@@ -208,6 +208,13 @@ tr.ux-fila-ok td:first-child { box-shadow: inset 4px 0 0 var(--success); }
 /* Columna de nombre en tablas anchas: sin esto el título se partía palabra por palabra */
 .data-table td.ux-col-titulo { min-width: 240px; }
 
+/* ---------- «Día a día»: varias partes en una pantalla, con las pestañas de arriba que saltan a cada una ---------- */
+.dia-seccion { scroll-margin-top: calc(var(--topbar-h) + 64px); margin-top: 34px; padding-top: 30px; border-top: 1px solid var(--border-soft); }
+.dia-seccion:first-of-type { margin-top: 6px; padding-top: 0; border-top: 0; }
+.dia-seccion .page-title { font-size: 1.5em; }
+html:has(.dia-seccion) { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html:has(.dia-seccion) { scroll-behavior: auto; } }
+
 /* ---------- Opciones de una pregunta de elegir una (condición fiscal) ---------- */
 .ux-elecciones { display: grid; gap: 8px; max-width: 560px; }
 .ux-eleccion { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-soft); cursor: pointer; transition: border-color var(--transition-fast), background var(--transition-fast); }

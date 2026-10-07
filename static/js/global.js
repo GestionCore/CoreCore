@@ -1085,7 +1085,7 @@ const ATAJOS_COMANDO = [
     { alias: ['stk', 'stock'], texto: 'Ir a Stock', url: '/stock' },
     { alias: ['inicio', 'home'], texto: 'Ir a Inicio', url: '/' },
     { alias: ['masivo', 'stockm'], texto: 'Ir a Stock Masivo', url: '/stock_masivo' },
-    { alias: ['desp', 'despacho'], texto: 'Ir a Despacho', url: '/despacho' },
+    { alias: ['desp', 'despacho'], texto: 'Ir a Despacho', url: '/dia#despacho' },
     { alias: ['dash', 'dashboard', 'resumen'], texto: 'Ir a Dashboard', url: '/dashboard' },
     { alias: ['gan', 'ganancia', 'metricas'], texto: 'Ir a Ganancia Real', url: '/metricas' },
     { alias: ['fac', 'facturacion'], texto: 'Ir a Facturación', url: '/facturacion' },
@@ -1103,9 +1103,9 @@ const ATAJOS_COMANDO = [
     { alias: ['tend', 'tendencias'], texto: 'Ir a Tendencias', url: '/tendencias' },
     { alias: ['comp', 'competencia', 'espia'], texto: 'Ir a Competencia', url: '/competencia', requiere: 'catalogo' },
     { alias: ['embudo', 'conversion'], texto: 'Ir a Embudo de Conversión', url: '/embudo_conversion' },
-    { alias: ['rep', 'reputacion'], texto: 'Ir a Reputación', url: '/reputacion' },
+    { alias: ['rep', 'reputacion'], texto: 'Ir a Reputación', url: '/dia#reputacion' },
     { alias: ['ads', 'publicidad'], texto: 'Ir a Publicidad', url: '/publicidad', requiere: 'ads' },
-    { alias: ['log', 'logros', 'misiones', 'pendientes', 'tareas'], texto: 'Ir a Pendientes', url: '/logros' },
+    { alias: ['log', 'logros', 'misiones', 'pendientes', 'tareas'], texto: 'Ir a Pendientes', url: '/dia#pendientes' },
 ];
 const ACCIONES_COMANDO = [
     { alias: ['sinc', 'sincronizar', 'actualizar'], texto: 'Actualizar con Mercado Libre', accion: 'ejecutarSincronizarTodo' },

@@ -1,13 +1,11 @@
-{% extends "base.html" %}
+{# Sección «pendientes» de /dia (antes era la pantalla /logros): el contexto lo arma app._contexto_pendientes(). #}
 {% from "_ux.html" import banner, kpi, vacio %}
-{% block title %}Pendientes · CoreLux{% endblock %}
-{% block content %}
 {% set tono = 'danger' if conteo_por_prioridad.urgente else ('warn' if conteo_por_prioridad.importante else ('accion' if misiones else 'ok')) %}
 {% set ICONOS = {'stock': 'box', 'reclamos': 'alert', 'atencion': 'chat', 'seo': 'edit', 'financiero': 'coin', 'tendencias': 'trend'} %}
 
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-check"/></svg>Pendientes</h1>
+        <h2 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-check"/></svg>Pendientes</h2>
         <div class="page-subtitle">Lo que conviene hacer ahora, sacado de <strong>los datos reales de tu cuenta</strong> — resolverlo es plata y reputación</div>
     </div>
 </div>
@@ -82,4 +80,3 @@
     {% endif %}
 </div>
 {% endif %}
-{% endblock %}

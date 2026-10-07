@@ -115,7 +115,7 @@ def _detectar_misiones_base(cursor, cuenta_id):
                 "id": "preguntas_viejas", "categoria": "atencion", "icono": "❓", "prioridad": "importante",
                 "titulo": f"{plural(preguntas_viejas, 'pregunta')} sin responder hace más de 24 h",
                 "descripcion": "Una pregunta sin responder es una venta que se enfría.",
-                "link": "/preguntas", "link_texto": "Responder preguntas"
+                "link": "/dia#preguntas", "link_texto": "Responder preguntas"
             })
     except Exception as e:
         print(f"[Logros] ⚠️ Error detectando preguntas viejas: {e}")

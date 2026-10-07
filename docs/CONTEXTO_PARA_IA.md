@@ -117,7 +117,7 @@ Menú lateral de **7 secciones** (fuente única: `nav_config.GRUPOS_NAV`); dentr
 | Sección | Pantallas |
 |---|---|
 | Inicio | Dashboard |
-| Día a día | Despacho · Preguntas · Pendientes (Logros) · Reputación |
+| Día a día | Una sola pantalla (`/dia`) con cuatro partes que se recorren de corrido; las pestañas saltan a cada una: Despacho · Preguntas · Pendientes (Logros) · Reputación |
 | Ventas y ganancia | **Ganancia Real** · Facturación · Cobros · Ventas fuera de MeLi · Reporte Fiscal · Monotributo |
 | Precios y costos | Costos · Precios · Calculadora MeLi · Historial de precios |
 | Stock | Stock · Stock Masivo |

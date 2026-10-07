@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_ux.html" import banner %}
+{% block title %}Día a día · CoreLux{% endblock %}
+{% block content %}
+{#
+  «Día a día» en UNA pantalla: despacho, preguntas, pendientes y reputación, una debajo de la otra. Las pestañas de arriba (nav_config, con `ancla`) saltan a cada parte
+  y se marcan solas según lo que se está mirando. Cada parte es una plantilla parcial (_dia_*.html) con su propio contexto (app._contexto_*): si una no se puede armar,
+  las demás se muestran igual.
+#}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-bolt"/></svg>Día a día</h1>
+        <div class="page-subtitle">Lo que se mueve hoy, <strong>todo en una sola pantalla</strong>: despacho, preguntas, pendientes y reputación. Usá las pestañas de arriba para ir a cada parte.</div>
+    </div>
+</div>
+
+{% macro no_se_pudo(titulo) %}
+<div class="page-header"><div><h2 class="page-title">{{ titulo }}</h2></div></div>
+{{ banner("warn", "alert", "<b>No pudimos armar esta parte</b> ahora mismo", "Las demás siguen funcionando. Probá recargar en un rato; si sigue pasando, avisanos.") }}
+{% endmacro %}
+
+<section class="dia-seccion" id="despacho" aria-label="Despacho">
+    {% if errores.get('despacho') %}{{ no_se_pudo("Despacho") }}{% else %}{% include "_dia_despacho.html" %}{% endif %}
+</section>
+
+<section class="dia-seccion" id="preguntas" aria-label="Preguntas">
+    {% include "_dia_preguntas.html" %}
+</section>
+
+<section class="dia-seccion" id="pendientes" aria-label="Pendientes">
+    {% if errores.get('pendientes') %}{{ no_se_pudo("Pendientes") }}{% else %}{% include "_dia_pendientes.html" %}{% endif %}
+</section>
+
+<section class="dia-seccion" id="reputacion" aria-label="Reputación">
+    {% if errores.get('reputacion') %}{{ no_se_pudo("Reputación") }}{% else %}{% include "_dia_reputacion.html" %}{% endif %}
+</section>
+
+<script>
+// Las pestañas de la sección no cambian de página: se marca la de la parte que se está mirando
+(function () {
+    const secciones = Array.from(document.querySelectorAll('.dia-seccion'));
+    const pestanas = Array.from(document.querySelectorAll('.subnav-tab')).filter(a => (a.getAttribute('href') || '').includes('#'));
+    if (!secciones.length || !pestanas.length) return;
+
+    function marcar(id) {
+        pestanas.forEach(a => {
+            const activa = a.getAttribute('href').endsWith('#' + id);
+            a.classList.toggle('active', activa);
+            if (activa) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+        });
+    }
+
+    // la parte actual es la última cuyo borde de arriba ya pasó por debajo de las pestañas; al llegar al final de la página, la última
+    function actual() {
+        const barra = document.querySelector('.subnav-tabs');
+        const referencia = (barra ? barra.getBoundingClientRect().bottom : 100) + 24;
+        let elegida = secciones[0];
+        secciones.forEach(s => { if (s.getBoundingClientRect().top <= referencia) elegida = s; });
+        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) elegida = secciones[secciones.length - 1];
+        return elegida.id;
+    }
+
+    let esperando = false;
+    function alMoverse() {
+        if (esperando) return;
+        esperando = true;
+        requestAnimationFrame(() => { esperando = false; marcar(actual()); });
+    }
+    window.addEventListener('scroll', alMoverse, { passive: true });
+    window.addEventListener('hashchange', alMoverse);
+    window.addEventListener('load', () => marcar(actual()));
+    marcar(actual());
+})();
+</script>
+{% endblock %}

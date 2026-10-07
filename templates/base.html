@@ -157,7 +157,7 @@
 <div class="subnav-tabs">
     <div class="subnav-tabs-inner" role="tablist" aria-label="{{ nav_grupos[_seccion_activa].label }}">
         {% for item in nav_grupos[_seccion_activa].paginas if not item.requiere or capacidades.get(item.requiere) is not false %}
-        <a href="{{ item.href }}" class="subnav-tab {% if active_nav == item.nav_key %}active{% endif %}" role="tab">
+        <a href="{{ item.href }}{% if item.ancla %}#{{ item.ancla }}{% endif %}" class="subnav-tab {% if active_nav == item.nav_key %}active{% endif %}" role="tab">
             {{ item.label }}{% if item.nav_key == 'logros' %}<span id="nav-badge-logros" class="nav-badge" style="display:none;"></span>{% endif %}
             {% if session.get('mas_usado', {}).get(_seccion_activa) == item.nav_key %}
             <span class="subnav-tab-badge" title="La pantalla que más usás dentro de {{ nav_grupos[_seccion_activa].label }}">MÁS USADO</span>

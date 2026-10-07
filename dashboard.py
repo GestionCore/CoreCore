@@ -248,7 +248,7 @@ def armar_avisos(preguntas, reclamos, devoluciones, sin_stock):
 
     candidatos = [
         ("reclamos", reclamos, _mas(reclamos, "1 reclamo que afecta tu reputación", "{n} reclamos que afectan tu reputación"), "danger", "/metricas#seccion-reclamos", "alert"),
-        ("preguntas", preguntas, _mas(preguntas, "1 pregunta sin responder", "{n} preguntas sin responder"), "warn", "/preguntas", "chat"),
+        ("preguntas", preguntas, _mas(preguntas, "1 pregunta sin responder", "{n} preguntas sin responder"), "warn", "/dia#preguntas", "chat"),
         ("sin_stock", sin_stock, _mas(sin_stock, "1 publicación activa sin stock", "{n} publicaciones activas sin stock"), "warn", "/stock", "box"),
         ("devoluciones", devoluciones, _mas(devoluciones, "1 devolución por gestionar", "{n} devoluciones por gestionar"), "info", "/metricas#seccion-reclamos", "refresh"),
     ]
