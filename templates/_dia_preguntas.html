@@ -100,6 +100,21 @@ function antiguedad(iso) {
     return { texto, horas, tono: horas >= 24 ? 'danger' : (horas >= 4 ? 'warn' : 'info') };
 }
 
+// Objetivo de respuesta de CoreLux: responder dentro de la primera hora desde que entró la pregunta. NO es un plazo que informe Mercado Libre (su API solo trae la hora de la pregunta).
+function duracionCorta(min) {
+    if (min < 1) return 'menos de 1 min';
+    if (min < 60) return min + ' min';
+    const h = Math.floor(min / 60), m = min % 60;
+    return h + ' h' + (m ? ' ' + m + ' min' : '');
+}
+function plazo(p) {
+    if (!p.limite_iso) return null;
+    const min = Math.floor((new Date(p.limite_iso).getTime() - Date.now()) / 60000);
+    if (min < 0) return { texto: 'Pasó el objetivo hace ' + duracionCorta(-min), tono: 'danger', vencida: true };
+    return { texto: 'Respondé en ' + duracionCorta(min), tono: min <= 15 ? 'warn' : 'info', vencida: false };
+}
+const AYUDA_PLAZO = 'Objetivo de CoreLux: responder en la primera hora desde que entró la pregunta. Mercado Libre no informa un plazo por pregunta.';
+
 async function cargarPreguntas() {
     const icon = $('btn-refresh-icon');
     icon.classList.add('spin-anim');
@@ -122,6 +137,16 @@ function renderEstado() {
         cont.innerHTML = UX.banner({ tono: 'ok', icono: 'check', tituloHtml: '<b>Estás al día.</b> No tenés preguntas pendientes', detalle: 'Cuando entre una nueva, la ves acá arriba de todo.' });
         return;
     }
+    const urgente = plazo(_preguntas[0]);
+    if (urgente) {
+        const vencidas = _preguntas.filter(p => (plazo(p) || {}).vencida).length;
+        cont.innerHTML = UX.banner({
+            tono: urgente.tono === 'info' ? 'accion' : urgente.tono, icono: 'chat',
+            tituloHtml: `<b>${n} pregunta${n > 1 ? 's' : ''} esperando tu respuesta</b> — la más urgente: <b>${UX.esc(urgente.texto.charAt(0).toLowerCase() + urgente.texto.slice(1))}</b>`,
+            detalle: vencidas ? `${vencidas === 1 ? '1 ya pasó' : vencidas + ' ya pasaron'} el objetivo de responder en la primera hora: cada minuto cuenta para no perder la venta.` : 'Respondé ahora: los compradores suelen comprar en la misma conversación.',
+        });
+        return;
+    }
     const masVieja = antiguedad(_preguntas[0].creado_en_iso);
     cont.innerHTML = UX.banner({
         tono: masVieja.tono === 'info' ? 'accion' : masVieja.tono, icono: 'chat',
@@ -142,9 +167,10 @@ function renderLista() {
 }
 
 function tarjeta(p) {
-    const a = antiguedad(p.creado_en_iso);
     const pendiente = p.estado === 'pendiente';
-    const pillEstado = pendiente ? `<span class="ux-pill ux-${a.tono}">${UX.esc(a.texto || 'Pendiente')}</span>`
+    const pl = pendiente ? plazo(p) : null;
+    const a = pl ? { texto: pl.texto, tono: pl.tono } : antiguedad(p.creado_en_iso);
+    const pillEstado = pendiente ? `<span class="ux-pill ux-${a.tono}" title="${pl ? UX.esc(AYUDA_PLAZO) : ''}">${UX.esc(a.texto || 'Pendiente')}</span>`
         : (p.estado === 'respondida' ? '<span class="ux-pill ux-ok">Respondida</span>' : '<span class="ux-pill ux-neutral ux-pill-suave">Ignorada</span>');
     const verPub = p.item_id ? `<a class="ux-pregunta-item" href="/stock?drawer=${encodeURIComponent(p.item_id)}" title="Ver la publicación">${UX.esc(p.titulo_item)} ↗</a>` : `<span class="ux-pregunta-item">${UX.esc(p.titulo_item)}</span>`;
     const acciones = pendiente ? `

@@ -28,12 +28,17 @@ def tablas_con_cuenta(cursor):
     return [fila[0] for fila in cursor.fetchall() if fila[0] not in TABLAS_EXCLUIDAS]
 
 
-def _csv_de_tabla(cursor, tabla):
-    """El CSV de una tabla tal como la ve el usuario (RLS). None si no se puede leer; un fallo no echa a perder el resto (savepoint)."""
+def _csv_de_tabla(cursor, tabla, cuenta_id=None, sin_cuenta=False):
+    """
+    El CSV de una tabla tal como la ve el usuario (RLS). None si no se puede leer; un fallo no echa a perder el resto (savepoint).
+    Con `cuenta_id` solo las filas de ESA cuenta: las tablas que son de la persona y no de una cuenta (auditoría, avisos, comentarios) filtran solo por usuario,
+    así que sin este filtro cada carpeta traía también lo de las otras cuentas. `sin_cuenta` pide las que no tienen cuenta asignada.
+    """
+    donde = f' WHERE cuenta_id = {int(cuenta_id)}' if cuenta_id is not None else (" WHERE cuenta_id IS NULL" if sin_cuenta else "")
     cursor.execute("SAVEPOINT leer_tabla")
     try:
         salida = io.StringIO()
-        with cursor.copy(f'COPY (SELECT * FROM "{tabla}") TO STDOUT WITH (FORMAT csv, HEADER true)') as copia:
+        with cursor.copy(f'COPY (SELECT * FROM "{tabla}"{donde}) TO STDOUT WITH (FORMAT csv, HEADER true)') as copia:
             for bloque in copia:
                 salida.write(bytes(bloque).decode("utf-8"))
         cursor.execute("RELEASE SAVEPOINT leer_tabla")
@@ -60,7 +65,7 @@ def armar_zip(usuario_id, cuentas):
             with db.conexion_usuario(usuario_id, cuenta["id"]) as conexion:
                 cursor = conexion.cursor()
                 for tabla in tablas_con_cuenta(cursor):
-                    contenido = _csv_de_tabla(cursor, tabla)
+                    contenido = _csv_de_tabla(cursor, tabla, cuenta_id=cuenta["id"])
                     if contenido is None:
                         continue
                     filas = max(contenido.count("\n") - 1, 0)
@@ -68,6 +73,16 @@ def armar_zip(usuario_id, cuentas):
                         continue                                  # una tabla vacía no aporta un archivo
                     zf.writestr(f"{carpeta}/{tabla}.csv", contenido)
                     resumen.append((carpeta, tabla, filas))
+        # Lo que no pertenece a ninguna cuenta (p. ej. una acción registrada antes de elegir cuenta) va aparte, una sola vez, en vez de repetirse en cada carpeta
+        with db.conexion_usuario(usuario_id) as conexion:
+            cursor = conexion.cursor()
+            for tabla in tablas_con_cuenta(cursor):
+                contenido = _csv_de_tabla(cursor, tabla, sin_cuenta=True)
+                filas = max(contenido.count("\n") - 1, 0) if contenido is not None else 0
+                if filas == 0:
+                    continue
+                zf.writestr(f"sin_cuenta_{tabla}.csv", contenido)
+                resumen.append(("(sin cuenta)", tabla, filas))
         zf.writestr("LEEME.txt", "Tus datos de CoreLux al " + datetime.datetime.now(ARGENTINA).strftime("%d/%m/%Y %H:%M") + "\n\n"
                     "Una carpeta por cuenta de Mercado Libre, con un archivo CSV por tipo de dato (se abren con Excel).\n"
                     "Las tablas sin datos no se incluyen. Los accesos a Mercado Libre (tokens) no se incluyen a propósito.\n\n"

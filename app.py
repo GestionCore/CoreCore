@@ -56,6 +56,7 @@ import catalogo_ganar
 import mensajes as mensajes_mod
 import opiniones as opiniones_mod
 import cobros as cobros_mod
+import preguntas_sla
 import tiempo_respuesta as tiempo_respuesta_mod
 import full_stock
 import reactivar
@@ -2678,7 +2679,8 @@ def actualizar_stock_multiple():
         return redirect(url_for("reconectar"))
 
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-    actualizados, saltados, fallidos = 0, 0, 0
+    actualizados, saltados, fallidos, sin_atributos = 0, 0, 0, 0
+    atributos_pedidos = []
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -2721,7 +2723,13 @@ def actualizar_stock_multiple():
                 r = meli_http.put(f"https://api.mercadolibre.com/items/{id_meli}", headers=headers, json=payload)
                 if r.status_code not in (200, 201):
                     print(f"[StockMasivo] ⚠️ MeLi rechazó el stock de {id_meli}: {r.status_code} - {r.text[:200]}")
-                    fallidos += 1
+                    # Una publicación «vieja» a la que Mercado Libre le exige datos nuevos (marca, código…) no deja guardar nada: se avisa claro y no se intenta arreglarlos desde acá
+                    faltan = meli_errores.atributos_faltantes(meli_errores.cuerpo_de(r)) if r.status_code == 400 else None
+                    if faltan is None:
+                        fallidos += 1
+                    else:
+                        sin_atributos += 1
+                        atributos_pedidos += [a for a in faltan if a not in atributos_pedidos]
                     continue
             except Exception as e:
                 print(f"[StockMasivo] ⚠️ Error actualizando {id_meli}: {e}")
@@ -2737,10 +2745,13 @@ def actualizar_stock_multiple():
     partes = ["1 actualizada" if actualizados == 1 else f"{actualizados} actualizadas"]
     if saltados:
         partes.append(f"{saltados} con varios colores (revisalas a mano en MeLi)")
+    if sin_atributos:
+        partes.append(f"{sin_atributos} sin guardar porque Mercado Libre pide datos obligatorios que faltan"
+                      + (f" ({', '.join(atributos_pedidos[:5])})" if atributos_pedidos else " (marca, modelo, código…)") + ": editalos desde Mercado Libre primero")
     if fallidos:
         partes.append(f"{fallidos} con error")
     mensaje = ", ".join(partes) + "."
-    tipo = "success" if (actualizados and not fallidos and not saltados) else ("error" if not actualizados else "info")
+    tipo = "success" if (actualizados and not fallidos and not saltados and not sin_atributos) else ("error" if not actualizados else "info")
     return redirect(f"{volver_a}?{urlencode({'msg': mensaje, 'tipo': tipo})}")
 
 
@@ -3386,7 +3397,8 @@ def api_preguntas_lista():
         sql = """
             SELECT p.id, p.question_id, p.item_id, p.texto_pregunta,
                    p.respuesta_sugerida, p.estado, p.creado_en,
-                   COALESCE(pp.titulo, p.item_id) AS titulo_item, pp.thumbnail
+                   COALESCE(pp.titulo, p.item_id) AS titulo_item, pp.thumbnail,
+                   p.fecha_pregunta, p.hora_limite_respuesta
             FROM preguntas_pendientes p
             LEFT JOIN productos_padre pp ON pp.id_meli = p.item_id
             WHERE p.cuenta_id = %s
@@ -3395,12 +3407,13 @@ def api_preguntas_lista():
         if estado != "todos":
             sql += " AND p.estado = %s"
             params.append(estado)
-        # Las pendientes, de la más vieja a la más nueva: la que lleva más tiempo esperando es la más urgente
-        sql += " ORDER BY p.creado_en " + ("ASC" if estado == "pendiente" else "DESC") + " LIMIT 200"
+        # Las pendientes, de la que vence antes a la que vence después (las que ya pasaron el objetivo, primero): la más urgente arriba. Sin límite conocido, por antigüedad.
+        sql += (" ORDER BY p.hora_limite_respuesta ASC NULLS LAST, p.creado_en ASC" if estado == "pendiente" else " ORDER BY p.creado_en DESC") + " LIMIT 200"
         cursor.execute(sql, params)
         filas = cursor.fetchall()
     preguntas = []
     for f in filas:
+        hecha = f[9] or f[6]                                  # la hora que informó Mercado Libre; si todavía no se completó, la del primer sync
         preguntas.append({
             "id": f[0],
             "question_id": f[1],
@@ -3408,8 +3421,10 @@ def api_preguntas_lista():
             "texto": f[3] or "",
             "respuesta_sugerida": f[4] or "",
             "estado": f[5],
-            "fecha": f[6].strftime("%Y-%m-%d %H:%M") if f[6] and hasattr(f[6], "strftime") else str(f[6] or ""),
-            "creado_en_iso": f[6].isoformat() if f[6] and hasattr(f[6], "isoformat") else None,
+            "fecha": hecha.astimezone(ARGENTINA).strftime("%Y-%m-%d %H:%M") if hecha and hasattr(hecha, "astimezone") else str(hecha or ""),
+            "creado_en_iso": hecha.isoformat() if hecha and hasattr(hecha, "isoformat") else None,
+            "limite_iso": f[10].isoformat() if f[10] and hasattr(f[10], "isoformat") else None,
+            "sla_minutos": preguntas_sla.SLA_MINUTOS,
             "titulo_item": f[7] or f[2] or "—",
             "thumbnail": f[8],
         })

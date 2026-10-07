@@ -8,6 +8,7 @@ Lo que hay que saber:
     `available_quantity` a nivel de la publicación. Con UNA variación real se manda esa variación. Con varias, no se toca (se revisa a mano).
   · Lo que está en FULL o convive con FULL (inventory_id) lo maneja Mercado Libre: no se escribe.
 """
+import meli_errores
 import meli_http
 
 URL_ITEM = "https://api.mercadolibre.com/items/{}"
@@ -58,7 +59,7 @@ def ajustar_en_meli(access_token, id_meli, id_variante, delta, obtener=None, esc
         payload = payload_para_stock([id_variante], nuevo)
         w = escribir(URL_ITEM.format(id_meli), headers=headers, json=payload, timeout=10)
         if w.status_code not in (200, 201):
-            return False, "Mercado Libre no aceptó el cambio de stock.", None
+            return False, meli_errores.explicar_respuesta(w), None
         return True, "", nuevo
     except Exception as e:                      # red caída, respuesta rara: se informa, no se corta el flujo
         print(f"[StockMeli] No se pudo ajustar {id_meli}: {type(e).__name__}: {e}")

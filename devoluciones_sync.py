@@ -29,6 +29,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import cache_db
 import meli_http
+import preguntas_sla
 import db
 
 TAMANO_PAGINA = 50
@@ -419,12 +420,15 @@ def sincronizar_preguntas(usuario_id, cuenta_id, access_token, seller_id):
                     continue
                 qid = str(qid)
                 ids_sin_responder.add(qid)
+                # La hora de la pregunta es la que informa Mercado Libre (`date_created`); el límite es el objetivo interno de preguntas_sla (MeLi no informa un plazo)
+                fecha_pregunta = preguntas_sla.fecha_de_meli(p.get("date_created"))
                 cursor.execute("""
-                    INSERT INTO preguntas_pendientes (cuenta_id, question_id, item_id, texto_pregunta, estado)
-                    VALUES (%s, %s, %s, %s, 'pendiente')
+                    INSERT INTO preguntas_pendientes (cuenta_id, question_id, item_id, texto_pregunta, estado, fecha_pregunta, hora_limite_respuesta)
+                    VALUES (%s, %s, %s, %s, 'pendiente', %s, %s)
                     ON CONFLICT (cuenta_id, question_id) DO UPDATE SET
-                        texto_pregunta = excluded.texto_pregunta, estado = 'pendiente'
-                """, (cuenta_id, qid, str(p.get("item_id") or ""), p.get("text")))
+                        texto_pregunta = excluded.texto_pregunta, estado = 'pendiente',
+                        fecha_pregunta = excluded.fecha_pregunta, hora_limite_respuesta = excluded.hora_limite_respuesta
+                """, (cuenta_id, qid, str(p.get("item_id") or ""), p.get("text"), fecha_pregunta, preguntas_sla.limite_de(fecha_pregunta)))
 
         offset += TAMANO_PAGINA
         total = data.get("total", 0)
