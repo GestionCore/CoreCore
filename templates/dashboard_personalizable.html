@@ -7,11 +7,11 @@
         <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-home"/></svg>Dashboard</h1>
         <div class="page-subtitle" id="dashboard-fecha"><strong>Hoy</strong> — tu resumen del día</div>
     </div>
-    <button type="button" class="btn btn-secondary" onclick="togglePersonalizarDashboard()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-settings"/></svg> Personalizar</button>
+    <button type="button" class="btn btn-secondary" data-click="togglePersonalizarDashboard"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-settings"/></svg> Personalizar</button>
 </div>
 
 <!-- ── 0. PRIMEROS PASOS: arriba de todo mientras la cuenta no esté completa (se oculta solo al llegar al 100 %) ── -->
-<div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" role="button" tabindex="0" aria-expanded="true" onclick="if(event.target.closest('.contenido-colapsable')) return; this.classList.toggle('abierto'); this.setAttribute('aria-expanded', this.classList.contains('abierto'));" onkeydown="if(event.target===this && (event.key==='Enter' || event.key===' ')) { event.preventDefault(); this.click(); }">
+<div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" role="button" tabindex="0" aria-expanded="true" data-click="alternarChecklist" data-click-args='["$el", "$ev"]'>
     <div class="panel-title">
         <span>Completá tu perfil <span class="text-muted" id="checklist-contador" style="font-size:0.8em; font-weight:400;"></span></span>
         <span class="chevron-colapsable">▾</span>
@@ -53,6 +53,7 @@
         </div>
     </div>
     <div class="ux-hero-nota" id="hero-nota">Después de comisiones de MeLi, envíos, publicidad y costo de fabricación — la fórmula completa.</div>
+    <div class="flex-gap no-imprimir" id="hero-acciones" style="margin-top:16px; display:none;"></div>
 
     <div style="display:flex; flex-direction:column; gap:10px; margin-top:18px;">
         <div class="hero-ganancia-fila">
@@ -298,26 +299,31 @@
     ];
     const CLAVE_PREFS_DASHBOARD = 'dashboard_widgets_activos';
 
-    // Varios bloques piden los mismos datos: se comparte una sola promesa por endpoint.
-    let _tickerPromiseCache = null;
-    function _fetchTickerCompartido() {
-        if (!_tickerPromiseCache) _tickerPromiseCache = fetch('/api/ticker').then(r => r.json());
-        return _tickerPromiseCache;
+    // Varios bloques piden los mismos datos: se comparte una sola promesa por endpoint. Si el pedido falla (red, 500) NO se queda guardado: el próximo bloque que lo pida vuelve a intentar
+    // (antes la promesa rechazada quedaba para siempre y, hasta recargar la página, ningún bloque podía traer ese dato).
+    const _compartidas = {};
+    function _compartida(clave, url) {
+        if (!_compartidas[clave]) {
+            _compartidas[clave] = fetch(url).then(r => { if (!r.ok) throw new Error(url + ' respondió ' + r.status); return r.json(); })
+                .catch(e => { delete _compartidas[clave]; throw e; });
+        }
+        return _compartidas[clave];
     }
-    let _resumenDiarioPromiseCache = null;
-    function _fetchResumenDiarioCompartido() {
-        if (!_resumenDiarioPromiseCache) _resumenDiarioPromiseCache = fetch('/api/resumen_diario').then(r => r.json());
-        return _resumenDiarioPromiseCache;
-    }
-    let _gananciaPromiseCache = null;
-    function _fetchGananciaCompartida() {
-        if (!_gananciaPromiseCache) _gananciaPromiseCache = fetch('/api/dashboard/ganancia_dia_vs_promedio').then(r => r.json());
-        return _gananciaPromiseCache;
-    }
-    let _tendenciaPromiseCache = null;
-    function _fetchTendenciaCompartida() {
-        if (!_tendenciaPromiseCache) _tendenciaPromiseCache = fetch('/api/dashboard/tendencia_ventas').then(r => r.json());
-        return _tendenciaPromiseCache;
+    const _fetchTickerCompartido = () => _compartida('ticker', '/api/ticker');
+    const _fetchResumenDiarioCompartido = () => _compartida('resumen_diario', '/api/resumen_diario');
+    const _fetchGananciaCompartida = () => _compartida('ganancia', '/api/dashboard/ganancia_dia_vs_promedio');
+    const _fetchTendenciaCompartida = () => _compartida('tendencia', '/api/dashboard/tendencia_ventas');
+
+    // Los gráficos que se rearman al cambiar las preferencias se destruyen antes de crear el nuevo: sin esto cada cambio dejaba una instancia de Chart.js viva con su canvas ya borrado de la página
+    const _graficos = {};
+    function _destruirGrafico(clave) { if (_graficos[clave]) { _graficos[clave].destroy(); delete _graficos[clave]; } }
+    let _turnoWidgets = 0;
+    const _sinCargar = (w) => () => { w.innerHTML = '<div class="text-muted">No se pudo cargar ahora. Probá recargar en un rato.</div>'; };
+
+    function alternarChecklist(panel, ev) {
+        if (ev.target.closest('.contenido-colapsable')) return;
+        panel.classList.toggle('abierto');
+        panel.setAttribute('aria-expanded', panel.classList.contains('abierto'));
     }
 
     function obtenerPrefsDashboard() {
@@ -337,7 +343,7 @@
             const prefs = obtenerPrefsDashboard();
             document.getElementById('checks-widgets-dashboard').innerHTML = WIDGETS_DISPONIBLES.map(w => `
                 <label class="flex-gap" style="align-items:center; cursor:pointer; background:rgba(255,255,255,0.03); padding:8px 14px; border-radius:8px;">
-                    <input type="checkbox" data-widget-id="${w.id}" ${prefs[w.id] ? 'checked' : ''} onchange="alCambiarWidget(this)"> ${w.nombre}
+                    <input type="checkbox" data-widget-id="${w.id}" ${prefs[w.id] ? 'checked' : ''} data-change="alCambiarWidget" data-change-args='["$el"]'> ${w.nombre}
                 </label>`).join('');
             mostrarPanelConAnimacion(panel);
         } else {
@@ -370,6 +376,8 @@
     async function renderizarWidgetsActivos() {
         const prefs = obtenerPrefsDashboard();
         const grid = document.getElementById('grid-widgets-dashboard');
+        _destruirGrafico('tendencia');
+        const turno = ++_turnoWidgets;           // si las preferencias cambian de nuevo mientras llegan los datos, la respuesta vieja ya no pinta nada
         grid.innerHTML = '';
 
         if (prefs.tendencia_ventas) {
@@ -377,6 +385,7 @@
             w.classList.add('widget-dashboard-ancho');
             grid.appendChild(w);
             _fetchTendenciaCompartida().then(d => {
+                if (turno !== _turnoWidgets) return;
                 if (!d.serie || !d.serie.length) { w.innerHTML = '<div class="text-muted">Sin datos todavía.</div>'; return; }
                 const canvasId = 'chart-tendencia-' + Date.now();
                 w.innerHTML = `
@@ -391,7 +400,8 @@
                     const canvas = document.getElementById(canvasId);
                     if (!canvas || !window.Chart) return;
                     const colorPrimario = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary').trim() || '#8b5cf6';
-                    new Chart(canvas, {
+                    _destruirGrafico('tendencia');
+                    _graficos.tendencia = new Chart(canvas, {
                         type: 'line',
                         data: {
                             labels: d.serie.map(p => p.fecha),
@@ -413,7 +423,7 @@
                         }
                     });
                 });
-            });
+            }).catch(_sinCargar(w));
         }
 
         if (prefs.costos) {
@@ -425,7 +435,7 @@
                 const acento = d.margen_promedio >= window.MARGEN_MINIMO ? 'acento-success' : (d.margen_promedio >= 0 ? 'acento-warning' : 'acento-danger');
                 w.innerHTML = `<div class="stat-chip-label">Margen promedio del catálogo</div><div class="hero-number ${acento}" style="font-size:1.9em;">${UX.esc(d.margen_promedio)}%</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">Más ajustado: ${UX.esc(d.peor.titulo.slice(0, 30))}… (${UX.esc(d.peor.margen_pct)}%)</div>`;
-            });
+            }).catch(_sinCargar(w));
         }
 
         if (prefs.stock_riesgo) {
@@ -434,7 +444,7 @@
             fetch('/api/quiebre_stock').then(r => r.json()).then(d => {
                 w.innerHTML = `<div class="stat-chip-label">{{ vocab.VN }} en riesgo de quiebre</div><div class="hero-number ${d.length > 0 ? 'acento-warning' : 'acento-success'}" style="font-size:1.9em;">${d.length}</div>
                     <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.length > 0 ? '<b>Revisalos</b> antes de perder ventas' : 'Todo en orden'}</div>`;
-            });
+            }).catch(_sinCargar(w));
         }
 
         // Cada fila de estos dos widgets abre el panel de su publicación (data-abrir): antes toda la tarjeta llevaba a Ganancia Real.
@@ -470,7 +480,7 @@
                 requestAnimationFrame(() => requestAnimationFrame(() => {
                     w.querySelectorAll('.top-prod-barra').forEach(el => { el.style.width = el.dataset.w + '%'; });
                 }));
-            });
+            }).catch(_sinCargar(w));
         }
 
         if (prefs.ultimas_ventas) {
@@ -494,7 +504,7 @@
                             </${tag}>`;
                         }).join('')}
                     </div>`;
-            });
+            }).catch(_sinCargar(w));
         }
     }
 
@@ -628,7 +638,8 @@
         const cOk = tok('--success', '#22c55e'), cMal = tok('--danger', '#f43f5e'), cTexto = tok('--text-secondary', '#94a3b8'), cGrilla = tok('--border-soft', 'rgba(255,255,255,0.08)'), cLinea = tok('--accent-primary', '#8b5cf6');
         const promedio = d.promedio_diario_14d.ganancia;
         const ultimo = serie.length - 1;
-        new Chart(canvas, {
+        _destruirGrafico('ganancia14d');
+        _graficos.ganancia14d = new Chart(canvas, {
             data: {
                 labels: serie.map(s => s.etiqueta),
                 datasets: [
@@ -695,6 +706,15 @@
             }
             hero.className = 'ux-hero ux-' + tono;
             document.getElementById('hero-frase').innerHTML = frase;
+
+            // Una salida clara desde el número: primero arreglar el dato que lo falsea (sin costo de fabricación la ganancia es mentira), después mirar de dónde sale la pérdida; si va bien, el detalle
+            const periodo14 = d.periodo_14d;
+            const sinCosto = periodo14.facturado > 0 && periodo14.costo_fabricacion === 0;
+            const salida = sinCosto ? { href: '/costos', clase: 'btn-primary', texto: 'Cargar los costos' }
+                : (negativo ? { href: '/metricas', clase: 'btn-primary', texto: 'Ver dónde se va la plata' } : { href: '/metricas', clase: 'btn-secondary', texto: 'Ver el detalle' });
+            const cajaSalida = document.getElementById('hero-acciones');
+            cajaSalida.innerHTML = `<a class="btn ${salida.clase}" href="${salida.href}">${salida.texto}</a>`;
+            cajaSalida.style.display = '';
 
             const heroNumero = document.getElementById('hero-ganancia-valor');
             heroNumero.textContent = '$0';

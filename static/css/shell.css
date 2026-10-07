@@ -185,6 +185,8 @@ a.aviso-fila:hover { background: rgba(255,255,255,0.05); }
     .bottombar-item.active { color: var(--accent-primary); }
     .bottombar-item .nav-badge { position: absolute; top: 6px; left: calc(50% + 6px); margin: 0; }
     .chat-fab { bottom: calc(var(--bottombar-h) + 14px); right: 14px; }
+    /* La ventana del asistente entra en la pantalla (era de 390 px fijos: en un celular de 375 px quedaba cortada) y se apoya sobre su botón, no sobre la barra de abajo */
+    .chat-window { width: min(390px, calc(100vw - 24px)); right: 12px; bottom: calc(var(--bottombar-h) + 76px); height: min(510px, calc(100vh - var(--topbar-h) - var(--bottombar-h) - 100px)); height: min(510px, calc(100dvh - var(--topbar-h) - var(--bottombar-h) - 100px)); }
     .page-container { padding-bottom: calc(var(--bottombar-h) + 40px); }
     #toast-container { top: calc(var(--topbar-h) + 10px); right: 12px; left: 12px; }
     .toast-item { max-width: none; }

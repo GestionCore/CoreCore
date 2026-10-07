@@ -865,8 +865,8 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .timeline-precio .timeline-icono { border-color: var(--accent-gold); }
 
 /* ---------- Modo Despacho Limpio ---------- */
-body.modo-despacho-limpio .page-header .page-subtitle,
-body.modo-despacho-limpio .panel:has(form[action="/despacho"]) {
+/* (La barra «Ver otro día» y los filtros, que es un form.ux-periodo, se esconden en ux.css junto con los banners y las notas.) */
+body.modo-despacho-limpio .page-header .page-subtitle {
     display: none !important;
 }
 body.modo-despacho-limpio .page-title { font-size: 2em; text-align: center; width: 100%; justify-content: center; }

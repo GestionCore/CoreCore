@@ -25,11 +25,11 @@
 
 <div class="ux-periodo" style="margin-bottom:16px;">
     <div class="field-group" style="flex:1; min-width:220px;">
-        <input type="text" id="input-buscador-masivo" placeholder="Buscar modelo, color o {{ vocab.v1 }}" aria-label="Buscar" onkeyup="filtrarAcordeon()">
+        <input type="text" id="input-buscador-masivo" placeholder="Buscar modelo, color o {{ vocab.v1 }}" aria-label="Buscar" data-keyup="filtrarAcordeon">
     </div>
     <div class="ux-periodo-botones">
-        <button type="button" class="btn btn-secondary" id="btn-abrir-todos" onclick="alternarTodos()">Abrir todos</button>
-        <button type="button" class="btn btn-secondary" id="btn-solo-editables" onclick="alternarSoloEditables()" {% if not editables %}disabled{% endif %}>Solo los que puedo editar <span class="ux-pill ux-accion" style="padding:1px 8px;">{{ editables|length }}</span></button>
+        <button type="button" class="btn btn-secondary" id="btn-abrir-todos" data-click="alternarTodos">Abrir todos</button>
+        <button type="button" class="btn btn-secondary" id="btn-solo-editables" data-click="alternarSoloEditables" {% if not editables %}disabled{% endif %}>Solo los que puedo editar <span class="ux-pill ux-neutral ux-pill-suave" style="padding:1px 8px;">{{ editables|length }}</span></button>
     </div>
 </div>
 
@@ -42,7 +42,7 @@
         {# Sin stock = editable (no sale por FULL) y en 0: es lo que más probablemente haya que reponer #}
         {% set sin_stock = m.variantes|rejectattr('full')|selectattr('propio', 'equalto', 0)|list|length %}
         <div class="panel acordeon-item" data-editable="{{ 1 if hay_editable else 0 }}" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}" style="padding:0; overflow:hidden;">
-            <div class="acordeon-header" onclick="toggleAcordeon(this)" style="padding:16px 20px;">
+            <div class="acordeon-header" role="button" tabindex="0" aria-expanded="false" data-click="toggleAcordeon" data-click-args='["$el"]' style="padding:16px 20px;">
                 <div class="row-flex">
                     {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}
                     <div>
@@ -77,9 +77,9 @@
                                 <span class="ux-pill ux-info ux-pill-suave" title="Esta publicación sale por FULL: el stock lo gestiona Mercado Libre, no se puede editar acá">Gestionado por FULL</span>
                                 {% else %}
                                 <span class="ux-stepper">
-                                    <button type="button" class="btn btn-secondary" aria-label="Restar una unidad" onclick="paso(this, -1)">−</button>
-                                    <input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" data-original="{{ v.propio }}" min="0" inputmode="numeric" aria-label="Unidades en depósito, talle {{ v.talle }}" oninput="alCambiar(this)">
-                                    <button type="button" class="btn btn-secondary" aria-label="Sumar una unidad" onclick="paso(this, 1)">+</button>
+                                    <button type="button" class="btn btn-secondary" aria-label="Restar una unidad" data-click="paso" data-click-args='["$el", -1]'>−</button>
+                                    <input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" data-original="{{ v.propio }}" min="0" inputmode="numeric" aria-label="Unidades en depósito, talle {{ v.talle }}" data-input="alCambiar" data-input-args='["$el"]'>
+                                    <button type="button" class="btn btn-secondary" aria-label="Sumar una unidad" data-click="paso" data-click-args='["$el", 1]'>+</button>
                                 </span>
                                 <input type="hidden" name="orig_{{ v.id_meli }}" value="{{ v.propio }}">
                                 {% endif %}
@@ -99,8 +99,8 @@
     <div class="ux-barra-accion" id="barra-cambios" style="display:none;" role="status">
         <div class="ux-barra-accion-texto"><b id="texto-cambios">0 cambios</b> sin aplicar <span class="text-muted">— todavía no se envió nada a Mercado Libre</span></div>
         <div class="flex-gap">
-            <button type="button" class="btn btn-secondary" onclick="descartarCambios()">Descartar</button>
-            <button type="button" class="btn btn-primary btn-lg" onclick="confirmarAplicar()"><svg class="icon"><use href="#icon-check"/></svg><span id="btn-aplicar-texto">Aplicar cambios</span></button>
+            <button type="button" class="btn btn-secondary" data-click="descartarCambios">Descartar</button>
+            <button type="button" class="btn btn-primary btn-lg" data-click="confirmarAplicar"><svg class="icon"><use href="#icon-check"/></svg><span id="btn-aplicar-texto">Aplicar cambios</span></button>
         </div>
     </div>
 </form>
@@ -112,6 +112,8 @@
     function abrirItem(item, abrir) {
         item.querySelector('.acordeon-body').style.display = abrir ? 'block' : 'none';
         item.classList.toggle('abierto', abrir);
+        const cabecera = item.querySelector('.acordeon-header');
+        if (cabecera) cabecera.setAttribute('aria-expanded', abrir ? 'true' : 'false');
     }
 
     function toggleAcordeon(header) {
@@ -195,6 +197,24 @@
         }).join('\n') + (cambios.length > 5 ? `\n…y ${cambios.length - 5} más` : '');
         confirmarAccion(`¿Aplicar ${cambios.length} cambio${cambios.length > 1 ? 's' : ''} de stock en Mercado Libre?`, document.getElementById('form-stock-masivo'), 'Aplicar cambios', resumen);
     }
+
+    // Al enviar viajan solo los campos que cambiaron: el resto (un par stock_/orig_ por publicación, a veces miles) no aporta nada, el servidor igual los descarta.
+    // Se hace en submit() y no en el clic del botón porque el usuario todavía puede cancelar en el cuadro de confirmación.
+    function soloLoQueCambio() {
+        document.querySelectorAll('#form-stock-masivo input[data-original]').forEach(i => {
+            if (i.value !== i.dataset.original) return;
+            i.disabled = true;
+            const original = i.closest('td') && i.closest('td').querySelector('input[type="hidden"]');
+            if (original) original.disabled = true;
+        });
+    }
+    const _formStock = document.getElementById('form-stock-masivo');
+    if (_formStock) {
+        const enviarDeVerdad = HTMLFormElement.prototype.submit;
+        _formStock.submit = function () { soloLoQueCambio(); enviarDeVerdad.call(this); };
+    }
+    // Si se vuelve con "Atrás" a esta página guardada, los campos tienen que estar habilitados otra vez
+    window.addEventListener('pageshow', (e) => { if (e.persisted) document.querySelectorAll('#form-stock-masivo input:disabled').forEach(i => { i.disabled = false; }); });
 
     // Avisa antes de irse con cambios sin aplicar — salvo cuando el envío lo confirmó el usuario.
     let _enviando = false;

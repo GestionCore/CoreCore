@@ -20,7 +20,6 @@
     </div>
     <div class="flex-gap no-imprimir">
         <a class="btn btn-secondary" href="/metricas/exportar_excel?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> Excel</a>
-        <button type="button" class="btn btn-secondary" onclick="window.print()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> PDF</button>
     </div>
 </div>
 
@@ -30,10 +29,11 @@
         {{ botones_periodo() }}
     </div>
     <div class="rango-fechas" id="rango-metricas" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
-        <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-metricas')"></button>
+        <button type="button" class="rango-fechas-boton" data-click="RangoFechas.toggle" data-click-args='["rango-metricas"]'></button>
         <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
     </div>
-    <button type="submit" class="btn btn-primary">Ver período</button>
+    {# Filtrar es secundario: el botón primario de la pantalla es la descarga del resultado, debajo del número #}
+    <button type="submit" class="btn btn-secondary">Ver período</button>
 </form>
 <script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-metricas'));</script>
 
@@ -85,6 +85,9 @@
     {% if rs.retenciones %}
     <div class="ux-hero-nota" style="margin-top:14px;">Además, Mercado Libre te retuvo <b>{{ rs.retenciones|plata }}</b> en impuestos (IIBB y otras retenciones). <b>No están descontadas de tu ganancia</b>: son un pago anticipado de tus impuestos.</div>
     {% endif %}
+    <div class="flex-gap no-imprimir" style="margin-top:18px;">
+        <button type="button" class="btn btn-primary" data-click="window.print"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> Descargar PDF</button>
+    </div>
 </div>
 
 <!-- ── 2. QUÉ REVISAR: avisos que cambian cómo leer el número ──────────────── -->
@@ -102,7 +105,7 @@
 {% if posventa.reclamos > 0 %}
 {{ banner("danger", "alert", ("<b>" ~ posventa.reclamos|plural("reclamo") ~ "</b> en este período") ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Revisá los que siguen abiertos: un reclamo sin resolver puede sumar a tu reputación negativa.", "Ver detalle", "#seccion-reclamos", "btn-urgente") }}
 {% elif por_gestionar > 0 %}
-{{ banner("info", "refresh", ("<b>" ~ (("1 devolución o reclamo" if por_gestionar == 1 else por_gestionar ~ " devoluciones o reclamos")) ~ " por gestionar</b> en este período") ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Mercado Libre indica que no afectan tu reputación: conviene gestionarlos a tiempo para que no se compliquen.", "Ver detalle", "#seccion-reclamos") }}
+{{ banner("info", "refresh", ("<b>" ~ (("1 devolución o reclamo" if por_gestionar == 1 else por_gestionar ~ " devoluciones o reclamos")) ~ " por gestionar</b> en este período") ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Mercado Libre indica que no afectan tu reputación: conviene gestionarlos a tiempo para que no se compliquen.", "Ver detalle", "#seccion-reclamos", "btn-secondary") }}
 {% endif %}
 {% if flex_resumen and flex_resumen.sin_zona %}
 {{ banner("warn", "truck", "<b>" ~ flex_resumen.sin_zona ~ " envío" ~ ("s" if flex_resumen.sin_zona != 1) ~ " Flex sin costo de entrega</b> en este período — todavía no está en tu ganancia", "Cargá lo que te cobra tu logística por zona para que la ganancia sea la real.", "Cargar costo de entrega", "/costos#entrega-flex", "btn-alerta") }}
@@ -167,7 +170,8 @@
         <thead><tr><th></th><th data-orden="texto">Modelo</th><th class="num" data-orden="num">Unid.</th><th class="num" data-orden="num">Precio prom.</th><th class="num" data-orden="num">Comisión</th><th class="num" data-orden="num">Envío</th><th class="num" data-orden="num">Ads</th><th class="num" data-orden="num">Costo</th><th class="num" data-orden="num">Neto por unidad</th><th class="num" data-orden="num">Neto total</th></tr></thead>
         <tbody>
             {% for c in consolidados %}
-            {% set m = ((c.raw.neto_total / c.raw.total_facturado * 100) if c.raw.total_facturado else 0) %}
+            {# Sin facturado no hay margen que calcular, pero un neto negativo (devolución, regalo) sigue siendo plata que se pierde: va como pérdida, no como "0 %" #}
+            {% set m = ((c.raw.neto_total / c.raw.total_facturado * 100) if c.raw.total_facturado else (-100 if c.raw.neto_total < 0 else 0)) %}
             {% set indice = loop.index %}
             <tr class="ux-fila-{{ 'ok' if m >= margen_minimo else ('warn' if m >= 0 else 'danger') }} {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
                 <td style="width:50px; padding-right:0;">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="" class="thumb-sm" loading="lazy">{% endif %}</td>
@@ -210,7 +214,7 @@
         </tbody>
     </table>
     {% if consolidados|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">{{ ver_mas(consolidados|length - 5, "modelo", "modelos", "los") }}</button>
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>{{ ver_mas(consolidados|length - 5, "modelo", "modelos", "los") }}</button>
     {% endif %}
 </div>
 {% endif %}
@@ -391,7 +395,7 @@
             </tbody>
         </table>
         {% if posventa.lista|length > 5 %}
-        <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver {{ posventa.lista|length - 5 }} más</button>
+        <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver {{ posventa.lista|length - 5 }} más</button>
         {% endif %}
         {% else %}
         {{ banner("ok", "check", "<b>Período impecable:</b> sin devoluciones ni reclamos registrados") }}
@@ -484,7 +488,7 @@
             </tbody>
         </table>
         {% if ventas|length > 10 %}
-        <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ ventas|length - 10 }} ventas restantes</button>
+        <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver las {{ ventas|length - 10 }} ventas restantes</button>
         {% endif %}
     </div>
 </details>
@@ -513,8 +517,23 @@
 // (display:none), queda con tamaño 0 sin recuperarse. Por eso se arman recién la primera vez que la
 // sección se abre (evento "toggle"). Además el mapa de calor y la correlación recién piden sus datos ahí:
 // ~2 llamadas menos en cada carga de la página.
-const _TOOLTIP = { backgroundColor: 'rgba(18,21,48,0.94)', borderColor: 'rgba(168,130,255,0.25)', borderWidth: 1, titleColor: '#f7f7ff' };
 const _iniciados = {};
+
+// El tooltip se arma con los colores del tema vigente al crear el gráfico (antes era un azul oscuro fijo: en el tema claro quedaba un globo oscuro con letras casi invisibles)
+function _tooltip() {
+    const e = _estiloGrafico();
+    return { backgroundColor: e.fondoTooltip, borderColor: e.bordeTooltip, borderWidth: 1, titleColor: e.textoFuerte, bodyColor: e.texto, padding: 10, cornerRadius: 8 };
+}
+
+// Chart.js mide el canvas al crearlo: si el contenedor todavía no tiene ancho (la sección acaba de abrirse y el navegador no la midió, o se cerró mientras llegaban los datos) el gráfico queda aplastado.
+// Se espera a que tenga tamaño real en vez de adivinar con un fotograma (requestAnimationFrame no corre en una pestaña en segundo plano).
+function _cuandoTengaTamano(el, hacer) {
+    if (!el) return;
+    if (el.clientWidth > 0) { hacer(); return; }
+    if (!window.ResizeObserver) { setTimeout(hacer, 80); return; }
+    const observador = new ResizeObserver(() => { if (el.clientWidth > 0) { observador.disconnect(); hacer(); } });
+    observador.observe(el);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.Chart) return;
@@ -527,14 +546,15 @@ document.querySelectorAll('details[data-grafico]').forEach(det => {
         const clave = det.dataset.grafico;
         if (!det.open || _iniciados[clave] || !window.Chart) return;
         _iniciados[clave] = true;
-        requestAnimationFrame(() => ({ evolucion: _iniciarChartEvolucionMensual, pareto: _iniciarChartPareto, mercado: _iniciarMercado })[clave]());
+        _cuandoTengaTamano(det.querySelector('.ux-detalle-cuerpo') || det, () => ({ evolucion: _iniciarChartEvolucionMensual, pareto: _iniciarChartPareto, mercado: _iniciarMercado })[clave]());
     });
 });
 
 function _estiloGrafico() {
     const root = getComputedStyle(document.documentElement);
     const v = (n, f) => root.getPropertyValue(n).trim() || f;
-    return { grilla: v('--border-soft', 'rgba(255,255,255,0.08)'), danger: v('--danger', '#f43f5e'), success: v('--success', '#22c55e'), primario: v('--accent-primary', '#8b5cf6'), gold: v('--accent-gold', '#f2c94c'), texto: v('--text-secondary', '#94a3b8') };
+    return { grilla: v('--border-soft', 'rgba(255,255,255,0.08)'), danger: v('--danger', '#f43f5e'), success: v('--success', '#22c55e'), primario: v('--accent-primary', '#8b5cf6'), gold: v('--accent-gold', '#f2c94c'), texto: v('--text-secondary', '#94a3b8'),
+             textoFuerte: v('--text-primary', '#ffffff'), fondoTooltip: v('--glass-bg-alt', '#17171d'), bordeTooltip: v('--glass-border', 'rgba(255,255,255,0.12)') };
 }
 
 function _iniciarChartEvolucionMensual() {
@@ -550,7 +570,7 @@ function _iniciarChartEvolucionMensual() {
         ] },
         options: {
             responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
-            plugins: { legend: { position: 'top', labels: { color: e.texto, boxWidth: 12, font: { size: 11 } } }, tooltip: { ..._TOOLTIP, callbacks: { label: ctx => `${ctx.dataset.label}: ${UX.plata(ctx.raw)}` } } },
+            plugins: { legend: { position: 'top', labels: { color: e.texto, boxWidth: 12, font: { size: 11 } } }, tooltip: { ..._tooltip(), callbacks: { label: ctx => `${ctx.dataset.label}: ${UX.plata(ctx.raw)}` } } },
             scales: { x: { ticks: { color: e.texto }, grid: { display: false } }, y: { ticks: { color: e.texto, callback: v => UX.plata(v) }, grid: { color: e.grilla } } }
         }
     });
@@ -571,7 +591,7 @@ function _iniciarChartPareto() {
         },
         options: {
             responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
-            plugins: { legend: { position: 'top', labels: { color: e.texto, boxWidth: 12, font: { size: 11 } } }, tooltip: { ..._TOOLTIP, callbacks: { label: ctx => ctx.dataset.yAxisID === 'y1' ? `Acumulado: ${ctx.raw}%` : `Ganancia: ${UX.plata(ctx.raw)}` } } },
+            plugins: { legend: { position: 'top', labels: { color: e.texto, boxWidth: 12, font: { size: 11 } } }, tooltip: { ..._tooltip(), callbacks: { label: ctx => ctx.dataset.yAxisID === 'y1' ? `Acumulado: ${ctx.raw}%` : `Ganancia: ${UX.plata(ctx.raw)}` } } },
             scales: {
                 x: { ticks: { color: e.texto, maxRotation: 40, minRotation: 40 }, grid: { display: false } },
                 y: { position: 'left', ticks: { color: e.texto, callback: v => UX.plata(v) }, grid: { color: e.grilla } },
@@ -608,18 +628,19 @@ function _iniciarCorrelacion() {
             resumen.innerHTML = `Lo que más vendiste está entre <b>${UX.plata(mejorK)} y ${UX.plata(mejorK + 10000)}</b>: ${t.unidades} unidades en ${t.modelos} ${t.modelos === 1 ? 'modelo' : 'modelos'}.`;
             resumen.hidden = false;
         }
-        new Chart(document.getElementById('canvas-correlacion'), {
+        const lienzo = document.getElementById('canvas-correlacion');
+        _cuandoTengaTamano(lienzo.parentElement, () => new Chart(lienzo, {
             type: 'bubble',
             data: { datasets: [{ label: 'Modelos', data: d.puntos.map(p => ({ x: p.precio, y: p.unidades, r: Math.max(4, (p.unidades / maxU) * 22), titulo: p.titulo })), backgroundColor: 'rgba(139, 92, 246, 0.45)', borderColor: e.primario, borderWidth: 1 }] },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
-                plugins: { legend: { display: false }, tooltip: { ..._TOOLTIP, callbacks: { title: items => items[0].raw.titulo, label: item => `Precio ${UX.plata(item.raw.x)} · ${item.raw.y} unidades vendidas` } } },
+                plugins: { legend: { display: false }, tooltip: { ..._tooltip(), callbacks: { title: items => items[0].raw.titulo, label: item => `Precio ${UX.plata(item.raw.x)} · ${item.raw.y} unidades vendidas` } } },
                 scales: {
-                    x: { ticks: { color: e.texto, font: { size: 12 }, callback: v => UX.plata(v) }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Precio promedio del modelo →', color: e.texto, font: { size: 12 } } },
-                    y: { ticks: { color: e.texto, font: { size: 12 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas ↑', color: e.texto, font: { size: 12 } } }
+                    x: { ticks: { color: e.texto, font: { size: 12 }, callback: v => UX.plata(v) }, grid: { color: e.grilla }, title: { display: true, text: 'Precio promedio del modelo →', color: e.texto, font: { size: 12 } } },
+                    y: { ticks: { color: e.texto, font: { size: 12 } }, grid: { color: e.grilla }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas ↑', color: e.texto, font: { size: 12 } } }
                 }
             }
-        });
+        }));
     }).catch(() => _sinDatos('canvas-correlacion', 'correlacion-empty', 'No se pudo cargar el gráfico. Revisá la conexión.'));
 }
 

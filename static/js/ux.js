@@ -68,6 +68,55 @@ const UX = (() => {
     return { esc, plata, pct, num, icono, delta, banner, kpi, accion };
 })();
 
+/**
+ * Eventos sin `onclick=` en el HTML (paso previo a sacar 'unsafe-inline' del script-src de la CSP: un manejador escrito en el atributo es código inline).
+ *
+ *   <button data-click="funcion" data-click-args='["$el", 7]'>   →   window.funcion(<el botón>, 7)
+ *
+ * Eventos: data-click | data-change | data-input | data-keyup (los argumentos van en data-<evento>-args, un arreglo JSON; en Jinja: `{{ [a, b]|tojson }}` entre comillas simples).
+ * "funcion" puede ser una ruta (`RangoFechas.toggle`, `window.print`): se llama con su objeto como `this`.
+ * Argumentos especiales: "$el" (el elemento), "$ev" (el evento), "$valor" (su value), "$form" (su formulario), "$closest:.selector" (el ancestro más cercano).
+ * data-aislar en un elemento frena el click ahí (hace lo que antes `event.stopPropagation()`): un click adentro no activa el data-click de los de afuera.
+ * Un elemento con role="button" (que no es un <button>) también se activa con Enter y espacio.
+ */
+(() => {
+    const resolverRuta = (ruta) => {
+        let dueno = window, valor = window;
+        for (const parte of String(ruta).split('.')) { dueno = valor; valor = valor == null ? undefined : valor[parte]; }
+        return typeof valor === 'function' ? [valor, dueno] : [null, null];
+    };
+    const argumento = (a, el, ev) => {
+        if (a === '$el') return el;
+        if (a === '$ev') return ev;
+        if (a === '$valor') return el.value;
+        if (a === '$form') return el.form;
+        if (typeof a === 'string' && a.startsWith('$closest:')) return el.closest(a.slice(9));
+        return a;
+    };
+    const atender = (ev) => {
+        const atributo = 'data-' + ev.type;
+        for (let el = ev.target; el && el.nodeType === 1; el = el.parentElement) {
+            if (ev.type === 'click' && el.hasAttribute('data-aislar')) return;
+            if (!el.hasAttribute(atributo)) continue;
+            const [funcion, dueno] = resolverRuta(el.getAttribute(atributo));
+            if (!funcion) { console.error('[ux] ' + atributo + ': no existe la función "' + el.getAttribute(atributo) + '"'); return; }
+            let args = [];
+            try { args = JSON.parse(el.getAttribute(atributo + '-args') || '[]'); } catch (e) { console.error('[ux] ' + atributo + '-args no es un JSON válido', e); return; }
+            funcion.apply(dueno, args.map(a => argumento(a, el, ev)));
+            return;
+        }
+    };
+    ['click', 'change', 'input', 'keyup'].forEach(tipo => document.addEventListener(tipo, atender));
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Enter' && ev.key !== ' ') return;
+        const el = ev.target;
+        if (el && el.nodeType === 1 && el.getAttribute('role') === 'button' && el.hasAttribute('data-click') && el.tagName !== 'BUTTON') { ev.preventDefault(); el.click(); }
+    });
+})();
+
+// Para data-change="enviarFormulario" data-change-args='["$form"]': enviar el formulario apenas cambia un campo (por ejemplo, la fecha de Despacho).
+function enviarFormulario(formulario) { if (formulario) formulario.submit(); }
+
 // Al imprimir / exportar a PDF se abren todas las secciones plegables (cerradas no se imprimen) y después se restauran.
 window.addEventListener('beforeprint', () => document.querySelectorAll('details.ux-detalle').forEach(d => { d.dataset.estabaAbierto = d.open ? '1' : '0'; d.open = true; }));
 window.addEventListener('afterprint', () => document.querySelectorAll('details.ux-detalle').forEach(d => { d.open = d.dataset.estabaAbierto === '1'; }));

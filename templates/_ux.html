@@ -43,11 +43,11 @@
 
 {# Botones de período: los últimos 7/14/30 días y, porque se piensa en meses, "Este mes" y "Mes pasado". Van dentro de un <form> con fecha_desde y fecha_hasta (static/js/global.js). #}
 {% macro botones_periodo(estilo="") %}
-<button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} onclick="aplicarUltimosDias(7, this)">7 días</button>
-<button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} onclick="aplicarUltimosDias(14, this)">14 días</button>
-<button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} onclick="aplicarUltimosDias(30, this)">30 días</button>
-<button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} onclick="aplicarMes(0, this)">Este mes</button>
-<button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} onclick="aplicarMes(-1, this)">Mes pasado</button>
+<button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} data-click="aplicarUltimosDias" data-click-args='[7, "$el"]'>7 días</button>
+<button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} data-click="aplicarUltimosDias" data-click-args='[14, "$el"]'>14 días</button>
+<button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} data-click="aplicarUltimosDias" data-click-args='[30, "$el"]'>30 días</button>
+<button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} data-click="aplicarMes" data-click-args='[0, "$el"]'>Este mes</button>
+<button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} data-click="aplicarMes" data-click-args='[-1, "$el"]'>Mes pasado</button>
 {% endmacro %}
 
 {% macro seccion(titulo, tono="accion") %}

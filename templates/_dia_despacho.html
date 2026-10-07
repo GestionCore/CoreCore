@@ -6,7 +6,7 @@
         <h2 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-truck"/></svg>Despacho</h2>
         <div class="page-subtitle">Flex y Correo del <strong>{{ fecha|fecha }}</strong> — corte a las <strong>{{ hora_corte }}:00</strong> <span id="cuenta-regresiva-corte"></span></div>
     </div>
-    <button type="button" class="btn btn-secondary" onclick="alternarModoDespachoLimpio()" id="btn-modo-limpio"><svg class="icon" style="width:14px;height:14px;" id="icono-modo-limpio"><use href="#icon-bolt"/></svg><span id="label-modo-limpio">Modo foco</span></button>
+    <button type="button" class="btn btn-secondary" data-click="alternarModoDespachoLimpio" id="btn-modo-limpio"><svg class="icon" style="width:14px;height:14px;" id="icono-modo-limpio"><use href="#icon-bolt"/></svg><span id="label-modo-limpio">Modo foco</span></button>
 </div>
 
 {% if not flex_habilitado %}
@@ -31,22 +31,22 @@
         {% if cantidad_shipments > 0 %}
         <a href="/despacho/etiquetas_pdf?fecha={{ fecha }}" class="btn btn-primary btn-lg"><svg class="icon"><use href="#icon-download"/></svg>Descargar {{ cantidad_shipments }} etiqueta{{ 's' if cantidad_shipments > 1 }} en PDF</a>
         {% endif %}
-        <button type="button" class="btn btn-secondary" onclick="sincronizarYRecargar(this)"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Traer ventas nuevas</button>
+        <button type="button" class="btn btn-secondary" data-click="sincronizarYRecargar" data-click-args='["$el"]'><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Traer ventas nuevas</button>
     </div>
 </div>
 {% else %}
 <div class="flex-gap no-imprimir" style="margin-bottom:16px;">
-    <button type="button" class="btn btn-primary" onclick="sincronizarYRecargar(this)"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Traer ventas nuevas</button>
+    <button type="button" class="btn btn-primary" data-click="sincronizarYRecargar" data-click-args='["$el"]'><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Traer ventas nuevas</button>
 </div>
 {% endif %}
 
 <form action="/dia#despacho" method="GET" class="ux-periodo no-imprimir" style="margin-bottom:16px;">
     <label class="field-label" for="fecha-despacho" style="margin:0;"><b>Ver otro día</b></label>
-    <input type="date" id="fecha-despacho" name="fecha" value="{{ fecha }}" onchange="this.form.submit()" style="max-width:190px;">
+    <input type="date" id="fecha-despacho" name="fecha" value="{{ fecha }}" data-change="enviarFormulario" data-change-args='["$form"]' style="max-width:190px;">
     {% if total > 0 %}
     <div class="ux-periodo-botones" style="margin-left:auto;">
-        <button type="button" class="btn btn-secondary active" id="filtro-todos" onclick="filtrarDespacho('todos')">Todos <span class="text-muted">{{ total }}</span></button>
-        <button type="button" class="btn btn-secondary" id="filtro-pendientes" onclick="filtrarDespacho('pendientes')">Por despachar <span class="text-muted" id="n-filtro-pendientes">{{ pendientes }}</span></button>
+        <button type="button" class="btn btn-secondary active" id="filtro-todos" data-click="filtrarDespacho" data-click-args='["todos"]'>Todos <span class="text-muted">{{ total }}</span></button>
+        <button type="button" class="btn btn-secondary" id="filtro-pendientes" data-click="filtrarDespacho" data-click-args='["pendientes"]'>Por despachar <span class="text-muted" id="n-filtro-pendientes">{{ pendientes }}</span></button>
     </div>
     {% endif %}
 </form>
@@ -59,7 +59,7 @@
     {% for p in paquetes %}
     <div class="despacho-item {% if p.despachado %}despachado{% endif %}" data-clave="{{ p.clave }}" data-orden="{{ p.id_orden }}">
         {% if p.thumbnail %}<img src="{{ p.thumbnail }}" class="thumb-sm" alt="" style="width:56px;height:56px;" loading="lazy">{% endif %}
-        <div class="despacho-info" onclick="toggleDespacho(this.closest('.despacho-item'), '{{ p.id_orden }}', '{{ p.id_meli }}', '{{ p.id_variante }}')" style="cursor:pointer;">
+        <div class="despacho-info" data-click="toggleDespacho" data-click-args='{{ ["$closest:.despacho-item", p.id_orden|string, p.id_meli|string, (p.id_variante or "")|string]|tojson }}' style="cursor:pointer;">
             <strong>{{ p.modelo }}</strong>
             <div style="margin-top:4px; font-size:0.9em;">
                 {% if p.talle != 'Único' %}<b>{{ vocab.V1 }} {{ p.talle }}</b> · {% endif %}<b>{{ p.cantidad }} u.</b>
@@ -70,21 +70,21 @@
                 <span class="ux-pill {{ 'ux-info' if p.tipo_envio == 'Flex' else 'ux-neutral ux-pill-suave' }}">{{ p.tipo_envio }}</span>
                 {% if p.limite_texto and not p.despachado %}<span class="ux-pill ux-{{ p.limite_tono }}" title="Hasta cuándo hay que entregar el paquete, según Mercado Libre">Despachá antes: {{ p.limite_texto }}</span>{% endif %}
                 {% if p.etiqueta_impresa and not p.despachado %}<span class="ux-pill ux-warn ux-pill-suave" title="La etiqueta ya se imprimió en MeLi">Etiqueta ya impresa</span>{% endif %}
-                <a href="https://www.mercadolibre.com.ar/ventas/{{ p.id_orden }}/detalle" target="_blank" rel="noopener" class="text-muted" style="font-size:0.82em; text-decoration:none;" onclick="event.stopPropagation();">Orden #{{ p.id_orden }} ↗</a>
+                <a href="https://www.mercadolibre.com.ar/ventas/{{ p.id_orden }}/detalle" target="_blank" rel="noopener" class="text-muted" style="font-size:0.82em; text-decoration:none;" data-aislar>Orden #{{ p.id_orden }} ↗</a>
             </div>
             {% if p.tipo_envio == 'Flex' %}
             {# Lo que te cobra tu logística: el umbral sale solo de la zona de Mercado Libre; acá se puede corregir. Se suma al costo de envío de la venta #}
-            <div class="ux-zonas no-imprimir" style="margin-top:8px;" onclick="event.stopPropagation();" data-zonas-orden="{{ p.id_orden }}">
+            <div class="ux-zonas no-imprimir" style="margin-top:8px;" data-aislar data-zonas-orden="{{ p.id_orden }}">
                 <span class="text-muted" style="font-size:0.82em;"><b>Entrega{% if p.flex_zona_meli and p.flex_zona_meli != '*manual' %} · zona {{ p.flex_zona_meli|title }}{% endif %}:</b></span>
                 {% for u in umbrales_flex %}
-                <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == u.id }}" data-zona="{{ u.id }}" {% if u.precio is none %}disabled title="Cargá primero el precio de este umbral en Costos"{% endif %} onclick="elegirZonaFlex('{{ p.id_orden }}', {{ u.id }})">{{ u.etiqueta }}{% if u.neto is not none %} · {{ u.neto|plata }}{% endif %}</button>
+                <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == u.id }}" data-zona="{{ u.id }}" {% if u.precio is none %}disabled title="Cargá primero el precio de este umbral en Costos"{% endif %} data-click="elegirZonaFlex" data-click-args='{{ [p.id_orden|string, u.id]|tojson }}'>{{ u.etiqueta }}{% if u.neto is not none %} · {{ u.neto|plata }}{% endif %}</button>
                 {% endfor %}
-                <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == 0 }}" data-zona="0" title="Sin costo de entrega (por ejemplo, entregás vos)" onclick="elegirZonaFlex('{{ p.id_orden }}', 0)">Sin costo</button>
+                <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == 0 }}" data-zona="0" title="Sin costo de entrega (por ejemplo, entregás vos)" data-click="elegirZonaFlex" data-click-args='{{ [p.id_orden|string, 0]|tojson }}'>Sin costo</button>
                 {% if umbrales_flex|selectattr('precio', 'none')|list|length == umbrales_flex|length %}<a href="/costos#entrega-flex" style="font-size:0.8em; font-weight:700; color:var(--semantic-warning);">Cargá lo que te cobra tu logística →</a>{% endif %}
             </div>
             {% endif %}
         </div>
-        <button type="button" class="despacho-check" aria-label="Marcar como despachado" onclick="toggleDespacho(this.closest('.despacho-item'), '{{ p.id_orden }}', '{{ p.id_meli }}', '{{ p.id_variante }}')">{% if p.despachado %}✓{% endif %}</button>
+        <button type="button" class="despacho-check" aria-label="Marcar como despachado" data-click="toggleDespacho" data-click-args='{{ ["$closest:.despacho-item", p.id_orden|string, p.id_meli|string, (p.id_variante or "")|string]|tojson }}'>{% if p.despachado %}✓{% endif %}</button>
     </div>
     {% endfor %}
 </div>
@@ -92,7 +92,15 @@
 
 <script>
     const HORA_CORTE = {{ hora_corte }};
-    const ES_HOY = '{{ fecha }}' === new Date().toLocaleDateString('sv-SE');   // sv-SE = AAAA-MM-DD en hora local
+    // La fecha y el corte son de Argentina: se leen en esa zona y no en la de la PC (si la PC está en otra zona o tiene mal el huso, la cuenta regresiva y "hoy" salían corridos)
+    const ZONA_ARGENTINA = 'America/Argentina/Buenos_Aires';
+    function ahoraArgentina() {
+        const partes = {};
+        new Intl.DateTimeFormat('en-CA', { timeZone: ZONA_ARGENTINA, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+            .formatToParts(new Date()).forEach(p => { partes[p.type] = p.value; });
+        return { fecha: `${partes.year}-${partes.month}-${partes.day}`, minutos: Number(partes.hour) * 60 + Number(partes.minute) };
+    }
+    const ES_HOY = '{{ fecha }}' === ahoraArgentina().fecha;
     let _filtroDespacho = 'todos';
 
     function alternarModoDespachoLimpio() {
@@ -105,9 +113,7 @@
     function pintarCuentaRegresiva() {
         const el = document.getElementById('cuenta-regresiva-corte');
         if (!el || !ES_HOY) return;
-        const ahora = new Date(), corte = new Date();
-        corte.setHours(HORA_CORTE, 0, 0, 0);
-        const min = Math.round((corte - ahora) / 60000);
+        const min = HORA_CORTE * 60 - ahoraArgentina().minutos;
         if (min <= 0) { el.innerHTML = '· <span class="ux-pill ux-neutral ux-pill-suave">el corte de hoy ya pasó</span>'; return; }
         const h = Math.floor(min / 60), m = min % 60;
         el.innerHTML = `· <span class="ux-pill ${min <= 60 ? 'ux-warn' : 'ux-info'}">faltan ${h ? h + ' h ' : ''}${m} min</span>`;

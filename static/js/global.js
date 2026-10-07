@@ -1560,7 +1560,8 @@ function inicializarProtectorInactividad() {
 // son interactivos. Un solo listener delegado cubre los 6 que hay en el
 // proyecto (dashboard, index, métricas) en vez de repetir la lógica.
 document.addEventListener('keydown', (e) => {
-    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.panel-colapsable[role="button"]')) {
+    // Si el elemento ya lo atendió el despachador de ux.js (tiene data-click), no se repite: dos clics seguidos lo abrían y lo cerraban
+    if (!e.defaultPrevented && (e.key === 'Enter' || e.key === ' ') && e.target.matches('.panel-colapsable[role="button"]')) {
         e.preventDefault();
         e.target.click();
     }
