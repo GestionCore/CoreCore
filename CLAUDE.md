@@ -437,9 +437,9 @@ y color donde hay que mirar. Piezas (usarlas, no reinventar HTML):
   también, proxied). `MELI_REDIRECT_URI` productivo:
   `https://corelux.app/callback`.
 - `Dockerfile` + `.dockerignore` en la raíz — deploy es `fly deploy`,
-  no gunicorn+systemd+nginx a mano (los archivos de `deploy/` para esa
-  ruta vieja siguen en el repo por si hace falta, pero no son el
-  camino real hoy).
+  no gunicorn+systemd+nginx a mano (la carpeta `deploy/` de esa ruta
+  vieja —systemd, nginx, Celery— se borró el 2026-10-07: sigue en el
+  historial de git si alguna vez hace falta).
 - Auto-deploy en el proveedor (Railway) se había dejado apagado a
   propósito para forzar correr migraciones de Supabase antes de cada
   deploy — confirmar si Fly.io tiene el mismo criterio configurado o
@@ -557,6 +557,17 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
   (Preguntas carga todo por fetch). Si una parte falla, las demás se muestran (`errores`); la cuenta desconectada se manda a reconectar (`_Salir`). Los links viejos (`/despacho?fecha=`, `/preguntas`, `/logros`,
   `/reputacion`) redirigen a su ancla (`_url_dia`). Para sumar una parte: plantilla `_dia_*.html`, su contexto, su `<section id>` en `dia.html` y su pestaña. Los ids y los `const/let` globales de los scripts de
   las partes no pueden repetirse (una prueba lo exige).
+- **Refresco del token de MeLi, de a uno por cuenta (2026-10-07)**: el `refresh_token` es de UN SOLO USO. `token_manager._refrescar_de_a_uno` refresca con un candado por cuenta en el proceso + un
+  `pg_advisory_xact_lock(BASE_LOCK_REFRESCO + cuenta_id)` entre procesos (2 máquinas × 2 workers), relee el token tras esperar y guarda todo en la misma transacción: antes, dos pedidos que veían el token vencido a la
+  vez gastaban el mismo refresh, el segundo recibía `invalid_grant` y la cuenta se marcaba desconectada sin estarlo. Un 401 usa `refrescar_token_rechazado` (no refresca de nuevo si otro ya cambió el token).
+  Nunca se levanta una excepción DENTRO de esa transacción si hay que confirmar algo (la desconexión por `invalid_grant` se levanta después). `tests/test_token_refresco.py` reproduce la carrera con hilos. El advisory lock + `lock_timeout` se probó contra el Postgres real (espera, `LockNotAvailable`, sin `lock_timeout` pegado en el pool).
+  ⚠️ El refresco real contra MeLi NO se pudo probar desde la PC: con las credenciales del `.env` local MeLi contesta `invalid_client` (no gasta el refresh_token ni desconecta la cuenta). Para verlo en vivo hay que
+  mirar los logs de Fly tras el deploy (un refresco por cuenta cada ~6 h, sin `invalid_grant`). No forzar `expira_en` en cuentas reales desde la PC.
+- **Auditoría externa de 15 hallazgos (2026-10-07)**: se verificó cada uno contra el código y la base antes de tocar nada. NO eran ciertos: (4) las políticas RLS con `cuenta_id::text` no pierden los índices
+  (el `EXPLAIN` usa `idx_ventas_cuenta_fecha`; castear el setting no cambia el plan por el `OR` con constantes — lo que sí limita es que el filtro de cuenta no entra al índice: si hay muchos tenants, la mejora real es
+  `cuenta_id = ANY(ARRAY(SELECT id FROM cuentas_meli WHERE usuario_id = …))` en la política, medida con datos grandes y probada con los tests de RLS); (7) `ventas.codigo_postal` y `localidad` NO están huérfanas (2.692 filas
+  con valor; `flex.py` y `ventas_sync.py` las usan: un test impide borrarlas); (9) nada marca `eliminado_en` (el borrado es físico), no hay nada que purgar; (13) `deploy/gunicorn_config.py` no se usaba en Fly. Los índices de
+  claves foráneas se detectan con `pg_constraint` (no con la lista de la auditoría: `referrals` ya tenía los suyos) y una prueba exige que toda FK tenga índice.
 - **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real

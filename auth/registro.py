@@ -30,15 +30,49 @@ def email_de_meli(datos_meli):
     return email if "@" in email and "." in email.split("@")[-1] and not email.endswith(SUFIJO_EMAIL_PENDIENTE) else None
 
 
-def _generar_referral_code():
+INTENTOS_CODIGO_REFERIDO = 5
+
+
+def _generar_referral_code(cursor=None):
+    """
+    Un código de referido aleatorio de 8 caracteres. Con `cursor` se comprueba en la base que nadie lo tenga ya (la probabilidad de choque es ínfima, pero antes ni se
+    miraba: un choque saltaba como UniqueViolation y se confundía con un email repetido).
+    """
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sin 0/O/1/I/L confundibles
-    while True:
+    for _ in range(10):
         code = "".join(secrets.choice(alphabet) for _ in range(8))
-        # Verificar unicidad en DB antes de devolver (probabilidad de colisión ~0)
-        return code
+        if cursor is None:
+            return code
+        cursor.execute("SELECT 1 FROM usuarios WHERE referral_code = %s", (code,))
+        if cursor.fetchone() is None:
+            return code
+    raise RuntimeError("No se pudo generar un código de referido libre.")
 
 
-def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None):
+def _restriccion_violada(error):
+    """Qué restricción UNIQUE saltó: «referral_code», «email» u «otra» (psycopg informa el nombre en error.diag.constraint_name)."""
+    nombre = getattr(getattr(error, "diag", None), "constraint_name", None) or ""
+    if "referral_code" in nombre:
+        return "referral_code"
+    if "email" in nombre:
+        return "email"
+    return "otra"
+
+
+def _descartar_usuario_sin_cuenta(usuario_id):
+    """Borra un usuario recién creado que quedó sin cuenta ni datos (porque otro pedido creó la cuenta un instante antes)."""
+    conexion = db._obtener_pool().getconn()
+    try:
+        conexion.cursor().execute("DELETE FROM usuarios WHERE id = %s AND NOT EXISTS (SELECT 1 FROM cuentas_meli WHERE usuario_id = %s)", (usuario_id, usuario_id))
+        conexion.commit()
+    except Exception:
+        conexion.rollback()
+        raise
+    finally:
+        db.liberar_conexion(conexion)
+
+
+def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None, _reintento=False):
     """
     datos_meli: {"meli_user_id": int, "nickname": str, "site_id": str}
     Devuelve (usuario_id, cuenta_id, es_usuario_nuevo).
@@ -78,20 +112,27 @@ def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None):
 
     usuario_id = None
     for email in candidatos:
-        conexion = db._obtener_pool().getconn()
-        try:
-            cursor = conexion.cursor(row_factory=dict_row)
-            cursor.execute(
-                "INSERT INTO usuarios (email, plan, trial_termina_en, referral_code) VALUES (%s, 'trial', %s, %s) RETURNING id",
-                (email, trial_termina_en, _generar_referral_code())
-            )
-            usuario_id = cursor.fetchone()["id"]
-            conexion.commit()
+        for _ in range(INTENTOS_CODIGO_REFERIDO):
+            conexion = db._obtener_pool().getconn()
+            try:
+                cursor = conexion.cursor(row_factory=dict_row)
+                cursor.execute(
+                    "INSERT INTO usuarios (email, plan, trial_termina_en, referral_code) VALUES (%s, 'trial', %s, %s) RETURNING id",
+                    (email, trial_termina_en, _generar_referral_code(cursor))
+                )
+                usuario_id = cursor.fetchone()["id"]
+                conexion.commit()
+                break
+            except UniqueViolation as e:
+                conexion.rollback()
+                if _restriccion_violada(e) != "referral_code":
+                    break              # el email ya lo tiene otro usuario: se prueba con el siguiente candidato
+                # chocó el código aleatorio (casi imposible): se reintenta con OTRO código y el MISMO email. Antes se tomaba por un email repetido y se
+                # le asignaba al usuario el provisorio, quemando su email real.
+            finally:
+                db.liberar_conexion(conexion)
+        if usuario_id is not None:
             break
-        except UniqueViolation:
-            conexion.rollback()
-        finally:
-            db.liberar_conexion(conexion)
     if usuario_id is None:
         raise RuntimeError("No se pudo crear el usuario: ni el email de Mercado Libre ni el provisorio estaban disponibles.")
 
@@ -99,14 +140,22 @@ def crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario=None):
     # RLS activo — esta es la secuencia que probamos contra Postgres
     # real: setear la sesión ANTES del INSERT en cuentas_meli, o la
     # política lo rechaza.
-    with db.conexion_usuario(usuario_id) as conexion:
-        cursor = conexion.cursor(row_factory=dict_row)
-        cursor.execute(
-            """INSERT INTO cuentas_meli (usuario_id, meli_user_id, nickname, site_id)
-               VALUES (%s, %s, %s, %s) RETURNING id""",
-            (usuario_id, meli_user_id, datos_meli.get("nickname"), datos_meli.get("site_id", "MLA"))
-        )
-        cuenta_id = cursor.fetchone()["id"]
+    try:
+        with db.conexion_usuario(usuario_id) as conexion:
+            cursor = conexion.cursor(row_factory=dict_row)
+            cursor.execute(
+                """INSERT INTO cuentas_meli (usuario_id, meli_user_id, nickname, site_id)
+                   VALUES (%s, %s, %s, %s) RETURNING id""",
+                (usuario_id, meli_user_id, datos_meli.get("nickname"), datos_meli.get("site_id", "MLA"))
+            )
+            cuenta_id = cursor.fetchone()["id"]
+    except UniqueViolation:
+        # Otro pedido (un doble clic en el login) creó esta cuenta de Mercado Libre un instante antes: el usuario que acabamos de crear quedó sin cuenta ni datos, se
+        # descarta y se sigue por el camino de una cuenta que ya existe.
+        _descartar_usuario_sin_cuenta(usuario_id)
+        if _reintento:
+            raise
+        return crear_o_actualizar_login(datos_meli, email_para_nuevo_usuario, _reintento=True)
 
     return usuario_id, cuenta_id, True
 
@@ -147,33 +196,39 @@ def vincular_cuenta_adicional(usuario_id, datos_meli):
     """
     meli_user_id = datos_meli["meli_user_id"]
 
-    with db.conexion_admin() as conexion:
-        cursor = conexion.cursor(row_factory=dict_row)
-        cursor.execute("SELECT id, usuario_id FROM cuentas_meli WHERE meli_user_id = %s", (meli_user_id,))
-        cuenta_existente = cursor.fetchone()
+    # Mirar y después insertar deja una ventana: un doble clic manda dos pedidos y el segundo choca con el UNIQUE de meli_user_id. Si pasa, se vuelve a mirar: ya existe
+    # (la creó el primer pedido) y se sigue como una cuenta que ya estaba vinculada, en vez de un error 500.
+    for _ in range(2):
+        with db.conexion_admin() as conexion:
+            cursor = conexion.cursor(row_factory=dict_row)
+            cursor.execute("SELECT id, usuario_id FROM cuentas_meli WHERE meli_user_id = %s", (meli_user_id,))
+            cuenta_existente = cursor.fetchone()
 
-    if cuenta_existente:
-        if cuenta_existente["usuario_id"] != usuario_id:
-            return None, "ya_de_otro_usuario"
-        cuenta_id = cuenta_existente["id"]
-        with db.conexion_usuario(usuario_id) as conexion:
-            cursor = conexion.cursor()
-            cursor.execute(
-                "UPDATE cuentas_meli SET nickname = %s, activa = true, ultima_sincronizacion = now() WHERE id = %s",
-                (datos_meli.get("nickname"), cuenta_id)
-            )
-        return cuenta_id, "reconectada"
+        if cuenta_existente:
+            if cuenta_existente["usuario_id"] != usuario_id:
+                return None, "ya_de_otro_usuario"
+            cuenta_id = cuenta_existente["id"]
+            with db.conexion_usuario(usuario_id) as conexion:
+                cursor = conexion.cursor()
+                cursor.execute(
+                    "UPDATE cuentas_meli SET nickname = %s, activa = true, ultima_sincronizacion = now() WHERE id = %s",
+                    (datos_meli.get("nickname"), cuenta_id)
+                )
+            return cuenta_id, "reconectada"
 
-    with db.conexion_usuario(usuario_id) as conexion:
-        cursor = conexion.cursor(row_factory=dict_row)
-        cursor.execute(
-            """INSERT INTO cuentas_meli (usuario_id, meli_user_id, nickname, site_id)
-               VALUES (%s, %s, %s, %s) RETURNING id""",
-            (usuario_id, meli_user_id, datos_meli.get("nickname"), datos_meli.get("site_id", "MLA"))
-        )
-        cuenta_id = cursor.fetchone()["id"]
-
-    return cuenta_id, "vinculada"
+        try:
+            with db.conexion_usuario(usuario_id) as conexion:
+                cursor = conexion.cursor(row_factory=dict_row)
+                cursor.execute(
+                    """INSERT INTO cuentas_meli (usuario_id, meli_user_id, nickname, site_id)
+                       VALUES (%s, %s, %s, %s) RETURNING id""",
+                    (usuario_id, meli_user_id, datos_meli.get("nickname"), datos_meli.get("site_id", "MLA"))
+                )
+                cuenta_id = cursor.fetchone()["id"]
+            return cuenta_id, "vinculada"
+        except UniqueViolation:
+            continue
+    raise RuntimeError("No se pudo vincular la cuenta de Mercado Libre: se creó y desapareció a la vez.")
 
 
 def obtener_cuentas_de_usuario(usuario_id):

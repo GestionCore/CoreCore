@@ -10,7 +10,7 @@ import db
 import analisis_stock
 import salud_cuenta
 import resumen_semanal
-from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle, SQL_RECLAMO_AFECTA, sql_momento_argentina
+from utils import ARGENTINA, formatear_moneda, hoy_argentina, limpiar_titulo_modelo, extraer_talle, SQL_RECLAMO_AFECTA, sql_momento_argentina
 
 
 def _detalle_venta(titulo):
@@ -59,7 +59,7 @@ def ganancia_de_ayer_hasta_la_hora(ventas, ahora):
 
 
 def obtener_ventas_hoy(usuario_id, cuenta_id=None):
-    arg_now = datetime.now(timezone.utc) - timedelta(hours=3)
+    arg_now = datetime.now(ARGENTINA)
     hoy_local = arg_now.strftime("%Y-%m-%d")
 
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
@@ -195,7 +195,7 @@ def obtener_proyeccion_mes(usuario_id, cuenta_id=None, hoy=None):
     en el mismo punto del mes). La proyección es lineal (ritmo diario actual x días del mes): un orden de magnitud, no una promesa.
     """
     import calendar
-    hoy = hoy or (datetime.now(timezone.utc) - timedelta(hours=3)).date()      # hoy en Argentina
+    hoy = hoy or hoy_argentina()
     inicio = hoy.replace(day=1)
     dias_mes = calendar.monthrange(hoy.year, hoy.month)[1]
     fin_anterior = inicio - timedelta(days=1)
@@ -274,7 +274,7 @@ def obtener_ticker(usuario_id, cuenta_id=None):
     # alguna vez esto corre en un servidor en UTC en vez de en la PC del
     # usuario, datetime.now() a secas daría el día equivocado justo en las
     # horas cercanas a la medianoche.
-    arg_now = datetime.now(timezone.utc) - timedelta(hours=3)
+    arg_now = datetime.now(ARGENTINA)
     hoy = arg_now.strftime("%Y-%m-%d")
     manana = (arg_now + timedelta(days=1)).strftime("%Y-%m-%d")
 
@@ -351,7 +351,7 @@ def obtener_tendencia_ventas(usuario_id, cuenta_id=None, dias=14):
     solo agrega un widget más a la grilla existente, con el mismo
     patrón que los demás (una tarjeta que se arma con JS al cargar).
     """
-    hoy_local = (datetime.now(timezone.utc) - timedelta(hours=3)).date()
+    hoy_local = hoy_argentina()
     desde = hoy_local - timedelta(days=dias - 1)
 
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:

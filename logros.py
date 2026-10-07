@@ -8,7 +8,7 @@ todavía no portado) queda afuera por ahora — se agrega cuando portemos
 ese módulo, sin romper nada mientras tanto.
 """
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 import analisis_stock
 import embudo_conversion
 from utils import SQL_RECLAMO_AFECTA, corregir_plurales, cuenta_usa_talles, hoy_argentina, plural, vocabulario
@@ -350,7 +350,7 @@ def actualizar_racha(usuario_id, cuenta_id):
 
     Devuelve la racha actualizada (días consecutivos, incluyendo hoy).
     """
-    hoy_local = (datetime.now(timezone.utc) - timedelta(hours=3)).date()
+    hoy_local = hoy_argentina()
     ayer_local = hoy_local - timedelta(days=1)
 
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:

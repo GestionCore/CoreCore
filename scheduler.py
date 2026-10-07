@@ -121,6 +121,19 @@ def _tarea_verificar_tokens():
     salud_tokens.verificar_tokens()
 
 
+def _tarea_limpiar_vinculaciones_oauth():
+    """
+    Borra los pedidos de vincular otra cuenta de Mercado Libre que la persona dejó a medias (el `state` vale 15 minutos). Ya se limpian al iniciar un vínculo nuevo, pero si
+    nadie inicia otro los abandonados se quedaban. Es una tabla de claves de un solo uso, sin datos de la persona: se borra con la conexión de administración.
+    """
+    with db.conexion_admin() as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("DELETE FROM oauth_vinculaciones_pendientes WHERE creado_en < now() - interval '15 minutes'")
+        borrados = cursor.rowcount
+    if borrados:
+        print(f"[Scheduler] 🧹 {borrados} vinculación(es) de OAuth abandonada(s) borrada(s).")
+
+
 def iniciar_scheduler():
     """
     Punto de entrada llamado desde app.py al importarse (una vez por proceso). Solo un proceso tiene el lock y corre las tareas; los demás
@@ -166,5 +179,6 @@ def _arrancar_apscheduler():
     _scheduler_apscheduler.add_job(_tarea_relevar_competencia, "interval", hours=24, id="relevar")
     _scheduler_apscheduler.add_job(_tarea_relevar_tendencias, "interval", hours=24, id="relevar_tendencias")
     _scheduler_apscheduler.add_job(_tarea_verificar_tokens, "interval", hours=1, id="verificar_tokens", max_instances=1, coalesce=True)
+    _scheduler_apscheduler.add_job(_tarea_limpiar_vinculaciones_oauth, "interval", hours=1, id="limpiar_oauth", max_instances=1, coalesce=True)
     _scheduler_apscheduler.start()
     print("[Scheduler] ✅ APScheduler iniciado (sync cada 4 min, para todas las cuentas).")

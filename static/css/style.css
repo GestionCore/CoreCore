@@ -565,7 +565,7 @@ select option { background: #14162a; color: var(--text-primary); }
     position: fixed; inset: 0; background: rgba(5, 6, 10, 0.65);
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     display: none; align-items: flex-start; justify-content: center;
-    padding-top: 12vh; z-index: 200;
+    padding-top: 12vh; z-index: 8700;   /* la búsqueda (Ctrl K) por encima del menú lateral abierto (8600) pero debajo de la guía de bienvenida */
 }
 .command-overlay.open { display: flex; animation: fadeInUp 0.15s ease; }
 .command-modal {
@@ -627,7 +627,7 @@ input[type="number"] { font-family: var(--font-data); }
 input[type="text"], input[type="date"], select, textarea { font-family: var(--font-ui); }
 
 /* ---------- Toasts (esquina superior derecha) ---------- */
-#toast-container { position: fixed; top: 70px; right: 20px; z-index: 400; display: flex; flex-direction: column; gap: 8px; }
+#toast-container { position: fixed; top: 70px; right: 20px; z-index: 9999;   /* sobre el menú lateral abierto (8600) y la guía de bienvenida (9000+): un aviso no puede quedar escondido */ display: flex; flex-direction: column; gap: 8px; }
 .toast-item {
     display: flex; align-items: flex-start; gap: 12px; max-width: 380px; padding: 14px 18px; border-radius: var(--radius-md); font-size: 0.9em; line-height: 1.4; color: var(--text-primary);
     background: var(--bg-surface); border: 1px solid var(--glass-border); border-left: 4px solid var(--ux-toast, var(--semantic-info));

@@ -16,7 +16,6 @@ Ajustar cuando el monitoreo de Sentry muestre:
   - Latencia > 500ms en p95: subir workers o threads
   - Memoria > 80% del RAM: bajar workers, subir Celery concurrencia
 """
-import multiprocessing
 import os
 
 # Binding
@@ -24,7 +23,9 @@ bind = os.getenv("GUNICORN_BIND", "0.0.0.0:5000")
 
 # Workers: (2 × CPU) + 1 es la fórmula clásica para I/O-bound.
 # Con Celery absorbiendo el trabajo pesado, podemos ser más conservadores.
-workers = int(os.getenv("GUNICORN_WORKERS", max(2, multiprocessing.cpu_count())))
+# En Fly el pooler de Supabase da 15 conexiones de sesión para TODO el proyecto: máquinas × workers × DB_POOL_MAX ≤ 12 (hoy 2 × 2 × 3, ver fly.toml). Nada de
+# «2 × CPU + 1»: el Dockerfile ya fija --workers 2 en la línea de comandos (que manda sobre este archivo) y este valor es el respaldo si alguien lo saca.
+workers = int(os.getenv("GUNICORN_WORKERS", "2"))
 worker_class = "sync"
 threads = int(os.getenv("GUNICORN_THREADS", "4"))
 

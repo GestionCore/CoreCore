@@ -2,13 +2,15 @@
 Middleware de autenticación — decorador para proteger rutas y helper
 para saber qué usuario/cuenta está atendiendo cada request.
 """
-from datetime import datetime, timedelta, timezone
+import time
+from datetime import datetime, timezone
 from functools import wraps
 from flask import session, redirect, url_for, g, request, render_template, abort
 from auth import registro
 import db
 import config
 import nav_config
+from utils import hoy_argentina
 
 # Rutas que tienen que funcionar SIEMPRE, aunque la primera sincronización
 # todavía no haya terminado — si no las excluimos acá, el usuario queda
@@ -25,6 +27,9 @@ _PERMITIDAS_SIN_SUSCRIPCION = {
     "suscripcion_vista", "suscripcion_cancelar", "webhook_mercadopago", "admin_panel",
     "admin_usuarios", "admin_cambiar_plan", "salud_sistema.admin_salud", "feedback.admin_feedback", "feedback.marcar_atendido", "legal.cuenta_eliminar",
 }
+
+
+MINUTOS_REINTENTO_RACHA = 5
 
 
 def login_requerido(vista):
@@ -82,24 +87,31 @@ def login_requerido(vista):
         # en cada request — solo se actualiza la primera vez que se entra
         # en el día (hora Argentina), no en cada click. Mismo criterio
         # UTC-3 que usa actualizar_racha, para que coincidan.
-        hoy_local = (datetime.now(timezone.utc) - timedelta(hours=3)).strftime("%Y-%m-%d")
-        if session.get("racha_actualizada_el") != hoy_local:
+        # El día se da por actualizado SOLO si se pudo guardar: con un microcorte de la base la racha se reintenta (a los 5 minutos, para no golpear la base en cada
+        # click mientras siga caída) en lugar de perderse el día.
+        hoy_local = hoy_argentina().strftime("%Y-%m-%d")
+        ahora_ts = time.time()
+        if session.get("racha_actualizada_el") != hoy_local and ahora_ts >= session.get("racha_reintento_en", 0):
             try:
                 import logros
                 logros.actualizar_racha(usuario_id, cuenta_id)
+                session["racha_actualizada_el"] = hoy_local
+                session.pop("racha_reintento_en", None)
             except Exception as e:
                 print(f"[Middleware] ⚠️ Error actualizando racha: {e}")
-            session["racha_actualizada_el"] = hoy_local
+                session["racha_reintento_en"] = ahora_ts + MINUTOS_REINTENTO_RACHA * 60
 
         # "MÁS USADO": igual que la racha, se recalcula una sola vez por
         # día (no en cada click) y se guarda en sesión — el menú y el
         # tab-strip lo leen de ahí sin pegarle a la base en cada render.
-        if session.get("mas_usado_actualizado_el") != hoy_local:
+        if session.get("mas_usado_actualizado_el") != hoy_local and ahora_ts >= session.get("mas_usado_reintento_en", 0):
             try:
                 session["mas_usado"] = _calcular_mas_usado_sesion(usuario_id)
+                session["mas_usado_actualizado_el"] = hoy_local
+                session.pop("mas_usado_reintento_en", None)
             except Exception as e:
                 print(f"[Middleware] ⚠️ Error calculando más usado: {e}")
-            session["mas_usado_actualizado_el"] = hoy_local
+                session["mas_usado_reintento_en"] = ahora_ts + MINUTOS_REINTENTO_RACHA * 60
 
         return vista(*args, **kwargs)
     return envoltorio
