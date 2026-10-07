@@ -63,6 +63,25 @@ def obtener_horario_corte_hoy(access_token, user_id, logistic_type="drop_off"):
         return _cache_horarios.get(clave_cache, {}).get("data")
 
 
+def obtener_horario_semanal(access_token, user_id, logistic_type="drop_off"):
+    """
+    El horario de corte de TODA la semana que informa Mercado Libre para ese tipo de logística: ('ok', {dia: «HH:MM» | None}), ('no_tiene', None) si MeLi responde 404
+    (la cuenta no tiene ese servicio: es el caso de Flex/self_service, que nunca informa horario) o ('error', None) si no se pudo consultar (no es una respuesta: no se guarda).
+    """
+    import despacho_corte
+    try:
+        resp = meli_http.get(f"https://api.mercadolibre.com/users/{user_id}/shipping/schedule/{logistic_type}", headers={"Authorization": f"Bearer {access_token}"}, timeout=8)
+    except Exception as e:
+        print(f"[Logística] ⚠️ No se pudo consultar el horario semanal de {logistic_type}: {e}")
+        return "error", None
+    if resp.status_code == 404:
+        return "no_tiene", None
+    if resp.status_code != 200:
+        print(f"[Logística] ⚠️ Horario semanal de {logistic_type}: {resp.status_code} - {resp.text[:200]}")
+        return "error", None
+    return "ok", despacho_corte.semana_desde_schedule(resp.json())
+
+
 def tiene_flex_habilitado(access_token, site_id, user_id):
     """
     Chequea si el vendedor tiene una suscripción activa a Mercado Envíos

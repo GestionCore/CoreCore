@@ -69,7 +69,7 @@ def test_el_css_deja_lugar_para_la_barra_y_respeta_a_quien_prefiere_menos_movimi
 
 # ── La pantalla ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 CONTEXTO = dict(
-    paquetes=[], fecha="2026-10-07", total=0, listos=0, cantidad_shipments=0, hora_corte=11, flex_habilitado=False, umbrales_flex=[],
+    paquetes=[], fecha="2026-10-07", total=0, listos=0, cantidad_shipments=0, corte_correo={"hora": "13:00", "estado": "informado"}, corte_flex=None, cortes_js=[{"nombre": "Correo", "hora": "13:00"}], flex_habilitado=False, umbrales_flex=[],
     misiones=[], mensaje_todo_bien=True, cuenta_sin_datos=False, mensaje_coach=None, coach_pendiente=False, conteo_por_prioridad={"urgente": 0, "importante": 0, "opcional": 0},
     logros_resueltos=[], recien_resueltas=0, rep=None, incidencias_por_tipo={"devoluciones": 0, "reclamos": 0, "reclamos_sin_impacto": 0, "cancelaciones": 0},
 )

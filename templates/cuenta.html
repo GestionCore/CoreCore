@@ -64,6 +64,23 @@
     </div>
 </div>
 
+{# Solo para cuentas que usan Flex: un False confirmado (capacidades.py) esconde el panel #}
+{% if capacidades.get('flex') is not false %}
+<div class="panel cuenta-panel" id="flex-corte">
+    <label class="field-label" for="input-flex-corte"><b>Hora de corte de Flex</b></label>
+    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin:4px 0 12px; max-width:640px;">
+        Mercado Libre <b>no informa</b> a qué hora cortan tus entregas Flex, así que la cargás vos. La usamos en Despacho para mostrarte cuánto falta para el corte.
+        Si la dejás vacía, Despacho dice «Corte Flex: No configurado». Se guarda para <b>{{ (cuenta_actual.nombre_negocio or cuenta_actual.nickname) if cuenta_actual else 'esta cuenta' }}</b>.
+    </div>
+    <div class="flex-gap" style="align-items:center;">
+        <input type="time" id="input-flex-corte" value="{{ flex_hora_corte or '' }}" style="width:130px; font-weight:800;" aria-describedby="flex-corte-ayuda">
+        <button type="button" class="btn btn-primary" id="btn-guardar-flex-corte">Guardar</button>
+        <button type="button" class="btn btn-secondary" id="btn-quitar-flex-corte"{% if not flex_hora_corte %} style="display:none;"{% endif %}>Quitar</button>
+        <span class="text-muted" id="flex-corte-ayuda" style="font-size:0.82em;">{% if flex_hora_corte %}hoy: {{ flex_hora_corte }}{% else %}todavía no la cargaste{% endif %}</span>
+    </div>
+</div>
+{% endif %}
+
 <!-- ── 4. TUS DATOS ─────────────────────────────────────────────────────── -->
 <div class="ux-seccion ux-neutral">Tus datos</div>
 <div class="panel cuenta-panel">
@@ -89,6 +106,33 @@
 .cuenta-fila { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 6px 0; }
 </style>
 <script>
+async function guardarFlexCorte(valor, boton) {
+    boton.disabled = true;
+    try {
+        const r = await fetch('/api/cuenta/flex_hora_corte', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor }) });
+        const d = await r.json();
+        if (d.ok) {
+            document.getElementById('input-flex-corte').value = d.flex_hora_corte || '';
+            document.getElementById('flex-corte-ayuda').textContent = d.flex_hora_corte ? 'hoy: ' + d.flex_hora_corte : 'todavía no la cargaste';
+            document.getElementById('btn-quitar-flex-corte').style.display = d.flex_hora_corte ? '' : 'none';
+            mostrarToast(d.flex_hora_corte ? 'Listo: el corte de Flex es a las ' + d.flex_hora_corte + '.' : 'Listo: quitaste el corte de Flex.', 'success');
+        } else {
+            mostrarToast(d.detalle || 'No se pudo guardar.', 'error');
+        }
+    } catch (err) {
+        mostrarToast('No hubo conexión con el servidor. Probá de nuevo.', 'error');
+    }
+    boton.disabled = false;
+}
+if (document.getElementById('btn-guardar-flex-corte')) {
+    document.getElementById('btn-guardar-flex-corte').addEventListener('click', (e) => {
+        const valor = document.getElementById('input-flex-corte').value.trim();
+        if (!valor) { mostrarToast('Elegí una hora, por ejemplo 14:00.', 'error'); return; }
+        guardarFlexCorte(valor, e.currentTarget);
+    });
+    document.getElementById('btn-quitar-flex-corte').addEventListener('click', (e) => guardarFlexCorte('', e.currentTarget));
+}
+
 document.getElementById('btn-guardar-margen').addEventListener('click', async (e) => {
     const boton = e.currentTarget, entrada = document.getElementById('input-margen-minimo');
     const valor = entrada.value.trim();

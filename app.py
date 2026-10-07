@@ -56,6 +56,7 @@ import catalogo_ganar
 import mensajes as mensajes_mod
 import opiniones as opiniones_mod
 import cobros as cobros_mod
+import despacho_corte
 import preguntas_sla
 import tiempo_respuesta as tiempo_respuesta_mod
 import full_stock
@@ -2382,7 +2383,6 @@ def _contexto_despacho():
     import db
     fecha = request.args.get("fecha") or hoy_argentina().strftime("%Y-%m-%d")
 
-    hora_corte = 11
     flex_habilitado = False
     access_token = None
     try:
@@ -2396,13 +2396,12 @@ def _contexto_despacho():
         fila = cursor.fetchone()
     seller_id = fila[0] if fila else None
 
+    # Cortes reales: el de Correo sale del horario semanal que informa Mercado Libre (guardado, se refresca por día) y el de Flex lo carga la persona; sin dato no se inventa uno
+    cortes = despacho_corte.cortes_para(g.usuario_id, g.cuenta_id, access_token, seller_id, fecha)
     if access_token and seller_id:
-        hora_real = logistica.obtener_horario_corte_hoy(access_token, seller_id, "drop_off")
-        if hora_real is not None:
-            hora_corte = hora_real
         flex_habilitado = logistica.tiene_flex_habilitado(access_token, "MLA", seller_id)
 
-    offset_horas = 24 - hora_corte
+    offset_horas = 24 - cortes["hora_agrupacion"]
     paquetes, total, listos, cantidad_shipments, tiene_flex = despacho_mod.obtener_paquetes_del_dia(g.usuario_id, g.cuenta_id, access_token, fecha, offset_horas)
     # El chequeo de la API de "¿tenés Flex?" puede fallar por un hipo
     # transitorio y quedar cacheado horas (ver logistica.py) — si hoy
@@ -2416,7 +2415,8 @@ def _contexto_despacho():
             umbrales_flex = flex.umbrales_para_vista(flex.obtener_config(conexion.cursor(), g.cuenta_id))
 
     return dict(
-        paquetes=paquetes, fecha=fecha, total=total, listos=listos, cantidad_shipments=cantidad_shipments, hora_corte=hora_corte,
+        paquetes=paquetes, fecha=fecha, total=total, listos=listos, cantidad_shipments=cantidad_shipments,
+        corte_correo=cortes["correo"], corte_flex=cortes["flex"], cortes_js=despacho_corte.cortes_js(cortes),
         flex_habilitado=flex_habilitado, umbrales_flex=umbrales_flex,
     )
 
@@ -2451,12 +2451,7 @@ def despacho_etiquetas_pdf():
         fila = cursor.fetchone()
     seller_id = fila[0] if fila else None
 
-    hora_corte = 11
-    if seller_id:
-        hora_real = logistica.obtener_horario_corte_hoy(access_token, seller_id, "drop_off")
-        if hora_real is not None:
-            hora_corte = hora_real
-    offset_horas = 24 - hora_corte
+    offset_horas = 24 - despacho_corte.cortes_para(g.usuario_id, g.cuenta_id, access_token, seller_id, fecha)["hora_agrupacion"]
 
     shipment_ids = despacho_mod.obtener_shipment_ids_del_dia(g.usuario_id, fecha, offset_horas, g.cuenta_id)
     if not shipment_ids:
@@ -3673,7 +3668,9 @@ def cuenta_vista():
         email = None                          # email provisorio hasta que se lea el real de Mercado Libre: no se le muestra a la persona
     dias_trial = max(0, (trial_termina_en - datetime.now(timezone.utc)).days) if plan == "trial" and trial_termina_en else None
     nombre_plan = {"trial": "Prueba gratuita", "base": "Plan Base", "elite": "Plan Elite", "cancelado": "Cancelado"}.get(plan, plan)
-    return render_template("cuenta.html", active_nav="cuenta", plan=plan, nombre_plan=nombre_plan, email=email, dias_trial=dias_trial,
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        flex_hora_corte = despacho_corte.leer_flex(conexion.cursor(), g.cuenta_id)
+    return render_template("cuenta.html", active_nav="cuenta", plan=plan, flex_hora_corte=flex_hora_corte, nombre_plan=nombre_plan, email=email, dias_trial=dias_trial,
                            pagos_habilitados=config.PAGOS_HABILITADOS, contacto=legal.CONTACTO_EMAIL,
                            condicion_fiscal_actual=fiscal.obtener(g.usuario_id, g.cuenta_id), condiciones_fiscales=fiscal.CONDICIONES, detalles_condicion=fiscal.DETALLES)
 
@@ -3692,6 +3689,22 @@ def api_cuenta_margen_minimo():
         return jsonify({"ok": False, "detalle": _detalle_error(e)}), 500
     cache_guardar(construir_key("margenes_usuario", g.usuario_id), {str(k): v for k, v in preferencias.margenes_de_usuario(g.usuario_id).items()}, timeout=60)
     return jsonify({"ok": True, "margen_minimo": margen})
+
+
+@app.route("/api/cuenta/flex_hora_corte", methods=["POST"])
+@login_requerido
+@auditar("flex_hora_corte")
+def api_cuenta_flex_hora_corte():
+    """La hora de corte de Flex la carga la persona: Mercado Libre no la informa. Vacío = la quita."""
+    valor = (request.get_json(silent=True) or {}).get("valor")
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            guardada = despacho_corte.guardar_flex(conexion.cursor(), g.cuenta_id, valor)
+    except Exception as e:
+        return jsonify({"ok": False, "detalle": _detalle_error(e)}), 500
+    if guardada is False:
+        return jsonify({"ok": False, "detalle": "Escribí una hora válida, por ejemplo 14:00."}), 400
+    return jsonify({"ok": True, "flex_hora_corte": guardada})
 
 
 @app.route("/cuenta/descargar_datos", methods=["POST"])
