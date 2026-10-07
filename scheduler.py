@@ -155,6 +155,8 @@ def _tarea_limpiar_vinculaciones_oauth():
         cursor = conexion.cursor()
         cursor.execute("DELETE FROM oauth_vinculaciones_pendientes WHERE creado_en < now() - interval '15 minutes'")
         borrados = cursor.rowcount
+        cursor.execute("DELETE FROM oauth_confirmaciones_pendientes WHERE creado_en < now() - interval '15 minutes'")      # permisos cifrados que nadie confirmó
+        borrados += cursor.rowcount
     if borrados:
         print(f"[Scheduler] 🧹 {borrados} vinculación(es) de OAuth abandonada(s) borrada(s).")
 

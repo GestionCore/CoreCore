@@ -302,7 +302,8 @@ def test_la_tarea_borra_los_vinculos_con_mas_de_15_minutos(monkeypatch):
 
     monkeypatch.setattr(db, "conexion_admin", admin)
     scheduler._tarea_limpiar_vinculaciones_oauth()
-    assert consultas == ["DELETE FROM oauth_vinculaciones_pendientes WHERE creado_en < now() - interval '15 minutes'"]
+    assert consultas == ["DELETE FROM oauth_vinculaciones_pendientes WHERE creado_en < now() - interval '15 minutes'",
+                         "DELETE FROM oauth_confirmaciones_pendientes WHERE creado_en < now() - interval '15 minutes'"]
 
 
 def test_la_limpieza_corre_cada_hora_en_el_scheduler(monkeypatch):

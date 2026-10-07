@@ -84,9 +84,10 @@ def test_las_tablas_de_la_purga_tienen_la_columna_y_hoy_no_hay_nada_marcado_que_
 # ── 20. Vinculaciones de OAuth abandonadas ─────────────────────────────────────────────────────────────────────────────────────────────────
 def test_las_vinculaciones_oauth_abandonadas_se_borran_cada_hora_a_los_15_minutos(monkeypatch):
     sentencias = []
-    _conexion_falsa(sentencias, [2], monkeypatch)
+    _conexion_falsa(sentencias, [2, 1], monkeypatch)
     scheduler._tarea_limpiar_vinculaciones_oauth()
-    assert sentencias == ["DELETE FROM oauth_vinculaciones_pendientes WHERE creado_en < now() - interval '15 minutes'"]
+    assert sentencias == ["DELETE FROM oauth_vinculaciones_pendientes WHERE creado_en < now() - interval '15 minutes'",
+                          "DELETE FROM oauth_confirmaciones_pendientes WHERE creado_en < now() - interval '15 minutes'"]
     assert 'add_job(_tarea_limpiar_vinculaciones_oauth, "interval", hours=1, id="limpiar_oauth"' in _leer("scheduler.py")
 
 

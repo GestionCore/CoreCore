@@ -7,11 +7,11 @@ import re
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# conexion_admin salta RLS. Solo se usa donde todavía no se sabe de quién es el pedido (webhooks, OAuth, scheduler), en las tareas de dueño
+# conexion_admin salta RLS. Solo se usa donde todavía no se sabe de quién es el pedido (webhooks, OAuth —incluida auth/confirmacion_oauth.py: la persona confirma en otro navegador, sin sesión—, scheduler), en las tareas de dueño
 # (/admin, salud, borrado de cuenta, respaldos, migraciones, rotación de claves) y en token_manager (meli_tokens bloquea al rol normal).
 USAN_ADMIN = {
     "app.py", "db.py", "feedback.py", "legal.py", "normalizar_horas.py", "predeploy.py", "respaldo.py", "rotar_clave.py", "salud_sistema.py", "scheduler.py", "seguridad.py",
-    "salud_tokens.py", "sincronizador.py", os.path.join("auth", "registro.py"), os.path.join("auth", "token_manager.py"),
+    "salud_tokens.py", "sincronizador.py", os.path.join("auth", "registro.py"), os.path.join("auth", "token_manager.py"), os.path.join("auth", "confirmacion_oauth.py"),
 }
 
 

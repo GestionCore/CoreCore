@@ -88,6 +88,12 @@ class _BaseFalsa:
         yield Conexion()
 
 
+@pytest.fixture(autouse=True)
+def _limitador_en_cero():
+    import limitador
+    limitador.reiniciar()
+
+
 @pytest.fixture
 def callback(monkeypatch):
     import app as aplicacion

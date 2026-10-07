@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmar vinculación · CoreLux</title>
+    <link rel="stylesheet" href="/static/css/fonts.css?v={{ static_v('css/fonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_v('css/style.css') }}">
+    <style>
+        html, body { height: 100%; margin: 0; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-ui); }
+        body { display: flex; align-items: center; justify-content: center; }
+        .estado-wrap { max-width: 480px; width: 100%; margin: 24px; }
+        .estado-card {
+            padding: 40px 36px 32px; border-radius: var(--radius-lg, var(--radius-md));
+            background: var(--glass-bg); border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-elevated); text-align: center;
+        }
+        .estado-icono {
+            width: 56px; height: 56px; margin: 0 auto 20px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: color-mix(in srgb, var(--accent-primary) 16%, transparent); color: var(--accent-primary);
+        }
+        .estado-titulo { font-family: var(--font-display); font-size: 1.4em; font-weight: 700; margin-bottom: 14px; }
+        .vinc-par { display: flex; flex-direction: column; gap: 8px; text-align: left; margin: 0 0 20px; }
+        .vinc-fila { padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--glass-border); background: var(--bg-surface); }
+        .vinc-etiqueta { font-size: 0.74em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); font-weight: 700; }
+        .vinc-valor { font-size: 1.05em; font-weight: 800; word-break: break-word; margin-top: 2px; }
+        .vinc-nota { color: var(--text-secondary); font-size: 0.86em; line-height: 1.55; margin-bottom: 22px; }
+        .vinc-botones { display: flex; flex-direction: column; gap: 10px; }
+        .vinc-botones form { margin: 0; }
+    </style>
+</head>
+<body>
+<div class="estado-wrap">
+    <div class="estado-card">
+        <div class="estado-icono">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+        </div>
+        <div class="estado-titulo">¿Confirmás esta vinculación?</div>
+        <div class="vinc-par">
+            <div class="vinc-fila"><div class="vinc-etiqueta">Cuenta de Mercado Libre</div><div class="vinc-valor">{{ ('@' ~ nickname) if nickname else 'tu cuenta de Mercado Libre' }}</div></div>
+            <div class="vinc-fila"><div class="vinc-etiqueta">Se vincula a la cuenta de CoreLux de</div><div class="vinc-valor">{{ titular }}</div></div>
+        </div>
+        <div class="vinc-nota">
+            Quien tenga acceso a esa cuenta de CoreLux va a poder ver las ventas y los datos de la cuenta de Mercado Libre de arriba.
+            <b>Si no pediste esto, tocá «No, cancelar»</b>: no se guarda nada.
+        </div>
+        <div class="vinc-botones">
+            <form method="POST" action="{{ url_for('confirmar_vinculacion') }}">
+                <input type="hidden" name="token" value="{{ token }}">
+                <button type="submit" class="btn btn-primary btn-block">Sí, vincular</button>
+            </form>
+            <form method="POST" action="{{ url_for('cancelar_vinculacion') }}">
+                <input type="hidden" name="token" value="{{ token }}">
+                <button type="submit" class="btn btn-secondary btn-block">No, cancelar</button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

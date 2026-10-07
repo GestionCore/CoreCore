@@ -19,7 +19,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 from flask import Flask, request, session, redirect, url_for, render_template, g, jsonify, send_file
 import config
-from auth import oauth_meli, registro, token_manager
+from auth import confirmacion_oauth, oauth_meli, registro, token_manager
 from auth.middleware import login_requerido, admin_requerido, iniciar_sesion, cerrar_sesion, cambiar_cuenta_activa
 from auditoria import auditar
 import catalogo
@@ -510,6 +510,61 @@ MOTIVO_CUENTA_YA_VINCULADA = "cuenta_ya_vinculada"
 MOTIVO_ENLACE_AJENO = "enlace_ajeno"
 
 
+def _completar_vinculacion(usuario_id_actual, datos_meli, tokens, iniciar):
+    """
+    Vincula la cuenta de Mercado Libre al usuario de CoreLux y guarda sus permisos. `iniciar`: si este navegador es el del usuario (o lo probó con su cookie) se deja la cuenta
+    nueva como la activa; si el enlace se completó en OTRO navegador NO se inicia sesión ahí (un enlace filtrado no puede darle a nadie una sesión ajena): la persona vuelve a su
+    navegador de siempre y elige la cuenta en el selector.
+    """
+    from urllib.parse import urlencode
+    cuenta_id, resultado_vinculo = registro.vincular_cuenta_adicional(usuario_id_actual, datos_meli)
+    if resultado_vinculo == "ya_de_otro_usuario":
+        app.logger.warning("Callback OAuth: intento de vincular meli_user_id=%s, ya pertenece a otro usuario.", datos_meli.get("meli_user_id"))
+        return render_template("error_conexion.html", motivo=MOTIVO_CUENTA_YA_VINCULADA)
+
+    token_manager.guardar_tokens(cuenta_id, tokens["access_token"], tokens["refresh_token"], tokens["expires_in"])
+    auditoria.registrar("cuenta_vincular", {"resultado": resultado_vinculo, "desde_este_navegador": bool(iniciar)}, usuario_id=usuario_id_actual, cuenta_id=cuenta_id)
+    if iniciar:
+        # Activa la cuenta recién vinculada — si ya tenía datos de una sincronización previa (reconexión), login_requerido la deja pasar directo; si es nueva, va a mostrarle
+        # sincronizando.html sola.
+        iniciar_sesion(usuario_id_actual, cuenta_id)
+
+    if resultado_vinculo == "reconectada":
+        # El navegador ya tenía una sesión activa en mercadolibre.com con la MISMA cuenta que ya estaba conectada acá — MeLi no muestra selector de cuenta si ya hay una sesión, así
+        # que el OAuth "autoriza" la misma de siempre en vez de una distinta. Este mensaje explica lo que pasó y cómo conectar una cuenta REALMENTE distinta.
+        msg = "Esa cuenta de Mercado Libre ya estaba conectada a tu usuario — no se agregó ninguna nueva. Para sumar una cuenta distinta, primero cerrá sesión en mercadolibre.com (o usá una ventana privada) y volvé a intentar."
+        tipo = "info"
+    else:
+        _en_segundo_plano(sincronizador.sincronizar_todo, usuario_id_actual, cuenta_id)
+        msg = f"¡Cuenta {datos_meli.get('nickname') or ''} conectada! Ya podés cambiar entre tus cuentas desde el selector del menú.".replace("  ", " ")
+        tipo = "success"
+    if iniciar:
+        return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': tipo})}")
+    return render_template("vinculacion_lista.html", mensaje=msg, tipo=tipo)
+
+
+@app.route("/conectar_otra_cuenta/confirmar", methods=["POST"])
+def confirmar_vinculacion():
+    """La persona confirmó la vinculación (pantalla de /callback). Sin login a propósito: el enlace puede haberse completado en otro navegador. El token es de un solo uso."""
+    pendiente = confirmacion_oauth.tomar(request.form.get("token"))
+    if not pendiente:
+        return render_template("error_conexion.html", motivo=MOTIVO_INTENTO_VENCIDO)
+    usuario_id = pendiente["usuario_id"]
+    sesion_actual = session.get("usuario_id")
+    if sesion_actual is not None and sesion_actual != usuario_id:
+        app.logger.warning("Confirmación OAuth: navegador con la sesión de otro usuario (sesión=%s, vinculación=%s).", sesion_actual, usuario_id)
+        return render_template("error_conexion.html", motivo=MOTIVO_ENLACE_AJENO)
+    return _completar_vinculacion(usuario_id, pendiente["datos_meli"], pendiente["tokens"], iniciar=(sesion_actual == usuario_id))
+
+
+@app.route("/conectar_otra_cuenta/cancelar", methods=["POST"])
+def cancelar_vinculacion():
+    """La persona dijo que no: se gasta el token y no se guarda nada."""
+    from urllib.parse import urlencode
+    confirmacion_oauth.tomar(request.form.get("token"))
+    return redirect(f"{url_for('landing')}?{urlencode({'msg': 'No se vinculó ninguna cuenta.', 'tipo': 'info'})}")
+
+
 @app.route("/callback")
 def callback():
     """MeLi redirige acá después de que el usuario aprueba (o rechaza) el permiso.
@@ -582,50 +637,19 @@ def callback():
         app.logger.warning("Callback OAuth: falló la consulta de datos del usuario — %s", datos_meli)
         return render_template("error_conexion.html", motivo=MOTIVO_GENERICO)
 
-    # Si venimos de "Agregar otra cuenta" (/conectar_otra_cuenta), esta
-    # autorización se vincula al usuario_id ya logueado en vez de crear
-    # un usuario nuevo — así es como funciona el multi-cuenta de Plan
-    # Elite. El usuario_id sale de la vinculación pendiente en la base
-    # cuando existe (funciona sin importar en qué navegador se completó
-    # el login de MeLi); si no, cae al flag de sesión de siempre (mismo
-    # navegador).
+    # Vinculación desde un enlace de «conectar otra cuenta» que puede haberse abierto en OTRO navegador (migración 0013): ese enlace es una credencial, así que antes de vincular
+    # se le muestra a la persona a QUÉ cuenta de CoreLux y con QUÉ cuenta de Mercado Libre, y la vinculación se hace recién al confirmar (migración 0042). Así nadie queda
+    # vinculado sin enterarse (el CSRF clásico de OAuth).
     if usuario_id_vinculacion_pendiente is not None:
-        vinculando = True
-        usuario_id_actual = usuario_id_vinculacion_pendiente
-    else:
-        vinculando = session.pop("vinculando_cuenta_extra", False)
-        usuario_id_actual = session.get("usuario_id")
+        token_de_confirmacion = confirmacion_oauth.guardar(usuario_id_vinculacion_pendiente, datos_meli, resultado)
+        return render_template("confirmar_vinculacion.html", token=token_de_confirmacion, nickname=datos_meli.get("nickname"),
+                               titular=confirmacion_oauth.titular_de(usuario_id_vinculacion_pendiente))
 
+    # Mismo navegador (la cookie de este navegador probó que el flujo se inició acá): se vincula directo, como siempre.
+    vinculando = session.pop("vinculando_cuenta_extra", False)
+    usuario_id_actual = session.get("usuario_id")
     if vinculando and usuario_id_actual:
-        from urllib.parse import urlencode
-        cuenta_id, resultado_vinculo = registro.vincular_cuenta_adicional(usuario_id_actual, datos_meli)
-        if resultado_vinculo == "ya_de_otro_usuario":
-            app.logger.warning("Callback OAuth: intento de vincular meli_user_id=%s, ya pertenece a otro usuario.", datos_meli.get("meli_user_id"))
-            return render_template("error_conexion.html", motivo=MOTIVO_CUENTA_YA_VINCULADA)
-
-        token_manager.guardar_tokens(
-            cuenta_id, resultado["access_token"], resultado["refresh_token"], resultado["expires_in"]
-        )
-        # Activa la cuenta recién vinculada — si ya tenía datos de una
-        # sincronización previa (reconexión), login_requerido la deja pasar
-        # directo; si es nueva, va a mostrarle sincronizando.html sola.
-        iniciar_sesion(usuario_id_actual, cuenta_id)
-
-        if resultado_vinculo == "reconectada":
-            # El navegador ya tenía una sesión activa en mercadolibre.com
-            # con la MISMA cuenta que ya estaba conectada acá — MeLi no
-            # muestra selector de cuenta si ya hay una sesión, así que el
-            # OAuth "autoriza" la misma de siempre en vez de una distinta.
-            # Antes esto redirigía en silencio al Dashboard sin avisar
-            # nada — se sentía como que el botón no hacía nada. Este
-            # mensaje explica lo que pasó y cómo conectar una cuenta
-            # REALMENTE distinta.
-            msg = "Esa cuenta de Mercado Libre ya estaba conectada a tu usuario — no se agregó ninguna nueva. Para sumar una cuenta distinta, primero cerrá sesión en mercadolibre.com (o usá una ventana privada) y volvé a intentar."
-            return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': 'info'})}")
-
-        _en_segundo_plano(sincronizador.sincronizar_todo, usuario_id_actual, cuenta_id)
-        msg = f"¡Cuenta {datos_meli.get('nickname') or ''} conectada! Ya podés cambiar entre tus cuentas desde el selector del menú.".replace("  ", " ")
-        return redirect(f"{url_for('landing')}?{urlencode({'msg': msg, 'tipo': 'success'})}")
+        return _completar_vinculacion(usuario_id_actual, datos_meli, resultado, iniciar=True)
 
     usuario_id, cuenta_id, es_nuevo = registro.crear_o_actualizar_login(datos_meli)
 

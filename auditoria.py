@@ -59,6 +59,7 @@ ETIQUETAS = {
     "trial_extender": "Prueba extendida (admin)",
     "margen_minimo": "Margen mínimo cambiado",
     "flex_hora_corte": "Hora de corte de Flex cambiada",
+    "cuenta_vincular": "Cuenta de Mercado Libre vinculada",
     "datos_descargar": "Datos descargados",
     "suscripcion_cancelar": "Suscripción cancelada",
 }
