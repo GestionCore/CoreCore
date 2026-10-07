@@ -44,6 +44,7 @@ import dashboard as dashboard_mod
 import sincronizador
 import analisis_stock
 import onboarding
+import fiscal
 import monotributo
 import costos_chat
 import calidad as calidad_mod
@@ -182,10 +183,10 @@ def _inyectar_cuentas_usuario():
     """
     if getattr(g, "mostrando_error", False):
         # Una página de error NUNCA puede consultar la base: el error suele ser justamente que la base no responde o no hay conexiones libres
-        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO}
+        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO, "condicion_fiscal": None}
     if not getattr(g, "usuario_id", None):
         # Rutas públicas (/planes, /suscripcion/retorno...): base.html igual arma el menú si hay sesión y llama capacidades.get(...)
-        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO}
+        return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO, "condicion_fiscal": None}
     # Se pedía a la base en CADA página; cambia muy poco (al vincular una cuenta o refrescar capacidades): 60 s de caché, con el usuario en la clave
     clave_cuentas = construir_key("cuentas_usuario", g.usuario_id)
     cuentas = cache_leer(clave_cuentas)
@@ -194,11 +195,16 @@ def _inyectar_cuentas_usuario():
             cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
         except Exception as e:                      # la base no responde: la página se arma igual, sin selector de cuentas
             print(f"[Contexto] ⚠️ No se pudo leer la lista de cuentas: {e}")
-            return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO}
+            return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO, "condicion_fiscal": None}
         cache_guardar(clave_cuentas, cuentas, timeout=60)
     cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
-    # Qué usa esta cuenta (ads, flex, full, catalogo): las pantallas esconden solo lo que se confirmó que no aplica (ver capacidades.py)
-    return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual, "capacidades": (cuenta_actual or {}).get("capacidades") or {},
+    # Qué usa esta cuenta (ads, flex, full, catalogo): las pantallas esconden solo lo que se confirmó que no aplica (ver capacidades.py).
+    # Monotributo se esconde solo si la persona declaró OTRA condición fiscal: sin declarar no se supone nada (ver fiscal.py)
+    caps = dict((cuenta_actual or {}).get("capacidades") or {})
+    condicion = (cuenta_actual or {}).get("condicion_fiscal")
+    if fiscal.capacidad_monotributo(condicion) is not None:
+        caps["monotributo"] = fiscal.capacidad_monotributo(condicion)
+    return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual, "capacidades": caps, "condicion_fiscal": condicion,
             "vocab": _vocabulario_de_la_cuenta(g.usuario_id, g.cuenta_id), "margen_minimo": _margen_minimo_de_la_cuenta(g.usuario_id, g.cuenta_id)}
 
 
@@ -1055,7 +1061,8 @@ def dashboard_personalizable():
         token_manager.asegurar_token_valido(g.cuenta_id)
     except token_manager.CuentaDesconectada:
         return redirect(url_for("reconectar"))
-    mono = monotributo.evaluar_categoria(g.usuario_id, g.cuenta_id)
+    # El panel de Monotributo es solo para quien declaró que es monotributista: nunca se supone la condición fiscal
+    mono = monotributo.evaluar_categoria(g.usuario_id, g.cuenta_id) if fiscal.obtener(g.usuario_id, g.cuenta_id) == fiscal.MONOTRIBUTO else None
     ventas_por_provincia = None
     try:
         ventas_por_provincia = dashboard_mod.obtener_ventas_por_provincia(g.usuario_id, g.cuenta_id)
@@ -1782,13 +1789,15 @@ def api_oportunidades_seo():
     return jsonify(oportunidades)
 
 
+def _opciones_onboarding():
+    return dict(opciones_prioridad=onboarding.OPCIONES_PRIORIDAD, opciones_experiencia=onboarding.OPCIONES_EXPERIENCIA, opciones_pantalla=onboarding.OPCIONES_PANTALLA,
+                opciones_fiscal=onboarding.OPCIONES_FISCAL)
+
+
 @app.route("/onboarding")
 @login_requerido
 def onboarding_vista():
-    return render_template(
-        "onboarding.html", opciones_prioridad=onboarding.OPCIONES_PRIORIDAD,
-        opciones_experiencia=onboarding.OPCIONES_EXPERIENCIA, opciones_pantalla=onboarding.OPCIONES_PANTALLA
-    )
+    return render_template("onboarding.html", **_opciones_onboarding())
 
 
 @app.route("/onboarding/guardar", methods=["POST"])
@@ -1797,13 +1806,10 @@ def onboarding_guardar():
     prioridades = request.form.getlist("prioridad_principal")
     experiencia = request.form.get("experiencia_meli")
     pantalla = request.form.get("pantalla_preferida")
-    ok = onboarding.guardar_respuestas(g.usuario_id, prioridades, experiencia, pantalla)
+    condicion = request.form.get("condicion_fiscal")             # "" = «todavía no lo sé»: queda sin informar
+    ok = onboarding.guardar_respuestas(g.usuario_id, prioridades, experiencia, pantalla, condicion_fiscal=condicion, cuenta_id=g.cuenta_id)
     if not ok:
-        return render_template(
-            "onboarding.html", opciones_prioridad=onboarding.OPCIONES_PRIORIDAD,
-            opciones_experiencia=onboarding.OPCIONES_EXPERIENCIA, opciones_pantalla=onboarding.OPCIONES_PANTALLA,
-            error="Elegí una opción en cada pregunta antes de continuar."
-        )
+        return render_template("onboarding.html", error="Elegí una opción en cada pregunta antes de continuar.", **_opciones_onboarding())
     session["mostrar_tutorial"] = True
     return redirect(url_for("landing"))
 
@@ -1924,8 +1930,26 @@ def exportar_publicacion_red(id_meli):
 @app.route("/monotributo")
 @login_requerido
 def monotributo_vista():
-    resultado = monotributo.evaluar_categoria(g.usuario_id, g.cuenta_id)
-    return render_template("monotributo.html", **resultado, active_nav="monotributo")
+    """Monotributo solo tiene sentido para monotributistas: a quien no declaró su condición se le pregunta, y a quien declaró otra se le explica (nunca se supone)."""
+    condicion = fiscal.obtener(g.usuario_id, g.cuenta_id)
+    resultado = monotributo.evaluar_categoria(g.usuario_id, g.cuenta_id) if condicion == fiscal.MONOTRIBUTO else {}
+    return render_template("monotributo.html", **resultado, condicion=condicion, condiciones_fiscales=fiscal.CONDICIONES, detalles_condicion=fiscal.DETALLES, active_nav="monotributo")
+
+
+@app.route("/cuenta/condicion_fiscal", methods=["POST"])
+@login_requerido
+@auditar("condicion_fiscal")
+def cuenta_condicion_fiscal():
+    """La persona declara su condición ante ARCA para esta cuenta. Vacío = «todavía no lo sé». Vuelve a la pantalla de donde vino (solo a una de las nuestras)."""
+    condicion = request.form.get("condicion") or None
+    if not fiscal.guardar(g.usuario_id, g.cuenta_id, condicion):
+        return redirect(_con_aviso("/cuenta", "No reconocimos esa condición fiscal.", "error"))
+    # La lista de cuentas está 60 s en caché (la usa el menú): se renueva ya, para que el menú refleje el cambio en esta misma respuesta
+    cache_guardar(construir_key("cuentas_usuario", g.usuario_id), registro.obtener_cuentas_de_usuario(g.usuario_id), timeout=60)
+    destino = request.form.get("volver")
+    destino = destino if destino in ("/cuenta", "/monotributo", "/dashboard") else "/cuenta"
+    texto = "Listo: guardamos tu condición fiscal." if condicion else "Listo: queda sin informar. Podés contárnosla cuando quieras."
+    return redirect(_con_aviso(destino, texto))
 
 
 @app.route("/monotributo/declarar", methods=["POST"])
@@ -3584,7 +3608,8 @@ def cuenta_vista():
     dias_trial = max(0, (trial_termina_en - datetime.now(timezone.utc)).days) if plan == "trial" and trial_termina_en else None
     nombre_plan = {"trial": "Prueba gratuita", "base": "Plan Base", "elite": "Plan Elite", "cancelado": "Cancelado"}.get(plan, plan)
     return render_template("cuenta.html", active_nav="cuenta", plan=plan, nombre_plan=nombre_plan, email=email, dias_trial=dias_trial,
-                           pagos_habilitados=config.PAGOS_HABILITADOS, contacto=legal.CONTACTO_EMAIL)
+                           pagos_habilitados=config.PAGOS_HABILITADOS, contacto=legal.CONTACTO_EMAIL,
+                           condicion_fiscal_actual=fiscal.obtener(g.usuario_id, g.cuenta_id), condiciones_fiscales=fiscal.CONDICIONES, detalles_condicion=fiscal.DETALLES)
 
 
 @app.route("/api/cuenta/margen_minimo", methods=["POST"])

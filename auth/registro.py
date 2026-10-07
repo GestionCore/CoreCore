@@ -196,5 +196,5 @@ def obtener_cuentas_de_usuario(usuario_id):
     """
     with db.conexion_usuario(usuario_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
-        cursor.execute("SELECT id, nickname, nombre_negocio, activa, capacidades FROM cuentas_meli WHERE usuario_id = %s ORDER BY conectada_en", (usuario_id,))
+        cursor.execute("SELECT id, nickname, nombre_negocio, activa, capacidades, condicion_fiscal FROM cuentas_meli WHERE usuario_id = %s ORDER BY conectada_en", (usuario_id,))
         return [dict(fila) for fila in cursor.fetchall()]

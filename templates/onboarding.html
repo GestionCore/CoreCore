@@ -59,9 +59,9 @@
     <div class="onb-marca"><span class="brand-mark"></span><span>CoreLux</span></div>
 
     <div class="onb-progreso-fila">
-        <span class="onb-progreso-texto">Paso <span id="onb-paso-actual">1</span> de 3</span>
+        <span class="onb-progreso-texto">Paso <span id="onb-paso-actual">1</span> de <span id="onb-total">4</span></span>
     </div>
-    <div class="onb-progreso-barra"><div class="onb-progreso-fill" id="onb-progreso-fill" style="width:33%;"></div></div>
+    <div class="onb-progreso-barra"><div class="onb-progreso-fill" id="onb-progreso-fill" style="width:25%;"></div></div>
 
     {% if error %}<div class="onb-error">{{ error }}</div>{% endif %}
 
@@ -95,6 +95,16 @@
             </div>
         </div>
 
+        <div class="onb-paso" data-paso="4">
+            <div class="onb-titulo">¿Cuál es tu condición fiscal?</div>
+            <div class="onb-pregunta-ayuda">La usamos para mostrarte solo lo que te corresponde. Si no estás seguro, elegí «Prefiero decirlo después»: lo podés cambiar cuando quieras en Mi cuenta.</div>
+            <div class="onb-opciones">
+                {% for valor, texto in opciones_fiscal.items() %}
+                <label class="onb-opcion"><input type="radio" name="condicion_fiscal" value="{{ valor }}" onchange="onbValidarPasoActual()" required> {{ texto }}</label>
+                {% endfor %}
+            </div>
+        </div>
+
         <div class="onb-nav">
             <button type="button" class="btn btn-secondary onb-btn-atras" id="onb-btn-atras" onclick="onbIrA(onbPasoActual - 1)" style="display:none;">Atrás</button>
             <button type="button" class="btn btn-primary onb-btn-siguiente" id="onb-btn-siguiente" onclick="onbSiguiente()" disabled>Siguiente</button>
@@ -103,7 +113,8 @@
 </div>
 
 <script>
-    const ONB_TOTAL_PASOS = 3;
+    const ONB_TOTAL_PASOS = document.querySelectorAll('.onb-paso').length;
+    document.getElementById('onb-total').textContent = ONB_TOTAL_PASOS;
     let onbPasoActual = 1;
 
     function onbPasoTieneSeleccion(paso) {

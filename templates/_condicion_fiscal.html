@@ -1,0 +1,21 @@
+{#
+  Formulario para declarar la condición fiscal de la cuenta (fiscal.py). Se usa en Mi cuenta y en Monotributo.
+  Espera `condicion_actual` (None = sin informar), `condiciones_fiscales`, `detalles_condicion` y `volver` (a qué pantalla regresar).
+  Nunca viene una opción marcada por defecto: si no la contó, no la suponemos.
+#}
+<form action="/cuenta/condicion_fiscal" method="POST" class="ux-condicion-fiscal">
+    <input type="hidden" name="volver" value="{{ volver }}">
+    <div class="ux-elecciones" role="radiogroup" aria-label="Condición fiscal">
+        {% for valor, texto in condiciones_fiscales.items() %}
+        <label class="ux-eleccion">
+            <input type="radio" name="condicion" value="{{ valor }}" {% if condicion_actual == valor %}checked{% endif %}>
+            <span><b>{{ texto }}</b><span class="text-muted" style="display:block; font-size:0.85em;">{{ detalles_condicion[valor] }}</span></span>
+        </label>
+        {% endfor %}
+        <label class="ux-eleccion">
+            <input type="radio" name="condicion" value="" {% if condicion_actual is none %}checked{% endif %}>
+            <span><b>Todavía no lo sé</b><span class="text-muted" style="display:block; font-size:0.85em;">No te mostramos nada que dependa de esto hasta que nos cuentes.</span></span>
+        </label>
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:14px;">Guardar</button>
+</form>

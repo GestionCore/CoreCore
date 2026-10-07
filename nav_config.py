@@ -32,7 +32,7 @@ GRUPOS_NAV = {
             {"nav_key": "cobros", "label": "Cobros", "href": "/cobros", "endpoint": "cobros_vista"},
             {"nav_key": "ventas_manuales", "label": "Ventas fuera de MeLi", "href": "/ventas_manuales", "endpoint": "ventas_manuales_vista"},
             {"nav_key": "reporte_fiscal", "label": "Reporte Fiscal", "href": "/reporte_fiscal", "endpoint": "reporte_fiscal_vista"},
-            {"nav_key": "monotributo", "label": "Monotributo", "href": "/monotributo", "endpoint": "monotributo_vista"},
+            {"nav_key": "monotributo", "label": "Monotributo", "href": "/monotributo", "endpoint": "monotributo_vista", "requiere": "monotributo"},
         ],
     },
     "precios": {

@@ -53,6 +53,7 @@ ETIQUETAS = {
     "flex_aplicar": "Costo de Flex aplicado a ventas",
     "flex_zona": "Zona de Flex cambiada",
     "monotributo_declarar": "Categoría de Monotributo declarada",
+    "condicion_fiscal": "Condición fiscal declarada",
     "plan_cambiar": "Plan cambiado (admin)",
     "usuario_activar": "Usuario activado o desactivado (admin)",
     "trial_extender": "Prueba extendida (admin)",

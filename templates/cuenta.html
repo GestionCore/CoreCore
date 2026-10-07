@@ -37,6 +37,17 @@
     <div style="margin-top:14px;"><a class="btn btn-secondary" href="/conectar_otra_cuenta">Agregar otra cuenta</a></div>
 </div>
 
+<!-- ── 2b. CONDICIÓN FISCAL ─────────────────────────────────────────────── -->
+<div class="ux-seccion ux-info" id="condicion-fiscal">Tu condición fiscal</div>
+<div class="panel cuenta-panel">
+    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin-bottom:12px; max-width:640px;">
+        La usamos para mostrarte solo lo que te corresponde (por ejemplo, el control de categoría del Monotributo). <b>No la suponemos:</b> Mercado Libre nos informa tu CUIT pero no tu condición ante ARCA, así que la declarás vos.
+        Se guarda para <b>{{ (cuenta_actual.nombre_negocio or cuenta_actual.nickname) if cuenta_actual else 'esta cuenta' }}</b>.
+    </div>
+    {% set condicion_actual = condicion_fiscal_actual %}{% set volver = "/cuenta" %}
+    {% include "_condicion_fiscal.html" %}
+</div>
+
 <!-- ── 3. PREFERENCIAS ──────────────────────────────────────────────────── -->
 <div class="ux-seccion ux-gold">Preferencias</div>
 <div class="panel cuenta-panel">

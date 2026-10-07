@@ -1097,7 +1097,7 @@ const ATAJOS_COMANDO = [
     { alias: ['calc', 'calculadora', 'comision'], texto: 'Ir a Calculadora', url: '/calculadora' },
     { alias: ['cal', 'calidad'], texto: 'Ir a Calidad de publicaciones', url: '/calidad' },
     { alias: ['op', 'opiniones', 'resenas', 'reviews', 'estrellas'], texto: 'Ir a Opiniones de compradores', url: '/opiniones' },
-    { alias: ['mono', 'monotributo'], texto: 'Ir a Monotributo', url: '/monotributo' },
+    { alias: ['mono', 'monotributo'], texto: 'Ir a Monotributo', url: '/monotributo', requiere: 'monotributo' },
     { alias: ['manual', 'mostrador', 'directo'], texto: 'Ir a Ventas fuera de MeLi', url: '/ventas_manuales' },
     { alias: ['prom', 'promo', 'promociones'], texto: 'Ir a Promociones', url: '/promociones' },
     { alias: ['tend', 'tendencias'], texto: 'Ir a Tendencias', url: '/tendencias' },

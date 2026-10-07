@@ -2,6 +2,26 @@
 {% from "_ux.html" import banner, kpi, delta %}
 {% block title %}Monotributo · CoreLux{% endblock %}
 {% block content %}
+{% if condicion != 'monotributo' %}
+{# No todos los vendedores son monotributistas: a quien no declaró su condición se le pregunta, y a quien declaró otra se le explica. Nunca se supone. #}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-file-text"/></svg>Monotributo</h1>
+        <div class="page-subtitle">Tu facturación de los últimos 12 meses contra el techo de tu categoría</div>
+    </div>
+</div>
+{% if condicion is none %}
+{{ banner("info", "info", "<b>Contanos tu condición fiscal</b> para mostrarte lo que te corresponde", "Esta pantalla compara lo que facturás con las escalas del Monotributo, así que solo sirve si sos monotributista. No suponemos tu condición: elegila abajo.") }}
+{% else %}
+{{ banner("info", "info", "<b>Esta pantalla es para monotributistas</b>", "Declaraste que tu condición es «" ~ condiciones_fiscales[condicion] ~ "», así que no hay una categoría que controlar. Si cambió, actualizala abajo.") }}
+{% endif %}
+<div class="panel" id="condicion-fiscal" style="max-width:640px;">
+    <div class="panel-title">Tu condición fiscal</div>
+    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin-bottom:12px;">Mercado Libre nos informa tu CUIT, pero no tu condición ante ARCA. La declarás vos y la podés cambiar cuando quieras en <a href="/cuenta#condicion-fiscal">Mi cuenta</a>.</div>
+    {% set condicion_actual = condicion %}{% set volver = "/monotributo" %}
+    {% include "_condicion_fiscal.html" %}
+</div>
+{% else %}
 {% set declarada = categoria_declarada %}
 {% set uso = (facturacion_12m / tope_categoria_declarada * 100) if tope_categoria_declarada else None %}
 {# Cuánto del techo de la categoría declarada ya se usó: <60% holgado · 60-85% atención · 85-100% cerca del techo · >100% se pasó #}
@@ -100,4 +120,5 @@
     <svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
     Esta pantalla <b>avisa y sugiere</b> con tus datos de ventas: cualquier cambio de categoría conviene confirmarlo con tu contador.
 </div>
+{% endif %}
 {% endblock %}

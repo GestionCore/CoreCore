@@ -1,5 +1,6 @@
 """Onboarding — encuesta de una sola vez la primera vez que alguien conecta su cuenta."""
 import db
+import fiscal
 
 OPCIONES_PRIORIDAD = {
     "ganancia": "Ganancia real y rentabilidad",
@@ -19,10 +20,13 @@ OPCIONES_PANTALLA = {
     "metricas": "Mis números de Ganancia Real",
 }
 
+# Condición fiscal (por cuenta, ver fiscal.py): nunca se supone. «Todavía no lo sé» (valor vacío) la deja sin informar.
+OPCIONES_FISCAL = {**fiscal.CONDICIONES, "": "Prefiero decirlo después"}
+
 RUTA_POR_PANTALLA = {"dashboard": "dashboard_personalizable", "stock": "landing", "metricas": "metricas_vista"}
 
 
-def guardar_respuestas(usuario_id, prioridades, experiencia, pantalla):
+def guardar_respuestas(usuario_id, prioridades, experiencia, pantalla, condicion_fiscal="", cuenta_id=None):
     """
     `prioridades` es una lista (pedido explícito: esta pregunta admite
     elegir más de una, a diferencia de las otras dos que son de una
@@ -34,14 +38,18 @@ def guardar_respuestas(usuario_id, prioridades, experiencia, pantalla):
         return False
     if experiencia not in OPCIONES_EXPERIENCIA or pantalla not in OPCIONES_PANTALLA:
         return False
+    if (condicion_fiscal or "") not in OPCIONES_FISCAL:
+        return False
     prioridad_guardada = ",".join(prioridades)
-    with db.conexion_usuario(usuario_id) as conexion:
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
             UPDATE usuarios SET onboarding_completo = true, prioridad_principal = %s,
                                  experiencia_meli = %s, pantalla_preferida = %s
             WHERE id = %s
         """, (prioridad_guardada, experiencia, pantalla, usuario_id))
+    if cuenta_id and condicion_fiscal:
+        fiscal.guardar(usuario_id, cuenta_id, condicion_fiscal)
     return True
 
 
@@ -58,7 +66,10 @@ def obtener_endpoint_home(usuario_id):
 PORCENTAJE_COSTOS_COMPLETO = 90      # con el 90 % de las publicaciones activas con costo, el paso se da por hecho (siempre queda alguna promo sin costo)
 
 
-def armar_checklist(onboarding_completo, sync_completa, activas, con_costo, tiene_gastos, tiene_ventas, capacidades=None, umbrales=None):
+SIN_DATO = object()      # «no preguntar»: el checklist no incluye el paso de la condición fiscal
+
+
+def armar_checklist(onboarding_completo, sync_completa, activas, con_costo, tiene_gastos, tiene_ventas, capacidades=None, umbrales=None, condicion_fiscal=SIN_DATO):
     """
     Los pasos de "Completá tu perfil", con su estado. Los dos primeros ya están resueltos si la persona llegó hasta acá (login_requerido no deja
     pasar sin eso). El de costos se da por hecho cuando casi todas las publicaciones activas tienen costo: con uno solo cargado la ganancia sigue
@@ -76,6 +87,9 @@ def armar_checklist(onboarding_completo, sync_completa, activas, con_costo, tien
         sin_precio = all(u.get("precio") is None for u in umbrales) if isinstance(umbrales, list) else True
         pasos.append({"id": "flex", "texto": "Cargar el costo de tus entregas Flex", "completo": not sin_precio, "link": "/costos#entrega-flex",
                       "detalle": "Mercado Libre informa $0 de envío en Flex: el costo real lo cobra tu logística."})
+    if condicion_fiscal is not SIN_DATO:
+        pasos.append({"id": "fiscal", "texto": "Contanos tu condición fiscal (Monotributo, responsable inscripto…)", "completo": fiscal.es_valida(condicion_fiscal), "link": "/cuenta#condicion-fiscal",
+                      "detalle": "Así te mostramos solo lo que te corresponde: nunca la suponemos."})
     pasos += [
         {"id": "gastos", "texto": "Cargar tus gastos fijos (alquiler, bolsas, etc.)", "completo": bool(tiene_gastos), "link": "/costos"},
         {"id": "ventas", "texto": "Tener al menos una venta sincronizada", "completo": bool(tiene_ventas), "link": "/metricas"},
@@ -94,8 +108,8 @@ def obtener_checklist_progreso(usuario_id, cuenta_id):
         cursor.execute("SELECT onboarding_completo FROM usuarios WHERE id = %s", (usuario_id,))
         onboarding_completo = bool((cursor.fetchone() or [False])[0])
 
-        cursor.execute("SELECT sincronizacion_inicial_completa, capacidades, flex_umbrales FROM cuentas_meli WHERE id = %s", (cuenta_id,))
-        cuenta = cursor.fetchone() or (False, None, None)
+        cursor.execute("SELECT sincronizacion_inicial_completa, capacidades, flex_umbrales, condicion_fiscal FROM cuentas_meli WHERE id = %s", (cuenta_id,))
+        cuenta = cursor.fetchone() or (False, None, None, None)
 
         cursor.execute("""
             SELECT COUNT(*) FILTER (WHERE estado = 'active'),
@@ -108,4 +122,4 @@ def obtener_checklist_progreso(usuario_id, cuenta_id):
         tiene_gastos, tiene_ventas = cursor.fetchone()
 
     return armar_checklist(onboarding_completo, bool(cuenta[0]), activas or 0, con_costo or 0, tiene_gastos, tiene_ventas,
-                           cuenta[1] if isinstance(cuenta[1], dict) else {}, cuenta[2])
+                           cuenta[1] if isinstance(cuenta[1], dict) else {}, cuenta[2], condicion_fiscal=cuenta[3])

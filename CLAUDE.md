@@ -545,6 +545,12 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
   (IIBB…) siguen SIN restar. La tabla de la factura se arma por CÓDIGO (`facturacion.agrupar_factura`): el grupo «Cargos de envíos full» que informa MeLi es en realidad almacenamiento y retiros de FULL, no envíos.
   Flex NO está en la factura de MeLi: entra en «Cargos por envíos» como línea aparte (bruto) y su reintegro (10 %) en «Bonificaciones»; el total de la factura de MeLi no cambia. Si hay que
   sumar otro cargo mensual: agregarlo a `CARGOS_FUERA_DE_VENTAS` con su prueba. Ojo: ya hubo una factura de otra cuenta con tipos que esta no tenía; antes de asumir que un código no existe, mirar `ver_factura`-style con la API.
+- **Condición fiscal: NUNCA se supone (2026-10-07, migración 0037)**: no todos los vendedores son monotributistas (hay responsables inscriptos y quien todavía no está inscripto). `cuentas_meli.condicion_fiscal`
+  (`monotributo | responsable_inscripto | sin_inscripcion`; NULL = no la sabemos) la declara la persona en el onboarding (4.ª pregunta), en Mi cuenta (`#condicion-fiscal`) o en la propia pantalla de Monotributo
+  (`POST /cuenta/condicion_fiscal`, auditado). `fiscal.capacidad_monotributo` alimenta `capacidades.monotributo`: SOLO un `False` (declaró otra condición) esconde la pestaña y el atajo Ctrl+K;
+  sin declarar no esconde nada y la pantalla pregunta en vez de calcular; el panel de Monotributo del Dashboard solo aparece para monotributistas declarados. Cualquier cosa nueva que dependa de la condición
+  fiscal tiene que mirar `fiscal.obtener(...)`. Mercado Libre da el CUIT/DNI (`GET /users/me` → `identification`) pero NO la condición ante ARCA (se probó: no hay endpoint). Confirmarla sin preguntar
+  requeriría el padrón de ARCA (constancia de inscripción) con un certificado propio de CoreLux y el CUIT que da MeLi: pendiente, lo tiene que gestionar el dueño. Los textos nuevos dicen ARCA (ex AFIP).
 - **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real
