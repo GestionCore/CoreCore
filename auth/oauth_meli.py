@@ -9,6 +9,7 @@ El recorrido completo:
    (su id numérico de MeLi, su nickname) y así crear/encontrar su cuenta
 5. Cuando el access_token venga vencido, refrescar_token(refresh_token)
 """
+import hmac
 import secrets
 import requests
 import config
@@ -24,6 +25,11 @@ def generar_state():
     MeLi, y se compara cuando vuelve.
     """
     return secrets.token_urlsafe(24)
+
+
+def states_coinciden(recibido, esperado):
+    """Compara el `state` que vuelve de Mercado Libre con el guardado, en tiempo constante y sin dar por buenos dos vacíos."""
+    return bool(recibido) and bool(esperado) and hmac.compare_digest(str(recibido).encode(), str(esperado).encode())
 
 
 def construir_url_autorizacion(state):

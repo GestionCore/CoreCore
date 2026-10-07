@@ -507,6 +507,7 @@ MOTIVO_USUARIO_CANCELO = "usuario_cancelo"
 MOTIVO_INTENTO_VENCIDO = "intento_vencido"
 MOTIVO_GENERICO = "generico"
 MOTIVO_CUENTA_YA_VINCULADA = "cuenta_ya_vinculada"
+MOTIVO_ENLACE_AJENO = "enlace_ajeno"
 
 
 @app.route("/callback")
@@ -540,7 +541,8 @@ def callback():
     # El propio state (aleatorio, de un solo uso) es la prueba en ambos
     # casos — no se necesita la cookie si el state matchea esa tabla.
     usuario_id_vinculacion_pendiente = None
-    if state_recibido and state_recibido != state_esperado:
+    state_de_este_navegador = oauth_meli.states_coinciden(state_recibido, state_esperado)
+    if state_recibido and not state_de_este_navegador:
         with db.conexion_admin() as conexion:
             cursor = conexion.cursor()
             cursor.execute(
@@ -551,10 +553,24 @@ def callback():
         if fila:
             usuario_id_vinculacion_pendiente = fila[0]
 
-    state_valido = (state_esperado and state_recibido == state_esperado) or usuario_id_vinculacion_pendiente is not None
+    state_valido = state_de_este_navegador or usuario_id_vinculacion_pendiente is not None
     if not state_valido:
         app.logger.warning("Callback OAuth: state no coincide (esperado=%s, recibido=%s).", bool(state_esperado), bool(state_recibido))
         return render_template("error_conexion.html", motivo=MOTIVO_INTENTO_VENCIDO)
+
+    # Un enlace de «conectar otra cuenta» se puede abrir en OTRO navegador a propósito (migración 0013), pero si ese navegador ya tiene la sesión de OTRA persona de CoreLux,
+    # el enlace no es de esta persona: vincular su cuenta de Mercado Libre al usuario que lo generó sería el clásico CSRF de OAuth (alguien arma un enlace propio y se lo
+    # hace completar a otro). El state ya se gastó arriba (se borró de la base): quien lo generó tiene que pedir otro.
+    sesion_actual = session.get("usuario_id")
+    if usuario_id_vinculacion_pendiente is not None and sesion_actual is not None and sesion_actual != usuario_id_vinculacion_pendiente:
+        app.logger.warning("Callback OAuth: enlace de vinculación de otro usuario abierto en un navegador con sesión distinta (sesión=%s, enlace=%s).", sesion_actual, usuario_id_vinculacion_pendiente)
+        return render_template("error_conexion.html", motivo=MOTIVO_ENLACE_AJENO)
+    if state_de_este_navegador:
+        try:                                                    # el mismo navegador completó el flujo: el state guardado en la base ya no vale (un solo uso)
+            with db.conexion_admin() as conexion:
+                conexion.cursor().execute("DELETE FROM oauth_vinculaciones_pendientes WHERE state = %s", (state_recibido,))
+        except Exception as e:
+            app.logger.warning("Callback OAuth: no se pudo limpiar la vinculación pendiente: %s", e)
 
     ok, resultado = oauth_meli.intercambiar_codigo_por_token(code)
     if not ok:
@@ -676,12 +692,13 @@ def notificaciones_meli():
     resource = datos.get("resource")
     meli_user_id = datos.get("user_id")
     # Una línea por notificación, solo con el TEMA (sin ids ni datos de nadie): es lo que permite ver en los logs qué temas manda Mercado Libre de verdad
-    print(f"[Webhook] tema={topic}")
+    application_id = datos.get("application_id")
+    presencia = "ausente" if application_id is None else ("ajena" if config.MELI_CLIENT_ID and str(application_id) != str(config.MELI_CLIENT_ID) else "propia")
+    print(f"[Webhook] tema={topic} application_id={presencia}")
 
     # Las notificaciones de otra aplicación (o una inventada) no disparan nada: el contenido tampoco se toma como dato,
     # solo avisa QUÉ volver a pedirle a Mercado Libre para esa cuenta.
-    application_id = datos.get("application_id")
-    if application_id is not None and config.MELI_CLIENT_ID and str(application_id) != str(config.MELI_CLIENT_ID):
+    if presencia == "ajena":
         print(f"[Webhook] ignorada: es de otra aplicación (tema={topic})")
         return "", 200
 

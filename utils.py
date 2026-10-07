@@ -1,8 +1,14 @@
 """Utilidades compartidas entre páginas — portadas tal cual de Santi Mens."""
 import re
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
-ARGENTINA = timezone(timedelta(hours=-3))      # sin horario de verano
+# La zona real de Argentina (la base de zonas horarias sabe de sus cambios de regla pasados). Si el sistema no tiene esa base (Windows sin `tzdata`) se cae a UTC-3 fijo,
+# que da lo mismo para cualquier fecha desde 2009: Argentina no tiene horario de verano.
+try:
+    ARGENTINA = ZoneInfo("America/Argentina/Buenos_Aires")
+except Exception:
+    ARGENTINA = timezone(timedelta(hours=-3))
 
 
 def sql_momento_argentina(prefijo="", por_defecto="00:00"):
