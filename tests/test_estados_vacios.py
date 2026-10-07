@@ -33,7 +33,7 @@ def test_el_dashboard_de_una_cuenta_con_ventas_se_ve_completo():
 
 
 def test_stock_sin_catalogo_no_dice_stock_sano():
-    html = _render("index.html", productos=[], stats=STATS, full_no_disponible={"total": 0, "items": []}, reactivables=[])
+    html = _render("index.html", productos=[], stats=STATS, full_no_disponible={"total": 0, "items": []}, reactivables=[], riesgo=[], modelos_en_riesgo=set())
     assert "Todavía no hay publicaciones sincronizadas" in html
     assert '<div id="stock-con-datos" hidden>' in html
 

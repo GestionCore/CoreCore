@@ -1,11 +1,13 @@
 {% extends "base.html" %}
-{% from "_ux.html" import kpi, vacio %}
+{% from "_ux.html" import banner, kpi, vacio %}
 {% block title %}Stock · CoreLux{% endblock %}
 {% block content %}
 {# "Sin stock" = publicación ACTIVA sin una sola unidad (ni propia ni en FULL): es plata que se está perdiendo hoy #}
 {% set sin_stock = productos|selectattr('estado', 'equalto', 'active')|selectattr('stock_propio', 'equalto', 0)|selectattr('stock_full', 'equalto', 0)|list %}
 {% set pausadas = productos|selectattr('estado', 'equalto', 'paused')|list %}
 {% set inactivas = productos|rejectattr('estado', 'equalto', 'active')|rejectattr('estado', 'equalto', 'paused')|list %}
+{% set en_riesgo = productos|selectattr('titulo', 'in', modelos_en_riesgo)|list %}
+{% set con_full = productos|selectattr('stock_full', 'gt', 0)|list %}
 
 <div class="page-header">
     <div>
@@ -22,8 +24,24 @@
 {% endif %}
 {# Con catálogo todo se ve normal; sin catálogo queda escondido (un "stock sano" en verde y cinco ceros no le sirven a nadie) #}
 <div id="stock-con-datos"{% if not productos %} hidden{% endif %}>
-<!-- ── 1. CÓMO ESTÁ EL STOCK: el estado en una frase, con botón ──────────── -->
-<div id="estado-stock"></div>
+<!-- ── 1. CÓMO ESTÁ EL STOCK: el estado en una frase, con botón (armado en el servidor: no parpadea al cargar) ──────────── -->
+<div id="estado-stock">
+    {% if sin_stock %}
+    <div class="ux-banner ux-danger" role="status">
+        <div class="ux-banner-icono"><svg class="icon" aria-hidden="true"><use href="#icon-alert"/></svg></div>
+        <div class="ux-banner-cuerpo">
+            <div class="ux-banner-titulo"><b>{{ sin_stock|length|plural('publicación activa sin stock', 'publicaciones activas sin stock') }}</b> — estás perdiendo ventas</div>
+            <div class="ux-banner-detalle">Repone o pausá {{ 'esa publicación' if sin_stock|length == 1 else 'esas publicaciones' }} para no aparecer como disponible sin poder entregar.</div>
+        </div>
+        <button type="button" class="btn btn-urgente" id="btn-ver-sin-stock">Ver las que faltan</button>
+    </div>
+    {% endif %}
+    {% if riesgo %}
+    {{ banner("warn", "box", "<b>" ~ (riesgo|length|plural(vocab.v1)) ~ "</b> " ~ ("se agota" if riesgo|length == 1 else "se agotan") ~ " pronto al ritmo de venta actual", "Mirá abajo cuáles son y cuánto te queda.", "Ver qué reponer", "#bloque-reponer", "btn-alerta") }}
+    {% elif riesgo is not none and not sin_stock %}
+    {{ banner("ok", "check", "<b>Stock sano.</b> Nada agotado ni por agotarse", "Te avisamos acá apenas alguno se acerque al final.") }}
+    {% endif %}
+</div>
 
 <!-- ── 2. NÚMEROS ─────────────────────────────────────────────────────── -->
 <div class="ux-kpis">
@@ -109,10 +127,26 @@ async function reactivarAplicar() {
 {% endif %}
 
 <!-- ── 3. QUÉ REPONER: los talles que se agotan, ordenados por urgencia ─────── -->
-<div id="bloque-reponer" style="display:none;">
-    <div class="ux-acciones-titulo">Lo que tenés que reponer <span class="ux-contador" id="contador-riesgo-stock">0</span></div>
-    <div class="ux-lista-acciones" id="lista-riesgo-stock"></div>
+{% if riesgo %}
+<div id="bloque-reponer">
+    <div class="ux-acciones-titulo">Lo que tenés que reponer <span class="ux-contador">{{ riesgo|length }}</span></div>
+    <div class="ux-lista-acciones">
+        {% for v in riesgo[:6] %}
+        {% set urgente = v.pedir_ya or v.dias_restantes <= 2 %}
+        <div class="ux-item-accion ux-{{ 'danger' if urgente else 'warn' }}">
+            <div class="ux-item-accion-icono"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg></div>
+            <div class="ux-item-accion-cuerpo">
+                <div class="ux-item-accion-titulo">{{ v.titulo }} — {{ vocab.v1 }} <b>{{ v.talle }}</b></div>
+                <div class="ux-item-accion-detalle"><b>{{ v.stock_total }} u.</b> restantes · {% if v.dias_restantes < 1 %}<b>no alcanzan ni para 1 día</b>{% else %}alcanzan ~<b>{{ v.dias_restantes|round|int }} {{ 'día' if v.dias_restantes|round|int == 1 else 'días' }}</b>{% endif %} al ritmo actual
+                    {%- if v.proveedor_nombre %}{% if v.pedir_ya %} · <b>Pedí YA a {{ v.proveedor_nombre }}</b>: el envío tarda más de lo que te queda{% else %} · con {{ v.proveedor_nombre }} tenés ~{{ v.dias_para_pedir|round|int }} {{ 'día' if v.dias_para_pedir|round|int == 1 else 'días' }} para pedir{% endif %}{% endif %}</div>
+            </div>
+            <button type="button" class="btn {{ 'btn-urgente' if urgente else 'btn-alerta' }}" data-drawer="{{ v.id_meli }}">Gestionar</button>
+        </div>
+        {% endfor %}
+        {% if riesgo|length > 6 %}<div class="text-muted" style="font-size:0.82em; padding:4px 2px;">Y {{ riesgo|length - 6 }} {{ vocab.vN }} más — los ves en la tabla con el filtro «Se agota pronto».</div>{% endif %}
+    </div>
 </div>
+{% endif %}
 
 <div class="panel" id="panel-oportunidades-seo" style="display:none;">
     <div class="panel-title"><svg class="icon"><use href="#icon-bolt"/></svg> Tendencias que no tenés en tu catálogo</div>
@@ -130,7 +164,13 @@ async function reactivarAplicar() {
         <button type="button" id="chip-activas" class="btn btn-secondary active" onclick="toggleEstado('active')">Activas</button>
         <button type="button" id="chip-pausadas" class="btn btn-secondary" onclick="toggleEstado('paused')">Pausadas <span class="text-muted">{{ pausadas|length }}</span></button>
         <button type="button" id="chip-inactivas" class="btn btn-secondary" onclick="toggleEstado('closed')">Inactivas <span class="text-muted">{{ inactivas|length }}</span></button>
-        <button type="button" id="chip-sin-stock" class="btn btn-secondary" onclick="toggleSoloSinStock()">Solo sin stock <span class="ux-pill {{ 'ux-danger' if sin_stock else 'ux-neutral ux-pill-suave' }}" style="padding:1px 8px;">{{ sin_stock|length }}</span></button>
+        <button type="button" id="chip-sin-stock" class="btn btn-secondary" onclick="toggleSolo('sinStock')" aria-pressed="false">Solo sin stock <span class="ux-pill {{ 'ux-danger' if sin_stock else 'ux-neutral ux-pill-suave' }}" style="padding:1px 8px;">{{ sin_stock|length }}</span></button>
+        {% if riesgo is not none %}
+        <button type="button" id="chip-riesgo" class="btn btn-secondary" onclick="toggleSolo('riesgo')" aria-pressed="false" title="Modelos con {{ vocab.v1 }} que se agota pronto al ritmo de venta actual">Se agota pronto <span class="ux-pill {{ 'ux-warn' if en_riesgo else 'ux-neutral ux-pill-suave' }}" style="padding:1px 8px;">{{ en_riesgo|length }}</span></button>
+        {% endif %}
+        {% if capacidades.get('full') is not false and con_full %}
+        <button type="button" id="chip-full" class="btn btn-secondary" onclick="toggleSolo('full')" aria-pressed="false">Con stock en FULL <span class="ux-pill ux-neutral ux-pill-suave" style="padding:1px 8px;">{{ con_full|length }}</span></button>
+        {% endif %}
     </div>
 </div>
 
@@ -143,17 +183,17 @@ async function reactivarAplicar() {
             <tr>
                 <th>Modelo y {{ vocab.vN }}</th>
                 <th class="num">Precio</th>
-                <th>Estado</th>
                 <th class="num">Propio</th>
                 {% if capacidades.get('full') is not false %}<th class="num">FULL</th>{% endif %}
                 <th>Ventas 7 días</th>
+                <th title="Cuántos días te dura el stock al ritmo de venta de las últimas 2 semanas">Alcanza para</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
             {% for p in productos %}
             {% set agotado = p.estado == 'active' and p.stock_propio == 0 and p.stock_full == 0 %}
-            <tr data-estado="{{ p.estado }}" data-sin-stock="{{ 1 if agotado else 0 }}" class="{% if agotado %}ux-fila-danger{% endif %}">
+            <tr data-estado="{{ p.estado }}" data-sin-stock="{{ 1 if agotado else 0 }}" data-riesgo="{{ 1 if p.titulo in modelos_en_riesgo else 0 }}" data-full="{{ 1 if p.stock_full > 0 else 0 }}" class="{% if agotado %}ux-fila-danger{% endif %}">
                 <td class="col-titulo">
                     <div class="row-flex">
                         {% if p.thumbnail %}<img src="{{ p.thumbnail }}" alt="" class="thumb-sm" loading="lazy">{% endif %}
@@ -161,6 +201,7 @@ async function reactivarAplicar() {
                             <div style="font-weight:800; font-size:1.02em;">
                                 {{ p.titulo }}
                                 {% if agotado %}<span class="ux-pill ux-danger">Sin stock</span>{% endif %}
+                                {% if p.estado == 'paused' %}<span class="ux-pill ux-warn">Pausada</span>{% elif p.estado != 'active' %}<span class="ux-pill ux-neutral ux-pill-suave">Inactiva</span>{% endif %}
                             </div>
                             <div class="flex-gap" style="margin-top:8px; gap:6px;">
                                 {% for v in p.variantes %}
@@ -186,11 +227,6 @@ async function reactivarAplicar() {
                     {% endif %}
                     {% if p.recibis_formateado %}<div class="text-muted" style="font-size:0.8em;">Recibís ~${{ p.recibis_formateado }}</div>{% endif %}
                 </td>
-                <td data-label="Estado">
-                    {% if p.estado == 'active' %}<span class="ux-pill ux-ok">Activa</span>
-                    {% elif p.estado == 'paused' %}<span class="ux-pill ux-warn">Pausada</span>
-                    {% else %}<span class="ux-pill ux-neutral ux-pill-suave">Inactiva</span>{% endif %}
-                </td>
                 <td class="num" data-label="Propio"><strong>{{ p.stock_propio }} u.</strong></td>
                 {% if capacidades.get('full') is not false %}<td class="num" data-label="FULL"><strong>{{ p.stock_full }} u.</strong></td>{% endif %}
                 <td data-label="Ventas 7 días">
@@ -204,6 +240,13 @@ async function reactivarAplicar() {
                     {% else %}
                     <span class="text-faint" style="font-size:0.8em;">Sin ventas</span>
                     {% endif %}
+                </td>
+                <td data-label="Alcanza para" data-orden="{{ p.dias_stock if p.dias_stock is not none else 99999 }}">
+                    {% if p.estado == 'active' %}
+                    {% set pista = ('Al ritmo de las últimas 2 semanas (' ~ p.unidades_ritmo ~ ' u. vendidas)') if p.dias_stock is not none else ('Sin ventas en las últimas 2 semanas: no hay ritmo para estimar' if p.stock_propio + p.stock_full > 0 else '') %}
+                    {% if p.dias_stock is none and p.dias_stock_tono == 'neutral' %}<span class="text-faint" {% if pista %}title="{{ pista }}"{% endif %}>—</span>
+                    {% else %}<span class="ux-pill ux-{{ p.dias_stock_tono }}{{ ' ux-pill-suave' if p.dias_stock_tono == 'neutral' }}" {% if pista %}title="{{ pista }}"{% endif %}>{{ p.dias_stock_texto }}</span>{% endif %}
+                    {% else %}<span class="text-faint">—</span>{% endif %}
                 </td>
                 <td><button type="button" class="btn btn-secondary" onclick="abrirDrawer('{{ p.id }}')">Gestionar</button></td>
             </tr>
@@ -221,11 +264,11 @@ async function reactivarAplicar() {
 
 <script>
     const CLAVE_FILTRO_ESTADO = 'filtro_estado_stock';
-    const SIN_STOCK_CANTIDAD = {{ sin_stock|length }};
     let estadosVisibles = { active: true, paused: false, closed: false };
     try { estadosVisibles = JSON.parse(localStorage.getItem(CLAVE_FILTRO_ESTADO)) || estadosVisibles; } catch (e) { /* preferencias corruptas: se usan las de fábrica */ }
-    let soloSinStock = false;
-    let riesgoCantidad = null;   // se completa cuando llega /api/quiebre_stock
+    // Filtros "solo": se pueden combinar; cada uno mira un data-* de la fila (data-sin-stock, data-riesgo, data-full)
+    const soloSi = { sinStock: false, riesgo: false, full: false };
+    const CHIP_SOLO = { sinStock: 'chip-sin-stock', riesgo: 'chip-riesgo', full: 'chip-full' };
 
     function _idChip(estado) { return 'chip-' + (estado === 'active' ? 'activas' : (estado === 'paused' ? 'pausadas' : 'inactivas')); }
 
@@ -236,9 +279,10 @@ async function reactivarAplicar() {
         aplicarFiltros();
     }
 
-    function toggleSoloSinStock(forzar) {
-        soloSinStock = typeof forzar === 'boolean' ? forzar : !soloSinStock;
-        document.getElementById('chip-sin-stock').classList.toggle('active', soloSinStock);
+    function toggleSolo(clave, forzar) {
+        soloSi[clave] = typeof forzar === 'boolean' ? forzar : !soloSi[clave];
+        const chip = document.getElementById(CHIP_SOLO[clave]);
+        if (chip) { chip.classList.toggle('active', soloSi[clave]); chip.setAttribute('aria-pressed', soloSi[clave] ? 'true' : 'false'); }
         aplicarFiltros();
     }
 
@@ -257,7 +301,7 @@ async function reactivarAplicar() {
             const texto = fila.querySelector('.col-titulo').innerText;
             const coincide = coincideBusqueda(texto, consulta)
                 && estadosVisibles[fila.dataset.estado] !== false
-                && (!soloSinStock || fila.dataset.sinStock === '1');
+                && Object.keys(soloSi).every(clave => !soloSi[clave] || fila.dataset[clave] === '1');
             fila.style.display = coincide ? '' : 'none';
             if (coincide) visibles++;
         });
@@ -266,62 +310,15 @@ async function reactivarAplicar() {
         tabla.style.display = visibles === 0 ? 'none' : '';
     }
 
-    // ── El estado del stock en una frase: lo más urgente primero ─────────────
-    function pintarEstadoStock() {
-        const cont = document.getElementById('estado-stock');
-        const bloques = [];
-        if (SIN_STOCK_CANTIDAD > 0) {
-            bloques.push(`<div class="ux-banner ux-danger" role="status">
-                <div class="ux-banner-icono">${UX.icono('alert')}</div>
-                <div class="ux-banner-cuerpo">
-                    <div class="ux-banner-titulo"><b>${SIN_STOCK_CANTIDAD} publicación${SIN_STOCK_CANTIDAD > 1 ? 'es activas' : ' activa'} sin stock</b> — estás perdiendo ventas</div>
-                    <div class="ux-banner-detalle">Repone o pausá ${SIN_STOCK_CANTIDAD > 1 ? 'esas publicaciones' : 'esa publicación'} para no aparecer como disponible sin poder entregar.</div>
-                </div>
-                <button type="button" class="btn btn-urgente" onclick="verSoloSinStock()">Ver las que faltan</button>
-            </div>`);
-        }
-        if (riesgoCantidad === null) {
-            if (!bloques.length) bloques.push('<div class="skeleton" style="height:76px; width:100%; border-radius:12px; margin-bottom:20px;"></div>');
-        } else if (riesgoCantidad > 0) {
-            bloques.push(UX.banner({ tono: 'warn', icono: 'box', tituloHtml: `<b>${riesgoCantidad} {{ vocab.v1 }}${riesgoCantidad > 1 ? 's' : ''}</b> se agota${riesgoCantidad > 1 ? 'n' : ''} pronto al ritmo de venta actual`, detalle: 'Mirá abajo cuáles son y cuánto te queda.', cta: { texto: 'Ver qué reponer', href: '#bloque-reponer', clase: 'btn-alerta' } }));
-        } else if (SIN_STOCK_CANTIDAD === 0) {
-            bloques.push(UX.banner({ tono: 'ok', icono: 'check', tituloHtml: '<b>Stock sano.</b> Nada agotado ni por agotarse', detalle: 'Te avisamos acá apenas alguno se acerque al final.' }));
-        }
-        cont.innerHTML = bloques.join('');
-    }
-
+    // "Ver las que faltan": solo las activas sin una unidad
     function verSoloSinStock() {
         ['active', 'paused', 'closed'].forEach(e => { estadosVisibles[e] = e === 'active'; });
         restaurarFiltrosGuardados();
-        toggleSoloSinStock(true);
+        toggleSolo('sinStock', true);
         document.getElementById('tabla-productos').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-
-    // ── Qué reponer ──────────────────────────────────────────────────────────
-    async function cargarRiesgoStock() {
-        try {
-            const data = await (await fetch('/api/quiebre_stock')).json();
-            riesgoCantidad = data ? data.length : 0;
-            pintarEstadoStock();
-            const bloque = document.getElementById('bloque-reponer');
-            if (!data || data.length === 0) { bloque.style.display = 'none'; return; }
-            bloque.style.display = '';
-            document.getElementById('contador-riesgo-stock').textContent = data.length;
-            document.getElementById('lista-riesgo-stock').innerHTML = data.slice(0, 6).map(v => {
-                const prov = v.proveedor_nombre
-                    ? (v.pedir_ya ? ` · <b>Pedí YA a ${UX.esc(v.proveedor_nombre)}</b>: el envío tarda más de lo que te queda` : ` · con ${UX.esc(v.proveedor_nombre)} tenés ~${UX.esc(v.dias_para_pedir)} día/s para pedir`)
-                    : '';
-                return `<div class="ux-item-accion ux-${v.pedir_ya || v.dias_restantes <= 2 ? 'danger' : 'warn'}">
-                    <div class="ux-item-accion-icono">${UX.icono('box')}</div>
-                    <div class="ux-item-accion-cuerpo">
-                        <div class="ux-item-accion-titulo">${UX.esc(v.titulo)} — talle <b>${UX.esc(v.talle)}</b></div>
-                        <div class="ux-item-accion-detalle"><b>${UX.esc(v.stock_total)} u.</b> restantes · alcanzan ~<b>${UX.esc(v.dias_restantes)} días</b> al ritmo actual${prov}</div>
-                    </div>
-                    <button type="button" class="btn ${v.pedir_ya || v.dias_restantes <= 2 ? 'btn-urgente' : 'btn-alerta'}" data-drawer="${UX.esc(v.id_meli)}">Gestionar</button>
-                </div>`;
-            }).join('') + (data.length > 6 ? `<div class="text-muted" style="font-size:0.82em; padding:4px 2px;">Y ${data.length - 6} {{ vocab.vN }} más — los ves marcados en naranja en la tabla.</div>` : '');
-        } catch (e) { console.error(e); riesgoCantidad = 0; pintarEstadoStock(); }
-    }
+    const btnVerSinStock = document.getElementById('btn-ver-sin-stock');
+    if (btnVerSinStock) btnVerSinStock.addEventListener('click', verSoloSinStock);
 
     document.addEventListener('click', (ev) => {
         const b = ev.target.closest('[data-drawer]');
@@ -342,8 +339,6 @@ async function reactivarAplicar() {
     window.addEventListener('load', () => {
         restaurarFiltrosGuardados();
         aplicarFiltros();
-        pintarEstadoStock();
-        cargarRiesgoStock();
         abrirDrawerDesdeURL();
     });
 </script>

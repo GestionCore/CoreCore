@@ -56,3 +56,21 @@ def test_los_botones_de_las_plantillas_llaman_funciones_que_existen():
                 continue
             faltan.setdefault(base, set()).add(os.path.basename(ruta))
     assert not faltan, {k: sorted(v) for k, v in faltan.items()}
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node no está instalado")
+def test_la_busqueda_no_distingue_mayusculas_ni_acentos():
+    """"pantalon" tiene que encontrar "Pantalón": en Stock, Stock masivo y donde se use coincideBusqueda casi nadie tipea las tildes."""
+    js = _leer(os.path.join(RAIZ, "static", "js", "global.js"))
+    inicio = js.index("function _sinAcentos")
+    fin = js.index("// ---------- IDs copiables")
+    guion = (
+        js[inicio:fin]
+        + "\nconst casos = ["
+        + "['Pantalón Cargo Hombre', 'pantalon', true], ['Pantalón Cargo Hombre', 'PANTALÓN cargo', true], ['Camiseta Niño', 'nino', true],"
+        + "['Pantalón Cargo Hombre', 'pantalon jean', false], ['Remera', '', true], ['Remera', '   ', true]];"
+        + "\nconst mal = casos.filter(([texto, q, esperado]) => coincideBusqueda(texto, q) !== esperado);"
+        + "\nif (mal.length) { console.error(JSON.stringify(mal)); process.exit(1); }"
+    )
+    r = subprocess.run(["node", "-e", guion], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[:500]

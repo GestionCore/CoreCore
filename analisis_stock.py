@@ -67,6 +67,29 @@ def obtener_variantes_en_riesgo(cursor, umbral_dias=UMBRAL_DIAS_RESTANTES, venta
     return en_riesgo
 
 
+def dias_de_stock(stock_total, unidades_vendidas, ventana_dias=VENTANA_DIAS):
+    """Cuántos días alcanza el stock al ritmo de venta de la ventana. None si no hubo ventas: sin ritmo no hay nada que estimar (y un 0 diría "se agota hoy")."""
+    if not unidades_vendidas or unidades_vendidas <= 0:
+        return None
+    return round(stock_total / (unidades_vendidas / ventana_dias), 1)
+
+
+def presentar_dias_de_stock(dias, stock_total):
+    """(texto, tono) para la columna "Alcanza para" de Stock. Rojo si queda menos que el umbral de reposición, naranja hasta dos semanas, neutro el resto."""
+    if stock_total <= 0:
+        return "Agotado", "danger"
+    if dias is None:
+        return "—", "neutral"          # sin ventas no hay ritmo: un guion (la columna de al lado ya dice "Sin ventas")
+    if dias >= 365:
+        return "+1 año", "neutral"
+    if dias >= 90:
+        return "+90 días", "neutral"
+    if dias < 1:
+        return "menos de 1 día", "danger"
+    redondeado = round(dias)       # el color sigue al número que se ve: «~5 días» no puede estar en naranja si 5 es el límite del rojo
+    return f"~{redondeado} {'día' if redondeado == 1 else 'días'}", "danger" if redondeado <= UMBRAL_DIAS_RESTANTES else ("warn" if redondeado <= VENTANA_DIAS else "neutral")
+
+
 def _limpiar_titulo_modelo_local(titulo):
     t = re.sub(r'\b(talle|size)\s*[:#]?\s*(xxxl|xxl|xl|l|m|s|\d+)\b', '', titulo, flags=re.IGNORECASE)
     t = re.sub(r'\b(xxxl|xxl|xl|l|m|s)\b', '', t, flags=re.IGNORECASE)

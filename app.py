@@ -309,7 +309,17 @@ def _render_stock():
             reactivables = reactivar.listar(conexion.cursor())
     except Exception as e:
         print(f"[Stock] ⚠️ No se pudieron listar las pausadas con stock: {e}")
-    return render_template("index.html", productos=productos, stats=stats, full_no_disponible=full_no_disponible, reactivables=reactivables, active_nav="stock")
+    # Lo que se agota pronto se arma acá y no con un fetch al abrir la pantalla: así el aviso ya viene en la página (sin esqueleto ni parpadeo) y la tabla puede marcar los modelos.
+    # None = no se pudo calcular: la pantalla no dice "stock sano" sin saberlo.
+    riesgo, modelos_en_riesgo = None, set()
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            riesgo = analisis_stock.obtener_variantes_en_riesgo(conexion.cursor())
+        modelos_en_riesgo = {utils.limpiar_titulo_modelo(r["titulo"]) for r in riesgo}
+    except Exception as e:
+        print(f"[Stock] ⚠️ No se pudo calcular qué se agota pronto: {e}")
+    return render_template("index.html", productos=productos, stats=stats, full_no_disponible=full_no_disponible, reactivables=reactivables,
+                           riesgo=riesgo, modelos_en_riesgo=modelos_en_riesgo, active_nav="stock")
 
 
 @app.route("/api/reactivar/aplicar", methods=["POST"])

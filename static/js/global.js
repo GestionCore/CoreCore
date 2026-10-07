@@ -858,9 +858,13 @@ function animarNumeroHasta(el, valorFinal, formatearFn, duracionMs = 650) {
     requestAnimationFrame(frame);
 }
 // ---------- Búsqueda flexible multi-token ----------
+// Sin distinguir mayúsculas ni acentos: "pantalon" encuentra "Pantalón" (casi nadie tipea las tildes)
+function _sinAcentos(texto) {
+    return String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
 function coincideBusqueda(textoCompleto, consulta) {
-    const tokens = consulta.toLowerCase().split(/\s+/).filter(Boolean);
-    const texto = textoCompleto.toLowerCase();
+    const tokens = _sinAcentos(consulta).split(/\s+/).filter(Boolean);
+    const texto = _sinAcentos(textoCompleto);
     return tokens.every(t => texto.includes(t));
 }
 

@@ -10,6 +10,7 @@ Postgres multi-tenant. Los cambios reales son mínimos gracias a RLS:
   nuevo (ver 01_schema_multitenant.sql).
 """
 from datetime import datetime, timedelta
+import analisis_stock
 import db
 from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle, ARGENTINA
 
@@ -41,12 +42,13 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
 
         hoy_dt = datetime.now(ARGENTINA)
         dias_ventana = [(hoy_dt - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
-        fecha_desde_spark = dias_ventana[0]
+        # Mismo período que "Lo que tenés que reponer" (analisis_stock.VENTANA_DIAS): el gráfico usa los últimos 7 días y los "días que alcanza" toda la ventana
+        fecha_desde_ritmo = (hoy_dt - timedelta(days=analisis_stock.VENTANA_DIAS)).strftime("%Y-%m-%d")
         cursor.execute("""
             SELECT id_meli, fecha_venta, SUM(cantidad) FROM ventas
             WHERE fecha_venta >= %s
             GROUP BY id_meli, fecha_venta
-        """, (fecha_desde_spark,))
+        """, (fecha_desde_ritmo,))
         ventas_por_item_y_dia = {}
         for id_meli_v, fecha_v, cantidad_v in cursor.fetchall():
             fecha_v_str = fecha_v.strftime("%Y-%m-%d") if hasattr(fecha_v, "strftime") else fecha_v
@@ -74,7 +76,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
                 "cuotas_texto": f"{cuotas_cantidad} cuotas de ${formatear_moneda(cuotas_monto)}" if cuotas_cantidad and cuotas_monto else None,
                 "estado": estado, "thumbnail": thumbnail,
                 "stock_propio": 0, "stock_full": 0, "variantes": [], "_talles_index": {},
-                "historial_7d": [0] * 7, "_ids_ya_sumados_historial": set()
+                "historial_7d": [0] * 7, "_ids_ya_sumados_historial": set(), "unidades_ritmo": 0
             }
 
         m = modelos_agrupados[modelo_clave]
@@ -85,6 +87,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
         if id_meli not in m["_ids_ya_sumados_historial"]:
             for idx_dia, fecha_dia in enumerate(dias_ventana):
                 m["historial_7d"][idx_dia] += ventas_diarias_item.get(fecha_dia, 0)
+            m["unidades_ritmo"] += sum(ventas_diarias_item.values())
             m["_ids_ya_sumados_historial"].add(id_meli)
 
         m["precio_min"] = min(m["precio_min"], precio)
@@ -141,6 +144,11 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
         m["sparkline_puntos"] = " ".join(puntos)
         m["sparkline_total_7d"] = sum(historial)
         del m["historial_7d"]
+
+        # Cuántos días alcanza el stock del modelo al ritmo de las últimas semanas (solo para lo que está a la venta)
+        stock_modelo = m["stock_propio"] + m["stock_full"]
+        m["dias_stock"] = analisis_stock.dias_de_stock(stock_modelo, m["unidades_ritmo"]) if m["estado"] == "active" else None
+        m["dias_stock_texto"], m["dias_stock_tono"] = analisis_stock.presentar_dias_de_stock(m["dias_stock"], stock_modelo) if m["estado"] == "active" else ("", "neutral")
 
         productos_lista.append(m)
 
