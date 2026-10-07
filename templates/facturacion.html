@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_ux.html" import banner, kpi, vacio %}
+{% from "_factura.html" import tabla_factura %}
 {% block title %}Facturación · CoreLux{% endblock %}
 {% block content %}
 {% set hay_datos = rs.facturado > 0 or rs.cargos != 0 %}
@@ -8,7 +9,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-receipt"/></svg>Facturación de Mercado Libre</h1>
-        <div class="page-subtitle">Lo que MeLi te cobra en cada período — <strong>el dato oficial</strong>, tal cual te lo factura</div>
+        <div class="page-subtitle">Lo que Mercado Libre te cobra en cada período, tal cual te lo factura{% if flex_neto %} — <strong>más lo que te cuestan tus envíos Flex</strong>, marcado aparte{% endif %}</div>
     </div>
 </div>
 
@@ -34,10 +35,11 @@
     <div class="ux-hero-frase">
         {% if rs.facturado > 0 %}
         De <b>{{ rs.facturado|plata }}</b> facturados, Mercado Libre te cobró <b>{{ rs.cargos|plata }}</b> ({{ (rs.cargos / rs.facturado * 100)|pct }})
-        {% if rs.gastos %} y tus gastos operativos fueron <b>{{ rs.gastos|plata }}</b>{% endif %} — {% if rs.ganancia_neta < 0 %}<b>el período cerró en pérdida</b>{% else %}<b>quedaron {{ rs.ganancia_neta|plata }}</b>, sin descontar todavía el costo de fabricación{% endif %}.
+        {% if rs.flex %}, tus envíos Flex te costaron <b>{{ rs.flex|plata }}</b>{% endif %}
+        {% if rs.gastos %}{{ ' y' if not rs.flex else ',' }} tus gastos operativos fueron <b>{{ rs.gastos|plata }}</b>{% endif %} — {% if rs.ganancia_neta < 0 %}<b>el período cerró en pérdida</b>{% else %}<b>quedaron {{ rs.ganancia_neta|plata }}</b>, sin descontar todavía el costo de fabricación{% endif %}.
         {% else %}Todavía no hay ventas registradas en este período.{% endif %}
     </div>
-    <div class="ux-hero-nota">Facturado bruto − cargos de MeLi − gastos operativos del período. <b>No descuenta el costo de fabricación:</b> la ganancia neta real completa está en <a href="/metricas"><b>Ganancia Real →</b></a></div>
+    <div class="ux-hero-nota">Facturado bruto − cargos de MeLi{% if rs.flex %} − envíos Flex{% endif %} − gastos operativos del período. <b>No descuenta el costo de fabricación:</b> la ganancia neta real completa está en <a href="/metricas"><b>Ganancia Real →</b></a></div>
 </div>
 
 {% if rs.pendiente > 0 %}
@@ -48,7 +50,7 @@
 <div class="ux-kpis">
     {{ kpi("Facturado bruto", rs.facturado|plata, "accion", "receipt", "ventas del período") }}
     {{ kpi("Cargos de MeLi", rs.cargos|plata, "danger", "percent", "comisiones, envíos, publicidad…") }}
-    {{ kpi("Ganancia bruta real", rs.ganancia_bruta|plata, "ok" if rs.ganancia_bruta >= 0 else "danger", "coin", "facturado − cargos de MeLi") }}
+    {{ kpi("Ganancia bruta real", rs.ganancia_bruta|plata, "ok" if rs.ganancia_bruta >= 0 else "danger", "coin", "facturado − cargos de MeLi" ~ (" − Flex" if rs.flex else "")) }}
     {{ kpi("Pagos cobrados", rs.pagos_cobrados|plata, "info", "credit-card", "descontados en la operación") }}
     {{ kpi("Pendiente de pago", rs.pendiente|plata, "warn" if rs.pendiente > 0 else "ok", "alert", "cargos aún sin abonar") }}
     {{ kpi("Percepciones (aprox.)", rs.percepciones|plata, "neutral", "file-text", "impuestos retenidos") }}
@@ -59,46 +61,33 @@
 <div class="ux-seccion ux-accion">Cómo se reparte tu facturación</div>
 <div class="panel" id="waterfall-facturacion">
     {% for f in waterfall_facturacion if f.pct_ancho > 0 or f.es_total_inicial or f.es_total_final %}
-    {% set tono_fila = 'accion' if f.es_total_inicial else ('danger' if f.es_negativo else ('ok' if f.es_total_final else ('info' if 'Env' in f.label else ('warn' if 'Publi' in f.label else ('neutral' if 'Otros' in f.label else 'danger'))))) %}
     <div class="ux-fila-reparto {% if f.es_total_final %}ux-fila-reparto-total{% endif %}">
         <span class="ux-fila-reparto-label">{{ f.label }}</span>
-        <div class="ux-barra ux-{{ tono_fila }}" style="flex:1;"><span data-w="{{ f.pct_ancho }}" style="width:0%;"></span></div>
-        <span class="ux-fila-reparto-monto" style="color:var(--{{ 'success' if f.es_total_final and not f.es_negativo else ('danger' if f.es_negativo or f.monto_formateado.startswith('-') else 'text-primary') }});">{{ f.monto_formateado }}</span>
+        <div class="ux-barra ux-{{ f.tono }}" style="flex:1;"><span data-w="{{ f.pct_ancho }}" style="width:0%;"></span></div>
+        <span class="ux-fila-reparto-monto" style="color:var(--{{ 'success' if (f.es_total_final and not f.es_negativo) or f.es_credito else ('danger' if f.es_negativo else 'text-primary') }});">{{ f.monto_formateado }}</span>
     </div>
     {% endfor %}
-    {% if waterfall_facturacion|selectattr('label', 'equalto', 'Otros cargos de MeLi (sin categorizar)')|list %}
-    <div class="text-muted" style="font-size:0.82em; margin-top:12px;">Mercado Libre no detalla por categoría los cargos de este resumen, así que quedan juntos en "otros cargos". El desglose fino está en tu panel de Facturación de MeLi.</div>
-    {% endif %}
 </div>
 <script>
     document.querySelectorAll('#waterfall-facturacion .ux-barra span').forEach(b => { requestAnimationFrame(() => { b.style.width = Math.min(100, b.dataset.w || 0) + '%'; }); });
 </script>
 {% endif %}
 
-<!-- ── 3b. CARGOS QUE GANANCIA REAL NO DESCUENTA ───────────────────────────── -->
-{% if fuera_de_ganancia %}
-<div class="ux-banner ux-info" style="display:block; margin-bottom:16px;">
-    <div class="ux-banner-titulo"><b>{{ total_fuera_de_ganancia|plata }}</b> de esta factura no están en la ganancia de cada venta</div>
-    <div class="ux-banner-detalle" style="margin-top:6px;">Son cargos que Mercado Libre factura aparte de las comisiones: {% for c in fuera_de_ganancia %}{{ c.label }} ({{ c.monto|plata }}){{ ', ' if not loop.last else '.' }}{% endfor %} Si querés que cuenten en tu ganancia, cargalos como gasto del negocio en <a href="/costos">Costos</a>.</div>
-</div>
-{% endif %}
-
-<!-- ── 4. DETALLE ─────────────────────────────────────────────────────── -->
+<!-- ── 4. DETALLE: cada grupo con lo que lo compone ───────────────────────── -->
 <details class="ux-detalle" open>
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Cargos del período <span class="ux-detalle-nota">{{ cargos|length }} conceptos · total {{ rs.cargos|plata }}</span></summary>
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Cargos del período <span class="ux-detalle-nota">{{ filas_factura|length }} conceptos · total {{ total_con_flex|plata }}</span></summary>
     <div class="ux-detalle-cuerpo">
-        <table class="data-table">
-            <thead><tr><th>Concepto</th><th class="num">Monto</th></tr></thead>
-            <tbody>
-                {% for c in cargos %}
-                <tr><td>{{ c.label }}</td><td class="num {% if c.monto < 0 %}text-success{% else %}text-danger{% endif %}"><b>{{ c.monto|plata }}</b></td></tr>
-                {% endfor %}
-                {% if not cargos %}<tr><td colspan="2" class="text-muted">No hay cargos para este período todavía.</td></tr>{% endif %}
-            </tbody>
-        </table>
-        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Los montos en verde son bonificaciones o anulaciones a tu favor.</div>
+        {{ tabla_factura(filas_factura, total_con_flex, "Total" ~ (" (con tus envíos Flex)" if flex_neto else "")) }}
+        <div class="text-muted" style="font-size:0.82em; margin-top:10px; line-height:1.5;">
+            Los montos en verde son bonificaciones o anulaciones a tu favor.
+            {% if flex_neto %}Los envíos Flex los cobra tu propia logística, no Mercado Libre: por eso no figuran en su factura (que suma <b>{{ total_factura|plata }}</b>). Acá se cuentan junto a los demás envíos para que veas lo que de verdad te cuestan, y el reintegro de Mercado Libre aparece entre las bonificaciones.{% endif %}
+            Los cargos que Mercado Libre factura una vez por mes (eShop, reputación, almacenamiento y retiros de FULL, devoluciones) ya están descontados en <a href="/metricas">Ganancia Real</a>, repartidos por día.
+        </div>
     </div>
 </details>
+
+<!-- ── 5. LO ACREDITADO Y LO QUE FALTA DE ESTA FACTURA ───────────────────── -->
+{% include "_factura_estado.html" %}
 
 {% elif periodos %}
 {{ vacio("Todavía no hay datos de facturación en este período", "Elegí otro período arriba o sincronizá para traer lo último de Mercado Libre.", "receipt", "info") }}

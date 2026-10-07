@@ -1,0 +1,24 @@
+{#
+  La factura de Mercado Libre de un período: cuánto ya se descontó de tus acreditaciones y cuánto falta. Lo comparten Cobros y Facturación.
+  Espera `factura` (cobros.resumen_factura) y las macros de _ux.html.
+#}
+{% from "_ux.html" import banner %}
+{% if factura %}
+{% if factura.deuda_cerrada %}
+{{ banner("danger", "alert", "<b>Tenés " ~ (factura.deuda_cerrada.monto|plata) ~ " sin pagar</b> de la factura del " ~ factura.deuda_cerrada.desde ~ " al " ~ factura.deuda_cerrada.hasta, "Según Mercado Libre vencía el " ~ factura.deuda_cerrada.vence ~ ". Pagala desde tu cuenta para evitar recargos.") }}
+{% endif %}
+<div class="ux-seccion ux-info">Lo acreditado y lo que falta de esta factura <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ rango_fechas(factura.desde_iso, factura.hasta_iso) }}{% if factura.abierto %} · período en curso{% endif %}</span></div>
+<div class="panel">
+    <div class="ux-dist-fila">
+        <span class="ux-dist-etq" style="width:150px;">Ya descontado</span>
+        <div class="ux-barra ux-ok" style="flex:1;"><span style="width:{{ factura.pct_descontado }}%;"></span></div>
+        <span class="ux-dist-val" style="width:150px;"><b>{{ factura.descontado|plata }}</b> <span class="text-muted">({{ factura.pct_descontado }}%)</span></span>
+    </div>
+    <div class="ux-dist-fila">
+        <span class="ux-dist-etq" style="width:150px;">Falta</span>
+        <div class="ux-barra ux-warn" style="flex:1;"><span style="width:{{ 100 - factura.pct_descontado }}%;"></span></div>
+        <span class="ux-dist-val" style="width:150px;"><b>{{ factura.pendiente|plata }}</b></span>
+    </div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:8px; line-height:1.5;">Lo cobrado en el período suma <b>{{ factura.total|plata }}</b> (comisiones, envíos, publicidad e impuestos). Lo que figura como descontado ya salió de tus acreditaciones; el resto lo informa Mercado Libre como pendiente.{% if detalle_en_facturacion %} El detalle de cada cargo está en <a href="/facturacion">Facturación</a>.{% endif %}</div>
+</div>
+{% endif %}

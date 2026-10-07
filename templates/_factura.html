@@ -1,0 +1,30 @@
+{#
+  La factura de Mercado Libre agrupada (facturacion.agrupar_factura) como tabla: cada grupo con su monto y, debajo, lo que lo compone.
+      {% from "_factura.html" import tabla_factura %}
+      {{ tabla_factura(filas, total=None, total_rotulo="Total") }}
+  Los montos positivos son cargos (rojo); los negativos, bonificaciones o anulaciones a tu favor (verde).
+#}
+{% macro tabla_factura(filas, total=None, total_rotulo="Total") %}
+<table class="data-table tabla-factura">
+    <thead><tr><th>Concepto</th><th class="num">Monto</th></tr></thead>
+    <tbody>
+        {% for f in filas %}
+        <tr>
+            <td><b>{{ f.label }}</b></td>
+            <td class="num {{ 'text-success' if f.monto < 0 else 'text-danger' }}"><b>{{ f.monto|plata }}</b></td>
+        </tr>
+        {% for d in f.detalle %}
+        <tr class="fila-detalle">
+            <td>{{ d.label }}{% if d.nota %} <span class="text-faint">· {{ d.nota }}</span>{% endif %}</td>
+            <td class="num {{ 'text-success' if d.monto < 0 }}">{{ d.monto|plata }}</td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+        {% if not filas %}<tr><td colspan="2" class="text-muted">No hay cargos para este período todavía.</td></tr>{% endif %}
+        {% if total is not none %}
+        <tr class="fila-total"><td><b>{{ total_rotulo }}</b></td><td class="num"><b>{{ total|plata }}</b></td></tr>
+        {% endif %}
+        {{ caller() if caller }}
+    </tbody>
+</table>
+{% endmacro %}

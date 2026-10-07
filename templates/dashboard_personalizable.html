@@ -739,6 +739,8 @@
                 { label: 'Publicidad', valor: p.costo_ads, valor_f: p.costo_ads_f },
                 { label: 'Costo de fabricación', valor: p.costo_fabricacion, valor_f: p.costo_fabricacion_f },
             ];
+            // eShop, almacenamiento de FULL, reputación y devoluciones: cargos mensuales de Mercado Libre repartidos por día
+            if (p.cargos_fuera_de_ventas > 0) filas.push({ label: 'Cargos mensuales de MeLi', valor: p.cargos_fuera_de_ventas, valor_f: p.cargos_fuera_de_ventas_f });
             document.getElementById('pl-detalle').innerHTML = filas.map(f => {
                 const pct = p.facturado > 0 ? Math.round(f.valor / p.facturado * 100) : 0;
                 return `<div class="pl-detalle-fila">

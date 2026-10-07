@@ -939,7 +939,9 @@ def api_dashboard_ganancia_dia_vs_promedio():
 
     ganancia_hoy = sum(v["raw"]["ganancia_neta"] for v in datos["ventas"] if v["fecha"] == hoy_str)
     facturado_hoy = sum(v["raw"]["precio_venta"] for v in datos["ventas"] if v["fecha"] == hoy_str)
-    ganancia_promedio_diario = r["ganancia_neta"] / 14
+    # Hoy y el promedio se comparan con la misma base: lo que dejó cada venta. Los cargos mensuales de Mercado Libre (eShop, FULL…) no se reparten
+    # en cada día: entran en el resultado de los 14 días (más abajo).
+    ganancia_promedio_diario = r["ganancia_neta_ventas"] / 14
 
     variacion_pct = None
     if ganancia_promedio_diario:
@@ -983,8 +985,9 @@ def api_dashboard_ganancia_dia_vs_promedio():
             "envios": round(r["envios"], 2), "envios_f": _f(r["envios"]),
             "costo_ads": round(r["costo_ads"], 2), "costo_ads_f": _f(r["costo_ads"]),
             "costo_fabricacion": round(r["costo_fabricacion"], 2), "costo_fabricacion_f": _f(r["costo_fabricacion"]),
-            "costos_totales": round(r["comision"] + r["envios"] + r["costo_ads"] + r["costo_fabricacion"], 2),
-            "costos_totales_f": _f(r["comision"] + r["envios"] + r["costo_ads"] + r["costo_fabricacion"]),
+            "cargos_fuera_de_ventas": round(r["cargos_fuera_de_ventas"], 2), "cargos_fuera_de_ventas_f": _f(r["cargos_fuera_de_ventas"]),
+            "costos_totales": round(r["comision"] + r["envios"] + r["costo_ads"] + r["costo_fabricacion"] + r["cargos_fuera_de_ventas"], 2),
+            "costos_totales_f": _f(r["comision"] + r["envios"] + r["costo_ads"] + r["costo_fabricacion"] + r["cargos_fuera_de_ventas"]),
             "margen": round(r["ganancia_neta"], 2), "margen_f": _f(r["ganancia_neta"]),
             "margen_negativo": r["ganancia_neta"] < 0,
         },
@@ -1110,9 +1113,10 @@ def metricas_vista():
     punto_equilibrio = None
     try:
         _, stats_gastos, _ = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta, g.cuenta_id)
-        costos_fijos = stats_gastos["fijos_raw"]
+        # Los cargos mensuales de Mercado Libre (eShop, FULL…) son costos fijos: suman a los gastos fijos y NO restan del margen de contribución
+        costos_fijos = stats_gastos["fijos_raw"] + datos["resumen"]["raw"]["cargos_fuera_de_ventas"]
         facturado_raw = datos["resumen"]["raw"]["facturado"]
-        margen_contribucion_pct = (datos["resumen"]["raw"]["ganancia_neta"] / facturado_raw) if facturado_raw > 0 else 0
+        margen_contribucion_pct = (datos["resumen"]["raw"]["ganancia_neta_ventas"] / facturado_raw) if facturado_raw > 0 else 0
         if costos_fijos > 0 and margen_contribucion_pct > 0:
             ventas_minimas = costos_fijos / margen_contribucion_pct
             punto_equilibrio = {
@@ -1225,7 +1229,7 @@ def metricas_vista():
         "metricas.html", cobertura_costos=cobertura_costos, ventas=datos["ventas"], consolidados=datos["consolidados"],
         resumen=datos["resumen"], ads_disponible=datos["ads_disponible"],
         gasto_ads_total_periodo=datos["gasto_ads_total_periodo"], posventa=datos["posventa"],
-        comparacion_anterior=datos["comparacion_anterior"],
+        comparacion_anterior=datos["comparacion_anterior"], cargos_fuera_de_ventas=datos["cargos_fuera_de_ventas"],
         fecha_desde=fecha_desde, fecha_hasta=fecha_hasta,
         punto_equilibrio=punto_equilibrio, canales_envio=canales_envio,
         factura_meli=factura_meli, evolucion_mensual=evolucion_mensual,
@@ -2004,102 +2008,57 @@ def facturacion_vista():
         except Exception as e:
             print(f"[Facturación] ⚠️ Error trayendo el resumen del período: {e}")
 
-    cargos_dict = {}
-    total_cargos = 0.0
-    pagos_cobrados = 0.0
+    # Lo que informa Mercado Libre del período: percepciones y lo que ya se descontó de tus acreditaciones
     percepciones_total = 0.0
-    bill_includes = {}
-
+    pagos_cobrados = 0.0
     if resumen and isinstance(resumen, dict):
-        bill_includes = resumen.get("bill_includes", {})
-        for c in bill_includes.get("charges", []):
-            categoria = (c.get("group_description") or "Otros cargos").strip()
-            monto = c.get("amount") or 0.0
-            cargos_dict[categoria] = cargos_dict.get(categoria, 0.0) + monto
-            total_cargos += monto
-        for b in bill_includes.get("bonuses", []):
-            categoria = (b.get("group_description") or "Bonificaciones y anulaciones").strip()
-            monto = b.get("amount") or 0.0
-            cargos_dict[categoria] = cargos_dict.get(categoria, 0.0) + monto
-            total_cargos += monto
-        percepciones_total = bill_includes.get("total_perception", 0.0) or 0.0
-        pago_info = resumen.get("payment_collected", {})
-        pagos_cobrados = pago_info.get("operation_discount", 0.0) or 0.0
-
-    cargos = sorted(
-        [{"label": k, "monto": v, "monto_formateado": formatear_moneda(v)} for k, v in cargos_dict.items()],
-        key=lambda x: -abs(x["monto"])
-    )
+        percepciones_total = (resumen.get("bill_includes") or {}).get("total_perception", 0.0) or 0.0
+        pagos_cobrados = (resumen.get("payment_collected") or {}).get("operation_discount", 0.0) or 0.0
 
     pendiente = periodo_actual.get("unpaid_amount", 0.0) if periodo_actual else 0.0
     total_adeudado = round(pendiente + percepciones_total, 2)
 
     facturado_bruto = 0.0
-    ganancia_bruta_real = 0.0
-    ganancia_neta_final = 0.0
     gastos_periodo = 0.0
-    barra_segmentos = None
-    waterfall_facturacion = None
-
+    flex_neto = 0.0
+    hay_fechas = False
     if periodo_actual:
         fecha_desde_periodo = periodo_actual.get("period", {}).get("date_from")
         fecha_hasta_periodo = periodo_actual.get("period", {}).get("date_to")
-
-        if fecha_desde_periodo and fecha_hasta_periodo:
-            import db
+        hay_fechas = bool(fecha_desde_periodo and fecha_hasta_periodo)
+        if hay_fechas:
             with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
                 cursor = conexion.cursor()
                 cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (fecha_desde_periodo, fecha_hasta_periodo))
                 facturado_bruto = float(cursor.fetchone()[0] or 0.0)
                 cursor.execute("SELECT COALESCE(SUM(monto),0) FROM gastos_operativos WHERE fecha BETWEEN %s AND %s", (fecha_desde_periodo, fecha_hasta_periodo))
                 gastos_periodo = float(cursor.fetchone()[0] or 0.0)
+                flex_neto = flex.resumen_periodo(cursor, g.cuenta_id, fecha_desde_periodo, fecha_hasta_periodo)["costo"]
 
-            ganancia_bruta_real = round(facturado_bruto - total_cargos, 2)
-            ganancia_neta_final = round(ganancia_bruta_real - gastos_periodo, 2)
+    # La factura agrupada por lo que es cada cargo (no por el grupo que informa Mercado Libre, que llama «envíos full» al almacenamiento). Los envíos Flex de tu
+    # propia logística no están en la factura de Mercado Libre pero sí te cuestan: entran en «Cargos por envíos» marcados aparte, con su reintegro en bonificaciones.
+    agrupacion = facturacion.agrupar_factura(resumen, flex_neto, flex.REINTEGRO_MELI)
+    filas_factura = agrupacion["filas"]
+    total_cargos = agrupacion["total_factura"]                      # lo que dice Mercado Libre, sin Flex
 
-            if facturado_bruto > 0:
-                pct_comision = pct_envios = pct_publicidad = 0.0
-                for c in bill_includes.get("charges", []):
-                    categoria = (c.get("group_description") or "").lower()
-                    monto = c.get("amount") or 0.0
-                    if "venta" in categoria: pct_comision += monto
-                    elif "env" in categoria: pct_envios += monto
-                    elif "public" in categoria: pct_publicidad += monto
-                # MeLi no siempre manda group_description usable (para varias
-                # cuentas viene vacío y todo cae en "Otros cargos"/"Bonificaciones"
-                # del desglose de abajo) — lo que no matcheó ninguna palabra clave
-                # NO se descarta ni se cuenta como ganancia: se muestra aparte,
-                # para que el total del waterfall siga sumando lo mismo que
-                # total_cargos (el número real que ya usa Ganancia Neta Real).
-                pct_otros = max(total_cargos - pct_comision - pct_envios - pct_publicidad, 0.0)
-                pct_neto = max(facturado_bruto - total_cargos, 0)
-                barra_segmentos = {
-                    "comision": round((pct_comision / facturado_bruto) * 100, 1),
-                    "envios": round((pct_envios / facturado_bruto) * 100, 1),
-                    "publicidad": round((pct_publicidad / facturado_bruto) * 100, 1),
-                    "otros": round((pct_otros / facturado_bruto) * 100, 1),
-                    "neto": round((pct_neto / facturado_bruto) * 100, 1)
-                }
-                # Mismos montos de arriba, pero en $ y en formato de "cascada"
-                # fila por fila (label + barra + monto) — más fácil de leer
-                # de un vistazo que el % dentro de una barra apilada sola.
-                _max_waterfall = max(facturado_bruto, 1)
-                waterfall_facturacion = [
-                    {"label": "Facturado bruto", "monto_formateado": "$" + formatear_moneda(facturado_bruto), "pct_ancho": 100, "es_total_inicial": True},
-                    {"label": "Comisión MeLi", "monto_formateado": "-$" + formatear_moneda(pct_comision), "pct_ancho": round(pct_comision / _max_waterfall * 100, 1)},
-                    {"label": "Envíos", "monto_formateado": "-$" + formatear_moneda(pct_envios), "pct_ancho": round(pct_envios / _max_waterfall * 100, 1)},
-                    {"label": "Publicidad", "monto_formateado": "-$" + formatear_moneda(pct_publicidad), "pct_ancho": round(pct_publicidad / _max_waterfall * 100, 1)},
-                ]
-                if pct_otros > 0.01:
-                    waterfall_facturacion.append(
-                        {"label": "Otros cargos de MeLi (sin categorizar)", "monto_formateado": "-$" + formatear_moneda(pct_otros), "pct_ancho": round(pct_otros / _max_waterfall * 100, 1)}
-                    )
-                waterfall_facturacion.append(
-                    {"label": "Gastos operativos", "monto_formateado": "-$" + formatear_moneda(gastos_periodo), "pct_ancho": round(gastos_periodo / _max_waterfall * 100, 1)}
-                )
-                waterfall_facturacion.append(
-                    {"label": "Ganancia neta final", "monto_formateado": ("-$" if ganancia_neta_final < 0 else "$") + formatear_moneda(abs(ganancia_neta_final)), "pct_ancho": round(abs(ganancia_neta_final) / _max_waterfall * 100, 1), "es_total_final": True, "es_negativo": ganancia_neta_final < 0}
-                )
+    ganancia_bruta_real = round(facturado_bruto - total_cargos - flex_neto, 2) if hay_fechas else 0.0
+    ganancia_neta_final = round(ganancia_bruta_real - gastos_periodo, 2) if hay_fechas else 0.0
+    waterfall_facturacion = None
+    if hay_fechas and facturado_bruto > 0:
+        _max_waterfall = max(facturado_bruto, 1)
+        tonos = {"ventas": "danger", "envios": "info", "publicidad": "warn", "full": "neutral", "otros": "neutral", "impuestos": "neutral", "bonificaciones": "ok"}
+        waterfall_facturacion = [{"label": "Facturado bruto", "monto_formateado": "$" + formatear_moneda(facturado_bruto), "pct_ancho": 100, "es_total_inicial": True, "tono": "accion"}]
+        for fila in filas_factura:
+            credito = fila["monto"] < 0
+            waterfall_facturacion.append({
+                "label": fila["label"], "monto_formateado": ("+$" if credito else "-$") + formatear_moneda(abs(fila["monto"])),
+                "pct_ancho": round(abs(fila["monto"]) / _max_waterfall * 100, 1), "tono": tonos.get(fila["clave"], "neutral"), "es_credito": credito,
+            })
+        waterfall_facturacion.append({"label": "Gastos operativos", "monto_formateado": "-$" + formatear_moneda(gastos_periodo), "pct_ancho": round(gastos_periodo / _max_waterfall * 100, 1), "tono": "danger"})
+        waterfall_facturacion.append({
+            "label": "Ganancia neta final", "monto_formateado": ("-$" if ganancia_neta_final < 0 else "$") + formatear_moneda(abs(ganancia_neta_final)),
+            "pct_ancho": round(abs(ganancia_neta_final) / _max_waterfall * 100, 1), "es_total_final": True, "es_negativo": ganancia_neta_final < 0, "tono": "ok",
+        })
 
     periodos_vista = [
         {"key": p.get("key"), "date_from": p.get("period", {}).get("date_from"),
@@ -2107,21 +2066,17 @@ def facturacion_vista():
         for p in periodos
     ]
 
-    fuera_de_ganancia, total_fuera_de_ganancia = facturacion.cargos_fuera_de_la_ganancia(resumen)
+    # Lo acreditado y lo que falta pagar de ESTA factura (el mismo cuadro de Cobros)
+    factura_estado = None
+    if periodo_actual:
+        factura_estado = cobros_mod.resumen_factura([periodo_actual] + [p for p in periodos if p is not periodo_actual])
     return render_template(
-        "facturacion.html", periodos=periodos_vista, key_seleccionada=key_seleccionada, cargos=cargos,
-        fuera_de_ganancia=fuera_de_ganancia, total_fuera_de_ganancia=total_fuera_de_ganancia,
-        total_cargos_formateado=formatear_moneda(total_cargos), pagos_cobrados_formateado=formatear_moneda(pagos_cobrados),
-        pendiente_formateado=formatear_moneda(pendiente), percepciones_formateado=formatear_moneda(percepciones_total),
-        total_adeudado_formateado=formatear_moneda(total_adeudado),
-        facturado_bruto_formateado=formatear_moneda(facturado_bruto),
-        ganancia_bruta_formateada=formatear_moneda(ganancia_bruta_real),
-        ganancia_neta_formateada=formatear_moneda(ganancia_neta_final),
-        ganancia_neta_negativa=ganancia_neta_final < 0,
-        rs={"facturado": facturado_bruto, "cargos": total_cargos, "gastos": gastos_periodo, "ganancia_bruta": ganancia_bruta_real,
+        "facturacion.html", periodos=periodos_vista, key_seleccionada=key_seleccionada, filas_factura=filas_factura, factura=factura_estado,
+        total_factura=agrupacion["total_factura"], total_con_flex=agrupacion["total"], flex_neto=flex_neto,
+        rs={"facturado": facturado_bruto, "cargos": total_cargos, "flex": flex_neto, "gastos": gastos_periodo, "ganancia_bruta": ganancia_bruta_real,
             "ganancia_neta": ganancia_neta_final, "pendiente": pendiente, "percepciones": percepciones_total,
             "pagos_cobrados": pagos_cobrados, "adeudado": total_adeudado},
-        barra_segmentos=barra_segmentos, waterfall_facturacion=waterfall_facturacion, active_nav="facturacion"
+        waterfall_facturacion=waterfall_facturacion, active_nav="facturacion"
     )
 
 

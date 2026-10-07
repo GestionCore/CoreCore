@@ -11,6 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 import db
 import ads
+import facturacion
 from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina, sql_momento_argentina, limpiar_titulo_modelo, extraer_talle, nombre_tipo_publicacion
 
 _NOMBRES_MES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -394,6 +395,18 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
 
     lista_consolidados = consolidar_por_modelo(consolidado_dict)
 
+    # Cargos mensuales de Mercado Libre que no están en ninguna venta (eShop, almacenamiento y retiros de FULL, reputación, devoluciones): son plata que sale del
+    # negocio y a los vendedores se les acredita la diferencia, así que se descuentan de la ganancia repartidos por día. Si Mercado Libre no responde, la
+    # pantalla sigue con las ventas y lo avisa (`completo`), nunca se rompe.
+    cargos_fuera_de_ventas = {"total": 0.0, "items": [], "completo": False}
+    try:
+        cargos_fuera_de_ventas = facturacion.cargos_fuera_de_ventas(usuario_id, cuenta_id, access_token, fecha_desde, fecha_hasta)
+    except Exception as e:
+        print(f"[Metricas] ⚠️ No se pudieron traer los cargos mensuales de Mercado Libre: {e}")
+    total_fijos_meli = float(cargos_fuera_de_ventas["total"])
+    ganancia_neta_ventas = total_ganancia_neta_real                # la suma de cada venta (lo que muestra la tabla)
+    total_ganancia_neta_real = round(ganancia_neta_ventas - total_fijos_meli, 2)
+
     # Lo que cuesta ofrecer cuotas sin interés: Mercado Libre cobra un cargo de financiación POR PUBLICACIÓN (un % casi fijo del precio) en cada
     # venta, aunque el comprador pague de contado. Ya está dentro de los cargos de MeLi; acá se separa para poder decidir publicación por publicación.
     por_publicacion = {}
@@ -470,6 +483,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         "gasto_ads_total_periodo": gasto_ads_total_periodo,
         "posventa": resumen_posventa,
         "comparacion_anterior": comparacion_anterior,
+        "cargos_fuera_de_ventas": cargos_fuera_de_ventas,
         "resumen": {
             "facturado": formatear_moneda(total_facturado),
             "ganancia_neta": formatear_moneda(total_ganancia_neta_real),
@@ -478,13 +492,16 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
             "envios": formatear_moneda(total_envio_real),
             "costo_ads": formatear_moneda(total_costo_ads),
             "costo_fabricacion": formatear_moneda(total_costo_fabricacion),
+            "cargos_fuera_de_ventas": formatear_moneda(total_fijos_meli),
             # Version sin formatear (numeros de verdad, no texto "1.234,56")
             # para el export a Excel — openpyxl necesita numeros reales para
             # que las columnas se puedan sumar/graficar del lado de Excel.
             "raw": {
-                "facturado": round(total_facturado, 2), "ganancia_neta": round(total_ganancia_neta_real, 2),
+                # ganancia_neta: la real, ya sin los cargos mensuales de MeLi; ganancia_neta_ventas: la suma de lo que dejó cada venta (con la que se compara un día contra el promedio)
+                "facturado": round(total_facturado, 2), "ganancia_neta": round(total_ganancia_neta_real, 2), "ganancia_neta_ventas": round(ganancia_neta_ventas, 2),
                 "comision": round(total_comision, 2), "envios": round(total_envio_real, 2),
                 "costo_ads": round(total_costo_ads, 2), "costo_fabricacion": round(total_costo_fabricacion, 2),
+                "cargos_fuera_de_ventas": round(total_fijos_meli, 2),
                 # Retenciones de impuestos (IIBB, SIRTAC...): MeLi las descuenta al depositar; NO restan de la ganancia (se descuentan después de tus impuestos)
                 "retenciones": round(total_retenciones, 2),
                 "conciliacion": {
@@ -527,9 +544,10 @@ def generar_excel_balance(datos, fecha_desde, fecha_hasta):
     for etiqueta, clave in [
         ("Facturación", "facturado"), ("Cargos MeLi", "comision"), ("Envíos", "envios"),
         ("Publicidad", "costo_ads"), ("Costo de Fabricación", "costo_fabricacion"),
+        ("Cargos mensuales de MeLi (eShop, FULL, devoluciones…)", "cargos_fuera_de_ventas"),
         ("Ganancia Neta Real", "ganancia_neta"),
     ]:
-        ws_resumen.append([etiqueta, r[clave]])
+        ws_resumen.append([etiqueta, r.get(clave, 0)])
     ws_resumen.append([])
     p = datos["posventa"]
     ws_resumen.append(["Devoluciones", p["devoluciones"]])

@@ -537,6 +537,14 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
   la celda usa su `data-orden` si lo tiene (fechas ISO, números sin formato; vacío = va siempre al final) o su texto leído en formato argentino. Las filas `ux-subfila` viajan con su fila, y si la lista está
   recortada con «ver más» se ordena TODO y se vuelve a recortar. En celular (tabla de tarjetas) aparece solo un selector «Ordenar por». Los títulos largos van en `<span class="titulo-1l" title="…">` (una línea
   con «…»; un test exige el `title`). Para sumar una tabla: solo los atributos, sin JS nuevo; `tests/test_tablas.py` ejecuta la lógica con node.
+- **Cargos mensuales de MeLi y la factura (2026-10-07)**: la factura (`/billing/integration/.../summary/details`) trae cargos que NO están en ninguna venta: `CESM` mantenimiento de eShop, `CSTP`
+  reputación, `CFWA` almacenamiento en FULL, `CFRS` retiro/descarte de stock en FULL y `CDSD` devolución (neta de su anulación `BDSD`). A los vendedores se les acredita la diferencia, así que son plata que sale:
+  `facturacion.cargos_fuera_de_ventas` los reparte POR DÍA dentro de cada período de facturación (el abierto, entre los días ya transcurridos) y `calcular_ganancia_real` los descuenta
+  (`resumen.raw.ganancia_neta` = real; `ganancia_neta_ventas` = lo que dejó cada venta, que es con lo que el Dashboard compara un día contra el promedio; el punto de equilibrio los suma a los costos
+  fijos y NO al margen de contribución). Se guardan en `cache_db` (`factura_fijos:<key>`: cerrada 90 días, abierta 30 min; si MeLi no responde se usa lo último guardado y se avisa). Las retenciones/percepciones
+  (IIBB…) siguen SIN restar. La tabla de la factura se arma por CÓDIGO (`facturacion.agrupar_factura`): el grupo «Cargos de envíos full» que informa MeLi es en realidad almacenamiento y retiros de FULL, no envíos.
+  Flex NO está en la factura de MeLi: entra en «Cargos por envíos» como línea aparte (bruto) y su reintegro (10 %) en «Bonificaciones»; el total de la factura de MeLi no cambia. Si hay que
+  sumar otro cargo mensual: agregarlo a `CARGOS_FUERA_DE_VENTAS` con su prueba. Ojo: ya hubo una factura de otra cuenta con tipos que esta no tenía; antes de asumir que un código no existe, mirar `ver_factura`-style con la API.
 - **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real

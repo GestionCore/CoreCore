@@ -36,6 +36,7 @@ def resumen_factura(periodos):
     vencida = next((p for p in periodos[1:] if float(p.get("unpaid_amount") or 0) > 0 and p.get("period_status") == "CLOSED"), None)
     return {
         "desde": _fecha(periodo.get("date_from")), "hasta": _fecha(periodo.get("date_to")), "abierto": actual.get("period_status") == "OPEN",
+        "desde_iso": periodo.get("date_from"), "hasta_iso": periodo.get("date_to"),        # para rango_fechas() en las plantillas (espera ISO, no 09/09/2026)
         "total": round(total, 2), "pendiente": round(pendiente, 2), "descontado": round(max(total - pendiente, 0), 2),
         "pct_descontado": round(max(total - pendiente, 0) / total * 100) if total else 0,
         "deuda_cerrada": ({"monto": round(float(vencida["unpaid_amount"]), 2), "vence": _fecha(vencida.get("expiration_date")),

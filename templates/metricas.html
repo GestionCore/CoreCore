@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% from "_ux.html" import banner, kpi, delta, vacio, botones_periodo %}
+{% from "_factura.html" import tabla_factura %}
 {% block title %}Ganancia Real · CoreLux{% endblock %}
 {% block content %}
 {% set rs = resumen.raw %}
-{% set total_costos = (rs.comision or 0) + (rs.envios or 0) + (rs.costo_ads or 0) + (rs.costo_fabricacion or 0) %}
+{% set total_costos = (rs.comision or 0) + (rs.envios or 0) + (rs.costo_ads or 0) + (rs.costo_fabricacion or 0) + (rs.cargos_fuera_de_ventas or 0) %}
 {% set hay_ventas = rs.facturado and rs.facturado > 0 %}
 {% set margen_pct = (rs.ganancia_neta / rs.facturado * 100) if hay_ventas else 0 %}
 {# Mismos umbrales que el resto de la app: desde el margen mínimo de la cuenta (Mi cuenta; 15 % por defecto) deja plata, por debajo al límite, <0% pierde #}
@@ -64,6 +65,7 @@
         {% if rs.envios %}<span style="width:{{ rs.envios / base * 100 }}%; background:var(--accent-cyan);" title="Envíos"></span>{% endif %}
         {% if rs.costo_ads %}<span style="width:{{ rs.costo_ads / base * 100 }}%; background:var(--semantic-warning);" title="Publicidad"></span>{% endif %}
         {% if rs.costo_fabricacion %}<span style="width:{{ rs.costo_fabricacion / base * 100 }}%; background:var(--accent-primary);" title="Costo de fabricación"></span>{% endif %}
+        {% if rs.cargos_fuera_de_ventas %}<span style="width:{{ rs.cargos_fuera_de_ventas / base * 100 }}%; background:var(--text-faint);" title="Cargos mensuales de Mercado Libre"></span>{% endif %}
         {% if rs.ganancia_neta > 0 %}<span style="width:{{ rs.ganancia_neta / base * 100 }}%; background:var(--success);" title="Ganancia"></span>{% endif %}
     </div>
     <div class="ux-reparto-leyenda">
@@ -71,8 +73,15 @@
         <div class="ux-reparto-item"><i style="background:var(--accent-cyan);"></i><span>Envíos</span><b>{{ rs.envios|plata }}</b><em>{{ (rs.envios / rs.facturado * 100)|pct }}</em></div>
         <div class="ux-reparto-item"><i style="background:var(--semantic-warning);"></i><span>Publicidad</span><b>{{ rs.costo_ads|plata }}</b><em>{{ (rs.costo_ads / rs.facturado * 100)|pct }}</em></div>
         <div class="ux-reparto-item"><i style="background:var(--accent-primary);"></i><span>Fabricación</span><b>{{ rs.costo_fabricacion|plata }}</b><em>{{ (rs.costo_fabricacion / rs.facturado * 100)|pct }}</em></div>
+        {% if rs.cargos_fuera_de_ventas %}<div class="ux-reparto-item"><i style="background:var(--text-faint);"></i><span>Cargos mensuales de MeLi</span><b>{{ rs.cargos_fuera_de_ventas|plata }}</b><em>{{ (rs.cargos_fuera_de_ventas / rs.facturado * 100)|pct }}</em></div>{% endif %}
         <div class="ux-reparto-item ux-reparto-ganancia"><i style="background:var(--success);"></i><span>Te queda</span><b>{{ rs.ganancia_neta|plata }}</b><em>{{ margen_pct|pct }}</em></div>
     </div>
+    {% if cargos_fuera_de_ventas and cargos_fuera_de_ventas['items'] %}
+    <div class="ux-hero-nota" style="margin-top:14px;"><b>Ya está descontado</b> lo que Mercado Libre te factura aparte de cada venta, repartido por día: {% for c in cargos_fuera_de_ventas['items'] %}{{ c.label }} ({{ c.monto|plata }}){{ ' · ' if not loop.last else '.' }}{% endfor %} Mercado Libre no te lo acredita: lo descuenta de lo que te deposita.</div>
+    {% endif %}
+    {% if cargos_fuera_de_ventas and not cargos_fuera_de_ventas.completo %}
+    <div class="ux-hero-nota" style="margin-top:8px;"><b style="color:var(--semantic-warning);">Ojo:</b> no pudimos traer todas las facturas de Mercado Libre de este período, así que algún cargo mensual (eShop, FULL…) puede faltar y la ganancia real ser algo menor.</div>
+    {% endif %}
     {% if rs.retenciones %}
     <div class="ux-hero-nota" style="margin-top:14px;">Además, Mercado Libre te retuvo <b>{{ rs.retenciones|plata }}</b> en impuestos (IIBB y otras retenciones). <b>No están descontadas de tu ganancia</b>: son un pago anticipado de tus impuestos.</div>
     {% endif %}
@@ -394,20 +403,16 @@
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Lo que te facturó Mercado Libre {% if factura_meli %}<span class="ux-detalle-nota">{{ rango_fechas(factura_meli.date_from, factura_meli.date_to) }} · {{ 'en curso' if factura_meli.en_curso else 'cerrada' }}</span>{% endif %}</summary>
     <div class="ux-detalle-cuerpo">
         {% if factura_meli %}
-        <table class="data-table">
-            <tbody>
-                {% for c in factura_meli.cargos[:6] %}
-                <tr><td>{{ c.label }}</td><td class="num {% if c.monto_formateado.startswith('-') %}text-success{% else %}text-danger{% endif %}">${{ c.monto_formateado }}</td></tr>
-                {% endfor %}
-                <tr style="border-top:1px solid var(--glass-border);"><td><strong>Total facturado por MeLi</strong></td><td class="num"><strong>${{ factura_meli.total_cargos_formateado }}</strong></td></tr>
-            </tbody>
-        </table>
+        {% set con_publicidad = factura_meli.filas|selectattr('clave', 'equalto', 'publicidad')|list %}
+        {% call tabla_factura(factura_meli.filas) %}
+            {% if not con_publicidad and gasto_ads_total_periodo is not none and ads_disponible %}
+            <tr><td><b>Publicidad</b> <span class="text-faint">· Product Ads del período elegido</span></td><td class="num text-danger"><b>{{ gasto_ads_total_periodo|plata }}</b></td></tr>
+            {% endif %}
+            <tr class="fila-total"><td><b>Total facturado por MeLi</b></td><td class="num"><b>${{ factura_meli.total_cargos_formateado }}</b></td></tr>
+        {% endcall %}
         <div style="margin-top:12px;"><a class="btn btn-secondary" href="/facturacion">Ver el detalle completo →</a></div>
         {% else %}
         {{ banner("info", "info", "<b>No pudimos traer</b> la facturación de MeLi ahora mismo", "Probá de nuevo en un rato.") }}
-        {% endif %}
-        {% if gasto_ads_total_periodo is not none and ads_disponible %}
-        <div class="text-muted" style="font-size:0.82em; margin-top:12px;">Gasto total en Ads del período: <b>{{ gasto_ads_total_periodo|plata }}</b></div>
         {% endif %}
     </div>
 </details>
@@ -485,14 +490,18 @@
 </details>
 
 <details class="ux-detalle" id="det-mercado" data-grafico="mercado">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-trend"/></svg> Cuándo y a qué precio vendés <span class="ux-detalle-nota">mapa de calor y precio vs. unidades</span></summary>
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-trend"/></svg> Cuándo y a qué precio vendés <span class="ux-detalle-nota">días y horas · precio contra unidades</span></summary>
     <div class="ux-detalle-cuerpo">
-        <div class="page-subtitle" style="margin-bottom:8px;"><b>¿El precio afecta cuánto vendés?</b> Cada punto es un modelo: mirá si los más caros venden menos.</div>
-        <div style="position:relative; height:220px;"><canvas id="canvas-correlacion" role="img" aria-label="Precio promedio contra unidades vendidas por modelo"></canvas></div>
-        <div id="correlacion-empty" class="text-muted" style="display:none; padding:10px 0;">Sin datos suficientes para el período.</div>
-        <div class="page-subtitle" style="margin:22px 0 8px;"><b>¿Cuándo vendés más?</b> Unidades por hora del día y día de la semana (últimos 90 días).</div>
-        <div style="position:relative; height:180px;"><canvas id="canvas-heatmap" role="img" aria-label="Unidades vendidas por hora y día de la semana"></canvas></div>
+        <div class="page-subtitle" style="margin-bottom:6px;"><b>¿Cuándo vendés más?</b> Cada cuadrito es una hora de un día de la semana: <b>cuanto más fuerte el color, más unidades vendiste</b> (últimos 90 días).</div>
+        <ul class="ux-lectura" id="heatmap-resumen"></ul>
+        <div class="mapa-calor" id="mapa-calor" role="img" aria-label="Unidades vendidas por día de la semana y hora"></div>
+        <div class="mapa-calor-leyenda" id="heatmap-leyenda"><span>Menos</span><i class="mapa-calor-escala"></i><span>Más (hasta <b id="heatmap-max">0</b> en una hora)</span></div>
         <div id="heatmap-empty" class="text-muted" style="display:none; padding:10px 0;">Sin datos horarios suficientes para el período.</div>
+
+        <div class="page-subtitle" style="margin:26px 0 6px;"><b>¿El precio afecta cuánto vendés?</b> Cada burbuja es un modelo: <b>más arriba, más unidades vendidas; más a la derecha, más caro</b> (últimos 90 días).</div>
+        <div class="ux-lectura" id="correlacion-resumen" hidden></div>
+        <div style="position:relative; height:240px;"><canvas id="canvas-correlacion" role="img" aria-label="Precio promedio contra unidades vendidas por modelo"></canvas></div>
+        <div id="correlacion-empty" class="text-muted" style="display:none; padding:10px 0;">Sin datos suficientes para el período.</div>
     </div>
 </details>
 
@@ -589,47 +598,78 @@ function _iniciarCorrelacion() {
         if (!d.puntos || !d.puntos.length) return _sinDatos('canvas-correlacion', 'correlacion-empty');
         const e = _estiloGrafico();
         const maxU = Math.max(...d.puntos.map(p => p.unidades), 1);
+        // En palabras: en qué tramo de $10.000 vendiste más unidades (suma de todos los modelos de ese tramo)
+        const tramos = {};
+        d.puntos.forEach(p => { const k = Math.floor(p.precio / 10000) * 10000; const t = tramos[k] || (tramos[k] = { unidades: 0, modelos: 0 }); t.unidades += p.unidades; t.modelos += 1; });
+        const mejorK = Object.keys(tramos).map(Number).sort((a, b) => tramos[b].unidades - tramos[a].unidades)[0];
+        const resumen = document.getElementById('correlacion-resumen');
+        if (mejorK !== undefined && d.puntos.length >= 3) {
+            const t = tramos[mejorK];
+            resumen.innerHTML = `Lo que más vendiste está entre <b>${UX.plata(mejorK)} y ${UX.plata(mejorK + 10000)}</b>: ${t.unidades} unidades en ${t.modelos} ${t.modelos === 1 ? 'modelo' : 'modelos'}.`;
+            resumen.hidden = false;
+        }
         new Chart(document.getElementById('canvas-correlacion'), {
             type: 'bubble',
             data: { datasets: [{ label: 'Modelos', data: d.puntos.map(p => ({ x: p.precio, y: p.unidades, r: Math.max(4, (p.unidades / maxU) * 22), titulo: p.titulo })), backgroundColor: 'rgba(139, 92, 246, 0.45)', borderColor: e.primario, borderWidth: 1 }] },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
-                plugins: { legend: { display: false }, tooltip: { ..._TOOLTIP, callbacks: { title: items => items[0].raw.titulo, label: item => `${UX.plata(item.raw.x)} · ${item.raw.y} uds` } } },
+                plugins: { legend: { display: false }, tooltip: { ..._TOOLTIP, callbacks: { title: items => items[0].raw.titulo, label: item => `Precio ${UX.plata(item.raw.x)} · ${item.raw.y} unidades vendidas` } } },
                 scales: {
-                    x: { ticks: { color: e.texto, font: { size: 12 }, callback: v => UX.plata(v) }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Precio promedio', color: e.texto, font: { size: 12 } } },
-                    y: { ticks: { color: e.texto, font: { size: 12 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas', color: e.texto, font: { size: 12 } } }
+                    x: { ticks: { color: e.texto, font: { size: 12 }, callback: v => UX.plata(v) }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Precio promedio del modelo →', color: e.texto, font: { size: 12 } } },
+                    y: { ticks: { color: e.texto, font: { size: 12 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true, title: { display: true, text: 'Unidades vendidas ↑', color: e.texto, font: { size: 12 } } }
                 }
             }
         });
     }).catch(() => _sinDatos('canvas-correlacion', 'correlacion-empty', 'No se pudo cargar el gráfico. Revisá la conexión.'));
 }
 
+// Mapa de calor: una fila por día de la semana, una columna por hora; cuanto más fuerte el color, más unidades. Arriba, en palabras, lo que dice.
+const _DIAS_LARGOS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+const _etapa = (h) => `${h} h`;
+
+function _resumenHorarios(d) {
+    const porDia = d.matriz.map(fila => fila.reduce((a, b) => a + b, 0));
+    const total = porDia.reduce((a, b) => a + b, 0);
+    const porHora = d.horas.map(h => d.matriz.reduce((a, fila) => a + fila[h], 0));
+    let mejorDia = 0;
+    porDia.forEach((u, i) => { if (u > porDia[mejorDia]) mejorDia = i; });
+    let mejorCelda = { dia: 0, hora: 0, u: -1 };
+    d.matriz.forEach((fila, dia) => fila.forEach((u, hora) => { if (u > mejorCelda.u) mejorCelda = { dia, hora, u }; }));
+    // la franja de 3 horas seguidas donde más se vende (sin cruzar la medianoche)
+    let franja = { ini: 0, u: -1 };
+    for (let h = 0; h <= 21; h++) {
+        const u = porHora[h] + porHora[h + 1] + porHora[h + 2];
+        if (u > franja.u) franja = { ini: h, u };
+    }
+    const pct = (u) => total ? Math.round(u / total * 100) : 0;
+    return [
+        `Tu mejor día es el <b>${_DIAS_LARGOS[mejorDia]}</b>: ${porDia[mejorDia]} unidades, el ${pct(porDia[mejorDia])}% de lo que vendés.`,
+        `Vendés más entre las <b>${_etapa(franja.ini)} y las ${_etapa(franja.ini + 3)}</b>: ${franja.u} unidades en esas 3 horas (${pct(franja.u)}%).`,
+        `El momento más fuerte fue el <b>${_DIAS_LARGOS[mejorCelda.dia]} a las ${_etapa(mejorCelda.hora)}</b>: ${mejorCelda.u} ${mejorCelda.u === 1 ? 'unidad' : 'unidades'}.`,
+    ];
+}
+
 function _iniciarHeatmap() {
     fetch('/api/metricas/heatmap_horario?dias=90').then(r => r.json()).then(d => {
-        if (!d.maximo) return _sinDatos('canvas-heatmap', 'heatmap-empty');
-        const e = _estiloGrafico();
-        const datasets = [];
+        const caja = document.getElementById('mapa-calor');
+        if (!d.maximo) { caja.hidden = true; document.getElementById('heatmap-resumen').hidden = true; document.getElementById('heatmap-leyenda').hidden = true; document.getElementById('heatmap-empty').style.display = ''; return; }
+        document.getElementById('heatmap-resumen').innerHTML = _resumenHorarios(d).map(t => `<li>${t}</li>`).join('');   // texto armado acá con números y nombres fijos: nada externo
+        const partes = ['<span></span>'];
+        for (let h = 0; h < 24; h += 3) partes.push(`<span class="mapa-calor-hora" style="grid-column: span 3;">${h} h</span>`);
         d.dias.forEach((dia, y) => {
-            const datos = d.horas.filter(h => d.matriz[y][h] > 0).map(h => ({ x: h, y: y, v: d.matriz[y][h], r: Math.max(3, (d.matriz[y][h] / d.maximo) * 16) }));
-            if (datos.length) {
-                datasets.push({ label: dia, data: datos, borderColor: 'transparent', backgroundColor: datos.map(p => {
-                    const t = p.v / d.maximo;
-                    return `rgba(${Math.round(56 + t * (139 - 56))},${Math.round(189 + t * (92 - 189))},${Math.round(248 + t * (246 - 248))},${0.3 + t * 0.65})`;
-                }) });
-            }
+            partes.push(`<span class="mapa-calor-dia">${UX.esc(dia)}</span>`);
+            d.horas.forEach(h => {
+                const u = d.matriz[y][h];
+                const titulo = `${_DIAS_LARGOS[y]} ${h} h: ${u} ${u === 1 ? 'unidad' : 'unidades'}`;
+                partes.push(u > 0
+                    ? `<i class="mapa-calor-celda con-ventas" style="--t:${(u / d.maximo).toFixed(3)}" title="${titulo}"></i>`
+                    : `<i class="mapa-calor-celda" title="${titulo}"></i>`);
+            });
         });
-        new Chart(document.getElementById('canvas-heatmap'), {
-            type: 'bubble', data: { datasets },
-            options: {
-                responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
-                plugins: { legend: { display: false }, tooltip: { ..._TOOLTIP, callbacks: { title: items => `${d.dias[items[0].raw.y]} ${items[0].raw.x}:00 hs`, label: item => `${item.raw.v} unidades` } } },
-                scales: {
-                    x: { type: 'linear', min: 0, max: 23, ticks: { stepSize: 3, color: e.texto, callback: v => v + 'h' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                    y: { type: 'linear', min: -0.5, max: 6.5, ticks: { stepSize: 1, color: e.texto, callback: v => (Number.isInteger(v) && v >= 0 && v <= 6) ? d.dias[v] : '' }, grid: { color: 'rgba(255,255,255,0.05)' } }
-                }
-            }
-        });
-    }).catch(() => _sinDatos('canvas-heatmap', 'heatmap-empty', 'No se pudo cargar el gráfico. Revisá la conexión.'));
+        caja.innerHTML = partes.join('');
+        caja.setAttribute('aria-label', _resumenHorarios(d).join(' ').replace(/<\/?b>/g, ''));
+        document.getElementById('heatmap-max').textContent = d.maximo;
+    }).catch(() => { document.getElementById('mapa-calor').hidden = true; const v = document.getElementById('heatmap-empty'); v.style.display = ''; v.textContent = 'No se pudo cargar el gráfico. Revisá la conexión.'; });
 }
 
 // Detalle por publicación (talle) de cada modelo de la tabla de márgenes: plegado hasta que se pide.
