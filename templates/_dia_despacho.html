@@ -174,6 +174,10 @@
     }
 
     function toggleDespacho(elemento, idOrden, idMeli, idVariante) {
+        // Mientras se guarda, la tarjeta no recibe más toques (una tablet con el dedo grueso mandaba el POST dos veces y lo dejaba como estaba)
+        if (elemento.dataset.guardando === '1') return;
+        elemento.dataset.guardando = '1';
+        elemento.style.pointerEvents = 'none';
         const nuevoEstado = !elemento.classList.contains('despachado');
         elemento.classList.toggle('despachado', nuevoEstado);
         elemento.querySelector('.despacho-check').textContent = nuevoEstado ? '✓' : '';
@@ -189,6 +193,9 @@
             elemento.querySelector('.despacho-check').textContent = !nuevoEstado ? '✓' : '';
             refrescarProgreso();
             mostrarToast('No se pudo guardar — revisá la conexión y probá de nuevo', 'error');
+        }).finally(() => {
+            elemento.style.pointerEvents = '';
+            delete elemento.dataset.guardando;
         });
     }
 </script>

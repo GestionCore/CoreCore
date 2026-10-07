@@ -39,6 +39,33 @@ def _cantidad_actual(item, id_variante):
     return None
 
 
+def verificar_antes_de_escribir(headers, id_meli, variantes, stock_en_pantalla, obtener=None):
+    """
+    Stock masivo: antes de escribir un valor absoluto se compara el stock que Mercado Libre tiene AHORA con el que la persona veía en pantalla al empezar a editar.
+    Si en el medio entró una venta (o alguien lo cambió), el PUT la pisaría y esa venta quedaría sin descontar: se corta ese ítem y se avisa.
+    Devuelve ("ok", actual) · ("cambio", actual) si ya no coincide · ("no_verificable", None) si no se pudo consultar o no hay un valor de pantalla contra qué comparar.
+    Solo achica la ventana, no la elimina: Mercado Libre no ofrece un PUT condicional, así que una venta que entre entre esta lectura y la escritura (milisegundos) no se detecta.
+    """
+    obtener = obtener or meli_http.get
+    try:
+        esperado = int(str(stock_en_pantalla).strip())
+    except (TypeError, ValueError):
+        return "no_verificable", None
+    variantes = [str(v) for v in (variantes or [])]
+    id_variante = variantes[0] if len(variantes) == 1 else f"{id_meli}{SUFIJO_SIN_VARIACIONES}"
+    try:
+        r = obtener(URL_ITEM.format(id_meli) + "?attributes=available_quantity,variations", headers=headers, timeout=10)
+        if r.status_code != 200:
+            return "no_verificable", None
+        actual = _cantidad_actual(r.json(), id_variante)
+    except Exception as e:
+        print(f"[StockMeli] No se pudo verificar el stock de {id_meli}: {type(e).__name__}: {e}")
+        return "no_verificable", None
+    if actual is None:
+        return "no_verificable", None
+    return ("ok" if actual == esperado else "cambio"), actual
+
+
 def ajustar_en_meli(access_token, id_meli, id_variante, delta, obtener=None, escribir=None):
     """
     Suma `delta` (negativo = descontar) al stock que Mercado Libre tiene AHORA, nunca por debajo de cero. Se parte de lo que MeLi dice y no de lo

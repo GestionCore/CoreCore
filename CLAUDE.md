@@ -87,7 +87,7 @@ scopeado por cuenta_id antes de confiar en él.
   dos y marca `sincronizacion_inicial_completa = true` al terminar.
 - Se dispara solo, en un hilo de fondo, apenas alguien conecta su
   cuenta (dentro de `/callback`).
-- `scheduler.py` corre esto cada 4 minutos, para TODAS las cuentas
+- `scheduler.py` corre esto cada 30 minutos (barredora de seguridad; el motor es el webhook) para TODAS las cuentas
   activas (no una hardcodeada).
 
 ## Onboarding + tutorial (ya construido)
@@ -252,7 +252,7 @@ scopeado por cuenta_id antes de confiar en él.
   `shipments` (sync de ventas), `questions`, `claims`/`post_purchase`.
   ⚠️ Falta, del lado del usuario, tildar esos temas y poner la Notification URL
   `https://corelux.app/notificaciones_meli` en el panel de MeLi Developers
-  (no se puede hacer desde acá). Mientras tanto el scheduler (4 min) cubre todo.
+  (no se puede hacer desde acá). Mientras tanto la barredora del scheduler (30 min) cubre lo que no llegue por webhook.
 - **Reclamos: solo es grave el que afecta la reputación (migración 0025)**:
   `incidencias_posventa.afecta_reputacion` guarda lo que dice MeLi
   (`GET /post-purchase/v1/claims/{id}/affects-reputation` → `affected` /
@@ -496,7 +496,7 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
   todo `active_nav` esté en una sección. Para agregar una pantalla: sumarla ahí, no en el HTML del menú.
 - **Modo beta**: `config.PAGOS_HABILITADOS = bool(MP_ACCESS_TOKEN)`. Sin token, la prueba no bloquea el acceso, planes/suscripción dicen "beta gratuita" y Referidos se oculta.
 - **Celery ya no existe** (ni `rate_limiter.py`, `tasks/`, `motor_combos.py`). `app._en_segundo_plano(funcion, *args)` es un hilo. El `scheduler.py` (APScheduler) corre
-  con un advisory lock de Postgres: un solo proceso ejecuta los trabajos (sync cada 4 min, salud de tokens por hora, competencia/tendencias a diario).
+  con un advisory lock de Postgres: un solo proceso ejecuta los trabajos (barredora de sync cada 30 min —`SYNC_INTERVALO_MINUTOS`—, reintento cada 4 min SOLO de las cuentas con la primera sincronización pendiente, salud de tokens por hora, competencia/tendencias a diario).
 - **Panel de publicación** (`publicacion_edicion.py`): MeLi no deja cambiar el título de una publicación con ventas ni reabrir una cerrada ("closed" es irreversible);
   el límite del título depende de la categoría. Stock absoluto (PUT), nunca incremental; un POST no se reintenta solo. Las publicaciones sin variantes se guardan como
   variante `<id>_unica` y el stock va a nivel ítem. Las ventas manuales también descuentan stock en MeLi (`stock_meli.py`, migración 0034).
@@ -593,6 +593,7 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
 - **Fase 1 puntos 7 y 8 (2026-10-07, migración 0040)**: (7) `meli_errores.atributos_faltantes` reconoce el 400 real por datos obligatorios (`validation_error` + `cause[].code = body.required_fields`, nombres entre corchetes) y los códigos documentados `item.attributes.*`; un `validation_error` suelto NO cuenta. Toda la app lo
   comparte vía `explicar_error_meli`; `actualizar_stock_multiple` los cuenta aparte. Nunca se parchean atributos desde la app. (8) `/questions/search` NO trae plazo por pregunta, solo `date_created`: `preguntas_pendientes.fecha_pregunta` + `hora_limite_respuesta` (objetivo interno de `preguntas_sla.SLA_MINUTOS` = 60; la UI lo llama «objetivo de CoreLux», nunca lo atribuye a MeLi) y la lista
   ordena por límite. (6) HECHO (migración 0041): `/flex/sites/MLA/users/{id}/services` da 404 y Flex no tiene horario de corte en la API; el corte por día existe solo para Correo (`/users/{id}/shipping/schedule/drop_off`): se guarda la semana en `cuentas_meli.horario_corte` y Despacho usa el del día; el de Flex lo carga la persona (`configuracion_cuenta.flex_hora_corte`, en Mi cuenta). Sin dato: «Corte de correo no informado» / «Corte Flex: No configurado (Ajustar)», nunca un horario supuesto (`despacho_corte.py`). Regla de Diego: si la API real contradice la teoría, se prioriza la API y se le avisa antes de forzar el código.
+- **Fase 2 de la auditoría: concurrencia (2026-10-07)**: (9) Stock masivo NUNCA escribe a ciegas: `stock_meli.verificar_antes_de_escribir` compara el stock real de MeLi con el que la persona veía (`orig_<id>`) antes de cada PUT y corta el ítem si cambió (una venta en el medio) o si no se pudo consultar; MeLi no tiene PUT condicional, queda solo la ventana de milisegundos entre la lectura y la escritura. (13) «Sincronizando…» ofrece Reintentar y Salir (también si el estado no responde o pasan 12 min). (14) El webhook es el motor (producción recibe `/notificaciones_meli` varias veces por minuto): el scheduler hace una barredora cada 30 min (`SYNC_INTERVALO_MINUTOS`, mínimo 5) y un reintento cada 4 min SOLO de cuentas con la primera sync pendiente; no se pudo confirmar qué temas están tildados en MeLi Developers. (15) `toggleDespacho` bloquea la tarjeta mientras guarda (`pointerEvents` + `dataset.guardando`, liberado en `.finally`). 10, 11 y 12 ya estaban (candado de refresco por cuenta, timeout de 15 s, `UniqueViolation`).
 - **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real

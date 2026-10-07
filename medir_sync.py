@@ -21,7 +21,7 @@ import db  # noqa: E402
 import meli_http  # noqa: E402
 import sincronizador  # noqa: E402
 
-CICLO_SEGUNDOS = 240          # el scheduler sincroniza cada 4 minutos
+CICLO_SEGUNDOS = 1800         # la barredora del scheduler sincroniza cada 30 minutos (SYNC_INTERVALO_MINUTOS); el resto llega por webhook
 EN_PARALELO = 2               # scheduler.SYNC_CUENTAS_EN_PARALELO
 
 llamadas, tiempos, lock, conexiones = collections.Counter(), [], threading.Lock(), {"n": 0}
@@ -66,7 +66,7 @@ def main():
         for clave, n in llamadas.most_common(10):
             print(f"   {n:4d}  {clave}")
     por_ciclo = int(CICLO_SEGUNDOS / duracion * EN_PARALELO) if duracion else 0
-    print(f"\nA {duracion:.0f} s por cuenta, {EN_PARALELO} en paralelo, entran unas {por_ciclo} cuentas en un ciclo de 4 minutos sin atrasarse.")
+    print(f"\nA {duracion:.0f} s por cuenta, {EN_PARALELO} en paralelo, entran unas {por_ciclo} cuentas en un ciclo de la barredora sin atrasarse.")
     print(f"Llamadas por hora a Mercado Libre/Pago por cuenta: {int(sum(llamadas.values()) * 3600 / CICLO_SEGUNDOS)}")
 
 

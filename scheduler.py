@@ -3,10 +3,14 @@ Scheduler de CoreLux: las tareas periódicas corren con APScheduler dentro del p
 y máquinas UNO solo las ejecute (el resto vigila por si ese cae). Es el mismo camino en producción y en la PC: antes, con Redis (solo en la PC del
 dueño) las tareas se delegaban a Celery y el sistema se portaba distinto que en producción.
 
-  · cada 4 minutos: sincronización de todas las cuentas activas
+  · cada 30 minutos (SYNC_INTERVALO_MINUTOS): barredora de seguridad de todas las cuentas activas. El motor principal es el webhook de Mercado Libre
+    (/notificaciones_meli: items, órdenes, envíos, preguntas, reclamos), que en producción llega varias veces por minuto
+  · cada 4 minutos: SOLO las cuentas cuya primera sincronización todavía no terminó (reintento rápido de las recién conectadas; normalmente ninguna)
   · cada hora: verificación de los permisos de Mercado Libre (salud_tokens)
   · cada 24 horas: relevamiento de competencia y de tendencias
 """
+import os
+
 from apscheduler.schedulers.background import BackgroundScheduler
 import db
 import salud_tokens
@@ -57,10 +61,21 @@ def _tiene_el_lock_del_scheduler():
         return True
 
 
-def _obtener_cuentas_activas():
+def _intervalo_barredora():
+    """Minutos entre barridas de todas las cuentas (por defecto 30; SYNC_INTERVALO_MINUTOS lo cambia, mínimo 5). Un valor inválido vuelve al de siempre."""
+    try:
+        return max(5, int(os.getenv("SYNC_INTERVALO_MINUTOS", "30")))
+    except ValueError:
+        return 30
+
+
+INTERVALO_CUENTAS_NUEVAS_MINUTOS = 4
+
+
+def _obtener_cuentas_activas(solo_sin_sync_inicial=False):
     with db.conexion_admin() as conexion:
         cursor = conexion.cursor()
-        cursor.execute("SELECT id, usuario_id FROM cuentas_meli WHERE activa = true")
+        cursor.execute("SELECT id, usuario_id FROM cuentas_meli WHERE activa = true" + (" AND sincronizacion_inicial_completa = false" if solo_sin_sync_inicial else ""))
         return cursor.fetchall()
 
 
@@ -75,11 +90,20 @@ def _sincronizar_una(par):
         print(f"[Scheduler APScheduler] ❌ Error cuenta {cuenta_id}: {e}")
 
 
-def _tarea_sincronizar_todo():
-    """Sincroniza todas las cuentas activas, de a SYNC_CUENTAS_EN_PARALELO a la vez (en serie, con muchas cuentas el ciclo de 4 min no alcanzaba)."""
+def _sincronizar_cuentas(cuentas):
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=SYNC_CUENTAS_EN_PARALELO) as pool:
-        list(pool.map(_sincronizar_una, _obtener_cuentas_activas()))
+        list(pool.map(_sincronizar_una, cuentas))
+
+
+def _tarea_sincronizar_todo():
+    """Barredora: sincroniza todas las cuentas activas, de a SYNC_CUENTAS_EN_PARALELO a la vez. Lo que cambia entre barridas llega por webhook."""
+    _sincronizar_cuentas(_obtener_cuentas_activas())
+
+
+def _tarea_sincronizar_cuentas_nuevas():
+    """Reintento rápido de las cuentas cuya PRIMERA sincronización no terminó (si falla, la persona queda esperando en «Sincronizando…»: no puede esperar media hora)."""
+    _sincronizar_cuentas(_obtener_cuentas_activas(solo_sin_sync_inicial=True))
 
 
 def _tarea_relevar_competencia():
@@ -175,10 +199,11 @@ def _arrancar_apscheduler():
     if _scheduler_apscheduler is not None:
         return
     _scheduler_apscheduler = BackgroundScheduler(daemon=True)
-    _scheduler_apscheduler.add_job(_tarea_sincronizar_todo, "interval", minutes=4, id="sync_todo", max_instances=1, coalesce=True)
+    _scheduler_apscheduler.add_job(_tarea_sincronizar_todo, "interval", minutes=_intervalo_barredora(), id="sync_todo", max_instances=1, coalesce=True)
+    _scheduler_apscheduler.add_job(_tarea_sincronizar_cuentas_nuevas, "interval", minutes=INTERVALO_CUENTAS_NUEVAS_MINUTOS, id="sync_cuentas_nuevas", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_relevar_competencia, "interval", hours=24, id="relevar")
     _scheduler_apscheduler.add_job(_tarea_relevar_tendencias, "interval", hours=24, id="relevar_tendencias")
     _scheduler_apscheduler.add_job(_tarea_verificar_tokens, "interval", hours=1, id="verificar_tokens", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_limpiar_vinculaciones_oauth, "interval", hours=1, id="limpiar_oauth", max_instances=1, coalesce=True)
     _scheduler_apscheduler.start()
-    print("[Scheduler] ✅ APScheduler iniciado (sync cada 4 min, para todas las cuentas).")
+    print(f"[Scheduler] ✅ APScheduler iniciado (barredora cada {_intervalo_barredora()} min para todas las cuentas; cada {INTERVALO_CUENTAS_NUEVAS_MINUTOS} min solo las de primera sincronización pendiente).")

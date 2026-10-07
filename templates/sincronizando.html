@@ -151,7 +151,7 @@ var TIPS = [
   'En <strong>Publicidad</strong> ves si cada campaña te deja ganancia o te la come, según tu propio margen.',
   'Con <strong>Monotributo</strong> comparás tu facturación de los últimos 12 meses con las escalas vigentes.',
   'El <strong>Reporte Fiscal</strong> arma un resumen mensual listo para compartir con tu contador.',
-  'CoreLux se actualiza solo cada 4 minutos: tus números están siempre al día.'
+  'CoreLux se actualiza solo: apenas Mercado Libre avisa un cambio (una venta, una pregunta, un reclamo) y, por las dudas, cada media hora.'
 ];
 var tipIdx = 0;
 function rotateTip() {
@@ -174,6 +174,7 @@ function marcarActivo(stepId) {
 }
 
 var prevProductos = 0, prevVentas = 0;
+var inicioEspera = Date.now(), fallasSeguidas = 0, MINUTOS_MAXIMOS_DE_ESPERA = 12, FALLAS_PARA_AVISAR = 5;
 
 // Si la espera se vuelve anormal se dice qué pasa y qué se puede hacer, en vez de dejar el mismo cartel para siempre
 function mostrarDiagnostico(d) {
@@ -182,14 +183,19 @@ function mostrarDiagnostico(d) {
   var titulo = document.getElementById('sync-problema-titulo'), texto = document.getElementById('sync-problema-texto'), botones = document.getElementById('sync-problema-botones');
   var reintentar = '<button type="button" class="btn btn-primary" onclick="reintentarSync(this)">Reintentar ahora</button>';
   var escribir = '<a class="btn btn-secondary" href="mailto:soporte@corelux.app?subject=Mi%20cuenta%20no%20termina%20de%20sincronizar">Escribirnos</a>';
+  var salir = '<a class="btn btn-secondary" href="/logout">Salir</a>';       // nunca se queda sin salida: puede cerrar la sesión y volver más tarde
   if (d === 'desconectada') {
     titulo.textContent = 'Mercado Libre desconectó tu cuenta';
     texto.textContent = 'Esperar no lo resuelve: hay que volver a autorizar la conexión. No pierdas nada, tus datos se conservan.';
-    botones.innerHTML = '<a class="btn btn-primary" href="/reconectar">Reconectar mi cuenta</a>';
+    botones.innerHTML = '<a class="btn btn-primary" href="/reconectar">Reconectar mi cuenta</a>' + salir;
   } else if (d === 'atascada') {
     titulo.textContent = 'Está tardando más de lo normal';
-    texto.textContent = 'La importación no está avanzando. La reintentamos sola cada 4 minutos; podés reintentarla ahora. Si sigue igual, escribinos y lo vemos.';
-    botones.innerHTML = reintentar + escribir;
+    texto.textContent = 'La importación no está avanzando. La reintentamos sola cada 4 minutos; podés forzar el reintento ahora. Si sigue igual, escribinos y lo vemos, o salí y volvé más tarde.';
+    botones.innerHTML = reintentar + escribir + salir;
+  } else if (d === 'sin_conexion') {
+    titulo.textContent = 'No logramos consultar cómo va tu importación';
+    texto.textContent = 'Revisá tu conexión a internet. Podés forzar el reintento o salir y volver a entrar en un rato: la importación sigue en nuestro servidor.';
+    botones.innerHTML = reintentar + salir;
   } else {
     titulo.textContent = 'Tu cuenta tiene mucha información';
     texto.textContent = 'Sigue importando: con muchas publicaciones y ventas puede llevar un rato más. No hace falta que hagas nada.';
@@ -217,7 +223,10 @@ async function chequearEstado() {
       return;
     }
 
-    mostrarDiagnostico(data.diagnostico);
+    fallasSeguidas = 0;
+    // El servidor decide el diagnóstico; si por algún motivo dice «normal» pero ya pasó mucho tiempo desde que se abrió esta pantalla, se ofrece la salida igual
+    var pasoDemasiado = (Date.now() - inicioEspera) > MINUTOS_MAXIMOS_DE_ESPERA * 60000;
+    mostrarDiagnostico((!data.diagnostico || data.diagnostico === 'normal' || data.diagnostico === 'lenta') && pasoDemasiado ? 'atascada' : data.diagnostico);
     var etapa = data.etapa || 'productos';
     var nP = data.productos || 0;
     var nV = data.ventas || 0;
@@ -234,7 +243,11 @@ async function chequearEstado() {
       marcarHecho('step-ventas', 'ico-ventas', 'cnt-ventas', cuantos(nV, 'orden', 'órdenes'));
       marcarActivo('step-calc');
     }
-  } catch(e) { /* sigue intentando */ }
+  } catch(e) {
+    // Sigue intentando, pero si el servidor no responde varias veces seguidas se avisa en vez de dejar el mismo cartel para siempre
+    fallasSeguidas++;
+    if (fallasSeguidas >= FALLAS_PARA_AVISAR) mostrarDiagnostico('sin_conexion');
+  }
   setTimeout(chequearEstado, 3500);
 }
 

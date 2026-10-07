@@ -2676,6 +2676,7 @@ def actualizar_stock_multiple():
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
     actualizados, saltados, fallidos, sin_atributos = 0, 0, 0, 0
     atributos_pedidos = []
+    cambiaron, sin_verificar = [], 0            # cambiaron: [(id_meli, stock actual en MeLi)] · sin_verificar: no se pudo comparar con lo que MeLi tiene ahora
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -2712,6 +2713,15 @@ def actualizar_stock_multiple():
                 saltados += 1
                 continue
 
+            # Stock en pantalla vs. stock real: si cayó una venta mientras se editaba, el PUT la pisaría. Se corta ESE ítem y se avisa (nunca se escribe a ciegas).
+            estado_stock, stock_actual = stock_meli.verificar_antes_de_escribir(headers, id_meli, variantes_del_item, originales.get(id_meli))
+            if estado_stock == "cambio":
+                cambiaron.append((id_meli, stock_actual))
+                continue
+            if estado_stock == "no_verificable":
+                sin_verificar += 1
+                continue
+
             try:
                 # Sin variaciones la variante guardada es «<id>_unica» (id interno): a MeLi va available_quantity de la publicación, no esa variación
                 payload = stock_meli.payload_para_stock(variantes_del_item, nuevo_stock)
@@ -2740,13 +2750,18 @@ def actualizar_stock_multiple():
     partes = ["1 actualizada" if actualizados == 1 else f"{actualizados} actualizadas"]
     if saltados:
         partes.append(f"{saltados} con varios colores (revisalas a mano en MeLi)")
+    if cambiaron:
+        detalle = ", ".join(f"{i} ahora tiene {n}" for i, n in cambiaron[:3]) + ("…" if len(cambiaron) > 3 else "")
+        partes.append(f"{len(cambiaron)} sin guardar porque su stock cambió mientras editabas (probablemente una venta): {detalle}. Recargá la pantalla y revisalas")
+    if sin_verificar:
+        partes.append(f"{sin_verificar} sin guardar porque no pudimos confirmar su stock actual en Mercado Libre: probá de nuevo")
     if sin_atributos:
         partes.append(f"{sin_atributos} sin guardar porque Mercado Libre pide datos obligatorios que faltan"
                       + (f" ({', '.join(atributos_pedidos[:5])})" if atributos_pedidos else " (marca, modelo, código…)") + ": editalos desde Mercado Libre primero")
     if fallidos:
         partes.append(f"{fallidos} con error")
     mensaje = ", ".join(partes) + "."
-    tipo = "success" if (actualizados and not fallidos and not saltados and not sin_atributos) else ("error" if not actualizados else "info")
+    tipo = "success" if (actualizados and not fallidos and not saltados and not sin_atributos and not cambiaron and not sin_verificar) else ("error" if not actualizados else "info")
     return redirect(f"{volver_a}?{urlencode({'msg': mensaje, 'tipo': tipo})}")
 
 

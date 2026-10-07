@@ -10,7 +10,7 @@ Es multi-tenant: cada cuenta ve solo sus datos (Row Level Security de Postgres).
 ## Stack
 
 - Python (Flask 3) · PostgreSQL en Supabase con `psycopg 3` y pool de conexiones · Row Level Security
-- Sincronización con la API de Mercado Libre (catálogo, órdenes, reclamos, preguntas, enriquecimiento) cada 4 minutos y por webhooks
+- Sincronización con la API de Mercado Libre (catálogo, órdenes, reclamos, preguntas, enriquecimiento) por webhooks (motor principal) y una barredora cada 30 minutos
 - Producción: Fly.io (`corecore`, región `gru`) con gunicorn + gevent · dominio `corelux.app`
 
 ## Arranque local

@@ -111,7 +111,7 @@ python respaldo.py --descifrar RUTA.zip.cifrado   # deja el .zip al lado para ab
 
 ## 6. Sincronización con Mercado Libre
 
-- Cada cuenta se sincroniza cada 4 minutos y por webhook (`/notificaciones_meli`, con un antirrebote de 15 s por cuenta).
+- El motor de la sincronización es el webhook (`/notificaciones_meli`, con un antirrebote de 15 s por cuenta). El scheduler solo barre: cada 30 minutos todas las cuentas (`SYNC_INTERVALO_MINUTOS`, mínimo 5) y cada 4 minutos las cuentas cuya primera sincronización no terminó.
 - Sin Redis (el caso actual en Fly) corre APScheduler dentro de un worker, que toma un *advisory lock* de Postgres; si ese worker cae, otro lo toma
   en menos de un minuto. El reparto lo hace un lock de Postgres: solo un proceso corre las tareas y los demás vigilan por si cae.
 - **No aparecen ventas nuevas**: ver en los logs `[VentasSync]` y `[Sincronizador]` de esa cuenta. Si dice `CuentaDesconectada`, el usuario revocó
