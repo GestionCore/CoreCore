@@ -279,7 +279,7 @@ a.panel:hover, .panel.clickeable:hover { border-color: color-mix(in srgb, var(--
     background: var(--danger); color: #fff; font-size: 10px; font-weight: 700;
     min-width: 16px; height: 16px; border-radius: 8px; padding: 0 4px;
     margin-left: 5px; line-height: 1; vertical-align: middle;
-    box-shadow: 0 0 8px var(--semantic-danger-glow); animation: pulse 2s ease infinite;
+    box-shadow: 0 0 8px var(--semantic-danger-glow);      /* sin latido: los contadores del menú son varios y el aviso que late es la campana */
 }
 
 /* Stat Strips */
@@ -518,7 +518,9 @@ input:focus, select:focus, textarea:focus {
     outline: none; border-color: var(--accent-primary);
     box-shadow: 0 0 0 3px var(--accent-primary-glow), 0 0 16px -4px var(--accent-primary-glow);
 }
-input:disabled { color: var(--text-faint); }
+input:disabled { color: var(--text-faint); -webkit-text-fill-color: currentColor; opacity: 1; }      /* Safari aclara los campos deshabilitados por su cuenta: se fija el color */
+/* El texto de ayuda de un campo (placeholder) con el mismo gris legible del resto (4,9:1 en oscuro, 5,3:1 en claro), también cuando el campo está deshabilitado; el del navegador es más claro */
+::placeholder, input:disabled::placeholder, textarea:disabled::placeholder { color: var(--text-faint); opacity: 1; }
 
 /* El popup nativo de <option> es un widget del navegador/SO, no del CSS
    normal de la página — Chrome en Windows ignora el background del
@@ -703,7 +705,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-.badge-curva-rota { background: var(--semantic-warning-bg); color: var(--semantic-warning); margin-left: 6px; animation: pulseCurva 1.8s infinite; display:inline-block; }
+.badge-curva-rota { background: var(--semantic-warning-bg); color: var(--semantic-warning); margin-left: 6px; display:inline-block; }
 @keyframes pulseCurva { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 
 

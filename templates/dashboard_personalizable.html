@@ -711,7 +711,7 @@
             const periodo14 = d.periodo_14d;
             const sinCosto = periodo14.facturado > 0 && periodo14.costo_fabricacion === 0;
             const salida = sinCosto ? { href: '/costos', clase: 'btn-primary', texto: 'Cargar los costos' }
-                : (negativo ? { href: '/metricas', clase: 'btn-primary', texto: 'Ver dónde se va la plata' } : { href: '/metricas', clase: 'btn-secondary', texto: 'Ver el detalle' });
+                : (negativo ? { href: '/metricas', clase: 'btn-primary', texto: 'Revisar ventas' } : { href: '/metricas', clase: 'btn-secondary', texto: 'Ver el detalle' });
             const cajaSalida = document.getElementById('hero-acciones');
             cajaSalida.innerHTML = `<a class="btn ${salida.clase}" href="${salida.href}">${salida.texto}</a>`;
             cajaSalida.style.display = '';

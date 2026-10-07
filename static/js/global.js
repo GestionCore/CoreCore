@@ -97,7 +97,7 @@ function guardarPreferenciaPanel() {
 // ---------- "Mostrar más" genérico para listas largas ----------
 // Uso: envolvé los ítems más allá del N-ésimo con class="oculto-mostrar-mas"
 // (además de cualquier otra clase que ya tengan), y un botón con
-// onclick="mostrarMasGenerico(this)" justo después de la lista.
+// data-click="mostrarMasGenerico" data-click-args='["$el"]' justo después de la lista.
 // ---------- Animación de entrada para paneles que aparecen por JS ----------
 // Los paneles normales se animan solos al cargar la página (vía CSS). Pero
 // un panel que arranca con display:none y se muestra recién cuando termina
@@ -322,7 +322,7 @@ function mostrarMasGenerico(boton) {
  * engancha por atributos data-* en el propio <form>, así que se puede
  * reusar en Ganancia Real, Publicidad, Comparador Logística, etc. sin
  * repetir la función — data-form-periodo="idDelForm" en el <form> y
- * onclick="aplicarUltimosDias(N, this)" en cada botón alcanza.
+ * data-click="aplicarUltimosDias" data-click-args='[N, "$el"]' en cada botón alcanza.
  */
 function aplicarUltimosDias(dias, boton) {
     const form = boton.closest('form');
@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', marcarUltimosDiasActivo);
  *
  * Uso en el HTML: reemplazar los dos field-group de fecha por
  *   <div class="rango-fechas" id="MI_ID" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
- *     <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('MI_ID')"></button>
+ *     <button type="button" class="rango-fechas-boton" data-click="RangoFechas.toggle" data-click-args='["MI_ID"]'></button>
  *     <input type="hidden" name="fecha_desde">
  *     <input type="hidden" name="fecha_hasta">
  *   </div>
@@ -555,14 +555,14 @@ const RangoFechas = {
             if (esInicio || esFin) clases.push('rf-limite');
             if (enRango) clases.push('rf-en-rango');
             if (iso === hoyISO) clases.push('rf-hoy');
-            celdas += `<span class="${clases.join(' ')}" onclick="RangoFechas.elegirDia('${id}','${iso}')">${d}</span>`;
+            celdas += `<span class="${clases.join(' ')}" data-click="RangoFechas.elegirDia" data-click-args='["${id}","${iso}"]'>${d}</span>`;
         }
 
         popup.innerHTML = `
             <div class="rf-header">
-                <button type="button" onclick="RangoFechas.cambiarMes('${id}',-1)">‹</button>
+                <button type="button" data-click="RangoFechas.cambiarMes" data-click-args='["${id}",-1]'>‹</button>
                 <strong>${this.MESES[est.mes]} ${est.anio}</strong>
-                <button type="button" onclick="RangoFechas.cambiarMes('${id}',1)">›</button>
+                <button type="button" data-click="RangoFechas.cambiarMes" data-click-args='["${id}",1]'>›</button>
             </div>
             <div class="rf-grid rf-grid-header">${this.DIAS.map(d => `<span>${d}</span>`).join('')}</div>
             <div class="rf-grid">${celdas}</div>
@@ -570,6 +570,8 @@ const RangoFechas = {
         `;
     }
 };
+// Una `const` de nivel superior NO es una propiedad de window: el despachador de ux.js (data-click="RangoFechas.toggle") busca las funciones ahí, así que se publica a mano.
+window.RangoFechas = RangoFechas;
 
 // ---------- Tutorial guiado (primera vez, después de la encuesta) ----------
 const PASOS_TUTORIAL = [
@@ -600,10 +602,10 @@ function _crearElementosTour() {
             <div class="tour-tarjeta-titulo"></div>
             <div class="tour-tarjeta-texto"></div>
             <div class="tour-tarjeta-footer">
-                <button type="button" class="tour-btn-saltar" onclick="saltarTutorial()">Saltar tutorial</button>
+                <button type="button" class="tour-btn-saltar" data-click="saltarTutorial">Saltar tutorial</button>
                 <div style="display:flex; align-items:center; gap:12px;">
                     <span class="tour-tarjeta-contador"></span>
-                    <button type="button" class="tour-btn-siguiente" onclick="avanzarTutorial()">Siguiente</button>
+                    <button type="button" class="tour-btn-siguiente" data-click="avanzarTutorial">Siguiente</button>
                 </div>
             </div>
         </div>
@@ -765,8 +767,8 @@ function _mostrarPropuestaCostosChat(gastos, costosProductos) {
             <div style="font-weight:600; margin-bottom:4px;">${titulo}</div>
             ${filasGastos}${bloquesCostos}
             <div style="display:flex; gap:10px; margin-top:14px;">
-                ${partes.length ? '<button type="button" class="btn btn-primary" onclick="confirmarPropuestaCostosChat()">Confirmar y cargar</button>' : ''}
-                <button type="button" class="btn btn-secondary" onclick="corregirPropuestaCostosChat()">Corregir</button>
+                ${partes.length ? '<button type="button" class="btn btn-primary" data-click="confirmarPropuestaCostosChat">Confirmar y cargar</button>' : ''}
+                <button type="button" class="btn btn-secondary" data-click="corregirPropuestaCostosChat">Corregir</button>
             </div>
         </div>
     `;
@@ -809,6 +811,10 @@ function corregirPropuestaCostosChat() {
     _agregarBurbujaCostosChat('Contame qué querés cambiar.', false);
     document.getElementById('costos-chat-input').focus();
 }
+
+// Los dos pasos que antes iban juntos en un onclick del menú lateral
+function alternarTemaLateral() { alternarTema(); actualizarIconoTemaLateral(); }
+function contarCaracteresDescripcion(campo) { document.getElementById('desc-chars').textContent = campo.value.length + ' caracteres'; }
 
 function alternarTema() {
     const esClaro = document.documentElement.dataset.theme === 'light';
@@ -1134,7 +1140,7 @@ function renderizarResultadosComando(items) {
         // navega a una página aparte, mismo comportamiento que el botón
         // "Gestionar" del listado de Stock.
         return (item.accion || item.idMeli)
-            ? `<a href="#" class="command-item${claseActiva}" data-idx="${i}" onclick="event.preventDefault(); ejecutarItemComando(${i});">${etiqueta}</a>`
+            ? `<a href="#" class="command-item${claseActiva}" data-idx="${i}" data-click="ejecutarItemComando" data-click-args='[${i}]' data-prevenir>${etiqueta}</a>`
             : `<a href="${item.url}" class="command-item${claseActiva}" data-idx="${i}">${etiqueta}</a>`;
     }).join('');
 }
@@ -1212,7 +1218,7 @@ async function cargarOportunidadesSeo() {
         mostrarPanelConAnimacion(panel);
         cont.innerHTML = oportunidades.map(o => `
             <button type="button" class="badge badge-success" style="cursor:pointer; font-size:0.88em; padding:8px 14px; border:none;"
-                onclick="abrirDrawerConSugerencia('${o.id_meli_sugerido}', '${o.titulo_sugerido.replace(/'/g, "\\'")}')">
+                data-click="abrirDrawerConSugerencia" data-click-args='${UX.esc(JSON.stringify([String(o.id_meli_sugerido), String(o.titulo_sugerido)]))}'>
                 Sumar "${o.termino}" a ${o.titulo_actual.length > 30 ? o.titulo_actual.slice(0,30)+'…' : o.titulo_actual}
             </button>
         `).join('');
@@ -1265,8 +1271,8 @@ async function cargarTabInfo(idMeli) {
         cont.innerHTML = `
             <div class="field-group" style="margin-bottom:14px;">
                 <label class="field-label">Título <span class="text-muted" id="drawer-titulo-largo" style="font-weight:400;"></span></label>
-                <input type="text" id="drawer-titulo" maxlength="${Number(d.titulo_max) || 60}" value="${UX.esc(d.titulo)}" oninput="actualizarLargoTituloDrawer()">
-                <button type="button" class="btn btn-secondary" style="margin-top:6px;" onclick="optimizarTitulo()"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-bolt"/></svg>Optimizar Título con IA</button>
+                <input type="text" id="drawer-titulo" maxlength="${Number(d.titulo_max) || 60}" value="${UX.esc(d.titulo)}" data-input="actualizarLargoTituloDrawer">
+                <button type="button" class="btn btn-secondary" style="margin-top:6px;" data-click="optimizarTitulo"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-bolt"/></svg>Optimizar Título con IA</button>
             </div>
             <div class="filter-row" style="margin-bottom:14px;">
                 <div class="field-group" style="flex:1;"><label class="field-label">Precio ($)</label><input type="number" step="0.01" min="0" id="drawer-precio" value="${Number(d.precio) || ''}"></div>
@@ -1275,7 +1281,7 @@ async function cargarTabInfo(idMeli) {
                 </div>
             </div>
             <div class="field-group" style="margin-bottom:14px;"><label class="field-label">Costo de fabricación ($) <span class="text-muted" style="font-weight:400;">solo en CoreLux</span></label><input type="number" step="0.01" min="0" id="drawer-costo" value="${Number(d.precio_costo) || 0}"></div>
-            <button type="button" class="btn btn-primary btn-block" onclick="guardarDrawerInfo()">Guardar cambios</button>
+            <button type="button" class="btn btn-primary btn-block" data-click="guardarDrawerInfo">Guardar cambios</button>
             <a href="/publicacion/${idMeli}/timeline" class="btn btn-secondary btn-block" style="margin-top:8px; text-align:center; text-decoration:none;"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-info"/></svg>Ver línea de tiempo completa</a>
         `;
         actualizarLargoTituloDrawer();
@@ -1363,15 +1369,15 @@ async function cargarTabFicha(idMeli) {
                 </div>
                 <textarea id="drawer-descripcion" rows="7"
                     style="width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text-primary); padding:10px; font-family:var(--font-ui); font-size:0.88em; line-height:1.5; resize:vertical;"
-                    oninput="document.getElementById('desc-chars').textContent = this.value.length + ' caracteres'">${d.descripcion || ''}</textarea>
-                <button type="button" class="btn btn-primary" style="margin-top:8px;" onclick="guardarDescripcion()">
+                    data-input="contarCaracteresDescripcion" data-input-args='["$el"]'>${d.descripcion || ''}</textarea>
+                <button type="button" class="btn btn-primary" style="margin-top:8px;" data-click="guardarDescripcion">
                     <svg class="icon" style="margin-right:5px;"><use href="#icon-check"/></svg>Guardar descripción
                 </button>
             </div>
             ${atributosHtml ? `
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
                 <div class="field-label" style="margin:0;">Atributos técnicos</div>
-                <button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.8em;" onclick="guardarAtributosFicha()">
+                <button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.8em;" data-click="guardarAtributosFicha">
                     <svg class="icon" style="width:12px;height:12px;margin-right:4px;"><use href="#icon-check"/></svg>Guardar atributos
                 </button>
             </div>
@@ -1439,7 +1445,7 @@ async function cargarTabPreguntas(idMeli) {
                 <div class="mobile-card-top"><strong>${p.fecha}</strong>${p.estado === 'UNANSWERED' ? '<span class="badge badge-warning">Sin responder</span>' : '<span class="badge badge-success">Respondida</span>'}</div>
                 <div style="margin-bottom:8px;">${p.texto}</div>
                 ${p.respuesta ? `<div class="text-muted" style="font-size:0.85em;">Respuesta: ${p.respuesta}</div>` : `
-                    <div class="flex-gap"><input type="text" id="respuesta-${p.id}" placeholder="Escribí una respuesta..." style="flex:1;"><button type="button" class="btn btn-secondary" onclick="responderPreguntaDrawer(${p.id})">Enviar</button></div>
+                    <div class="flex-gap"><input type="text" id="respuesta-${p.id}" placeholder="Escribí una respuesta..." style="flex:1;"><button type="button" class="btn btn-secondary" data-click="responderPreguntaDrawer" data-click-args='[${p.id}]'>Enviar</button></div>
                 `}
             </div>
         `).join('');

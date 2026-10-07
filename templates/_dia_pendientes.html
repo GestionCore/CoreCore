@@ -58,7 +58,7 @@
             <div class="ux-item-accion-detalle">{{ m.descripcion }}</div>
         </div>
         {% if m.link %}
-        <a href="{{ m.link }}" class="btn {{ 'btn-urgente' if m.prioridad == 'urgente' else ('btn-alerta' if m.prioridad == 'importante' else 'btn-primary') }}">{{ m.link_texto }} →</a>
+        <a href="{{ m.link }}" class="btn {{ 'btn-urgente' if m.prioridad == 'urgente' else ('btn-alerta' if m.prioridad == 'importante' else 'btn-secondary') }}">{{ m.link_texto }} →</a>
         {% endif %}
     </div>
     {% endfor %}

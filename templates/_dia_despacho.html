@@ -41,7 +41,7 @@
 </div>
 {% else %}
 <div class="flex-gap no-imprimir" style="margin-bottom:16px;">
-    <button type="button" class="btn btn-primary" data-click="sincronizarYRecargar" data-click-args='["$el"]'><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Traer ventas nuevas</button>
+    <button type="button" class="btn btn-secondary" data-click="sincronizarYRecargar" data-click-args='["$el"]'><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Traer ventas nuevas</button>
 </div>
 {% endif %}
 
@@ -57,7 +57,7 @@
 </form>
 
 {% if not paquetes %}
-{{ vacio("No hay paquetes para despachar", "No hay ventas propias o Flex en esta ventana. Si esperabas alguna, probá traer las ventas nuevas con el botón de arriba.", "package", "info") }}
+{{ vacio("No hay paquetes para despachar", "No hay ventas propias o Flex en esta ventana. Si esperabas alguna, probá traer las ventas nuevas con el botón de arriba o revisá las ventas del período.", "package", "info", "Revisar ventas", "/metricas") }}
 {% else %}
 <!-- ── 2. LOS PAQUETES: tarjetas grandes, un toque para marcar ─────────────── -->
 <div id="lista-despacho">

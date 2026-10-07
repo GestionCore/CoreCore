@@ -326,15 +326,16 @@
 
 <!-- ── 8. DETALLE: plegado para no abrumar ──────────────────────────────── -->
 <div class="ux-seccion ux-neutral">Más detalle</div>
+<div class="ux-tabs" data-tabs id="mas-detalle">
 
 {% if posventa.financiacion %}
 {% set fin = posventa.financiacion %}
-<details class="ux-detalle" id="seccion-cuotas">
-    <summary>
+<section class="ux-tab-panel" id="seccion-cuotas" data-tab-titulo="Costo de cuotas">
+    <h3 class="ux-tab-titulo">
         <svg class="icon" style="width:18px;height:18px;color:var(--semantic-warning);"><use href="#icon-credit-card"/></svg>
         Lo que te cuesta ofrecer cuotas
         <span class="ux-pill ux-warn">${{ fin.total }} · {{ fin.pct_facturado|string|replace('.', ',') }}% de lo facturado</span>
-    </summary>
+    </h3>
     <div class="ux-detalle-cuerpo">
         <div class="text-muted" style="font-size:0.88em; line-height:1.55; margin-bottom:12px;">Mercado Libre cobra un <b>cargo de financiación por publicación</b> —un porcentaje del precio— en cada venta de las que ofrecen cuotas sin interés, <b>aunque el comprador pague de contado</b>. Ya está restado en tu ganancia (viene dentro de los cargos de Mercado Libre): acá lo ves separado para decidir publicación por publicación.</div>
         <div class="ux-kpis">
@@ -351,15 +352,15 @@
         {% endfor %}
         <div class="text-muted" style="font-size:0.8em; margin-top:10px; line-height:1.5;">El porcentaje depende de cuántas cuotas sin interés ofrece cada publicación: cuantas más, más cuesta. Podés cambiarlo desde la publicación en Mercado Libre. Antes de sacar las cuotas pensá en lo que aportan a la conversión: es una decisión comercial, no solo de costo.</div>
     </div>
-</details>
+</section>
 {% endif %}
 
-<details class="ux-detalle" id="seccion-reclamos" {% if reclamos_total > 0 %}open{% endif %}>
-    <summary>
+<section class="ux-tab-panel" id="seccion-reclamos" data-tab-titulo="Reclamos y devoluciones" data-tab-badge="{{ reclamos_total if reclamos_total > 0 else '' }}"{% if reclamos_total > 0 %} data-tab-defecto{% endif %}>
+    <h3 class="ux-tab-titulo">
         <svg class="icon" style="width:18px;height:18px;color:var(--semantic-warning);"><use href="#icon-alert"/></svg>
         Reclamos, devoluciones y cancelaciones
         {% if posventa.reclamos > 0 %}<span class="ux-pill ux-danger">{{ posventa.reclamos }} reclamo{{ 's' if posventa.reclamos != 1 }}</span>{% endif %}{% if posventa.devoluciones > 0 %}<span class="ux-pill ux-warn">{{ posventa.devoluciones }} {{ 'devolución' if posventa.devoluciones == 1 else 'devoluciones' }}</span>{% endif %}{% if posventa.reclamos_sin_impacto > 0 %}<span class="ux-pill ux-info">{{ posventa.reclamos_sin_impacto }} sin impacto en reputación</span>{% endif %}{% if reclamos_total == 0 %}<span class="ux-pill ux-ok">sin problemas</span>{% endif %}
-    </summary>
+    </h3>
     <div class="ux-detalle-cuerpo" data-mostrar-mas-scope>
         <div class="ux-kpis">
             {{ kpi("Devoluciones", posventa.devoluciones, "warn" if posventa.devoluciones else "ok", "refresh") }}
@@ -401,10 +402,10 @@
         {{ banner("ok", "check", "<b>Período impecable:</b> sin devoluciones ni reclamos registrados") }}
         {% endif %}
     </div>
-</details>
+</section>
 
-<details class="ux-detalle">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Lo que te facturó Mercado Libre {% if factura_meli %}<span class="ux-detalle-nota">{{ rango_fechas(factura_meli.date_from, factura_meli.date_to) }} · {{ 'en curso' if factura_meli.en_curso else 'cerrada' }}</span>{% endif %}</summary>
+<section class="ux-tab-panel" id="seccion-factura" data-tab-titulo="Factura de Mercado Libre">
+    <h3 class="ux-tab-titulo"><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Lo que te facturó Mercado Libre {% if factura_meli %}<span class="ux-detalle-nota">{{ rango_fechas(factura_meli.date_from, factura_meli.date_to) }} · {{ 'en curso' if factura_meli.en_curso else 'cerrada' }}</span>{% endif %}</h3>
     <div class="ux-detalle-cuerpo">
         {% if factura_meli %}
         {% set con_publicidad = factura_meli.filas|selectattr('clave', 'equalto', 'publicidad')|list %}
@@ -419,11 +420,11 @@
         {{ banner("info", "info", "<b>No pudimos traer</b> la facturación de MeLi ahora mismo", "Probá de nuevo en un rato.") }}
         {% endif %}
     </div>
-</details>
+</section>
 
 {% if analitica_clientes %}
-<details class="ux-detalle">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-users"/></svg> Tus clientes y cómo te pagan <span class="ux-detalle-nota">{{ analitica_clientes.clientes_distintos }} clientes · {{ analitica_clientes.pct_repiten }}% volvieron a comprar</span></summary>
+<section class="ux-tab-panel" id="seccion-clientes" data-tab-titulo="Tus clientes">
+    <h3 class="ux-tab-titulo"><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-users"/></svg> Tus clientes y cómo te pagan <span class="ux-detalle-nota">{{ analitica_clientes.clientes_distintos }} clientes · {{ analitica_clientes.pct_repiten }}% volvieron a comprar</span></h3>
     <div class="ux-detalle-cuerpo">
         <div class="ux-kpis">
             {{ kpi("Clientes distintos", analitica_clientes.clientes_distintos, "info", "users") }}
@@ -462,11 +463,11 @@
             {% endif %}
         </div>
     </div>
-</details>
+</section>
 {% endif %}
 
-<details class="ux-detalle">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Historial de ventas detallado <span class="ux-detalle-nota">{{ ventas|length }} ventas</span></summary>
+<section class="ux-tab-panel" id="seccion-historial" data-tab-titulo="Historial de ventas" data-tab-badge="{{ ventas|length }}">
+    <h3 class="ux-tab-titulo"><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Historial de ventas detallado <span class="ux-detalle-nota">{{ ventas|length }} ventas</span></h3>
     <div class="ux-detalle-cuerpo" data-mostrar-mas-scope>
         <table class="data-table" data-ordenable>
             <thead><tr><th data-orden="texto" data-primero="desc">Fecha</th><th data-orden="texto">Producto</th><th data-orden="texto">{{ vocab.V1 }}</th><th class="num" data-orden="num">Cant.</th><th class="num" data-orden="num">Venta</th><th class="num" data-orden="num">Cargo</th><th class="num" data-orden="num">Envío</th><th class="num" data-orden="num">Ads</th><th class="num" data-orden="num">Costo</th><th class="num" data-orden="num">Neto</th></tr></thead>
@@ -491,10 +492,10 @@
         <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver las {{ ventas|length - 10 }} ventas restantes</button>
         {% endif %}
     </div>
-</details>
+</section>
 
-<details class="ux-detalle" id="det-mercado" data-grafico="mercado">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-trend"/></svg> Cuándo y a qué precio vendés <span class="ux-detalle-nota">días y horas · precio contra unidades</span></summary>
+<section class="ux-tab-panel" id="det-mercado" data-grafico="mercado" data-tab-titulo="Cuándo vendés">
+    <h3 class="ux-tab-titulo"><svg class="icon" style="width:18px;height:18px;color:var(--accent-cyan);"><use href="#icon-trend"/></svg> Cuándo y a qué precio vendés <span class="ux-detalle-nota">días y horas · precio contra unidades</span></h3>
     <div class="ux-detalle-cuerpo">
         <div class="page-subtitle" style="margin-bottom:6px;"><b>¿Cuándo vendés más?</b> Cada cuadrito es una hora de un día de la semana: <b>cuanto más fuerte el color, más unidades vendiste</b> (últimos 90 días).</div>
         <ul class="ux-lectura" id="heatmap-resumen"></ul>
@@ -507,15 +508,16 @@
         <div style="position:relative; height:240px;"><canvas id="canvas-correlacion" role="img" aria-label="Precio promedio contra unidades vendidas por modelo"></canvas></div>
         <div id="correlacion-empty" class="text-muted" style="display:none; padding:10px 0;">Sin datos suficientes para el período.</div>
     </div>
-</details>
+</section>
 
+</div>
 {% endif %}
 
 <script src="/static/js/vendor/chart.umd.min.js?v=4.4.4"></script>
 <script>
 // Los gráficos viven dentro de secciones plegadas: Chart.js mide el canvas al crearlo y, si está oculto
 // (display:none), queda con tamaño 0 sin recuperarse. Por eso se arman recién la primera vez que la
-// sección se abre (evento "toggle"). Además el mapa de calor y la correlación recién piden sus datos ahí:
+// pestaña se muestra (evento "ux:tab-visible", ver ux.js). Además el mapa de calor y la correlación recién piden sus datos ahí:
 // ~2 llamadas menos en cada carga de la página.
 const _iniciados = {};
 
@@ -541,12 +543,13 @@ document.addEventListener('DOMContentLoaded', () => {
     _iniciarChartPareto();
 });
 
-document.querySelectorAll('details[data-grafico]').forEach(det => {
-    det.addEventListener('toggle', () => {
-        const clave = det.dataset.grafico;
-        if (!det.open || _iniciados[clave] || !window.Chart) return;
+document.querySelectorAll('[data-grafico]').forEach(panel => {
+    panel.addEventListener('ux:tab-visible', () => {
+        const clave = panel.dataset.grafico;
+        if (_iniciados[clave] || !window.Chart) return;
         _iniciados[clave] = true;
-        _cuandoTengaTamano(det.querySelector('.ux-detalle-cuerpo') || det, () => ({ evolucion: _iniciarChartEvolucionMensual, pareto: _iniciarChartPareto, mercado: _iniciarMercado })[clave]());
+        panel.dataset.listo = '1';                       // al imprimir, un panel de gráficos que nunca se abrió no sale vacío: se omite
+        _cuandoTengaTamano(panel.querySelector('.ux-detalle-cuerpo') || panel, () => ({ evolucion: _iniciarChartEvolucionMensual, pareto: _iniciarChartPareto, mercado: _iniciarMercado })[clave]());
     });
 });
 

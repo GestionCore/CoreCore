@@ -19,9 +19,9 @@ PLANTILLAS = sorted(glob.glob(os.path.join(RAIZ, "templates", "*.html")))
 INLINE = re.compile(r"\son(?:click|change|input|keyup|keydown|submit|mouseover|mouseout|focus|blur|load|error)=\"")
 
 # Pantallas ya migradas a data-click: no pueden volver a tener un manejador escrito en el HTML.
-SIN_INLINE = ("_ux.html", "metricas.html", "stock_masivo.html", "_dia_despacho.html", "dashboard_personalizable.html")
+SIN_INLINE = ("_ux.html", "base.html", "metricas.html", "stock_masivo.html", "_dia_despacho.html", "dashboard_personalizable.html")
 # Tope de manejadores inline que quedan (plantillas + global.js). Solo puede BAJAR: al migrar otra pantalla se baja el número. Es el camino para sacar 'unsafe-inline' del script-src.
-PRESUPUESTO_INLINE = 143
+PRESUPUESTO_INLINE = 90
 
 
 def _leer(*partes):
@@ -39,16 +39,24 @@ def test_los_manejadores_inline_que_quedan_no_aumentan():
     assert total <= PRESUPUESTO_INLINE, f"Hay {total} manejadores inline (tope {PRESUPUESTO_INLINE}): usá data-click (ver static/js/ux.js). Si migraste pantallas, bajá el tope."
 
 
-def test_cada_data_click_llama_a_una_funcion_que_existe():
-    fuente = "\n".join(_leer("static", "js", os.path.basename(r)) for r in glob.glob(os.path.join(RAIZ, "static", "js", "*.js"))) + "\n" + "\n".join(_leer("templates", os.path.basename(r)) for r in PLANTILLAS)
-    definidas = (set(re.findall(r"function\s+([A-Za-z_$][\w$]*)", fuente)) | set(re.findall(r"window\.([A-Za-z_$][\w$]*)\s*=", fuente))
-                 | set(re.findall(r"(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=", fuente)))
+def test_cada_data_click_llama_a_una_funcion_que_cuelga_de_window():
+    """
+    El despachador busca la función en `window`. Una `function nombre()` y un `var` de nivel superior cuelgan de window; una `const` o `let` NO (`const RangoFechas = {...}` dejó
+    sin funcionar el selector de fechas hasta que se publicó con `window.RangoFechas = ...`). Se revisan las plantillas Y los textos HTML armados en los .js.
+    """
+    js = {os.path.basename(r): _leer("static", "js", os.path.basename(r)) for r in glob.glob(os.path.join(RAIZ, "static", "js", "*.js"))}
+    plantillas = {os.path.basename(r): _leer("templates", os.path.basename(r)) for r in PLANTILLAS}
+    fuente = "\n".join(list(js.values()) + list(plantillas.values()))
+    globales = (set(re.findall(r"(?m)^\s*(?:async\s+)?function\s+([A-Za-z_$][\w$]*)", fuente)) | set(re.findall(r"window\.([A-Za-z_$][\w$]*)\s*=", fuente))
+                | set(re.findall(r"(?m)^var\s+([A-Za-z_$][\w$]*)", fuente)))
     faltan = {}
-    for ruta in PLANTILLAS:
-        for evento, nombre in re.findall(r'\bdata-(click|change|input|keyup)="([A-Za-z_$][\w$.]*)"', _leer("templates", os.path.basename(ruta))):
+    for nombre_archivo, texto in {**js, **plantillas}.items():
+        if nombre_archivo == "ux.js":
+            continue                                                           # solo trae ejemplos en sus comentarios
+        for evento, nombre in re.findall(r'\bdata-(click|change|input|keyup|keydown)="([A-Za-z_$][\w$.]*)"', texto):
             base = nombre.split(".")[0]
-            if base not in definidas and base != "window":
-                faltan.setdefault(base, set()).add(os.path.basename(ruta))
+            if base not in globales and base != "window":
+                faltan.setdefault(base, set()).add(nombre_archivo)
     assert not faltan, {k: sorted(v) for k, v in faltan.items()}
 
 

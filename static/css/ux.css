@@ -659,3 +659,42 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 tr.ux-subfila td { background: rgba(255, 255, 255, 0.025); font-size: 0.88em; color: var(--text-secondary); border-top: 0; }
 tr.ux-subfila td.ux-col-titulo { padding-left: 14px; }
 :root[data-theme="light"] tr.ux-subfila td { background: rgba(0, 0, 0, 0.03); }
+
+/* ── Pestañas (ux.js: [data-tabs]). Sin JS los paneles quedan uno debajo del otro; al imprimir se muestran todos ───────────────────────────────────────────── */
+.ux-tabs { margin-bottom: 24px; border: 1px solid var(--glass-border); border-radius: var(--radius-md); background: var(--glass-bg); overflow: hidden; }
+.ux-tabs-barra { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--border-soft); padding: 0 8px; }
+.ux-tabs-barra::-webkit-scrollbar { display: none; }
+.ux-tab {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; padding: 14px 14px 12px; background: none; border: 0; border-bottom: 3px solid transparent;
+    color: var(--text-secondary); font: inherit; font-size: 0.92em; font-weight: 700; cursor: pointer; white-space: nowrap; transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.ux-tab:hover { color: var(--text-primary); }
+.ux-tab[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--accent-primary); }
+.ux-tab:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; border-radius: 6px; }
+.ux-tab-badge { min-width: 20px; padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); font-size: 0.8em; font-weight: 800; text-align: center; }
+.ux-tab-panel[hidden] { display: none; }
+.ux-tabs-activas .ux-tab-panel > .ux-detalle-cuerpo { padding: 18px 22px 22px; }
+.ux-tab-titulo { display: none; margin: 0; padding: 14px 22px 4px; font-size: 1em; }
+@media (max-width: 640px) { .ux-tabs-activas .ux-tab-panel > .ux-detalle-cuerpo { padding: 14px 16px 18px; } .ux-tab { padding: 12px 12px 10px; } }
+@media print {
+    .ux-tabs-barra { display: none; }
+    .ux-tab-panel[hidden] { display: block !important; }
+    .ux-tab-panel[data-grafico]:not([data-listo]) { display: none !important; }          /* un gráfico que nunca se abrió no sale vacío */
+    .ux-tab-titulo { display: block; }
+}
+
+/* Un contenedor que se desliza de costado avisa dónde hay más: se desvanece el borde por el que todavía se puede ir (ux.js: UX.bordesDeslizables) */
+[data-sombra~="der"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent); }
+[data-sombra~="izq"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 34px), transparent); }
+[data-sombra~="izq"][data-sombra~="der"] {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 34px, #000 calc(100% - 34px), transparent); mask-image: linear-gradient(to right, transparent, #000 34px, #000 calc(100% - 34px), transparent);
+}
+
+/* Despacho: el círculo de «listo» tiene que verse a simple vista en un depósito con poca luz (borde grueso + relleno + aro suave) */
+.despacho-item:not(.despachado) .despacho-check {
+    border-width: 3px; border-color: var(--semantic-warning);
+    background: color-mix(in srgb, var(--semantic-warning) 14%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--semantic-warning) 12%, transparent);
+}
+
+/* Solo late el primer aviso urgente de una lista (varios latiendo a la vez cansan y ninguno se distingue) */
+.ux-item-accion.ux-danger ~ .ux-item-accion.ux-danger { animation: none; }
