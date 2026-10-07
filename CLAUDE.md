@@ -584,6 +584,12 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
   (`SIN_INLINE`) no vuelvan a tener ninguno; migradas hoy: `_ux.html`, Ganancia Real, Stock masivo, Despacho, Dashboard. (3) Faltan `base.html` (menú, modales, chat), Costos, Tendencias, Precios, Embudo, Promociones y los strings de `global.js`.
   (4) Cuando no quede ninguno: un nonce por pedido (`g.csp_nonce` + `nonce="{{ csp_nonce }}"` en cada `<script>` inline) y `script-src 'self' 'nonce-…'`; con el nonce puesto el navegador IGNORA `'unsafe-inline'`, así que activarlo antes de migrar todo rompe
   la app. Probar antes con `Content-Security-Policy-Report-Only`. `style-src 'unsafe-inline'` se queda (840 `style=`: bajo riesgo). Al probar en el navegador local, NUNCA enviar formularios de verdad (`form.submit()` real manda un POST al servidor local, que usa la base de producción).
+- **Fase 1 de la auditoría de 78 puntos: integración con MeLi (2026-10-07, migración 0039)**: verificado con GET reales de solo lectura. (a) El piso del envío gratis NO es `free_shipping_min_ticket` (no existe): sale de
+  `GET /users/{id}/shipping_preferences` → `mandatory_settings.price_limit` (+ `free_configurations`) y de `shipping.free_shipping` / tag `mandatory_free_shipping` de cada publicación (`envio_gratis.py`); nunca hardcodear un piso.
+  (b) `GET /users/{id}/shipping_options/free` da 400 si no se le manda `item_id` o `dimensions` (`10x20x30,500`): antes `calcular_desglose_real` devolvía `costo_envio = None` y `/api/simular_costo` mostraba la ganancia sin el envío; ahora pasa el `item_id`.
+  (c) Mercado Libre NO manda cabeceras de rate limit: `meli_http.frenar_segun_cabeceras` es una red de seguridad (429/503 + `Retry-After`, o `X-RateLimit-*` si algún día aparecen); `llamar_api_meli` comparte la pausa.
+  (d) La paginación de `/orders/search` ya partía la ventana de fechas; el retiro de canceladas (`_ids_ordenes_canceladas`) ahora también (ventanas `order.date_last_updated`, 540 días sin `desde`).
+  (e) `productos_padre.catalogo_detalle JSONB` guarda lo útil de `/price_to_win` (condiciones/`boosts`); `catalogo_precio_para_ganar NUMERIC` queda como resumen. Faltan la Fase 1 puntos 6, 7 y 8 (corte Flex dinámico, atributos faltantes, preguntas lentas): ver `PENDIENTES.md`.
 - **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real

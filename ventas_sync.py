@@ -640,31 +640,60 @@ def _completar_financiacion(usuario_id, cuenta_id, access_token, dias=DIAS_COMPL
         return 0
 
 
-def _ids_ordenes_canceladas(access_token, seller_id, desde=None):
+DIAS_HISTORIAL_CANCELADAS = 540
+
+
+def _pagina_canceladas(headers, seller_id, desde, hasta, offset):
+    """(ids de la página, total de la ventana) o None si Mercado Libre no respondió."""
+    params = {"seller": seller_id, "order.status": "cancelled", "sort": "date_desc", "offset": offset, "limit": TAMANO_PAGINA,
+              "order.date_last_updated.from": _iso(desde), "order.date_last_updated.to": _iso(hasta)}
+    try:
+        resp = meli_http.get("https://api.mercadolibre.com/orders/search", headers=headers, params=params, timeout=15)
+    except Exception as e:
+        print(f"[VentasSync] ⚠️ No se pudo consultar las órdenes canceladas: {e}")
+        return None
+    if resp.status_code != 200:
+        print(f"[VentasSync] ⚠️ Órdenes canceladas: {resp.status_code} - {resp.text[:200]}")
+        return None
+    datos = resp.json()
+    return [str(o["id"]) for o in (datos.get("results") or []) if o.get("id")], (datos.get("paging") or {}).get("total", 0)
+
+
+def _ids_canceladas_en_ventana(headers, seller_id, desde, hasta):
     """
-    IDs de las órdenes canceladas en Mercado Libre. Con `desde`, solo las que CAMBIARON desde esa fecha (order.date_last_updated):
-    el sync pide las órdenes por fecha de creación, así que una orden creada hace 8 días y cancelada hoy no se volvía a ver nunca.
+    Las canceladas cuya última modificación cae en [desde, hasta]. Si la ventana tiene más de LIMITE_OFFSET_MELI resultados se parte por fecha en dos mitades
+    (como _sincronizar_rango) en vez de paginar más allá del tope, que MeLi rechaza: antes lo que quedaba después del resultado 1000 se perdía sin avisar.
+    None si Mercado Libre no respondió en algún tramo (no se sabe: no se retira nada).
+    """
+    primera = _pagina_canceladas(headers, seller_id, desde, hasta, 0)
+    if primera is None:
+        return None
+    ids, total = primera
+    if total > LIMITE_OFFSET_MELI and (hasta - desde) > VENTANA_MINIMA:
+        medio = desde + (hasta - desde) / 2
+        a = _ids_canceladas_en_ventana(headers, seller_id, desde, medio)
+        b = _ids_canceladas_en_ventana(headers, seller_id, medio, hasta)
+        return None if a is None or b is None else a + b
+    offset = TAMANO_PAGINA
+    while len(ids) >= offset and offset < min(total, LIMITE_OFFSET_MELI):
+        pagina = _pagina_canceladas(headers, seller_id, desde, hasta, offset)
+        if pagina is None:
+            return None
+        ids += pagina[0]
+        offset += TAMANO_PAGINA
+    return ids
+
+
+def _ids_ordenes_canceladas(access_token, seller_id, desde=None, hasta=None):
+    """
+    IDs de las órdenes canceladas en Mercado Libre que CAMBIARON entre `desde` y `hasta` (order.date_last_updated): el sync pide las órdenes por fecha de
+    creación, así que una orden creada hace 8 días y cancelada hoy no se volvía a ver nunca. Sin `desde` se mira el historial de DIAS_HISTORIAL_CANCELADAS.
     Devuelve None si Mercado Libre no respondió (no se sabe: no se retira nada).
     """
     headers = {"Authorization": f"Bearer {access_token}"}
-    ids, offset = [], 0
-    while True:
-        params = {"seller": seller_id, "order.status": "cancelled", "sort": "date_desc", "offset": offset, "limit": TAMANO_PAGINA}
-        if desde:
-            params["order.date_last_updated.from"] = _iso(desde)
-        try:
-            resp = meli_http.get("https://api.mercadolibre.com/orders/search", headers=headers, params=params, timeout=15)
-        except Exception as e:
-            print(f"[VentasSync] ⚠️ No se pudo consultar las órdenes canceladas: {e}")
-            return None
-        if resp.status_code != 200:
-            print(f"[VentasSync] ⚠️ Órdenes canceladas: {resp.status_code} - {resp.text[:200]}")
-            return None
-        resultados = resp.json().get("results") or []
-        ids += [str(o["id"]) for o in resultados if o.get("id")]
-        offset += TAMANO_PAGINA
-        if len(resultados) < TAMANO_PAGINA or offset >= LIMITE_OFFSET_MELI:
-            return ids
+    hasta = hasta or datetime.now(timezone.utc)
+    desde = desde or hasta - timedelta(days=DIAS_HISTORIAL_CANCELADAS)
+    return _ids_canceladas_en_ventana(headers, seller_id, desde, hasta)
 
 
 def retirar_ventas_canceladas(usuario_id, cuenta_id, access_token, seller_id, desde=None):

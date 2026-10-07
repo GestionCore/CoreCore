@@ -18,9 +18,18 @@ ESTADOS = {
 }
 
 
+def condiciones_del_ganador(detalle):
+    """
+    Las condiciones («boosts») que Mercado Libre informa para sostener el precio ganador: [{"id", "estado", "descripcion"}]. Una publicación puede ganar a $X con
+    envío gratis y a $Y sin él, por eso el precio solo no alcanza. Lista vacía si no hay detalle guardado.
+    """
+    boosts = (detalle or {}).get("boosts") if isinstance(detalle, dict) else None
+    return [{"id": b.get("id"), "estado": b.get("status"), "descripcion": b.get("description")} for b in (boosts or []) if isinstance(b, dict)]
+
+
 def obtener(cursor, cuenta_id):
     cursor.execute("""
-        SELECT id_meli, titulo, thumbnail, permalink, precio, catalogo_estado, catalogo_precio_para_ganar
+        SELECT id_meli, titulo, thumbnail, permalink, precio, catalogo_estado, catalogo_precio_para_ganar, catalogo_detalle
         FROM productos_padre
         WHERE cuenta_id = %s AND estado = 'active' AND catalog_product_id IS NOT NULL AND catalogo_estado IS NOT NULL
         ORDER BY titulo
@@ -31,13 +40,13 @@ def obtener(cursor, cuenta_id):
 
     calculo = {i["id_meli"]: i for i in precios.obtener_datos(cursor, cuenta_id)["items"]}
     items = []
-    for id_meli, titulo, thumbnail, permalink, precio, estado, para_ganar in filas:
+    for id_meli, titulo, thumbnail, permalink, precio, estado, para_ganar, detalle in filas:
         precio = float(precio or 0)
         para_ganar = float(para_ganar) if para_ganar is not None else None
         tono, texto = ESTADOS.get(estado, ("neutral", "Sin información de competencia todavía"))
         item = {"id_meli": id_meli, "titulo": titulo or id_meli, "thumbnail": thumbnail, "permalink": permalink, "precio": precio,
                 "estado": estado, "tono": tono, "texto": texto, "para_ganar": None, "diferencia": None, "diferencia_pct": None,
-                "neto_para_ganar": None, "conviene": None}
+                "neto_para_ganar": None, "conviene": None, "condiciones": condiciones_del_ganador(detalle)}
         if estado == "competing" and para_ganar and 0 < para_ganar < precio:
             item["para_ganar"] = para_ganar
             item["diferencia"] = round(precio - para_ganar, 2)

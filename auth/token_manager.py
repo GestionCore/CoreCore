@@ -27,6 +27,7 @@ from psycopg.errors import LockNotAvailable
 
 import crypto_utils
 import db
+import meli_http
 from auth import oauth_meli
 
 MARGEN_SEGURIDAD_MINUTOS = 5  # refrescamos un poco antes de que venza de verdad
@@ -179,11 +180,14 @@ def llamar_api_meli(cuenta_id, metodo, url, **kwargs):
     headers = kwargs.pop("headers", {})
     headers["Authorization"] = f"Bearer {access_token}"
 
-    resp = requests.request(metodo, url, headers=headers, **kwargs)
+    # Freno compartido con meli_http: si MeLi pidió esperar (429 / cabeceras de límite), todos esperan antes de volver a pedir
+    meli_http.respetar_pausa()
+    resp = meli_http.frenar_segun_cabeceras(requests.request(metodo, url, headers=headers, **kwargs))
 
     if resp.status_code == 401:
         access_token = refrescar_token_rechazado(cuenta_id, access_token)
         headers["Authorization"] = f"Bearer {access_token}"
-        resp = requests.request(metodo, url, headers=headers, **kwargs)
+        meli_http.respetar_pausa()
+        resp = meli_http.frenar_segun_cabeceras(requests.request(metodo, url, headers=headers, **kwargs))
 
     return resp

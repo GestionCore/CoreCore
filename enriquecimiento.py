@@ -172,7 +172,7 @@ def refrescar_catalogo(usuario_id, cuenta_id, access_token, tope=TOPE["catalogo"
             if resp.status_code != 200:
                 return item_id, None
             d = resp.json()
-            return item_id, (d.get("status"), d.get("price_to_win"))
+            return item_id, (d.get("status"), precio_para_ganar(d.get("price_to_win")), detalle_catalogo(d))
         except Exception:
             return item_id, None
 
@@ -181,11 +181,38 @@ def refrescar_catalogo(usuario_id, cuenta_id, access_token, tope=TOPE["catalogo"
         cursor = conexion.cursor()
         for item_id, r in resultados:
             if r:
-                cursor.execute("UPDATE productos_padre SET catalogo_estado = %s, catalogo_precio_para_ganar = %s, catalogo_en = now() WHERE cuenta_id = %s AND id_meli = %s",
-                               (r[0], r[1], cuenta_id, item_id))
+                cursor.execute("UPDATE productos_padre SET catalogo_estado = %s, catalogo_precio_para_ganar = %s, catalogo_detalle = %s::jsonb, catalogo_en = now() "
+                               "WHERE cuenta_id = %s AND id_meli = %s", (r[0], r[1], json.dumps(r[2]), cuenta_id, item_id))
             else:
                 cursor.execute("UPDATE productos_padre SET catalogo_en = now() WHERE cuenta_id = %s AND id_meli = %s", (cuenta_id, item_id))
     return len(ids)
+
+
+def precio_para_ganar(valor):
+    """
+    El número que se guarda en catalogo_precio_para_ganar. Mercado Libre informa `price_to_win` como un número, pero si algún día lo manda como un
+    objeto con reglas (un monto por condición) un float(dict) rompería la actualización de TODO el lote: acá se toma el monto principal o se deja en None
+    (el detalle completo queda igual en catalogo_detalle).
+    """
+    if isinstance(valor, dict):
+        valor = valor.get("price") if valor.get("price") is not None else valor.get("amount")
+    if isinstance(valor, bool) or valor is None:
+        return None
+    try:
+        return float(valor)
+    except (TypeError, ValueError):
+        return None
+
+
+def detalle_catalogo(d):
+    """Lo que vale la pena guardar de la respuesta de price_to_win: no el JSON entero (puede traer datos de otros vendedores), solo lo que se usa."""
+    ganador = d.get("winner") if isinstance(d.get("winner"), dict) else None
+    campos = {
+        "price_to_win": d.get("price_to_win"), "status": d.get("status"), "visit_share": d.get("visit_share"),
+        "competitors_sharing_first_place": d.get("competitors_sharing_first_place"), "boosts": d.get("boosts"),
+        "winner": {"price": ganador.get("price"), "boosts": ganador.get("boosts")} if ganador else None,
+    }
+    return {k: v for k, v in campos.items() if v is not None}
 
 
 def _opinion_critica(r):

@@ -7,6 +7,7 @@ de blogs de terceros.
 """
 import time
 from concurrent.futures import ThreadPoolExecutor
+import envio_gratis
 import meli_http
 
 # Nombre de categoría por category_id — es un dato global de MeLi (no
@@ -92,12 +93,15 @@ def obtener_categorias_del_catalogo(headers, cursor, limite=30):
     return [{"id": cat_id, "nombre": nombre} for cat_id, nombre in pares]
 
 
-def calcular_desglose_real(access_token, precio, category_id, listing_type_id, ofrece_cuotas, site_id="MLA"):
+def calcular_desglose_real(access_token, precio, category_id, listing_type_id, ofrece_cuotas, site_id="MLA", item_id=None, dimensiones=None):
     """
     Trae el desglose REAL de una venta a este precio: comisión base,
     costo de cuotas (si aplica), costo fijo, y costo de envío — todo
     consultado directo a la API oficial, no calculado con porcentajes
     fijos que podrían estar desactualizados.
+
+    El costo de envío necesita saber qué paquete es: `item_id` (una publicación propia) o `dimensiones` ("alto x ancho x largo en cm, peso en
+    gramos", p. ej. "10x20x30,500"). Sin ninguno de los dos `costo_envio` queda en None y `envio_motivo` explica por qué.
     """
     headers = {"Authorization": f"Bearer {access_token}"}
 
@@ -129,23 +133,23 @@ def calcular_desglose_real(access_token, precio, category_id, listing_type_id, o
     except Exception as e:
         return {"error": f"Error de conexión consultando comisión: {e}"}
 
-    # 2. Costo de envío real / elegibilidad de envío gratis, vía shipping_options
+    # 2. Envío: el piso del envío gratis sale de las preferencias del vendedor (nunca un número supuesto) y el costo de /shipping_options/free,
+    #    que Mercado Libre rechaza (400) si no se le manda la publicación (item_id) o el peso y las medidas.
     costo_envio = None
     envio_obligatorio_gratis = None
+    envio_gratis_desde = None
+    envio_motivo = None
     try:
         user_id_resp = meli_http.get("https://api.mercadolibre.com/users/me", headers=headers)
         user_id = user_id_resp.json().get("id") if user_id_resp.status_code == 200 else None
         if user_id:
-            resp_envio = meli_http.get(
-                f"https://api.mercadolibre.com/users/{user_id}/shipping_options/free",
-                headers=headers,
-                params={"item_price": precio, "listing_type_id": listing_type_id, "mode": "me2", "condition": "new", "logistic_type": "drop_off"},
-            )
-            if resp_envio.status_code == 200:
-                data_envio = resp_envio.json()
-                opciones_envio = data_envio.get("coverage", {}).get("all_country", {}).get("list_cost")
-                costo_envio = opciones_envio if opciones_envio is not None else data_envio.get("list_cost")
-                envio_obligatorio_gratis = "mandatory_free_shipping" in (data_envio.get("tags") or [])
+            preferencias = envio_gratis.consultar(headers, user_id)
+            if preferencias:
+                envio_gratis_desde = preferencias["umbral_obligatorio"]
+                envio_obligatorio_gratis = envio_gratis.es_obligatorio(precio, preferencias)
+            costo_envio, obligatorio_del_calculo, envio_motivo = envio_gratis.costo_para_vendedor(headers, user_id, precio, item_id, dimensiones, listing_type_id)
+            if obligatorio_del_calculo:
+                envio_obligatorio_gratis = True
     except Exception as e:
         print(f"[Calculadora] ⚠️ No se pudo consultar el costo de envío: {e}")
 
@@ -159,5 +163,7 @@ def calcular_desglose_real(access_token, precio, category_id, listing_type_id, o
         "cargo_fijo": cargo_fijo,
         "costo_envio": round(costo_envio, 2) if costo_envio is not None else None,
         "envio_obligatorio_gratis": envio_obligatorio_gratis,
+        "envio_gratis_desde": envio_gratis_desde,
+        "envio_motivo": envio_motivo,
         "recibis": round(ganancia_antes_de_costo_producto, 2),
     }

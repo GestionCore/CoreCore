@@ -65,11 +65,50 @@ def _respetar_pausa():
         time.sleep(min(espera, PAUSA_TRAS_RECHAZO))
 
 
+respetar_pausa = _respetar_pausa           # para quien llama a MeLi sin pasar por acá (auth.token_manager.llamar_api_meli)
+
+# Freno por cabeceras. Mercado Libre NO manda cabeceras de límite en sus respuestas normales (se miraron 6 respuestas reales: ninguna), así que esto es una red de
+# seguridad: si algún día las manda (o responde 429/503 con Retry-After), todos los hilos del proceso esperan a que se renueve el cupo en vez de seguir
+# disparando hasta recibir el rechazo. El límite es de la aplicación, no de una cuenta: la pausa es global a propósito y no guarda datos de ninguna cuenta.
+REMANENTE_MINIMO = 2
+_CAB_REMANENTE = ("x-ratelimit-remaining", "x-rate-limit-remaining", "ratelimit-remaining")
+_CAB_REINICIO = ("x-ratelimit-reset", "x-rate-limit-reset", "ratelimit-reset", "retry-after")
+
+
+def _numero(valor):
+    try:
+        return float(valor)
+    except (TypeError, ValueError):
+        return None
+
+
+def espera_segun_cabeceras(estado, cabeceras):
+    """Segundos que conviene esperar según lo que informa la respuesta, o 0. `x-ratelimit-reset` puede venir como segundos que faltan o como hora epoch."""
+    cab = {str(k).lower(): v for k, v in (cabeceras or {}).items()}
+    restante = next((n for n in (_numero(cab[c]) for c in _CAB_REMANENTE if c in cab) if n is not None), None)
+    reinicio = next((n for n in (_numero(cab[c]) for c in _CAB_REINICIO if c in cab) if n is not None), None)
+    if reinicio is not None and reinicio > 10_000_000:                   # hora epoch, no segundos
+        reinicio = reinicio - time.time()
+    if reinicio is None or reinicio <= 0:
+        return PAUSA_TRAS_RECHAZO if estado == 429 else 0.0
+    if estado in (429, 503) or (restante is not None and restante <= REMANENTE_MINIMO):
+        return min(reinicio, PAUSA_TRAS_RECHAZO)
+    return 0.0
+
+
+def frenar_segun_cabeceras(resp):
+    espera = espera_segun_cabeceras(getattr(resp, "status_code", None), getattr(resp, "headers", None))
+    if espera > 0:
+        with _candado:
+            _pausa["hasta"] = max(_pausa["hasta"], time.monotonic() + espera)
+    return resp
+
+
 def _pedir(metodo, url, kwargs):
     kwargs.setdefault("timeout", 15)
     _respetar_pausa()
     try:
-        return getattr(_sesion, metodo)(url, **kwargs)
+        return frenar_segun_cabeceras(getattr(_sesion, metodo)(url, **kwargs))
     except requests.exceptions.RetryError:
         with _candado:
             _pausa["hasta"] = time.monotonic() + PAUSA_TRAS_RECHAZO

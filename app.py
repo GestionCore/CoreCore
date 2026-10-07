@@ -28,6 +28,7 @@ import facturacion
 import historial_precios as historial_precios_mod
 import costos as costos_mod
 import calculadora_costos
+import envio_gratis as envio_gratis_mod
 import meli_http
 import logistica
 import despacho as despacho_mod
@@ -2572,7 +2573,10 @@ def api_calculadora_costos():
     ofrece_cuotas = request.args.get("ofrece_cuotas") == "true"
     if not category_id or precio <= 0:
         return jsonify({"error": "Faltan datos (precio y categoría)"}), 400
-    resultado = calculadora_costos.calcular_desglose_real(access_token, precio, category_id, listing_type_id, ofrece_cuotas)
+    dimensiones = request.args.get("dimensiones") or None            # "alto x ancho x largo en cm, peso en gramos": 10x20x30,500
+    if dimensiones and not envio_gratis_mod.DIMENSIONES_VALIDAS.match(dimensiones):
+        return jsonify({"error": "Las medidas van como 10x20x30,500 (alto x ancho x largo en cm, peso en gramos)."}), 400
+    resultado = calculadora_costos.calcular_desglose_real(access_token, precio, category_id, listing_type_id, ofrece_cuotas, dimensiones=dimensiones)
     return jsonify(resultado)
 
 
@@ -2618,7 +2622,8 @@ def api_simular_costo():
     if not category_id:
         return jsonify({"error": "No se pudo determinar la categoría de la publicación."}), 502
 
-    desglose = calculadora_costos.calcular_desglose_real(access_token, precio, category_id, "gold_special", ofrece_cuotas=False)
+    # Con la publicación (item_id) Mercado Libre sí calcula el envío; antes costo_envio volvía siempre None y la ganancia salía sin descontarlo
+    desglose = calculadora_costos.calcular_desglose_real(access_token, precio, category_id, "gold_special", ofrece_cuotas=False, item_id=id_meli)
     if "error" in desglose:
         return jsonify(desglose), 502
 
