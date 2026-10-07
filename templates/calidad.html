@@ -59,7 +59,7 @@
         <div class="ux-calidad-cab">
             {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
             <div class="ux-calidad-titulo">
-                <div>{% if i.permalink %}<a href="{{ i.permalink }}" target="_blank" rel="noopener"><b>{{ i.titulo }}</b> ↗</a>{% else %}<b>{{ i.titulo }}</b>{% endif %}</div>
+                <div>{% if i.permalink %}<a href="{{ i.permalink }}" target="_blank" rel="noopener"><b>{{ i.titulo }}</b> ↗</a>{% else %}<b>{{ i.titulo }}</b>{% endif %}{% if i.etiqueta %} <span class="ux-pill ux-neutral ux-pill-suave">{{ i.etiqueta }}</span>{% endif %}</div>
                 <div class="text-muted" style="font-size:0.8em;">{{ i.visitas|numero }} visitas · {{ i.unidades }} venta{{ 's' if i.unidades != 1 }}{% if i.tendencia is not none %} · <span class="{{ 'text-danger' if i.tendencia < 0 else 'text-success' }}">{{ '▲' if i.tendencia >= 0 else '▼' }} {{ i.tendencia|abs }}%</span> visitas{% endif %}</div>
             </div>
             <span class="ux-pill ux-{{ i.tono }}">{{ i.score }}/100</span>
@@ -89,7 +89,7 @@
         {% for i in mas_visitadas %}
         <div class="ux-rank-fila ux-accion">
             {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
-            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}</div><div class="ux-rank-barra"><span style="width:{{ i.pct_visitas }}%;"></span></div></div>
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}{% if i.etiqueta %} <span class="ux-pill ux-neutral ux-pill-suave">{{ i.etiqueta }}</span>{% endif %}</div><div class="ux-rank-barra"><span style="width:{{ i.pct_visitas }}%;"></span></div></div>
             <div class="ux-rank-valor"><b>{{ i.visitas|numero }}</b><div class="text-muted" style="font-size:0.82em;">{{ i.conversion|string|replace('.', ',') ~ '% conv.' if i.conversion is not none else '' }}</div></div>
         </div>
         {% endfor %}
@@ -101,7 +101,7 @@
         {% for i in perdiendo_visitas %}
         <div class="ux-rank-fila ux-danger">
             {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
-            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}</div><div class="text-muted" style="font-size:0.8em;">{{ i.visitas_previas|numero }} → {{ i.visitas|numero }} visitas</div></div>
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}{% if i.etiqueta %} <span class="ux-pill ux-neutral ux-pill-suave">{{ i.etiqueta }}</span>{% endif %}</div><div class="text-muted" style="font-size:0.8em;">{{ i.visitas_previas|numero }} → {{ i.visitas|numero }} visitas</div></div>
             <div class="ux-rank-valor"><span class="ux-pill ux-danger">▼ {{ i.tendencia|abs }}%</span></div>
         </div>
         {% endfor %}
@@ -111,7 +111,7 @@
         {% for i in visitas_sin_ventas %}
         <div class="ux-rank-fila ux-warn">
             {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
-            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}</div></div>
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ i.titulo }}{% if i.etiqueta %} <span class="ux-pill ux-neutral ux-pill-suave">{{ i.etiqueta }}</span>{% endif %}</div></div>
             <div class="ux-rank-valor"><b>{{ i.visitas|numero }}</b><div class="text-muted" style="font-size:0.82em;">0 ventas</div></div>
         </div>
         {% endfor %}
@@ -123,21 +123,39 @@
 </div>
 {% endif %}
 
-<!-- ── 6. DETALLE ──────────────────────────────────────────────────────── -->
+<!-- ── 6. DETALLE: una fila por modelo y talle; si está publicado más de una vez (Clásica, Premium, a distintos precios) se suman y se abre el detalle de cada una ── -->
 <details class="ux-detalle">
-    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-chart"/></svg> Todas las publicaciones activas <span class="ux-detalle-nota">{{ total_activas }} · puntaje, visitas y ventas</span></summary>
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-chart"/></svg> Todas las publicaciones activas <span class="ux-detalle-nota">{{ total_activas }} publicaciones · {{ grupos|length }} {{ 'modelo y ' ~ vocab.v1 if grupos|length == 1 else 'modelos y ' ~ vocab.vN }} · puntaje, visitas y ventas</span></summary>
     <div class="ux-detalle-cuerpo" style="overflow-x:auto;">
+        {% if grupos|length < total_activas %}
+        <div class="text-muted" style="font-size:0.85em; margin-bottom:10px; line-height:1.5;">Cuando un mismo modelo y {{ vocab.v1 }} está publicado más de una vez (por ejemplo <b>Clásica</b> y <b>Premium</b>, a precios distintos), se suman las visitas y las ventas en una sola fila; tocá <b>«ver el detalle»</b> para compararlas, porque cada una convierte distinto.</div>
+        {% endif %}
         <table class="data-table" data-ordenable>
             <thead><tr><th data-orden="texto">Publicación</th><th class="num" data-orden="num" data-primero="asc" title="Primero las de menor calidad: son las que más conviene mejorar">Calidad</th><th class="num" data-orden="num">Visitas 14 d</th><th class="num" data-orden="num">Ventas 14 d</th><th class="num" data-orden="num">Conversión</th></tr></thead>
             <tbody>
-                {% for i in items %}
+                {% for gr in grupos %}
+                {% set indice = loop.index %}
                 <tr>
-                    <td class="ux-col-titulo celda-titulo-1l" data-orden="{{ i.titulo|lower }}"><div class="ux-titulo-thumb">{% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<span class="titulo-1l" title="{{ i.titulo }}">{{ i.titulo }}</span></div></td>
-                    <td class="num" data-orden="{{ i.score if i.score is not none else '' }}">{% if i.score is not none %}<span class="ux-pill ux-{{ i.tono }}">{{ i.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
-                    <td class="num" data-orden="{{ i.visitas }}">{{ i.visitas|numero }}{% if i.tendencia is not none %} <span class="{{ 'text-danger' if i.tendencia < 0 else 'text-success' }}" style="font-size:0.8em;">{{ '▲' if i.tendencia >= 0 else '▼' }}{{ i.tendencia|abs }}%</span>{% endif %}</td>
-                    <td class="num">{{ i.unidades }}</td>
-                    <td class="num" data-orden="{{ i.conversion if i.conversion is not none else '' }}">{{ (i.conversion|string|replace('.', ',') ~ '%') if i.conversion is not none else '—' }}</td>
+                    <td class="ux-col-titulo celda-titulo-1l" data-orden="{{ gr.titulo|lower }}">
+                        <div class="ux-titulo-thumb">{% if gr.thumbnail %}<img src="{{ gr.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}{% if gr.talle and gr.talle != 'Único' %}<span class="ux-pill ux-neutral" style="flex-shrink:0;" title="{{ vocab.V1 }}">{{ gr.talle }}</span>{% endif %}<span class="titulo-1l" title="{{ gr.titulo }}">{{ gr.titulo }}</span></div>
+                        {% if gr.publicaciones|length > 1 %}<div><button type="button" class="ux-toggle-variantes" data-variantes="{{ indice }}" aria-expanded="false">{{ gr.publicaciones|length }} publicaciones · ver el detalle <span aria-hidden="true">▸</span></button></div>{% endif %}
+                    </td>
+                    <td class="num" data-orden="{{ gr.score if gr.score is not none else '' }}">{% if gr.score is not none %}<span class="ux-pill ux-{{ gr.tono }}">{{ gr.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td class="num" data-orden="{{ gr.visitas }}">{{ gr.visitas|numero }}{% if gr.tendencia is not none %} <span class="{{ 'text-danger' if gr.tendencia < 0 else 'text-success' }}" style="font-size:0.8em;">{{ '▲' if gr.tendencia >= 0 else '▼' }}{{ gr.tendencia|abs }}%</span>{% endif %}</td>
+                    <td class="num" data-orden="{{ gr.unidades }}">{{ gr.unidades }}</td>
+                    <td class="num" data-orden="{{ gr.conversion if gr.conversion is not none else '' }}">{{ (gr.conversion|string|replace('.', ',') ~ '%') if gr.conversion is not none else '—' }}</td>
                 </tr>
+                {% if gr.publicaciones|length > 1 %}
+                {% for i in gr.publicaciones %}
+                <tr class="ux-subfila" data-variantes-de="{{ indice }}" hidden>
+                    <td class="ux-col-titulo"><span class="text-muted">└</span> <b>{{ i.etiqueta or i.id_meli }}</b>{% if i.permalink %} <a href="{{ i.permalink }}" target="_blank" rel="noopener" title="Abrir la publicación en Mercado Libre">↗</a>{% endif %}</td>
+                    <td class="num">{% if i.score is not none %}<span class="ux-pill ux-{{ i.tono }}">{{ i.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td class="num">{{ i.visitas|numero }}{% if i.tendencia is not none %} <span class="{{ 'text-danger' if i.tendencia < 0 else 'text-success' }}" style="font-size:0.8em;">{{ '▲' if i.tendencia >= 0 else '▼' }}{{ i.tendencia|abs }}%</span>{% endif %}</td>
+                    <td class="num">{{ i.unidades }}</td>
+                    <td class="num">{{ (i.conversion|string|replace('.', ',') ~ '%') if i.conversion is not none else '—' }}</td>
+                </tr>
+                {% endfor %}
+                {% endif %}
                 {% endfor %}
             </tbody>
         </table>

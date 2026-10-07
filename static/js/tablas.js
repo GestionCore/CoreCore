@@ -152,12 +152,22 @@
         }
     }
 
+    // «N publicaciones · ver el detalle»: abre y cierra las filas de detalle (class="ux-subfila" data-variantes-de="<id>") de la fila que lo pidió
+    function alternarDetalle(boton) {
+        const abrir = boton.getAttribute('aria-expanded') !== 'true';
+        boton.setAttribute('aria-expanded', abrir);
+        const flecha = boton.querySelector('span');
+        if (flecha) flecha.textContent = abrir ? '▾' : '▸';
+        document.querySelectorAll(`tr[data-variantes-de="${boton.dataset.variantes}"]`).forEach(fila => { fila.hidden = !abrir; });
+    }
+
     function iniciarTodas() { document.querySelectorAll('table[data-ordenable]').forEach(iniciar); }
 
-    const api = { valorNumerico, comparar, siguienteSentido, ordenarGrupos, etiquetaDeOrden, iniciar, iniciarTodas };
+    const api = { alternarDetalle, valorNumerico, comparar, siguienteSentido, ordenarGrupos, etiquetaDeOrden, iniciar, iniciarTodas };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;       // para probarlo con node
     if (typeof window !== 'undefined') {
         window.Tablas = api;
+        document.addEventListener('click', (e) => { const b = e.target.closest('.ux-toggle-variantes'); if (b) alternarDetalle(b); });
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciarTodas);
         else iniciarTodas();
     }

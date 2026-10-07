@@ -672,14 +672,5 @@ function _iniciarHeatmap() {
     }).catch(() => { document.getElementById('mapa-calor').hidden = true; const v = document.getElementById('heatmap-empty'); v.style.display = ''; v.textContent = 'No se pudo cargar el gráfico. Revisá la conexión.'; });
 }
 
-// Detalle por publicación (talle) de cada modelo de la tabla de márgenes: plegado hasta que se pide.
-document.addEventListener('click', (e) => {
-    const b = e.target.closest('.ux-toggle-variantes');
-    if (!b) return;
-    const abrir = b.getAttribute('aria-expanded') !== 'true';
-    b.setAttribute('aria-expanded', abrir);
-    b.querySelector('span').textContent = abrir ? '▾' : '▸';
-    document.querySelectorAll(`tr[data-variantes-de="${b.dataset.variantes}"]`).forEach(tr => { tr.hidden = !abrir; });
-});
 </script>
 {% endblock %}
