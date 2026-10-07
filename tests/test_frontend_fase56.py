@@ -181,3 +181,15 @@ def test_las_pantallas_y_el_layout_migrados_no_vuelven_a_tener_manejadores_inlin
     assert "base.html" in SIN_INLINE
     for nombre in SIN_INLINE:
         assert not INLINE.search(_leer("templates", nombre)), nombre
+
+
+# ── 54. El PDF de Ganancia Real no sale cortado ────────────────────────────────────────────────────────────────────────────────────────────
+def test_las_filas_que_el_ver_mas_esconde_solo_se_esconden_en_pantalla_y_salen_en_el_pdf():
+    css = _leer("static", "css", "style.css")
+    assert "@media screen { .oculto-mostrar-mas { display: none !important; } }" in css
+    assert re.search(r"(?m)^\.oculto-mostrar-mas \{ display: none", css) is None                              # ya no hay una regla que lo esconda también al imprimir
+    imprimir = css[css.index("@media print {"):]
+    assert '[data-click="mostrarMasGenerico"], .ux-toggle-variantes { display: none !important; }' in imprimir
+    # el historial y el ranking de modelos de Ganancia Real son los que se recortan con «Ver más»: siguen usando esa clase
+    t = _leer("templates", "metricas.html")
+    assert t.count("oculto-mostrar-mas") >= 2 and 'data-click="mostrarMasGenerico"' in t

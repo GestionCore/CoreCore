@@ -926,7 +926,9 @@ body.modo-despacho-limpio { padding-top: 20px; }
 }
 
 /* ---------- "Mostrar más" genérico ---------- */
-.oculto-mostrar-mas { display: none !important; }   /* !important: ux.css se carga después y le ponía display:flex a las filas del ranking de Publicidad ("Ver las 14 restantes" no ocultaba nada) */
+/* Lo que el «Ver más» deja escondido se esconde SOLO en pantalla: al imprimir (el PDF de Ganancia Real es lo que se le manda al contador) tiene que salir todo, no cortado en la fila 10.
+   !important: ux.css se carga después y le ponía display:flex a las filas del ranking de Publicidad («Ver las 14 restantes» no ocultaba nada) */
+@media screen { .oculto-mostrar-mas { display: none !important; } }
 
 /* ---------- Checklist "Completá tu perfil" (Dashboard) ---------- */
 .checklist-barra { height: 8px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; flex: 1; }
@@ -1113,6 +1115,7 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
     .page-container { max-width: none; padding: 0; animation: none; }
     .panel, .stat-chip, table.data-table { break-inside: avoid; }
     a { color: inherit !important; text-decoration: none !important; }
+    [data-click="mostrarMasGenerico"], .ux-toggle-variantes { display: none !important; }       /* los botones «Ver N más» y «ver el detalle» no sirven en papel */
 }
 
 /* ---------- Protector de inactividad ----------
