@@ -127,16 +127,16 @@
 <details class="ux-detalle">
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-chart"/></svg> Todas las publicaciones activas <span class="ux-detalle-nota">{{ total_activas }} · puntaje, visitas y ventas</span></summary>
     <div class="ux-detalle-cuerpo" style="overflow-x:auto;">
-        <table class="data-table">
-            <thead><tr><th>Publicación</th><th class="num">Calidad</th><th class="num">Visitas 14 d</th><th class="num">Ventas 14 d</th><th class="num">Conversión</th></tr></thead>
+        <table class="data-table" data-ordenable>
+            <thead><tr><th data-orden="texto">Publicación</th><th class="num" data-orden="num" data-primero="asc" title="Primero las de menor calidad: son las que más conviene mejorar">Calidad</th><th class="num" data-orden="num">Visitas 14 d</th><th class="num" data-orden="num">Ventas 14 d</th><th class="num" data-orden="num">Conversión</th></tr></thead>
             <tbody>
                 {% for i in items %}
                 <tr>
-                    <td class="ux-col-titulo"><div class="ux-titulo-thumb">{% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<span>{{ i.titulo }}</span></div></td>
-                    <td class="num">{% if i.score is not none %}<span class="ux-pill ux-{{ i.tono }}">{{ i.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
-                    <td class="num">{{ i.visitas|numero }}{% if i.tendencia is not none %} <span class="{{ 'text-danger' if i.tendencia < 0 else 'text-success' }}" style="font-size:0.8em;">{{ '▲' if i.tendencia >= 0 else '▼' }}{{ i.tendencia|abs }}%</span>{% endif %}</td>
+                    <td class="ux-col-titulo celda-titulo-1l" data-orden="{{ i.titulo|lower }}"><div class="ux-titulo-thumb">{% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<span class="titulo-1l" title="{{ i.titulo }}">{{ i.titulo }}</span></div></td>
+                    <td class="num" data-orden="{{ i.score if i.score is not none else '' }}">{% if i.score is not none %}<span class="ux-pill ux-{{ i.tono }}">{{ i.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td class="num" data-orden="{{ i.visitas }}">{{ i.visitas|numero }}{% if i.tendencia is not none %} <span class="{{ 'text-danger' if i.tendencia < 0 else 'text-success' }}" style="font-size:0.8em;">{{ '▲' if i.tendencia >= 0 else '▼' }}{{ i.tendencia|abs }}%</span>{% endif %}</td>
                     <td class="num">{{ i.unidades }}</td>
-                    <td class="num">{{ (i.conversion|string|replace('.', ',') ~ '%') if i.conversion is not none else '—' }}</td>
+                    <td class="num" data-orden="{{ i.conversion if i.conversion is not none else '' }}">{{ (i.conversion|string|replace('.', ',') ~ '%') if i.conversion is not none else '—' }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

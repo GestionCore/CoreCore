@@ -533,6 +533,10 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
   (`/api/alertas/pendientes`, hoy la salud de tokens, con "Listo") en `_avisos` y de ahí salen la campana, los contadores del menú (`_actualizarBadgeNav`) y un toast SOLO cuando
   algo subió (la primera lectura de la sesión no avisa). Para sumar un aviso nuevo: un candidato más en `armar_avisos` (con su prueba), no otro contador en el HTML.
   Los textos externos entran por `textContent`. No hay mails ni notificaciones del navegador todavía (falta definir proveedor de mail).
+- **Tablas ordenables (2026-10-07)**: `static/js/tablas.js` (se carga en `base.html`). `<table data-ordenable>` + `<th data-orden="num|texto">` (y `data-primero="asc|desc"` si la primera vez no es la natural);
+  la celda usa su `data-orden` si lo tiene (fechas ISO, números sin formato; vacío = va siempre al final) o su texto leído en formato argentino. Las filas `ux-subfila` viajan con su fila, y si la lista está
+  recortada con «ver más» se ordena TODO y se vuelve a recortar. En celular (tabla de tarjetas) aparece solo un selector «Ordenar por». Los títulos largos van en `<span class="titulo-1l" title="…">` (una línea
+  con «…»; un test exige el `title`). Para sumar una tabla: solo los atributos, sin JS nuevo; `tests/test_tablas.py` ejecuta la lógica con node.
 - **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
 ## `cosas.txt` — bugs reportados por el usuario usando la app real

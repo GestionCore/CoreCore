@@ -208,6 +208,39 @@ tr.ux-fila-ok td:first-child { box-shadow: inset 4px 0 0 var(--success); }
 /* Columna de nombre en tablas anchas: sin esto el título se partía palabra por palabra */
 .data-table td.ux-col-titulo { min-width: 240px; }
 
+/* ---------- Columnas que se ordenan (static/js/tablas.js): el encabezado es un botón con una flecha ---------- */
+.th-orden {
+    display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit;
+    cursor: pointer; text-align: inherit;
+}
+.th-orden::after { content: "↕"; font-size: 0.95em; opacity: 0; transition: opacity var(--transition-fast); }
+.th-orden:hover, .th-orden:focus-visible { color: var(--text-primary); }
+.th-orden:hover::after, .th-orden:focus-visible::after { opacity: 0.5; }
+th[aria-sort="ascending"] .th-orden, th[aria-sort="descending"] .th-orden { color: var(--accent-texto); }
+th[aria-sort="ascending"] .th-orden::after { content: "▲"; opacity: 1; font-size: 0.7em; }
+th[aria-sort="descending"] .th-orden::after { content: "▼"; opacity: 1; font-size: 0.7em; }
+.th-orden:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; border-radius: 4px; }
+
+/* Selector "Ordenar por" (solo celular): ahí la tabla es una lista de tarjetas y no hay encabezados que tocar */
+.orden-movil { display: none; }
+@media (max-width: 720px) {
+    .orden-movil { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--glass-border); }
+    .orden-movil label { font-size: 0.8em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); white-space: nowrap; }
+    .orden-movil select { flex: 1; min-width: 0; }
+}
+
+/* ---------- Títulos de una línea en tablas: "…" al final y el título completo al pasar el mouse (atributo title) ---------- */
+.titulo-1l { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.titulo-fila { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.titulo-fila > .ux-pill { flex-shrink: 0; }
+.ux-titulo-thumb .titulo-1l, .row-flex > .col-titulo-cuerpo { flex: 1 1 0; }
+.row-flex > .col-titulo-cuerpo { min-width: 0; }
+@media (min-width: 721px) {
+    /* la celda del título toma lo que sobra de la tabla y no crece con el texto */
+    .data-table td.celda-titulo-1l { width: 100%; max-width: 0; min-width: 230px; }
+}
+@media (max-width: 720px) { .titulo-1l { white-space: normal; } }   /* en el celular la fila es una tarjeta: el título puede ocupar más de una línea */
+
 /* ---------- Tabla que en celular se vuelve una lista de tarjetas (td con data-label) ---------- */
 @media (max-width: 720px) {
     .ux-tabla-cards, .ux-tabla-cards tbody { display: block; width: 100%; }

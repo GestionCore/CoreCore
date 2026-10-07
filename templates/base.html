@@ -489,6 +489,7 @@ document.addEventListener('keydown', e => {
 
 <script>window.CAPACIDADES = {{ (capacidades or {})|tojson }}; window.MARGEN_MINIMO = {{ (margen_minimo if margen_minimo is defined else 15)|tojson }};</script>
 <script src="{{ url_for('static', filename='js/global.js') }}?v={{ static_v('js/global.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tablas.js') }}?v={{ static_v('js/tablas.js') }}"></script>
 
 <!-- Comentarios: ideas, problemas y preguntas de quien usa CoreLux (llegan a /admin/feedback) -->
 <div class="fb-overlay" id="fb-overlay" hidden onclick="if(event.target===this) cerrarComentario()">

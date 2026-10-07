@@ -178,15 +178,15 @@ async function reactivarAplicar() {
     {% if not productos %}
     <div style="padding:20px;">{{ vacio("Todavía no hay publicaciones", "Sincronizá para traer tu catálogo de Mercado Libre.", "refresh", "accion") }}</div>
     {% else %}
-    <table class="data-table ux-tabla-cards" id="tabla-productos">
+    <table class="data-table ux-tabla-cards" id="tabla-productos" data-ordenable>
         <thead>
             <tr>
-                <th>Modelo y {{ vocab.vN }}</th>
-                <th class="num">Precio</th>
-                <th class="num">Propio</th>
-                {% if capacidades.get('full') is not false %}<th class="num">FULL</th>{% endif %}
-                <th>Ventas 7 días</th>
-                <th title="Cuántos días te dura el stock al ritmo de venta de las últimas 2 semanas">Alcanza para</th>
+                <th data-orden="texto">Modelo y {{ vocab.vN }}</th>
+                <th class="num" data-orden="num">Precio</th>
+                <th class="num" data-orden="num">Propio</th>
+                {% if capacidades.get('full') is not false %}<th class="num" data-orden="num">FULL</th>{% endif %}
+                <th data-orden="num">Ventas 7 días</th>
+                <th data-orden="num" data-primero="asc" title="Cuántos días te dura el stock al ritmo de venta de las últimas 2 semanas (primero, lo que se acaba antes)">Alcanza para</th>
                 <th></th>
             </tr>
         </thead>
@@ -194,16 +194,16 @@ async function reactivarAplicar() {
             {% for p in productos %}
             {% set agotado = p.estado == 'active' and p.stock_propio == 0 and p.stock_full == 0 %}
             <tr data-estado="{{ p.estado }}" data-sin-stock="{{ 1 if agotado else 0 }}" data-riesgo="{{ 1 if p.titulo in modelos_en_riesgo else 0 }}" data-full="{{ 1 if p.stock_full > 0 else 0 }}" class="{% if agotado %}ux-fila-danger{% endif %}">
-                <td class="col-titulo">
+                <td class="col-titulo celda-titulo-1l" data-orden="{{ p.titulo|lower }}">
                     <div class="row-flex">
                         {% if p.thumbnail %}<img src="{{ p.thumbnail }}" alt="" class="thumb-sm" loading="lazy">{% endif %}
-                        <div>
-                            <div style="font-weight:800; font-size:1.02em;">
-                                {{ p.titulo }}
-                                {% if agotado %}<span class="ux-pill ux-danger">Sin stock</span>{% endif %}
-                                {% if p.estado == 'paused' %}<span class="ux-pill ux-warn">Pausada</span>{% elif p.estado != 'active' %}<span class="ux-pill ux-neutral ux-pill-suave">Inactiva</span>{% endif %}
+                        <div class="col-titulo-cuerpo">
+                            <div class="titulo-fila" style="font-weight:800; font-size:1.02em;">
+                                <span class="titulo-1l" title="{{ p.titulo }}">{{ p.titulo }}</span>
                             </div>
                             <div class="flex-gap" style="margin-top:8px; gap:6px;">
+                                {% if agotado %}<span class="ux-pill ux-danger">Sin stock</span>{% endif %}
+                                {% if p.estado == 'paused' %}<span class="ux-pill ux-warn">Pausada</span>{% elif p.estado != 'active' %}<span class="ux-pill ux-neutral ux-pill-suave">Inactiva</span>{% endif %}
                                 {% for v in p.variantes %}
                                 {% set total_v = v.propio + v.full %}
                                 <a href="javascript:void(0)" onclick="abrirDrawer('{{ v.id_meli }}')" style="text-decoration:none;"
@@ -218,7 +218,7 @@ async function reactivarAplicar() {
                         </div>
                     </div>
                 </td>
-                <td class="num col-precio" data-label="Precio">
+                <td class="num col-precio" data-label="Precio" data-orden="{{ p.precio_min }}">
                     {% if p.descuento_pct %}
                     <div class="text-muted" style="text-decoration:line-through; font-size:0.82em;">${{ p.precio_original_formateado }}</div>
                     <div><b>${{ p.precio_formateado }}</b> <span class="ux-pill ux-ok">-{{ p.descuento_pct }}%</span></div>
@@ -229,7 +229,7 @@ async function reactivarAplicar() {
                 </td>
                 <td class="num" data-label="Propio"><strong>{{ p.stock_propio }} u.</strong></td>
                 {% if capacidades.get('full') is not false %}<td class="num" data-label="FULL"><strong>{{ p.stock_full }} u.</strong></td>{% endif %}
-                <td data-label="Ventas 7 días">
+                <td data-label="Ventas 7 días" data-orden="{{ p.sparkline_total_7d }}">
                     {% if p.sparkline_total_7d > 0 %}
                     <span class="row-flex" style="gap:8px;">
                         <svg viewBox="0 0 70 24" class="sparkline" role="img" aria-label="{{ p.sparkline_total_7d }} unidades vendidas en 7 días">
@@ -241,7 +241,7 @@ async function reactivarAplicar() {
                     <span class="text-faint" style="font-size:0.8em;">Sin ventas</span>
                     {% endif %}
                 </td>
-                <td data-label="Alcanza para" data-orden="{{ p.dias_stock if p.dias_stock is not none else 99999 }}">
+                <td data-label="Alcanza para" data-orden="{{ p.dias_stock if p.dias_stock is not none else '' }}">
                     {% if p.estado == 'active' %}
                     {% set pista = ('Al ritmo de las últimas 2 semanas (' ~ p.unidades_ritmo ~ ' u. vendidas)') if p.dias_stock is not none else ('Sin ventas en las últimas 2 semanas: no hay ritmo para estimar' if p.stock_propio + p.stock_full > 0 else '') %}
                     {% if p.dias_stock is none and p.dias_stock_tono == 'neutral' %}<span class="text-faint" {% if pista %}title="{{ pista }}"{% endif %}>—</span>

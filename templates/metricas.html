@@ -154,17 +154,23 @@
         <span><span class="margen-dot margen-dot-pierde"></span>Pierde plata (&lt;0%)</span>
         <span class="text-muted">Promedios ponderados reales: total en pesos ÷ unidades.</span>
     </div>
-    <table class="data-table">
-        <thead><tr><th></th><th>Modelo</th><th class="num">Unid.</th><th class="num">Precio prom.</th><th class="num">Comisión</th><th class="num">Envío</th><th class="num">Ads</th><th class="num">Costo</th><th class="num">Neto por unidad</th><th class="num">Neto total</th></tr></thead>
+    <table class="data-table" data-ordenable>
+        <thead><tr><th></th><th data-orden="texto">Modelo</th><th class="num" data-orden="num">Unid.</th><th class="num" data-orden="num">Precio prom.</th><th class="num" data-orden="num">Comisión</th><th class="num" data-orden="num">Envío</th><th class="num" data-orden="num">Ads</th><th class="num" data-orden="num">Costo</th><th class="num" data-orden="num">Neto por unidad</th><th class="num" data-orden="num">Neto total</th></tr></thead>
         <tbody>
             {% for c in consolidados %}
             {% set m = ((c.raw.neto_total / c.raw.total_facturado * 100) if c.raw.total_facturado else 0) %}
             {% set indice = loop.index %}
             <tr class="ux-fila-{{ 'ok' if m >= margen_minimo else ('warn' if m >= 0 else 'danger') }} {% if loop.index > 5 %}oculto-mostrar-mas{% endif %}">
                 <td style="width:50px; padding-right:0;">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" alt="" class="thumb-sm" loading="lazy">{% endif %}</td>
-                <td class="ux-col-titulo"><strong>{{ c.titulo }}</strong>{% if m < 0 %} <span class="ux-pill ux-danger">Pierde plata</span>{% elif m < margen_minimo %} <span class="ux-pill ux-warn">Al límite</span>{% endif %}
-                    {% if c.raw.costo_u == 0 %} <a class="ux-pill ux-warn" href="/costos" title="La ganancia de este modelo no descuenta lo que cuesta fabricarlo">Sin costo cargado</a>{% endif %}
-                    {% if c.variantes|length > 1 %}<div><button type="button" class="ux-toggle-variantes" data-variantes="{{ indice }}" aria-expanded="false">{{ c.variantes|length }} publicaciones · ver el detalle <span aria-hidden="true">▸</span></button></div>{% endif %}
+                <td class="ux-col-titulo celda-titulo-1l" data-orden="{{ c.titulo|lower }}">
+                    <div class="titulo-fila"><strong class="titulo-1l" title="{{ c.titulo }}">{{ c.titulo }}</strong></div>
+                    {% if m < margen_minimo or c.raw.costo_u == 0 or c.variantes|length > 1 %}
+                    <div class="flex-gap" style="gap:6px; margin-top:4px;">
+                        {% if m < 0 %}<span class="ux-pill ux-danger">Pierde plata</span>{% elif m < margen_minimo %}<span class="ux-pill ux-warn">Al límite</span>{% endif %}
+                        {% if c.raw.costo_u == 0 %}<a class="ux-pill ux-warn" href="/costos" title="La ganancia de este modelo no descuenta lo que cuesta fabricarlo">Sin costo cargado</a>{% endif %}
+                        {% if c.variantes|length > 1 %}<button type="button" class="ux-toggle-variantes" data-variantes="{{ indice }}" aria-expanded="false" style="margin-top:0;">{{ c.variantes|length }} publicaciones · ver el detalle <span aria-hidden="true">▸</span></button>{% endif %}
+                    </div>
+                    {% endif %}
                 </td>
                 <td class="num">{{ c.unidades }}</td>
                 <td class="num">${{ c.precio_promedio }}</td>
@@ -453,13 +459,13 @@
 <details class="ux-detalle">
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Historial de ventas detallado <span class="ux-detalle-nota">{{ ventas|length }} ventas</span></summary>
     <div class="ux-detalle-cuerpo" data-mostrar-mas-scope>
-        <table class="data-table">
-            <thead><tr><th>Fecha</th><th>Producto</th><th>{{ vocab.V1 }}</th><th class="num">Cant.</th><th class="num">Venta</th><th class="num">Cargo</th><th class="num">Envío</th><th class="num">Ads</th><th class="num">Costo</th><th class="num">Neto</th></tr></thead>
+        <table class="data-table" data-ordenable>
+            <thead><tr><th data-orden="texto" data-primero="desc">Fecha</th><th data-orden="texto">Producto</th><th data-orden="texto">{{ vocab.V1 }}</th><th class="num" data-orden="num">Cant.</th><th class="num" data-orden="num">Venta</th><th class="num" data-orden="num">Cargo</th><th class="num" data-orden="num">Envío</th><th class="num" data-orden="num">Ads</th><th class="num" data-orden="num">Costo</th><th class="num" data-orden="num">Neto</th></tr></thead>
             <tbody>
                 {% for v in ventas %}
                 <tr class="{% if v.es_negativo %}ux-fila-danger{% endif %} {% if loop.index > 10 %}oculto-mostrar-mas{% endif %}">
-                    <td class="text-muted">{{ v.fecha|fecha }}</td>
-                    <td>{{ v.titulo }}</td>
+                    <td class="text-muted" data-orden="{{ v.momento or v.fecha }}">{{ v.fecha|fecha }}</td>
+                    <td class="celda-titulo-1l"><span class="titulo-1l" title="{{ v.titulo }}">{{ v.titulo }}</span></td>
                     <td>{{ v.talle }}</td>
                     <td class="num">{{ v.cantidad }}</td>
                     <td class="num">${{ v.precio_venta }}</td>

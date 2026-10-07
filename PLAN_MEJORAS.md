@@ -12,6 +12,7 @@ sin `DATABASE_URL`, respaldos con datos de todos los usuarios que entraban en la
 31 (aviso de permiso caído) · 36 · 38 · 39 · 41 · 49 · 53 · 54 · 107 · 108 · 109 · 111 · 113 · 114 · 115 · 144 (parcial: pruebas por vencer y activos) · 146 ·
 161 a 166 · 168 · 169 · 170 · 171 · 172 · 175 a 181 · 195 · 217 y 218 (menú de 7 secciones con pestañas) · 225 a 228 (cubiertos por las pestañas de cada sección) ·
 236 · 223 (parcial: Stock masivo plegado; falta fusionarlo con Stock) ·
+60 y 61 (2026-10-07, parcial: columnas ordenables y títulos de una línea en Stock, Ganancia Real y Calidad con la pieza compartida `tablas.js`; falta aplicarla al resto de las tablas) ·
 75 · 76 · 77 (2026-10-07: el aviso y «qué reponer» salen armados del servidor, filtros «Se agota pronto» y «Con stock en FULL», columna «Alcanza para» por modelo; la búsqueda ya no distingue acentos).
 **Retiradas**: 167 (era una captura tomada a mitad de una animación; Ganancia Real y Logística no se contradicen).
 **Además se corrigió, sin estar en la lista**: el arranque de JavaScript roto por `cargarHud()`, el botón «ver más» de Publicidad que no ocultaba nada, la

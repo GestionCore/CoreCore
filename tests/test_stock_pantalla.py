@@ -96,7 +96,7 @@ def test_la_columna_alcanza_para_muestra_los_dias_o_el_motivo_por_el_que_no_hay(
     html = _render(productos, [])
     assert "~2 días" in html and 'title="Al ritmo de las últimas 2 semanas (28 u. vendidas)"' in html
     assert "Sin ventas en las últimas 2 semanas: no hay ritmo para estimar" in html
-    assert 'data-orden="2.0"' in html and 'data-orden="99999"' in html          # sin ritmo se ordena al final
+    assert 'data-orden="2.0"' in html and 'data-orden=""' in html          # sin ritmo la celda queda vacía: se ordena siempre al final, sin importar el sentido
     assert '<span class="text-faint" title="Sin ventas en las últimas 2 semanas' in html            # y se ve como un guion, no como una etiqueta
 
 
