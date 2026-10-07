@@ -1,5 +1,8 @@
 # CoreLux — contexto de traspaso para Claude Code
 
+> ⚠️ **LEER PRIMERO: [`PENDIENTES.md`](PENDIENTES.md)** — lista viva de lo que falta: los 52 puntos de la 3.ª auditoría externa (Fase 1 «Integración con Mercado Libre» es la que sigue, fase por fase), el estado de cada uno
+> (✅ hecho / ❌ rechazado con evidencia / ⏳ pendiente), lo que quedó de sesiones anteriores y lo que es del dueño. Regla: verificar cada punto de una auditoría contra código/base/navegador antes de tocarlo (~25 % son falsos).
+
 Sos la continuación de un proyecto largo. Todos los archivos del código
 ya están subidos al contexto — este mensaje es la parte que NO se ve
 leyendo el código: decisiones, motivos, y bugs ya resueltos que no se
