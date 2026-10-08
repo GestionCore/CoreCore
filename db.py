@@ -135,6 +135,16 @@ def obtener_conexion_usuario(usuario_id, cuenta_id=None):
     reciclada del pool.
     """
     conexion = _obtener_pool().getconn()
+    try:
+        _dejar_lista_para_rls(conexion, usuario_id, cuenta_id)
+    except BaseException:
+        # La conexión ya salió del pool y nadie la va a tener: si no se devuelve acá se pierde para siempre, y con el pool de 3 bastan 3 fallas para dejar sin base a todo el worker.
+        liberar_conexion(conexion)
+        raise
+    return conexion
+
+
+def _dejar_lista_para_rls(conexion, usuario_id, cuenta_id):
     cursor = conexion.cursor()
     # set_config() en vez de "SET app.usuario_actual = %s": Postgres no
     # acepta parámetros del lado del servidor (los $1 que usa psycopg3
@@ -156,7 +166,6 @@ def obtener_conexion_usuario(usuario_id, cuenta_id=None):
         (str(usuario_id), str(cuenta_id) if cuenta_id is not None else ""),
     )
     cursor.close()
-    return conexion
 
 
 def liberar_conexion(conexion):
@@ -193,11 +202,14 @@ class conexion_usuario:
         return self.conexion
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None:
-            self.conexion.commit()
-        else:
-            self.conexion.rollback()
-        liberar_conexion(self.conexion)
+        # `finally`: si el commit falla (corte de red, transacción abortada) o el rollback no puede, la conexión IGUAL vuelve al pool. Antes se perdía: el pool es de 3 por worker.
+        try:
+            if exc_type is None:
+                self.conexion.commit()
+            else:
+                self.conexion.rollback()
+        finally:
+            liberar_conexion(self.conexion)
 
 
 class conexion_admin:
@@ -210,8 +222,10 @@ class conexion_admin:
         return self.conexion
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None:
-            self.conexion.commit()
-        else:
-            self.conexion.rollback()
-        liberar_conexion_admin(self.conexion)
+        try:                                      # igual que conexion_usuario: la conexión vuelve al pool pase lo que pase con el commit o el rollback
+            if exc_type is None:
+                self.conexion.commit()
+            else:
+                self.conexion.rollback()
+        finally:
+            liberar_conexion_admin(self.conexion)

@@ -24,6 +24,15 @@ def test_el_talle_real_de_mercado_libre_gana_sobre_el_titulo():
     assert extraer_talle("Campera Negro XL", "Único") == "XL"      # "Único" no es un dato: se mira el título
 
 
+def test_unico_escrito_de_cualquier_forma_no_es_un_talle_y_no_queda_como_otro_talle():
+    # Datos reales de Mercado Libre: SIZE llega «Único» en buzos y «UNICO» en otras categorías; antes «UNICO» se guardaba como un talle aparte.
+    for escrito in ("Único", "UNICO", "ÚNICO", "único", "Unica", " unico "):
+        assert extraer_talle("Termo Acero Inoxidable", escrito) == "Único", escrito
+        assert extraer_talle("Campera Negro XL", escrito) == "XL", escrito
+    assert extraer_talle("Pantalón", "UNICO ELASTIZADO") == "UNICO ELASTIZADO"      # un valor distinto sigue siendo un dato
+    assert extraer_talle("Pantalón", "L-XL") == "L-XL"
+
+
 def test_clave_de_modelo_agrupa_los_talles():
     base = "Campera De Jean Hombre Negro"
     assert limpiar_titulo_modelo(base + " XL") == limpiar_titulo_modelo(base + " L") == base

@@ -7,14 +7,13 @@ Uso:
 Gunicorn NO corre en Windows — en local usá Waitress (vía `python app.py`).
 En producción Linux, este archivo reemplaza los flags de línea de comandos.
 
-Dimensionamiento inicial (VPS de 2 vCPU / 2 GB RAM):
-  - 3 workers sync (1 worker idle, 2 atendiendo requests concurrentes)
-  - 4 threads por worker = 12 requests concurrentes máximo
-  - Con Celery ya manejando el trabajo pesado, Flask no necesita muchos workers
+Dimensionamiento real (Fly.io, 2 máquinas):
+  - 2 workers gevent por máquina, hasta 250 conexiones simultáneas cada uno (el trabajo de fondo corre en greenlets: no hay Celery ni Redis)
+  - el límite de verdad es el pooler de Supabase: máquinas × workers × DB_POOL_MAX ≤ 12 (ver más abajo y docs/RUNBOOK.md)
 
 Ajustar cuando el monitoreo de Sentry muestre:
-  - Latencia > 500ms en p95: subir workers o threads
-  - Memoria > 80% del RAM: bajar workers, subir Celery concurrencia
+  - Latencia > 500ms en p95: revisar primero las consultas y el pool de la base, recién después subir workers
+  - Memoria > 80% del RAM: bajar workers
 """
 import os
 
@@ -26,8 +25,11 @@ bind = os.getenv("GUNICORN_BIND", "0.0.0.0:5000")
 # En Fly el pooler de Supabase da 15 conexiones de sesión para TODO el proyecto: máquinas × workers × DB_POOL_MAX ≤ 12 (hoy 2 × 2 × 3, ver fly.toml). Nada de
 # «2 × CPU + 1»: el Dockerfile ya fija --workers 2 en la línea de comandos (que manda sobre este archivo) y este valor es el respaldo si alguien lo saca.
 workers = int(os.getenv("GUNICORN_WORKERS", "2"))
-worker_class = "sync"
-threads = int(os.getenv("GUNICORN_THREADS", "4"))
+# gevent, como en Fly (el Dockerfile lo pasa también por línea de comandos). El worker de gunicorn parchea la biblioteca estándar al arrancar, ANTES de importar app.py
+# (preload_app = False, ver abajo): los `threading.Thread` de `_en_segundo_plano` pasan a ser greenlets. Medido el 2026-10-07 en la máquina de Fly: psycopg 3 (binario) COOPERA con
+# gevent: 2 consultas de 2 s en paralelo tardan 2,1 s, no 4. Con «sync» y threads el pooler de Supabase (15 conexiones) se agotaba antes.
+worker_class = "gevent"
+worker_connections = int(os.getenv("GUNICORN_WORKER_CONNECTIONS", "250"))
 
 # Timeouts: 120s para syncs largos (puede tardar varios minutos con muchas ventas)
 timeout = 120

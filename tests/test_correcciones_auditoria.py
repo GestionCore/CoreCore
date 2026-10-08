@@ -380,6 +380,8 @@ def test_la_configuracion_de_gunicorn_trae_dos_workers_por_defecto_y_la_linea_de
     assert modulo.workers == 2 and en_dockerfile == 2
     assert maquinas * max(modulo.workers, en_dockerfile) * pool <= 12
     assert "cpu_count" not in _leer("gunicorn.conf.py")
+    # gevent en los dos lados (el worker parchea la biblioteca estándar al arrancar y psycopg 3 coopera con él: medido en Fly): un «sync» dejado en el archivo confunde a quien lo lea
+    assert modulo.worker_class == "gevent" and "--worker-class\", \"gevent\"" in _leer("Dockerfile")
 
 
 def test_el_toast_y_la_busqueda_quedan_por_encima_del_menu_lateral_abierto_pero_la_guia_de_bienvenida_sigue_arriba_de_la_busqueda():

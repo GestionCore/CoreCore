@@ -11,6 +11,8 @@ Seguridad y errores de la app web, en un solo lugar (se activa con seguridad.ini
 """
 import logging
 import os
+import threading
+import time
 from datetime import timedelta
 from urllib.parse import urlparse
 from flask import g, request, jsonify, render_template, session, make_response
@@ -25,6 +27,30 @@ log = logging.getLogger("corelux.seguridad")
 EN_PRODUCCION = bool(os.getenv("FLY_APP_NAME"))
 VERSION = os.getenv("CORELUX_VERSION", "local")        # el commit desplegado (lo pone desplegar.py): ver /healthz
 HOSTS_EXTRA = {h.strip() for h in os.getenv("HOSTS_PERMITIDOS", "").split(",") if h.strip()}
+
+# /healthz/db es público, está exento del limitador y usa el pool de ADMINISTRACIÓN (2 conexiones por proceso), el mismo que usa casi toda página con sesión: sin tope, una lluvia de pedidos
+# anónimos dejaba sin conexión a las personas reales. Con esta caché hace A LO SUMO una consulta por ventana y por proceso, sin importar cuántos pedidos lleguen.
+SEGUNDOS_CACHE_HEALTHZ_DB = 20           # base sana: el monitor externo (cada 1-5 min) siempre ve algo reciente
+SEGUNDOS_CACHE_HEALTHZ_DB_CAIDA = 5      # base caída: se reintenta pronto, pero tampoco con un pedido por cada visitante (cada intento puede esperar hasta el timeout del pool)
+_lock_healthz_db = threading.Lock()
+_estado_healthz_db = {"vence": 0.0, "ok": None}
+
+
+def comprobar_base():
+    """¿Responde la base? Cacheado por proceso (ver arriba); los pedidos simultáneos esperan a la primera comprobación y comparten su resultado."""
+    with _lock_healthz_db:
+        if _estado_healthz_db["ok"] is not None and time.monotonic() < _estado_healthz_db["vence"]:
+            return _estado_healthz_db["ok"]
+        try:
+            import db
+            with db.conexion_admin() as conexion:
+                conexion.cursor().execute("SELECT 1")
+            ok = True
+        except Exception:
+            ok = False
+        _estado_healthz_db["ok"] = ok
+        _estado_healthz_db["vence"] = time.monotonic() + (SEGUNDOS_CACHE_HEALTHZ_DB if ok else SEGUNDOS_CACHE_HEALTHZ_DB_CAIDA)
+        return ok
 
 
 def ip_del_cliente():
@@ -112,13 +138,9 @@ def iniciar(app):
 
     @app.route("/healthz/db")
     def healthz_db():
-        try:
-            import db
-            with db.conexion_admin() as conexion:
-                conexion.cursor().execute("SELECT 1")
+        if comprobar_base():
             return jsonify({"ok": True, "db": True, "version": VERSION})
-        except Exception:
-            return jsonify({"ok": False, "db": False}), 503
+        return jsonify({"ok": False, "db": False}), 503
 
     @app.errorhandler(403)
     def _403(e):

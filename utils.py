@@ -1,5 +1,6 @@
 """Utilidades compartidas entre páginas — portadas tal cual de Santi Mens."""
 import re
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -100,9 +101,16 @@ _RE_TALLE_LETRAS = re.compile(r'\b(XXXL|XXL|XL|L|M|S)\b', re.IGNORECASE)
 _RE_TALLE_AL_FINAL = re.compile(r'\s(\d{1,2})\s*$')
 
 
+def _es_talle_unico(valor):
+    """«Único» escrito como lo manda cada vendedor ('Único', 'UNICO', 'ÚNICO', 'unica'…): no es un talle, es la falta de uno."""
+    sin_acentos = unicodedata.normalize("NFKD", str(valor)).encode("ascii", "ignore").decode().strip().lower()
+    return sin_acentos in ("unico", "unica", "talle unico")
+
+
 def extraer_talle(titulo, talle_real=None):
     """El talle de una publicación: el real (atributo de MeLi) si se conoce; si no, el que se deduce del título; si no, "Único"."""
-    if talle_real and str(talle_real).strip() and talle_real != "Único":
+    # Mercado Libre trae SIZE tal como lo escribió el vendedor: «Único» (buzos), «UNICO» (otras categorías): ninguno es un dato, y no tienen que quedar guardados como dos talles distintos.
+    if talle_real and str(talle_real).strip() and not _es_talle_unico(talle_real):
         return str(talle_real).strip().upper()
     if not titulo:
         return "Único"
