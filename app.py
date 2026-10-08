@@ -3690,14 +3690,15 @@ def planes_vista():
     usuario_id = session.get("usuario_id")
     plan_actual = None
     trial_termina_en = None
+    proximo_cobro = None
     if usuario_id:
         try:
             with db.conexion_usuario(usuario_id) as conexion:
                 cursor = conexion.cursor()
-                cursor.execute("SELECT plan, trial_termina_en FROM usuarios WHERE id = %s", (usuario_id,))
+                cursor.execute("SELECT plan, trial_termina_en, mp_proximo_cobro FROM usuarios WHERE id = %s", (usuario_id,))
                 fila = cursor.fetchone()
             if fila:
-                plan_actual, trial_termina_en = fila
+                plan_actual, trial_termina_en, proximo_cobro = fila
         except Exception as e:
             print(f"[Planes] ⚠️ No se pudo leer el plan del usuario: {e}")
     dias_trial = None
@@ -3709,8 +3710,14 @@ def planes_vista():
         "sin_pagos": "Los pagos todavía no están habilitados en esta cuenta. Escribinos y te activamos el plan a mano.",
         "plan_invalido": "No reconocimos ese plan — elegí uno de los de abajo.",
         "mp_error": "No pudimos conectar con Mercado Pago ahora. Probá de nuevo en unos minutos.",
+        "mismo_plan": "Ya tenés ese plan.",
+        "bajar_no_disponible": "Para pasar a un plan más chico escribinos y lo resolvemos juntos.",
+        "plan_a_mano": "Tu plan lo gestionamos a mano, no hace falta que te suscribas. Si querés cambiarlo, escribinos.",
     }
-    return render_template("planes.html", plan_actual=plan_actual, dias_trial=dias_trial, aviso=avisos.get(request.args.get("aviso")), pagos_habilitados=config.PAGOS_HABILITADOS)
+    avisos_ok = {"plan_cambiado": "Listo: tu suscripción pasó al nuevo plan. No se creó otra ni se cobra dos veces: el nuevo monto rige desde tu próxima renovación."}
+    codigo_aviso = request.args.get("aviso")
+    return render_template("planes.html", plan_actual=plan_actual, dias_trial=dias_trial, aviso=avisos.get(codigo_aviso) or avisos_ok.get(codigo_aviso), aviso_ok=codigo_aviso in avisos_ok,
+                           proximo_cobro=proximo_cobro, pagos_habilitados=config.PAGOS_HABILITADOS)
 
 
 @app.route("/cuenta")
@@ -3823,9 +3830,43 @@ def suscripcion_iniciar():
 
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("SELECT email FROM usuarios WHERE id = %s", (g.usuario_id,))
+        cursor.execute("SELECT email, plan, mp_suscripcion_id FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila = cursor.fetchone()
     email = fila[0] if fila else f"usuario{g.usuario_id}@corelux.app"
+    plan_actual, mp_id_actual = (fila[1], fila[2]) if fila else (None, None)
+
+    accion = pagos.decidir_alta_o_cambio(plan_actual, mp_id_actual, plan)
+    if accion in ("mismo", "bajar_no_disponible", "a_mano"):
+        return redirect(url_for("planes_vista", aviso={"mismo": "mismo_plan", "bajar_no_disponible": "bajar_no_disponible", "a_mano": "plan_a_mano"}[accion]))
+
+    if mp_id_actual:
+        # Ya había una suscripción: o se la CAMBIA (si está al día) o, si ya no lo está, se cancela antes de armar la nueva. Nunca quedan dos vivas cobrando.
+        try:
+            info_actual = pagos.obtener_estado_suscripcion(mp_id_actual)
+        except Exception as e:
+            print(f"[Pagos] ❌ No se pudo consultar la suscripción {mp_id_actual} del usuario {g.usuario_id}: {e}")
+            return redirect(url_for("planes_vista", aviso="mp_error"))
+        if accion == "cambiar":
+            if info_actual is None:
+                # Mercado Pago no contestó: no se sabe si la actual sigue viva, y armar otra podría dejar dos cobrando. No se hace nada y se reintenta.
+                return redirect(url_for("planes_vista", aviso="mp_error"))
+            if info_actual.get("status") != "authorized":
+                accion = "nueva"
+            else:
+                try:
+                    cambio_ok = pagos.cambiar_plan_suscripcion(mp_id_actual, plan, g.usuario_id)
+                except Exception as e:
+                    print(f"[Pagos] ❌ Error cambiando el plan del usuario {g.usuario_id}: {e}")
+                    cambio_ok = False
+                if not cambio_ok:
+                    return redirect(url_for("planes_vista", aviso="mp_error"))
+                with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+                    conexion.cursor().execute("UPDATE usuarios SET plan = %s WHERE id = %s", (plan, g.usuario_id))
+                auditoria.registrar("suscripcion_cambiar_plan", {"de": plan_actual, "a": plan, "preapproval_id": mp_id_actual})
+                print(f"[Pagos] 🔁 Usuario {g.usuario_id}: {plan_actual} → {plan} sobre la misma suscripción {mp_id_actual}.")
+                return redirect(url_for("planes_vista", aviso="plan_cambiado"))
+        if (info_actual or {}).get("status") not in (None, "cancelled"):
+            pagos.cancelar_suscripcion(mp_id_actual)
 
     back_url = url_for("suscripcion_retorno", _external=True)
     try:
@@ -3943,9 +3984,10 @@ def webhook_mercadopago():
                     (nuevo_plan, preapproval_id, proximo_cobro, usuario_id)
                 )
             elif nuevo_plan == "cancelado":
+                # Solo si el aviso es de la suscripción que el usuario tiene guardada: el aviso tardío de una vieja (cambiada o cancelada a propósito) no le baja el plan nuevo.
                 cursor.execute(
-                    "UPDATE usuarios SET plan = 'cancelado', mp_proximo_cobro = NULL WHERE id = %s",
-                    (usuario_id,)
+                    "UPDATE usuarios SET plan = 'cancelado', mp_proximo_cobro = NULL WHERE id = %s AND (mp_suscripcion_id IS NULL OR mp_suscripcion_id = %s)",
+                    (usuario_id, preapproval_id)
                 )
         print(f"[Pagos] 🔔 Webhook MP: usuario {usuario_id} → plan {nuevo_plan} (preapproval {preapproval_id})")
     except Exception as e:

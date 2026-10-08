@@ -112,6 +112,47 @@ def cancelar_suscripcion(preapproval_id):
     return resp.status_code == 200
 
 
+def decidir_alta_o_cambio(plan_actual, mp_suscripcion_id, plan_pedido):
+    """
+    Qué hacer cuando alguien toca un plan en «Planes»:
+      "cambiar"             → ya paga un plan por Mercado Pago y pide el de arriba (Base → Elite): se CAMBIA el monto de la suscripción que tiene, no se crea otra (se cobraría dos veces).
+      "mismo"               → ya tiene ese plan.
+      "bajar_no_disponible" → Elite → Base: hoy no se ofrece (un Elite puede tener más de una cuenta de Mercado Libre vinculada); se resuelve escribiendo.
+      "a_mano"              → su plan lo dio el dueño a mano (cuentas de cortesía: sin suscripción de Mercado Pago): nunca se les arma un cobro por esta vía.
+      "nueva"               → prueba o cancelado: se arma la suscripción nueva en Mercado Pago.
+    """
+    if plan_actual in ("base", "elite"):
+        if not mp_suscripcion_id:
+            return "a_mano"
+        if plan_pedido == plan_actual:
+            return "mismo"
+        return "bajar_no_disponible" if plan_pedido == "base" else "cambiar"
+    return "nueva"
+
+
+def cambiar_plan_suscripcion(preapproval_id, plan, usuario_id):
+    """
+    Cambia el monto (y el nombre) de una suscripción YA existente al del plan nuevo, en vez de crear otra: así no se cobra dos veces. El nuevo monto rige desde el próximo cobro.
+    Devuelve True solo si Mercado Pago lo aceptó Y la lectura posterior muestra el monto y la referencia nuevos (la referencia es de donde el webhook saca el plan: si quedara la vieja, el
+    próximo aviso devolvería al usuario al plan anterior).
+    """
+    resp = requests.put(
+        f"{MP_BASE}/preapproval/{preapproval_id}",
+        json={
+            "reason": NOMBRES_PLAN[plan],
+            "auto_recurring": {"transaction_amount": PRECIOS_PLAN[plan], "currency_id": "ARS"},
+            "external_reference": f"{plan}|{usuario_id}",
+        },
+        headers=_headers(),
+        timeout=15,
+    )
+    if resp.status_code != 200:
+        return False
+    info = obtener_estado_suscripcion(preapproval_id) or {}
+    monto = (info.get("auto_recurring") or {}).get("transaction_amount")
+    return monto is not None and float(monto) == float(PRECIOS_PLAN[plan]) and info.get("external_reference") == f"{plan}|{usuario_id}"
+
+
 def firma_valida(x_signature, x_request_id, data_id, secreto):
     """
     Verifica la firma que Mercado Pago pone en cada webhook (cabecera x-signature = "ts=...,v1=<hmac>"): HMAC-SHA256, con el secreto de la

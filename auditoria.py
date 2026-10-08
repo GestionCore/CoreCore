@@ -62,6 +62,7 @@ ETIQUETAS = {
     "cuenta_vincular": "Cuenta de Mercado Libre vinculada",
     "datos_descargar": "Datos descargados",
     "suscripcion_cancelar": "Suscripción cancelada",
+    "suscripcion_cambiar_plan": "Plan de la suscripción cambiado",
 }
 
 

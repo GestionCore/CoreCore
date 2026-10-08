@@ -21,7 +21,7 @@
 </div>
 
 {% if aviso %}
-<div class="planes-aviso" role="alert"><strong>{{ aviso }}</strong></div>
+<div class="planes-aviso {% if aviso_ok %}planes-aviso-ok{% endif %}" role="{{ 'status' if aviso_ok else 'alert' }}"><strong>{{ aviso }}</strong></div>
 {% endif %}
 
 <div class="planes-grid">
@@ -85,9 +85,11 @@
     {% else %}<div class="plan-badge-activo" style="opacity:0.75;">Próximamente</div>{% endif %}
     {% elif plan_actual == "base" %}
     {% if pagos_habilitados %}
+    {# Cambia el monto de la suscripción que ya tiene (no crea otra): confirma con el antes y el después. #}
+    {% set detalle_cambio = "Tu suscripción actual pasa de $40.000 a $99.000 por mes. No se crea otra ni se cobra dos veces. El Plan Elite se activa ahora y el nuevo monto se cobra desde tu próxima renovación" ~ ((" (" ~ (proximo_cobro|fecha) ~ ")") if proximo_cobro else "") ~ "." %}
     <form action="/suscripcion/iniciar" method="post" class="plan-form">
       <input type="hidden" name="plan" value="elite">
-      <button type="submit" class="btn-plan btn-plan-elite">Mejorar a Elite</button>
+      <button type="button" class="btn-plan btn-plan-elite" data-click="confirmarAccion" data-click-args='{{ ["¿Pasar al Plan Elite?", "$form", "Pasar a Elite", detalle_cambio]|tojson }}'>Mejorar a Elite</button>
     </form>
     {% else %}<div class="plan-badge-activo" style="opacity:0.75;">Próximamente</div>{% endif %}
     {% endif %}
@@ -108,6 +110,7 @@
 
 <style>
 .planes-aviso { max-width: 720px; margin: 0 auto 1.2rem; padding: 0.9rem 1.2rem; border-radius: var(--radius-sm); background: var(--semantic-warning-bg); border: 1px solid var(--semantic-warning); color: var(--semantic-warning); text-align: center; }
+.planes-aviso-ok { background: color-mix(in srgb, var(--success) 14%, transparent); border-color: var(--success); color: var(--success); }
 .planes-hero {
   text-align: center;
   padding: 2.5rem 1rem 1.5rem;
