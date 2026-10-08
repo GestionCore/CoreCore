@@ -38,20 +38,20 @@
 
 <div class="panel" style="padding:0; overflow:hidden;" data-mostrar-mas-scope>
     <div style="overflow-x:auto; padding:6px 12px 12px;">
-    <table class="data-table">
-        <thead><tr><th>Publicación</th><th>Cambio de precio</th><th>Fecha</th><th class="num">Antes (7 d)</th><th class="num">Después (7 d)</th><th class="num">Resultado</th></tr></thead>
+    <table class="data-table" data-ordenable>
+        <thead><tr><th data-orden="texto">Publicación</th><th data-orden="num" title="Ordena por el precio nuevo">Cambio de precio</th><th data-orden="texto" data-primero="desc">Fecha</th><th class="num" data-orden="num">Antes (7 d)</th><th class="num" data-orden="num">Después (7 d)</th><th class="num" data-orden="num" title="Cuánto cambiaron las ventas de la semana siguiente respecto de la anterior">Resultado</th></tr></thead>
         <tbody>
             {% for c in cambios %}
             <tr class="{% if c.variacion_pct is not none and c.variacion_pct < 0 %}ux-fila-danger{% elif c.variacion_pct is not none %}ux-fila-ok{% endif %} {% if loop.index > 8 %}oculto-mostrar-mas{% endif %}">
-                <td class="ux-col-titulo"><div class="ux-titulo-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<b>{{ c.titulo }}</b></div></td>
-                <td style="white-space:nowrap;">
+                <td class="ux-col-titulo" data-orden="{{ c.titulo|lower }}"><div class="ux-titulo-thumb">{% if c.thumbnail %}<img src="{{ c.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<b>{{ c.titulo }}</b></div></td>
+                <td style="white-space:nowrap;" data-orden="{{ c.precio_nuevo }}">
                     {{ c.precio_anterior|plata }} → <b>{{ c.precio_nuevo|plata }}</b>
                     <span class="ux-pill {{ 'ux-warn' if c.direccion == 'subió' else 'ux-ok' }}">{{ c.direccion }}</span>
                 </td>
-                <td class="text-muted">{{ c.fecha_cambio }}</td>
+                <td class="text-muted" data-orden="{{ c.fecha_cambio }}">{{ c.fecha_cambio|fecha }}</td>
                 <td class="num">{{ c.unidades_antes }} u.</td>
                 <td class="num">{{ c.unidades_despues }} u.</td>
-                <td class="num">
+                <td class="num" data-orden="{{ c.variacion_pct if c.variacion_pct is not none else '' }}">
                     {% if c.datos_incompletos %}<span class="text-muted" style="font-size:0.85em;">Sin ventas previas para comparar</span>
                     {% elif c.variacion_pct is not none %}
                     <span class="ux-pill {{ 'ux-ok' if c.variacion_pct >= 0 else 'ux-danger' }}">{{ '▲ +' if c.variacion_pct >= 0 else '▼ ' }}{{ c.variacion_pct|string|replace('.', ',') }}%</span>

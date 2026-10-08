@@ -224,8 +224,8 @@
 <details class="ux-detalle">
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-chart"/></svg> Tabla completa de campañas <span class="ux-detalle-nota">todas las métricas lado a lado</span></summary>
     <div class="ux-detalle-cuerpo" style="overflow-x:auto;">
-    <table class="data-table">
-        <thead><tr><th>Campaña</th><th>Estado</th><th class="num">Presupuesto</th><th class="num">Invertido</th><th class="num">Clics</th><th class="num">CTR</th><th class="num">CVR</th><th class="num">ROAS</th><th class="num">ACOS</th><th class="num">Ventas atribuidas</th></tr></thead>
+    <table class="data-table" data-ordenable>
+        <thead><tr><th data-orden="texto">Campaña</th><th data-orden="texto">Estado</th><th class="num" data-orden="num">Presupuesto</th><th class="num" data-orden="num">Invertido</th><th class="num" data-orden="num">Clics</th><th class="num" data-orden="num">CTR</th><th class="num" data-orden="num">CVR</th><th class="num" data-orden="num" title="Cuánto vendés por cada peso invertido: primero las que mejor rinden">ROAS</th><th class="num" data-orden="num" data-primero="asc" title="Cuánto de la venta se va en publicidad: primero las más baratas de sostener">ACOS</th><th class="num" data-orden="num">Ventas atribuidas</th></tr></thead>
         <tbody>
             {% for c in campanas %}
             <tr class="{{ 'ux-fila-danger' if c.roas_bajo else '' }}">

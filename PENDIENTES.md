@@ -117,7 +117,7 @@ Corregido: botón primario de Ganancia Real; hero del Dashboard con salida; past
 Primera parte de `data-click` (5 plantillas migradas + tope que solo baja + estrategia de CSP). Rechazados con evidencia: 4, 5, 9, 13. Parciales: 12, 17, 19.
 
 ## 3. Pendientes anteriores (de sesiones previas)
-- Ordenar el resto de las tablas con `data-ordenable` (ya: Stock, Ganancia Real, Calidad; ver `static/js/tablas.js`).
+- Ordenar el resto de las tablas con `data-ordenable` (ya: Stock, Ganancia Real, Calidad y, desde 2026-10-08, campañas de Publicidad, historial de precios y ventas manuales, que además mostraban la fecha como `2026-09-02`: ahora «2 sep» con el ISO en `data-orden`; ver `static/js/tablas.js`). Quedan sin ordenar a propósito las de 2 filas fijas (desglose de un precio) y las de admin; faltaría Promociones (4 tablas), Costos (gastos), Competencia (historial) y la factura.
 - Ficha única de publicación (ítem 219 de `PLAN_MEJORAS.md`; el plan tiene 243 ítems: revisar cuáles quedan).
 - Activar la política estricta de scripts: `CSP_MODO=estricta` después de mirar los reportes (ver 38).
 - Mails/notificaciones (falta definir proveedor de mail; hoy solo la campana de avisos).

@@ -67,13 +67,13 @@
     <div class="panel-title" style="padding:18px 22px 0;">Últimas ventas fuera de MeLi <span class="text-muted" style="font-weight:600; font-size:0.85em;">{{ ventas|length }}</span></div>
     {% if ventas %}
     <div style="overflow-x:auto; padding:0 12px 12px;">
-    <table class="data-table">
-        <thead><tr><th>Fecha</th><th>Producto</th><th>Cliente</th><th class="num">Cant.</th><th class="num">Total</th><th></th></tr></thead>
+    <table class="data-table" data-ordenable>
+        <thead><tr><th data-orden="texto" data-primero="desc">Fecha</th><th data-orden="texto">Producto</th><th data-orden="texto">Cliente</th><th class="num" data-orden="num">Cant.</th><th class="num" data-orden="num">Total</th><th></th></tr></thead>
         <tbody>
             {% for v in ventas %}
             <tr>
-                <td class="text-muted">{{ v.fecha }}</td>
-                <td class="ux-col-titulo"><div class="ux-titulo-thumb">{% if v.thumbnail %}<img src="{{ v.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<b>{{ v.titulo }}</b></div></td>
+                <td class="text-muted" data-orden="{{ v.fecha }}">{{ v.fecha|fecha }}</td>
+                <td class="ux-col-titulo" data-orden="{{ v.titulo|lower }}"><div class="ux-titulo-thumb">{% if v.thumbnail %}<img src="{{ v.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}<b>{{ v.titulo }}</b></div></td>
                 <td>{{ v.comprador_nombre or '—' }}</td>
                 <td class="num">{{ v.cantidad }}</td>
                 <td class="num"><b>${{ v.precio_formateado }}</b></td>
