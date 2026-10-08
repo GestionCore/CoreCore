@@ -1284,7 +1284,7 @@ def metricas_vista():
 
     return render_template(
         "metricas.html", cobertura_costos=cobertura_costos, ventas=datos["ventas"], consolidados=datos["consolidados"],
-        resumen=datos["resumen"], ads_disponible=datos["ads_disponible"],
+        resumen=datos["resumen"], ads_disponible=datos["ads_disponible"], ads_incompleto=datos.get("ads_incompleto", 0),
         gasto_ads_total_periodo=datos["gasto_ads_total_periodo"], posventa=datos["posventa"],
         comparacion_anterior=datos["comparacion_anterior"], cargos_fuera_de_ventas=datos["cargos_fuera_de_ventas"],
         fecha_desde=fecha_desde, fecha_hasta=fecha_hasta,

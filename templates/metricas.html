@@ -98,6 +98,8 @@
 {% endif %}
 {% if not ads_disponible %}
 {{ banner("info", "percent", "<b>No vemos gasto de publicidad</b> en este período", "Revisá que hayas dado acceso a tus campañas de Ads, o que tengas campañas activas.") }}
+{% elif ads_incompleto %}
+{{ banner("warn", "alert", "<b>No pudimos leer la publicidad de " ~ ads_incompleto|plural("publicación", "publicaciones") ~ "</b> — la ganancia puede ser menor a la que ves", "Mercado Libre no respondió: esas publicaciones cuentan por ahora sin gasto de publicidad. Probá de nuevo en unos minutos.") }}
 {% endif %}
 {# Solo un reclamo real puede afectar la reputación: va en rojo. Una devolución es gestión normal del día a día: aviso más suave #}
 {% set hay_retenido = posventa.dinero_retenido not in ('0,00', '0', 0) %}

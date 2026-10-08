@@ -256,6 +256,14 @@ def obtener_metricas_ads_por_item(access_token, advertiser_id, fecha_desde, fech
     return resultado
 
 
+class CostosAds(dict):
+    """
+    Costo de publicidad por publicación ({id_meli: costo}). `incompleto` = a cuántas publicaciones Mercado Libre NO les contestó (límite de pedidos, caída, permisos): se omiten y cuentan como
+    «sin gasto», así que la ganancia podría salir sobrestimada. Quien lo muestra tiene que avisarlo. Es un dict común para el resto del código.
+    """
+    incompleto = 0
+
+
 def obtener_costos_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_hasta, ids_relevantes, site_id="MLA"):
     clave_cache = (advertiser_id, fecha_desde, fecha_hasta, tuple(sorted(ids_relevantes)))
     cacheado = _costos_cache.get(clave_cache)
@@ -263,28 +271,37 @@ def obtener_costos_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_
         return cacheado["data"]
 
     headers = {"Authorization": f"Bearer {access_token}", "Api-Version": "2"}
-    costos_por_item = {}
+    costos_por_item = CostosAds()
 
     def _consultar_uno(item_id):
+        """(id, costo o None, ¿falló?). 200 = el costo (0 es «sin gasto»); 404 = la publicación no tiene anuncio (normal); cualquier otra respuesta o un corte es un FALLO, no «sin gasto»."""
         url = (
             f"https://api.mercadolibre.com/marketplace/advertising/{site_id}/product_ads/ads/{item_id}"
             f"?date_from={fecha_desde}&date_to={fecha_hasta}&metrics=cost"
         )
         try:
             resp = meli_http.get(url, headers=headers, timeout=8)
+            if resp.status_code == 404:
+                return item_id, None, False
             if resp.status_code != 200:
-                return item_id, None
+                return item_id, None, True
             data = resp.json()
             costo = float((data.get("metrics", {}) or {}).get("cost") or 0.0)
-            return item_id, costo if costo > 0 else None
+            return item_id, (costo if costo > 0 else None), False
         except Exception as e:
             print(f"[Ads] ⚠️ Error consultando costo de {item_id}: {e}")
-            return item_id, None
+            return item_id, None, True
 
+    fallos = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        for item_id, costo in executor.map(_consultar_uno, ids_relevantes):
+        for item_id, costo, fallo in executor.map(_consultar_uno, ids_relevantes):
+            fallos += 1 if fallo else 0
             if costo is not None:
                 costos_por_item[item_id] = costo
 
-    _costos_cache[clave_cache] = {"data": costos_por_item, "timestamp": time.time()}
+    costos_por_item.incompleto = fallos
+    if fallos:
+        print(f"[Ads] ⚠️ No se pudo leer el costo de publicidad de {fallos} publicación(es): la ganancia puede salir sobrestimada y el resultado NO se guarda en caché.")
+    else:
+        _costos_cache[clave_cache] = {"data": costos_por_item, "timestamp": time.time()}     # un resultado a medias no se guarda: se volvería a mostrar durante 5 minutos
     return costos_por_item

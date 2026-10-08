@@ -309,14 +309,16 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
     # página entera por esto).
     costos_ads_por_item = {}
     ads_disponible = False
+    ads_incompleto = 0                      # publicaciones cuyo costo de publicidad Mercado Libre no pudo informar (la ganancia podría estar sobrestimada)
     gasto_ads_total_periodo = None
     try:
         advertiser_id = ads.obtener_advertiser_id(access_token, cuenta_id)
         if advertiser_id:
-            ads_disponible = True
             ids_con_ventas = list(unidades_por_item.keys())
-            costos_ads_por_item = ads.obtener_costos_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_hasta, ids_con_ventas)
+            costos = ads.obtener_costos_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_hasta, ids_con_ventas)
             gasto_ads_total_periodo = ads.obtener_gasto_ads_total_periodo(access_token, advertiser_id, fecha_desde, fecha_hasta)
+            costos_ads_por_item, ads_incompleto = costos, int(getattr(costos, "incompleto", 0) or 0)
+            ads_disponible = True           # recién acá: si algo de lo anterior falla NO se dice «disponible» con $0 de gasto
     except Exception as e:
         print(f"[Metricas] ⚠️ Error consultando Ads: {e}")
 
@@ -480,6 +482,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         "ventas": ventas_procesadas,
         "consolidados": lista_consolidados,
         "ads_disponible": ads_disponible,
+        "ads_incompleto": ads_incompleto,
         "gasto_ads_total_periodo": gasto_ads_total_periodo,
         "posventa": resumen_posventa,
         "comparacion_anterior": comparacion_anterior,
