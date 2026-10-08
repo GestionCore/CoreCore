@@ -12,6 +12,16 @@ Proceso acordado por Diego: **fase por fase**; respetar gevent, Postgres con RLS
   contra el servidor local (usa la base de PRODUCCIÓN); llegó sin sesión, lo mandó a la portada y no cambió nada (la tabla `auditoria` no tiene ninguna fila de `stock_masivo`).
 - Prueba en vivo del refresco de tokens NO se pudo hacer desde la PC: el `.env` local da `invalid_client` en MeLi (no gasta el refresh_token ni desconecta). Mirar los logs de Fly: un refresco por cuenta cada ~6 h, sin `invalid_grant`. La cuenta 7 quedó como estaba (se restauró su `expira_en`).
 
+## 0b. Evaluación objetiva y plan del día (2026-10-08)
+**Medido hoy**: 852 pruebas (60 % de cobertura de líneas), 19,9 k líneas de Python, 9,5 k de plantillas, 138 rutas, 43 migraciones, `pip-audit` sin vulnerabilidades, producción sana (`/healthz/db` 0,17 s). **Puntaje (juicio mío, con la evidencia de abajo)**:
+plata 85 · confiabilidad 78 · seguridad 85 · experiencia 70 · listo para cobrar 45 · generalidad 70 · capacidad 55 · mantenibilidad 65 · operación/soporte 60.
+**Brechas objetivas, en orden de riesgo**: (1) `metricas.calcular_ganancia_real` —la fórmula central, ~260 líneas— NO tiene ninguna prueba directa (`metricas.py` 16 %, `ventas_sync.py` 33 %, `dashboard.py` 33 %, `facturacion.py` 50 %). (2) Cobro: el flujo anda en el sandbox pero faltan mails
+(ninguno existe: falla de cobro, fin de prueba, cambio de plan), factura propia, avisos reales de Mercado Pago sin resolver y producción corre con credenciales de PRUEBA. (3) Pantallas lentas medidas desde la PC (latencia alta a la base; Fly es más rápida en lo que depende de la base): `/publicidad` 5,3 s, `/metricas` (Ganancia Real, 329 KB)
+4,2 s, `/dia` 3,8 s, `/calculadora` 3,2 s, `/tendencias` 3,2 s: las de Mercado Libre en vivo necesitan caché con «actualizado hace X». (4) Evidencia real de UN solo usuario (2 cuentas): nada probado con extraños. (5) Respaldos sin automatizar ni restauración probada (del dueño).
+(6) Código: `app.py` 4.032 líneas, 318 `print()`, 213 `except Exception`, 849 `style=` inline, 42 scripts largos dentro de plantillas.
+**Plan del día**: A. red de seguridad de la plata (pruebas de `calcular_ganancia_real` y de los cargos de `ventas_sync`) · B. caché con «actualizado hace X» en las 5 pantallas lentas (medir primero qué parte es Mercado Libre) · C. módulo de mails (proveedor por variable de entorno, apagado hasta que el dueño elija) + 3 mails de cobro ·
+D. errores silenciosos de las sincronizaciones a Sentry con contexto · E. tablas ordenables que faltan. Fuera de hoy: blueprints de `app.py`, ficha única de publicación, mapa de provincias, modo demo, empleados.
+
 ## 1. AUDITORÍA DE 52 PUNTOS (pegada por Diego el 2026-10-07): estado de cada uno
 Leyenda: ✅ hecho y desplegado/commiteado · ◐ parcial/endurecido · ❌ rechazado con evidencia · ⏳ PENDIENTE (verificar antes de aplicar).
 
