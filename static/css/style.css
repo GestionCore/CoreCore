@@ -465,6 +465,8 @@ tr.row-alert { background: rgba(239, 68, 68, 0.05); }
    (para evitar doble-click) pero sin esto se veía IDÉNTICO a un botón
    habilitado — mismo color, mismo cursor de mano — nada le avisaba al
    usuario que ya estaba procesando el click. */
+/* Los paneles modales reciben el foco al abrirse (UX.atraparFoco): el panel en sí no necesita un anillo, el foco visible lo llevan sus botones y campos. */
+.drawer-panel:focus, .menu-lateral-panel:focus, .fb-caja:focus { outline: none; }
 /* Atributos técnicos del cajón de una publicación: el borde se marca al enfocar (antes lo hacían un onfocus/onblur inline: código escrito en el HTML). */
 input[type="text"].ficha-atributo-input { border: 1px solid transparent; transition: border-color 0.15s; }
 input[type="text"].ficha-atributo-input:focus { border-color: var(--accent-brand); outline: none; }

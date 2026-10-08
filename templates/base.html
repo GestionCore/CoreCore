@@ -191,7 +191,7 @@
 </div>
 
 <div class="drawer-overlay" id="drawer-overlay" data-click="cerrarDrawer" data-click-propio>
-    <div class="drawer-panel">
+    <div class="drawer-panel" role="dialog" aria-modal="true" aria-label="Detalle de la publicación">
         <div class="drawer-header"><div id="drawer-titulo-header">Cargando...</div><button type="button" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;" data-click="cerrarDrawer" title="Cerrar" aria-label="Cerrar"><svg class="icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#icon-x"/></svg></button></div>
         <div class="drawer-tabs">
             <button type="button" class="drawer-tab active" data-tab="info" data-click="cambiarTabDrawer" data-click-args='["info"]'>Info & Precio</button>
@@ -291,7 +291,7 @@
 
 <!-- ── Menú lateral ──────────────────────────────────────────────────────── -->
 <div id="menu-lateral-overlay" class="menu-lateral-overlay" data-click="cerrarMenuLateral" data-click-propio>
-    <div class="menu-lateral-panel" id="menu-lateral-panel">
+    <div class="menu-lateral-panel" id="menu-lateral-panel" role="dialog" aria-modal="true" aria-label="Mi cuenta">
         <div class="menu-lateral-header">
             <span class="menu-lateral-titulo">Mi cuenta</span>
             <button type="button" class="menu-lateral-cerrar" data-click="cerrarMenuLateral" title="Cerrar" aria-label="Cerrar menú">
@@ -464,10 +464,12 @@ function abrirMenuLateral() {
     document.getElementById('menu-lateral-overlay').classList.add('abierto');
     document.body.style.overflow = 'hidden';
     actualizarIconoTemaLateral();
+    UX.atraparFoco(document.getElementById('menu-lateral-panel'));
 }
 function cerrarMenuLateral() {
     document.getElementById('menu-lateral-overlay').classList.remove('abierto');
     document.body.style.overflow = '';
+    UX.soltarFoco(document.getElementById('menu-lateral-panel'));
 }
 function actualizarIconoTemaLateral() {
     const esDark = document.documentElement.dataset.theme !== 'light';
@@ -521,9 +523,10 @@ document.addEventListener('keydown', e => {
     window.abrirComentario = function () {
         document.getElementById('fb-estado').textContent = '';
         overlay().hidden = false;
+        UX.atraparFoco(overlay().querySelector('.fb-caja'));
         setTimeout(() => document.getElementById('fb-mensaje').focus(), 50);
     };
-    window.cerrarComentario = function () { overlay().hidden = true; };
+    window.cerrarComentario = function () { overlay().hidden = true; UX.soltarFoco(overlay().querySelector('.fb-caja')); };
     window.elegirTipoComentario = function (boton) {
         tipo = boton.dataset.tipo;
         document.querySelectorAll('.fb-tipo').forEach(b => b.classList.toggle('activo', b === boton));

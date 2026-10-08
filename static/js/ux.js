@@ -301,6 +301,32 @@ window.addEventListener('DOMContentLoaded', () => {
     if (window.MutationObserver) new MutationObserver(() => UX.recolorearGraficos()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 });
 
+// ── Foco en los paneles que tapan la página (cajón de publicación, menú lateral, comentarios, buscador, confirmaciones) ────────────────────────────
+// Un panel modal tiene que: (1) dejar a Tab y Mayús+Tab dando vueltas ADENTRO, (2) devolver el foco a quien lo abrió al cerrarse. Sin eso, quien navega con teclado o lector de pantalla
+// sigue tabulando por una página tapada y, al cerrar, queda perdido al principio. UX.atraparFoco(panel) al abrir y UX.soltarFoco(panel) al cerrar (una pila: sirve con paneles encima de otros).
+UX.ciclarFoco = (contenedor, e) => {
+    const enfocables = [...contenedor.querySelectorAll('input, select, textarea, button, a[href], [tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled && el.offsetParent !== null);
+    if (!enfocables.length) { e.preventDefault(); contenedor.focus && contenedor.focus(); return; }
+    const primero = enfocables[0], ultimo = enfocables[enfocables.length - 1];
+    if (!contenedor.contains(document.activeElement)) { e.preventDefault(); primero.focus(); }
+    else if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+};
+const _pilaDeFoco = [];
+UX.atraparFoco = (contenedor) => {
+    if (!contenedor || _pilaDeFoco.some(x => x.contenedor === contenedor)) return;
+    _pilaDeFoco.push({ contenedor, previo: document.activeElement });
+    if (!contenedor.hasAttribute('tabindex')) contenedor.setAttribute('tabindex', '-1');
+    contenedor.focus({ preventScroll: true });                 // el foco entra al panel: Tab empieza por su primer elemento
+};
+UX.soltarFoco = (contenedor) => {
+    const i = _pilaDeFoco.findIndex(x => x.contenedor === contenedor);
+    if (i < 0) return;
+    const { previo } = _pilaDeFoco.splice(i, 1)[0];
+    if (previo && previo !== document.body && document.contains(previo) && typeof previo.focus === 'function') previo.focus();
+};
+document.addEventListener('keydown', (e) => { if (e.key === 'Tab' && _pilaDeFoco.length) UX.ciclarFoco(_pilaDeFoco[_pilaDeFoco.length - 1].contenedor, e); });
+
 // Un enlace marcado como deshabilitado (<a class="btn disabled"> o aria-disabled="true") no navega: antes lo frenaba `pointer-events: none`, que además escondía el tooltip con el motivo.
 document.addEventListener('click', (e) => {
     const enlace = e.target.closest && e.target.closest('a.btn.disabled, a[aria-disabled="true"]');

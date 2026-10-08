@@ -1137,15 +1137,8 @@ function cerrarComando() {
     _comandoFocoPrevio = null;
     if (estabaAbierto && previo && previo !== document.body && document.contains(previo) && typeof previo.focus === 'function') previo.focus();
 }
-// Trampa de foco: con el buscador abierto, Tab y Mayús+Tab ciclan entre el campo y los resultados, sin salir al resto de la página (que está tapada).
-function _ciclarFocoEn(contenedor, e) {
-    const enfocables = [...contenedor.querySelectorAll('input, button, a[href], [tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled && el.offsetParent !== null);
-    if (!enfocables.length) return;
-    const primero = enfocables[0], ultimo = enfocables[enfocables.length - 1];
-    if (!contenedor.contains(document.activeElement)) { e.preventDefault(); primero.focus(); }
-    else if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
-    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
-}
+// Trampa de foco: con el buscador abierto, Tab y Mayús+Tab ciclan entre el campo y los resultados, sin salir al resto de la página (que está tapada). La lógica es la de ux.js.
+function _ciclarFocoEn(contenedor, e) { UX.ciclarFoco(contenedor, e); }
 let _comandoItemsActuales = [];
 let _comandoIndiceActivo = -1;
 function renderizarResultadosComando(items) {
@@ -1258,12 +1251,17 @@ function abrirDrawer(idMeli) {
     drawerIdActual = idMeli;
     drawerTabsCargadas = new Set();
     document.getElementById('drawer-overlay').classList.add('open');
+    UX.atraparFoco(document.querySelector('#drawer-overlay .drawer-panel'));
     document.querySelectorAll('.drawer-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'info'));
     document.querySelectorAll('.drawer-tab-content').forEach(c => c.style.display = 'none');
     document.getElementById('tab-info').style.display = 'block';
     cargarTabInfo(idMeli);
 }
-function cerrarDrawer() { document.getElementById('drawer-overlay').classList.remove('open'); drawerIdActual = null; }
+function cerrarDrawer() {
+    document.getElementById('drawer-overlay').classList.remove('open');
+    UX.soltarFoco(document.querySelector('#drawer-overlay .drawer-panel'));
+    drawerIdActual = null;
+}
 function cambiarTabDrawer(tab) {
     document.querySelectorAll('.drawer-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.querySelectorAll('.drawer-tab-content').forEach(c => c.style.display = 'none');
