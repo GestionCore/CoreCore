@@ -1010,8 +1010,13 @@ def registrar_y_detectar_emergentes(cursor, cuenta_id, keywords_de_hoy):
     cursor.execute("SELECT DISTINCT keyword FROM tendencias_historial WHERE cuenta_id = %s AND fecha >= %s AND fecha < %s", (cuenta_id, hace_14, hoy))
     vistas_antes = {r[0] for r in cursor.fetchall()}
 
-    for kw in keywords_de_hoy:
-        cursor.execute("INSERT INTO tendencias_historial (cuenta_id, keyword, fecha) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", (cuenta_id, kw, hoy))
+    # Una sola sentencia para todas las palabras (antes: un INSERT por palabra, ~2 s por visita a Tendencias medido desde la PC)
+    palabras = sorted({kw for kw in keywords_de_hoy if kw})
+    if palabras:
+        cursor.execute(
+            "INSERT INTO tendencias_historial (cuenta_id, keyword, fecha) SELECT %s, k, %s FROM unnest(%s::text[]) AS k ON CONFLICT DO NOTHING",
+            (cuenta_id, hoy, palabras),
+        )
 
     hace_30 = (hoy_argentina() - timedelta(days=30)).strftime("%Y-%m-%d")
     cursor.execute("DELETE FROM tendencias_historial WHERE cuenta_id = %s AND fecha < %s", (cuenta_id, hace_30))

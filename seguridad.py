@@ -56,6 +56,26 @@ def comprobar_base():
         return ok
 
 
+SEGUNDOS_PEDIDO_LENTO = float(os.getenv("SEGUNDOS_PEDIDO_LENTO", "2.5"))
+_RUTAS_SIN_MEDIR_LENTITUD = ("/static/", "/healthz", "/csp-report", "/api/ticker", "/api/estado_sincronizacion")      # archivos y consultas periódicas del navegador: no son pantallas
+
+
+def _registrar_si_fue_lento(resp):
+    """
+    Una línea de log por pedido que tarda más de SEGUNDOS_PEDIDO_LENTO: `[Lento] GET /metricas 200 4.2s`. Sin parámetros del pedido ni datos de la persona (solo método, ruta, código y tiempo).
+    Es lo que permite medir qué pantallas tardan de verdad en producción (`fly logs -a corecore | grep "\\[Lento\\]"`): las medidas desde otra PC no sirven, la latencia a la base cambia todo.
+    """
+    try:
+        inicio = g.get("inicio_pedido")
+        if inicio is None or request.path.startswith(_RUTAS_SIN_MEDIR_LENTITUD):
+            return
+        duracion = time.perf_counter() - inicio
+        if duracion >= SEGUNDOS_PEDIDO_LENTO:
+            log.warning("[Lento] %s %s %s %.1fs", request.method, request.path, resp.status_code, duracion)
+    except Exception:
+        pass                      # medir nunca puede romper una respuesta
+
+
 def ip_del_cliente():
     """
     La IP real de quien hace el pedido. El dominio pasa por Cloudflare: ahí request.remote_addr es la IP del borde de Cloudflare (la comparten
@@ -131,6 +151,7 @@ def iniciar(app):
     @app.before_request
     def _nonce_del_pedido():
         g.csp_nonce = secrets.token_urlsafe(16)        # uno por pedido: lo llevan los <script> inline de la página y la cabecera de la política
+        g.inicio_pedido = time.perf_counter()
 
     @app.context_processor
     def _nonce_para_plantillas():
@@ -165,6 +186,7 @@ def iniciar(app):
             resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
         if request.path.startswith("/static/") and "v" in request.args and resp.status_code == 200:
             resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        _registrar_si_fue_lento(resp)
         return resp
 
     @app.route("/csp-report", methods=["POST"])

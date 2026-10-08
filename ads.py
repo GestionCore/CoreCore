@@ -207,18 +207,83 @@ def obtener_gasto_ads_total_periodo(access_token, advertiser_id, fecha_desde, fe
 
 
 _metricas_item_cache = {}
+_anuncios_cache = {}
+TTL_ANUNCIOS_SEGUNDOS = 300
+ANUNCIOS_POR_PAGINA = 50
+TOPE_PAGINAS_ANUNCIOS = 40          # 2.000 anuncios: mucho más que cualquier cuenta real
+
+
+def obtener_anuncios_con_metricas(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id="MLA"):
+    """
+    {item_id: {costo, ventas, unidades, clicks, prints, titulo, thumbnail}} de TODOS los anuncios de Product Ads del anunciante en el período, con el listado
+    paginado `/product_ads/ads/search` (50 por página). Antes se hacía una consulta por publicación: medido con datos reales en 2 cuentas, 4 llamadas en 0,9 s
+    contra 192 en 5,5 s, con los mismos números (0 diferencias en 86 + 117 + 20 + 33 anuncios con datos, en períodos de 14 y 60 días).
+    Devuelve None si no se pudo leer completo (una página falló o se cortó la conexión): quien llama vuelve a la consulta por publicación, porque un listado
+    a medias se vería como «esas publicaciones no gastaron».
+    """
+    clave_cache = (advertiser_id, fecha_desde, fecha_hasta)
+    cacheado = _anuncios_cache.get(clave_cache)
+    if cacheado and (time.time() - cacheado["timestamp"]) < TTL_ANUNCIOS_SEGUNDOS:
+        return cacheado["data"]
+
+    headers = {"Authorization": f"Bearer {access_token}", "api-version": "2"}
+    anuncios, offset = {}, 0
+    try:
+        for _ in range(TOPE_PAGINAS_ANUNCIOS):
+            url = (
+                f"https://api.mercadolibre.com/advertising/{site_id}/advertisers/{advertiser_id}/product_ads/ads/search"
+                f"?limit={ANUNCIOS_POR_PAGINA}&offset={offset}&date_from={fecha_desde}&date_to={fecha_hasta}&metrics=cost,total_amount,units_quantity,clicks,prints"
+            )
+            resp = meli_http.get(url, headers=headers, timeout=15)
+            if resp.status_code != 200:
+                print(f"[Ads] ⚠️ El listado de anuncios respondió {resp.status_code}: se consulta publicación por publicación.")
+                return None
+            datos = resp.json() or {}
+            resultados = datos.get("results") or []
+            for a in resultados:
+                item_id = a.get("item_id")
+                if not item_id:
+                    continue
+                m = a.get("metrics") or {}
+                anuncios[item_id] = {
+                    "costo": float(m.get("cost") or 0.0), "ventas": float(m.get("total_amount") or 0.0), "unidades": int(m.get("units_quantity") or 0),
+                    "clicks": int(m.get("clicks") or 0), "prints": int(m.get("prints") or 0),
+                    "titulo": a.get("title"), "thumbnail": (a.get("thumbnail") or "").replace("http://", "https://") or None,
+                }
+            offset += ANUNCIOS_POR_PAGINA
+            total = (datos.get("paging") or {}).get("total")
+            if len(resultados) < ANUNCIOS_POR_PAGINA or (total is not None and offset >= int(total)):
+                break
+        else:
+            print("[Ads] ⚠️ El listado de anuncios superó el tope de páginas: se consulta publicación por publicación.")
+            return None
+    except Exception as e:
+        print(f"[Ads] ⚠️ No se pudo leer el listado de anuncios ({e}): se consulta publicación por publicación.")
+        return None
+
+    if len(_anuncios_cache) > 50:
+        _anuncios_cache.clear()
+    _anuncios_cache[clave_cache] = {"data": anuncios, "timestamp": time.time()}
+    return anuncios
 
 
 def obtener_metricas_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_hasta, ids_relevantes, site_id="MLA"):
     """
     {id_meli: {costo, ventas, unidades, clicks, prints, titulo, thumbnail}} de cada publicación que gastó o tuvo impresiones
     en Product Ads en el período (las que no están en Ads se omiten). Es lo que permite ver el retorno POR PUBLICACIÓN y
-    detectar las que gastan sin vender. Una consulta por publicación, en paralelo.
+    detectar las que gastan sin vender. Sale del listado de anuncios (4 llamadas); si ese falla, una consulta por publicación, en paralelo.
     """
     clave_cache = (advertiser_id, fecha_desde, fecha_hasta, tuple(sorted(ids_relevantes)))
     cacheado = _metricas_item_cache.get(clave_cache)
     if cacheado and (time.time() - cacheado["timestamp"]) < TTL_COSTOS_SEGUNDOS:
         return cacheado["data"]
+
+    listado = obtener_anuncios_con_metricas(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id)
+    if listado is not None:
+        relevantes = set(ids_relevantes)
+        resultado = {i: a for i, a in listado.items() if i in relevantes and (a["costo"] > 0 or a["prints"] > 0)}
+        _metricas_item_cache[clave_cache] = {"data": resultado, "timestamp": time.time()}
+        return resultado
 
     headers = {"Authorization": f"Bearer {access_token}", "Api-Version": "2"}
 
@@ -269,6 +334,14 @@ def obtener_costos_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_
     cacheado = _costos_cache.get(clave_cache)
     if cacheado and (time.time() - cacheado["timestamp"]) < TTL_COSTOS_SEGUNDOS:
         return cacheado["data"]
+
+    listado = obtener_anuncios_con_metricas(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id)
+    if listado is not None:
+        relevantes = set(ids_relevantes)
+        costos_por_item = CostosAds()
+        costos_por_item.update({i: a["costo"] for i, a in listado.items() if i in relevantes and a["costo"] > 0})
+        _costos_cache[clave_cache] = {"data": costos_por_item, "timestamp": time.time()}
+        return costos_por_item
 
     headers = {"Authorization": f"Bearer {access_token}", "Api-Version": "2"}
     costos_por_item = CostosAds()

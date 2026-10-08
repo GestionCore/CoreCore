@@ -21,6 +21,8 @@ def _preparar(monkeypatch, respuestas):
 
     def falso(url, **kw):
         item = url.split("/ads/")[1].split("?")[0]
+        if item == "search":
+            return _Resp(500)                                   # el listado masivo no responde: estas pruebas ejercitan el camino de respaldo, publicación por publicación
         consultados.append(item)
         r = respuestas[item]
         if isinstance(r, Exception):
@@ -28,6 +30,7 @@ def _preparar(monkeypatch, respuestas):
         return r
     monkeypatch.setattr(meli_http, "get", falso)
     ads._costos_cache.clear()
+    ads._anuncios_cache.clear()
     return consultados
 
 
