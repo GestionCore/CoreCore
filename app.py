@@ -3919,13 +3919,17 @@ def webhook_mercadopago():
     MP manda esto cuando: cobro mensual exitoso, cobro fallido, cancelación.
     No requiere login — MP lo llama directamente.
     """
-    data = request.get_json(silent=True) or {}
-    data_id = request.args.get("data.id") or (data.get("data") or {}).get("id") or data.get("id")
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        data = {}
+    data_del_cuerpo = data.get("data") if isinstance(data.get("data"), dict) else {}
+    data_id = request.args.get("data.id") or data_del_cuerpo.get("id") or data.get("id")
     if not pagos.firma_valida(request.headers.get("x-signature"), request.headers.get("x-request-id"), data_id, config.MP_WEBHOOK_SECRET):
         app.logger.warning("Webhook de Mercado Pago con firma inválida (data.id=%s, tipo=%s): se ignora. %s", data_id, request.args.get("type") or data.get("type"),
-                           pagos.diagnostico_firma(request.headers.get("x-signature"), request.headers.get("x-request-id"), data_id, config.MP_WEBHOOK_SECRET))
+                           pagos.diagnostico_firma(request.headers.get("x-signature"), request.headers.get("x-request-id"), data_id, config.MP_WEBHOOK_SECRET,
+                                                   ids_alternativos={"id_del_aviso": data.get("id"), "data_id_del_cuerpo": data_del_cuerpo.get("id")}))
         return "", 401
-    resultado = pagos.procesar_webhook(data)
+    resultado = pagos.procesar_webhook(data, data_id_url=request.args.get("data.id"), tipo_url=request.args.get("type"))
     if not resultado:
         return "", 200  # MP espera 200 aunque ignoremos el evento
 

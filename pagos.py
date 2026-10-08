@@ -130,10 +130,11 @@ def firma_valida(x_signature, x_request_id, data_id, secreto):
     return hmac.compare_digest(esperada, recibida)
 
 
-def diagnostico_firma(x_signature, x_request_id, data_id, secreto):
+def diagnostico_firma(x_signature, x_request_id, data_id, secreto, ids_alternativos=None):
     """
     Texto para el log cuando una firma no coincide: dice QUÉ cabeceras llegaron y si la firma recibida coincide con alguna variante razonable del manifiesto
     (así se distingue "la clave es otra" de "el manifiesto se arma distinto"). Solo muestra los primeros 8 caracteres de cada HMAC: la clave no aparece ni se puede deducir.
+    ids_alternativos = {nombre: id} de otros ids que traía el aviso (p. ej. el del cuerpo): se prueban con el manifiesto estándar por si Mercado Pago firma con otro.
     """
     partes = dict(p.strip().split("=", 1) for p in (x_signature or "").split(",") if "=" in p)
     ts, recibida = partes.get("ts"), (partes.get("v1") or "")
@@ -147,6 +148,10 @@ def diagnostico_firma(x_signature, x_request_id, data_id, secreto):
         "sin_punto_y_coma_final": f"id:{id_firmado};request-id:{x_request_id or ''};ts:{ts}",
         "con_espacios": f"id:{id_firmado} request-id:{x_request_id or ''} ts:{ts}",
     }
+    for nombre, otro in (ids_alternativos or {}).items():
+        otro = str(otro or "")
+        if otro and otro != data_id:
+            variantes[nombre] = f"id:{otro.lower() if otro.isalnum() else otro};request-id:{x_request_id or ''};ts:{ts};"
     esperadas = {n: hmac.new((secreto or "").encode(), m.encode(), hashlib.sha256).hexdigest() for n, m in variantes.items()}
     coincide = [n for n, e in esperadas.items() if recibida and hmac.compare_digest(e, recibida)]
     resumen = ", ".join(f"{n}={e[:8]}" for n, e in esperadas.items())
@@ -154,20 +159,23 @@ def diagnostico_firma(x_signature, x_request_id, data_id, secreto):
             f"v1_recibida={recibida[:8] or '-'} (largo {len(recibida)}) esperadas[{resumen}] coincide={','.join(coincide) or 'ninguna'}")
 
 
-def procesar_webhook(data):
+def procesar_webhook(data, data_id_url=None, tipo_url=None):
     """
     Procesa un webhook de MP y devuelve (usuario_id, nuevo_plan, preapproval_id) o None.
-    data = el JSON que mandó MP (topic + id, o data.id).
+    data = el JSON que mandó MP; data_id_url / tipo_url = los parámetros `data.id` y `type` de la URL (MP los manda ahí).
     Solo procesa topic="preapproval" — el de "payment" se ignora porque el
     estado del preapproval ya refleja si el cobro se acreditó o no.
     """
-    topic = data.get("topic") or data.get("type")
+    topic = data.get("topic") or data.get("type") or tipo_url
     if topic not in ("preapproval", "subscription_preapproval"):
         return None
 
+    # ⚠️ El id de la suscripción es `data.id`. El `id` de arriba del cuerpo es el número del AVISO (en el formato nuevo): usarlo consultaba otra cosa y nunca activaba el plan.
+    # Solo en el formato viejo (IPN: topic + id) ese `id` de arriba es el recurso.
     preapproval_id = (
-        data.get("id")
+        data_id_url
         or (data.get("data") or {}).get("id")
+        or (data.get("id") if data.get("topic") else None)
     )
     if not preapproval_id:
         return None
