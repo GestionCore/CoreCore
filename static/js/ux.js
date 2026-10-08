@@ -220,6 +220,90 @@ UX.bordesDeslizables = (el) => {
 };
 window.addEventListener('DOMContentLoaded', () => document.querySelectorAll('.subnav-tabs-inner').forEach(UX.bordesDeslizables));
 
+// ── Colores de los gráficos y cambio de tema ─────────────────────────────────────────────────────────────────────────────────
+// Chart.js lee los colores UNA vez, al crear el gráfico: al cambiar el tema en vivo (data-theme) un gráfico ya dibujado conservaba los del tema anterior hasta recargar la página.
+// Acá se recolorea todo gráfico vivo: se reemplaza cada color que era el de un token del tema viejo por el del mismo token en el nuevo (también las versiones con transparencia,
+// rgba(r,g,b,a)). Lo que arma una función (colores calculados al momento de dibujar) se actualiza solo con chart.update().
+const _TOKENS_DE_GRAFICOS = ['--text-primary', '--text-secondary', '--text-muted', '--text-faint', '--border', '--border-soft', '--glass-border', '--glass-bg', '--glass-bg-alt',
+    '--success', '--danger', '--semantic-warning', '--accent-primary', '--accent-gold', '--accent-cyan', '--accent-texto'];
+
+// "#8b5cf6" / "rgb(1, 2, 3)" / "rgba(1,2,3,.5)" → [r, g, b, a] o null si no es un color que se pueda leer
+UX.colorARgba = (texto) => {
+    const t = String(texto || '').trim().toLowerCase();
+    let m = t.match(/^#([0-9a-f]{3})$/);
+    if (m) return [...m[1]].map(c => parseInt(c + c, 16)).concat(1);
+    m = t.match(/^#([0-9a-f]{6})([0-9a-f]{2})?$/);
+    if (m) return [parseInt(m[1].slice(0, 2), 16), parseInt(m[1].slice(2, 4), 16), parseInt(m[1].slice(4, 6), 16), m[2] ? parseInt(m[2], 16) / 255 : 1];
+    m = t.match(/^rgba?\(\s*(\d+)\s*[, ]\s*(\d+)\s*[, ]\s*(\d+)\s*(?:[,/]\s*([\d.]+%?)\s*)?\)$/);
+    if (m) return [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : (m[4].endsWith('%') ? parseFloat(m[4]) / 100 : parseFloat(m[4]))];
+    return null;
+};
+// El color de un token del tema con una transparencia: UX.alfa('--accent-primary', 0.35) → "rgba(139, 92, 246, 0.35)". Evita escribir el violeta a mano en los gráficos.
+UX.alfa = (token, alfa, respaldo = '#8b5cf6') => {
+    const c = UX.colorARgba(getComputedStyle(document.documentElement).getPropertyValue(token)) || UX.colorARgba(respaldo);
+    return `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alfa})`;
+};
+UX.tokensDeGraficos = () => {
+    const estilo = getComputedStyle(document.documentElement), tokens = {};
+    _TOKENS_DE_GRAFICOS.forEach(t => { tokens[t] = estilo.getPropertyValue(t).trim(); });
+    return tokens;
+};
+// Reemplaza en un objeto de configuración de Chart.js (recursivo, sin tocar funciones ni gradientes) los colores de `antes` por los de `despues`. Devuelve cuántos cambió.
+UX.recolorear = (nodo, antes, despues, visto = new Set()) => {
+    if (!nodo || typeof nodo !== 'object' || visto.has(nodo)) return 0;
+    const proto = Object.getPrototypeOf(nodo);
+    if (proto !== Object.prototype && proto !== null && !Array.isArray(nodo)) return 0;               // gradientes, patrones, contextos: no se tocan (Chart.js arma varios objetos sin prototipo: esos sí)
+    visto.add(nodo);
+    let cambios = 0;
+    const iguales = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+    const aTexto = (rgb, alfa) => alfa >= 0.999 ? `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})` : `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${+alfa.toFixed(3)})`;
+    const convertir = (valor) => {
+        const viejo = UX.colorARgba(valor);
+        if (!viejo) return valor;
+        const pares = Object.keys(antes).map(t => [UX.colorARgba(antes[t]), UX.colorARgba(despues[t])]).filter(([a, d]) => a && d && !(iguales(a, d) && Math.abs(a[3] - d[3]) < 0.005));
+        // 1.º el color IDÉNTICO a un token (mismo color y misma transparencia: p. ej. la grilla, que es translúcida por definición del tema)…
+        const exacto = pares.find(([a]) => iguales(a, viejo) && Math.abs(a[3] - viejo[3]) < 0.005);
+        if (exacto) return aTexto(exacto[1], exacto[1][3]);
+        // …y si no, el mismo color con OTRA transparencia (un relleno al 35 % del violeta): se conserva la proporción.
+        const parcial = pares.find(([a]) => iguales(a, viejo));
+        if (parcial) return aTexto(parcial[1], viejo[3] * parcial[1][3] / (parcial[0][3] || 1));
+        return valor;
+    };
+    for (const clave of Object.keys(nodo)) {
+        const valor = nodo[clave];
+        if (typeof valor === 'string') {
+            const nuevo = convertir(valor);
+            if (nuevo !== valor) { nodo[clave] = nuevo; cambios++; }
+        } else {
+            cambios += UX.recolorear(valor, antes, despues, visto);
+        }
+    }
+    return cambios;
+};
+let _tokensVistos = null;
+UX.recolorearGraficos = () => {
+    const ahora = UX.tokensDeGraficos();
+    const antes = _tokensVistos || ahora;
+    _tokensVistos = ahora;
+    if (!window.Chart || !window.Chart.instances) return 0;
+    let total = 0;
+    Object.values(window.Chart.instances).forEach(grafico => {
+        total += UX.recolorear(grafico.config.data, antes, ahora) + UX.recolorear(grafico.config.options, antes, ahora);
+        grafico.update('none');               // también los que arman el color con una función: se vuelve a calcular con el tema nuevo
+    });
+    return total;
+};
+window.addEventListener('DOMContentLoaded', () => {
+    _tokensVistos = UX.tokensDeGraficos();
+    if (window.MutationObserver) new MutationObserver(() => UX.recolorearGraficos()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+});
+
+// Un enlace marcado como deshabilitado (<a class="btn disabled"> o aria-disabled="true") no navega: antes lo frenaba `pointer-events: none`, que además escondía el tooltip con el motivo.
+document.addEventListener('click', (e) => {
+    const enlace = e.target.closest && e.target.closest('a.btn.disabled, a[aria-disabled="true"]');
+    if (enlace) { e.preventDefault(); e.stopImmediatePropagation(); }
+}, true);
+
 // Para data-change="enviarFormulario" data-change-args='["$form"]': enviar el formulario apenas cambia un campo (por ejemplo, la fecha de Despacho).
 function enviarFormulario(formulario) { if (formulario) formulario.submit(); }
 

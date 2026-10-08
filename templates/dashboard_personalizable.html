@@ -409,8 +409,8 @@
                                 data: d.serie.map(p => p.facturado), borderColor: colorPrimario, borderWidth: 2.5,
                                 backgroundColor: (ctx) => {
                                     const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 120);
-                                    g.addColorStop(0, 'rgba(139, 92, 246, 0.35)');
-                                    g.addColorStop(1, 'rgba(139, 92, 246, 0)');
+                                    g.addColorStop(0, UX.alfa('--accent-primary', 0.35));          // el violeta del tema actual (cambia entre oscuro y claro) y se recalcula al cambiar de tema
+                                    g.addColorStop(1, UX.alfa('--accent-primary', 0));
                                     return g;
                                 },
                                 pointRadius: d.serie.length > 20 ? 0 : 3, pointHoverRadius: 5, pointBackgroundColor: colorPrimario, tension: 0.35, fill: true,

@@ -116,8 +116,13 @@
         if (cabecera) cabecera.setAttribute('aria-expanded', abrir ? 'true' : 'false');
     }
 
+    // Estado de cada modelo (abierto o plegado) ANTES de empezar a buscar: al buscar se abren los que coinciden, y al borrar la búsqueda tienen que volver a como estaban
+    // (si no, quedaban abiertos todos los que se encontraron). Lo que la persona abre o cierra a mano mientras busca se respeta: sale de esta memoria.
+    let _estadoAntesDeBuscar = null;
+
     function toggleAcordeon(header) {
         const item = header.closest('.acordeon-item');
+        if (_estadoAntesDeBuscar) _estadoAntesDeBuscar.delete(item);
         abrirItem(item, !item.classList.contains('abierto'));
     }
 
@@ -125,19 +130,24 @@
     function alternarTodos() {
         const items = [...document.querySelectorAll('.acordeon-item')].filter(i => i.style.display !== 'none');
         const abrir = items.some(i => !i.classList.contains('abierto'));
-        items.forEach(i => abrirItem(i, abrir));
+        items.forEach(i => { if (_estadoAntesDeBuscar) _estadoAntesDeBuscar.delete(i); abrirItem(i, abrir); });
         document.getElementById('btn-abrir-todos').textContent = abrir ? 'Cerrar todos' : 'Abrir todos';
     }
 
     function filtrarAcordeon() {
         const q = document.getElementById('input-buscador-masivo').value;
+        const buscando = q.trim() !== '';
+        const items = document.querySelectorAll('.acordeon-item');
+        if (buscando && !_estadoAntesDeBuscar) _estadoAntesDeBuscar = new Map([...items].map(i => [i, i.classList.contains('abierto')]));
         let visibles = 0;
-        document.querySelectorAll('.acordeon-item').forEach(item => {
+        items.forEach(item => {
             const coincide = coincideBusqueda(item.dataset.buscar, q) && (!soloEditables || item.dataset.editable === '1');
             item.style.display = coincide ? '' : 'none';
             if (coincide) visibles++;
-            if (coincide && q.trim()) abrirItem(item, true);          // al buscar, lo que se encuentra se muestra abierto
+            if (coincide && buscando) abrirItem(item, true);          // al buscar, lo que se encuentra se muestra abierto
+            else if (!buscando && _estadoAntesDeBuscar && _estadoAntesDeBuscar.has(item)) abrirItem(item, _estadoAntesDeBuscar.get(item));      // sin búsqueda: vuelve a como estaba
         });
+        if (!buscando) _estadoAntesDeBuscar = null;
         const vacio = document.getElementById('acordeon-sin-resultados');
         if (vacio) vacio.style.display = visibles === 0 ? '' : 'none';
     }

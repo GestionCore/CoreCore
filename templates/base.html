@@ -183,7 +183,7 @@
 </nav>
 
 <div class="command-overlay" id="command-overlay" data-click="cerrarComando" data-click-propio>
-    <div class="command-modal">
+    <div class="command-modal" role="dialog" aria-modal="true" aria-label="Buscar en toda la app">
         <input type="text" id="command-input" class="command-input" placeholder="Buscar publicación, ir a una sección..." aria-label="Buscar publicación o ir a una sección" autocomplete="off">
         <div class="command-results" id="command-results"></div>
         <div class="command-footer"><span><kbd>Enter</kbd>ir</span><span><kbd>Esc</kbd>cerrar</span></div>
@@ -251,9 +251,11 @@
             _pendingResolve = resolve;
         });
     };
+    let _focoPrevio = null;           // quién tenía el foco al abrir: vuelve ahí al cerrar (teclado y lectores de pantalla)
     window.confirmarAccion = function (mensaje, form, etiquetaOk, sub) {
         _pendingForm = form;
         const modal = document.getElementById('modal-confirmar');
+        if (modal.style.display === 'none') _focoPrevio = document.activeElement;
         document.getElementById('modal-confirmar-texto').textContent = mensaje || '¿Confirmar acción?';
         document.getElementById('modal-confirmar-sub').textContent = sub || '';
         const ok = document.getElementById('modal-confirmar-ok');
@@ -263,8 +265,13 @@
     };
     window.cerrarModalConfirmar = function () {
         _pendingForm = null;
-        document.getElementById('modal-confirmar').style.display = 'none';
+        const modal = document.getElementById('modal-confirmar');
+        const estabaAbierto = modal.style.display !== 'none';
+        modal.style.display = 'none';
         if (_pendingResolve) { const r = _pendingResolve; _pendingResolve = null; r(false); }
+        const previo = _focoPrevio;
+        _focoPrevio = null;
+        if (estabaAbierto && previo && previo !== document.body && document.contains(previo) && typeof previo.focus === 'function') previo.focus();
     };
     document.getElementById('modal-confirmar-ok').addEventListener('click', function () {
         if (_pendingForm) { const f = _pendingForm; cerrarModalConfirmar(); f.submit(); }
@@ -274,7 +281,10 @@
         if (e.target === this) cerrarModalConfirmar();
     });
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && document.getElementById('modal-confirmar').style.display !== 'none') cerrarModalConfirmar();
+        const modal = document.getElementById('modal-confirmar');
+        if (modal.style.display === 'none') return;
+        if (e.key === 'Escape') cerrarModalConfirmar();
+        else if (e.key === 'Tab') _ciclarFocoEn(modal, e);            // trampa de foco: Tab no sale al resto de la página, que está tapada
     });
 })();
 </script>

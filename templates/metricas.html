@@ -634,7 +634,7 @@ function _iniciarCorrelacion() {
         const lienzo = document.getElementById('canvas-correlacion');
         _cuandoTengaTamano(lienzo.parentElement, () => new Chart(lienzo, {
             type: 'bubble',
-            data: { datasets: [{ label: 'Modelos', data: d.puntos.map(p => ({ x: p.precio, y: p.unidades, r: Math.max(4, (p.unidades / maxU) * 22), titulo: p.titulo })), backgroundColor: 'rgba(139, 92, 246, 0.45)', borderColor: e.primario, borderWidth: 1 }] },
+            data: { datasets: [{ label: 'Modelos', data: d.puntos.map(p => ({ x: p.precio, y: p.unidades, r: Math.max(4, (p.unidades / maxU) * 22), titulo: p.titulo })), backgroundColor: () => UX.alfa('--accent-primary', 0.45), borderColor: e.primario, borderWidth: 1 }] },
             options: {
                 responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
                 plugins: { legend: { display: false }, tooltip: { ..._tooltip(), callbacks: { title: items => items[0].raw.titulo, label: item => `Precio ${UX.plata(item.raw.x)} · ${item.raw.y} unidades vendidas` } } },

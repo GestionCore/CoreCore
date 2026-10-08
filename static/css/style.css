@@ -465,7 +465,10 @@ tr.row-alert { background: rgba(239, 68, 68, 0.05); }
    (para evitar doble-click) pero sin esto se veía IDÉNTICO a un botón
    habilitado — mismo color, mismo cursor de mano — nada le avisaba al
    usuario que ya estaba procesando el click. */
-.btn:disabled, .btn.disabled { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
+/* SIN pointer-events: none: con eso el navegador no mostraba el `title` nativo, y los botones deshabilitados lo usan para decir POR QUÉ (zonas Flex sin precio, «solo los que puedo editar»).
+   Un <button disabled> ya no recibe clics; a un enlace con .disabled / aria-disabled lo frena ux.js. */
+.btn:disabled, .btn.disabled { opacity: 0.55; cursor: not-allowed; }
+.btn:disabled:hover, .btn.disabled:hover, .btn:disabled:active, .btn.disabled:active { transform: none; box-shadow: none; }
 
 .btn:active { transform: scale(0.96); }
 /* El violeta es el color de ACCIÓN (identidad + CTA), así que .btn-primary
@@ -494,13 +497,10 @@ input[type="text"], input[type="number"], input[type="date"], select, textarea {
     padding: 10px 13px; border-radius: var(--radius-sm); font-family: var(--font-data); font-size: 0.9em; width: 100%; transition: border-color 0.2s;
 }
 textarea { line-height: 1.5; }
-/* El ícono de calendario de input[type=date] es del navegador (Chromium
-   lo pinta en gris oscuro/negro por default) — sobre nuestro fondo
-   oscuro quedaba casi invisible, imposible de encontrar con el ojo.
-   invert lo pasa a un gris claro legible; no es Firefox-compatible
-   (ese motor no soporta este pseudo-elemento), pero ahí el navegador ya
-   respeta color-scheme:dark solo, así que no hace falta el parche. */
-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.75); cursor: pointer; }
+/* El ícono de calendario de input[type=date] es del navegador y se pinta según `color-scheme` (dark en el tema oscuro, light en el claro: ver arriba). Antes había un
+   `filter: invert(0.75)` de cuando no estaba declarado: con color-scheme ya declarado el ícono sale claro en oscuro y oscuro en claro, y el invert lo dejaba casi invisible
+   en los dos temas (medido en Chromium el 2026-10-08, y en Safari iOS desaparecía). No hace falta ningún parche. */
+input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
 /* La flecha nativa del <select> es del navegador/SO — no del sistema de
    íconos de la app, así que desentonaba (un triángulo gris genérico al
    lado de tarjetas pulidas). appearance:none la saca y la reemplaza por

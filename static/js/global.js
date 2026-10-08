@@ -1026,10 +1026,10 @@ function mostrarTooltipSalud(ancla) {
         el.innerHTML = `
             <div class="tooltip-ticker-acento"></div>
             <div class="tooltip-ticker-cuerpo">
-                <div class="tooltip-ticker-titulo">Score de salud: ${data.salud_score}/100 (${data.salud_etiqueta})</div>
+                <div class="tooltip-ticker-titulo">Score de salud: ${UX.esc(data.salud_score)}/100 (${UX.esc(data.salud_etiqueta)})</div>
                 ${detalle.length ? `
                     <div class="tooltip-ticker-sub">En qué se basó:</div>
-                    <ul class="tooltip-ticker-lista">${detalle.map(d => `<li>${d}</li>`).join('')}</ul>
+                    <ul class="tooltip-ticker-lista">${detalle.map(d => `<li>${UX.esc(d)}</li>`).join('')}</ul>
                     <div class="tooltip-ticker-sub">Resolviendo estos puntos, el score sube solo.</div>
                 ` : `<div class="tooltip-ticker-sub">Sin descuentos activos — todo en orden.</div>`}
             </div>
@@ -1048,10 +1048,10 @@ function mostrarTooltipVentas(ancla) {
         const lista = data.ventas_hoy_detalle || [];
         el.innerHTML = `
             <div class="tooltip-ticker-cuerpo">
-                <div class="tooltip-ticker-titulo">Ventas de hoy — $${data.facturado_hoy}</div>
+                <div class="tooltip-ticker-titulo">Ventas de hoy — $${UX.esc(data.facturado_hoy)}</div>
                 ${lista.length ? `
                     <ul class="tooltip-ticker-lista">
-                        ${lista.map(v => `<li>${v.hora} — ${v.cantidad}× ${v.titulo.slice(0, 38)}${v.titulo.length > 38 ? '…' : ''} <strong>$${v.precio_formateado}</strong></li>`).join('')}
+                        ${lista.map(v => `<li>${UX.esc(v.hora)} — ${UX.esc(v.cantidad)}× ${UX.esc(String(v.titulo).slice(0, 38))}${String(v.titulo).length > 38 ? '…' : ''} <strong>$${UX.esc(v.precio_formateado)}</strong></li>`).join('')}
                     </ul>
                 ` : `<div class="tooltip-ticker-sub">Todavía no hay ventas registradas hoy.</div>`}
             </div>
@@ -1118,14 +1118,34 @@ const ACCIONES_COMANDO = [
     { alias: ['tema', 'oscuro', 'claro', 'dark', 'light'], texto: 'Cambiar tema claro/oscuro', accion: 'alternarTema' },
     { alias: ['privacidad', 'ocultar', 'blur'], texto: 'Modo privacidad (ocultar montos)', accion: 'alternarModoPrivacidad' },
 ];
+// Quién tenía el foco antes de abrir el buscador: al cerrarlo, el foco vuelve ahí (si no, quien navega con teclado o lector de pantalla queda perdido al principio de la página).
+let _comandoFocoPrevio = null;
 function abrirComando() {
-    document.getElementById('command-overlay').classList.add('open');
+    const overlay = document.getElementById('command-overlay');
+    if (!overlay.classList.contains('open')) _comandoFocoPrevio = document.activeElement;
+    overlay.classList.add('open');
     const input = document.getElementById('command-input');
     input.value = ''; input.focus();
     _comandoIndiceActivo = -1;
     renderizarResultadosComando([]);
 }
-function cerrarComando() { document.getElementById('command-overlay').classList.remove('open'); }
+function cerrarComando() {
+    const overlay = document.getElementById('command-overlay');
+    const estabaAbierto = overlay.classList.contains('open');
+    overlay.classList.remove('open');
+    const previo = _comandoFocoPrevio;
+    _comandoFocoPrevio = null;
+    if (estabaAbierto && previo && previo !== document.body && document.contains(previo) && typeof previo.focus === 'function') previo.focus();
+}
+// Trampa de foco: con el buscador abierto, Tab y Mayús+Tab ciclan entre el campo y los resultados, sin salir al resto de la página (que está tapada).
+function _ciclarFocoEn(contenedor, e) {
+    const enfocables = [...contenedor.querySelectorAll('input, button, a[href], [tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled && el.offsetParent !== null);
+    if (!enfocables.length) return;
+    const primero = enfocables[0], ultimo = enfocables[enfocables.length - 1];
+    if (!contenedor.contains(document.activeElement)) { e.preventDefault(); primero.focus(); }
+    else if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+}
 let _comandoItemsActuales = [];
 let _comandoIndiceActivo = -1;
 function renderizarResultadosComando(items) {
@@ -1135,7 +1155,7 @@ function renderizarResultadosComando(items) {
     if (items.length === 0) { cont.innerHTML = '<div class="command-empty">Escribí para buscar publicaciones, secciones o acciones ("sincronizar", "tema"...)</div>'; return; }
     cont.innerHTML = items.map((item, i) => {
         const claseActiva = i === _comandoIndiceActivo ? ' activo' : '';
-        const etiqueta = `<span>${item.texto}</span>${item.tag ? `<span class="badge badge-neutral">${item.tag}</span>` : ''}`;
+        const etiqueta = `<span>${UX.esc(item.texto)}</span>${item.tag ? `<span class="badge badge-neutral">${UX.esc(item.tag)}</span>` : ''}`;       // el título de una publicación viene de Mercado Libre: se escapa
         // Un resultado de producto (idMeli) abre el drawer de gestión — no
         // navega a una página aparte, mismo comportamiento que el botón
         // "Gestionar" del listado de Stock.
@@ -1171,6 +1191,7 @@ function inicializarComando() {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); abrirComando(); return; }
         if (e.key === 'Escape') { cerrarComando(); cerrarDrawer(); }
         if (!document.getElementById('command-overlay').classList.contains('open')) return;
+        if (e.key === 'Tab') { _ciclarFocoEn(document.querySelector('#command-overlay .command-modal'), e); return; }
         if (e.key === 'ArrowDown') { e.preventDefault(); _moverSeleccionComando(1); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); _moverSeleccionComando(-1); }
         else if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'command-input') {
@@ -1219,7 +1240,7 @@ async function cargarOportunidadesSeo() {
         cont.innerHTML = oportunidades.map(o => `
             <button type="button" class="badge badge-success" style="cursor:pointer; font-size:0.88em; padding:8px 14px; border:none;"
                 data-click="abrirDrawerConSugerencia" data-click-args='${UX.esc(JSON.stringify([String(o.id_meli_sugerido), String(o.titulo_sugerido)]))}'>
-                Sumar "${o.termino}" a ${o.titulo_actual.length > 30 ? o.titulo_actual.slice(0,30)+'…' : o.titulo_actual}
+                Sumar "${UX.esc(o.termino)}" a ${UX.esc(o.titulo_actual.length > 30 ? o.titulo_actual.slice(0,30)+'…' : o.titulo_actual)}
             </button>
         `).join('');
     } catch (e) { console.error(e); }
@@ -1261,7 +1282,7 @@ async function cargarTabInfo(idMeli) {
     try {
         const resp = await fetch(`/api/drawer/info/${idMeli}`);
         const d = await resp.json();
-        if (d.error) { cont.innerHTML = `<div class="text-danger">${d.error}</div>`; return; }
+        if (d.error) { cont.innerHTML = `<div class="text-danger">${UX.esc(d.error)}</div>`; return; }
         document.getElementById('drawer-titulo-header').textContent = d.titulo;
         window._drawerOriginal = { titulo: d.titulo, precio: Number(d.precio) || 0, estado: d.estado, costo: Number(d.precio_costo) || 0, estadoNombre: d.estado_nombre };
         // Solo se puede activar o pausar. Una publicación finalizada o en revisión muestra su estado, bloqueado: "finalizar" no tiene vuelta atrás en Mercado Libre.
@@ -1282,7 +1303,7 @@ async function cargarTabInfo(idMeli) {
             </div>
             <div class="field-group" style="margin-bottom:14px;"><label class="field-label">Costo de fabricación ($) <span class="text-muted" style="font-weight:400;">solo en CoreLux</span></label><input type="number" step="0.01" min="0" id="drawer-costo" value="${Number(d.precio_costo) || 0}"></div>
             <button type="button" class="btn btn-primary btn-block" data-click="guardarDrawerInfo">Guardar cambios</button>
-            <a href="/publicacion/${idMeli}/timeline" class="btn btn-secondary btn-block" style="margin-top:8px; text-align:center; text-decoration:none;"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-info"/></svg>Ver línea de tiempo completa</a>
+            <a href="/publicacion/${encodeURIComponent(idMeli)}/timeline" class="btn btn-secondary btn-block" style="margin-top:8px; text-align:center; text-decoration:none;"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-info"/></svg>Ver línea de tiempo completa</a>
         `;
         actualizarLargoTituloDrawer();
         if (_tituloSugeridoPendiente) {
@@ -1355,8 +1376,8 @@ async function cargarTabFicha(idMeli) {
         // Atributos editables: solo los que tienen valor no vacío o son relevantes
         const atributosHtml = (d.atributos || []).map((a, i) => `
             <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--glass-border);">
-                <span style="color:var(--text-secondary); font-size:0.82em; width:42%; flex-shrink:0;">${a.nombre}</span>
-                <input type="text" data-attr-id="${a.id || ''}" value="${(a.valor || '').replace(/"/g,'&quot;')}"
+                <span style="color:var(--text-secondary); font-size:0.82em; width:42%; flex-shrink:0;">${UX.esc(a.nombre)}</span>
+                <input type="text" data-attr-id="${UX.esc(a.id || '')}" value="${UX.esc(a.valor || '')}"
                     style="flex:1; background:rgba(255,255,255,0.04); border:1px solid transparent; border-radius:4px; color:var(--text-primary); padding:4px 8px; font-size:0.85em; transition:border-color 0.15s;"
                     onfocus="this.style.borderColor='var(--accent-brand)'" onblur="this.style.borderColor='transparent'"
                     placeholder="(vacío)">
@@ -1369,7 +1390,7 @@ async function cargarTabFicha(idMeli) {
                 </div>
                 <textarea id="drawer-descripcion" rows="7"
                     style="width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text-primary); padding:10px; font-family:var(--font-ui); font-size:0.88em; line-height:1.5; resize:vertical;"
-                    data-input="contarCaracteresDescripcion" data-input-args='["$el"]'>${d.descripcion || ''}</textarea>
+                    data-input="contarCaracteresDescripcion" data-input-args='["$el"]'>${UX.esc(d.descripcion || '')}</textarea>
                 <button type="button" class="btn btn-primary" style="margin-top:8px;" data-click="guardarDescripcion">
                     <svg class="icon" style="margin-right:5px;"><use href="#icon-check"/></svg>Guardar descripción
                 </button>
@@ -1422,12 +1443,13 @@ async function cargarTabResenas(idMeli) {
         const resp = await fetch(`/api/drawer/resenas/${idMeli}`);
         const d = await resp.json();
         if (!d.rating_average) { cont.innerHTML = '<div class="alert-empty">Todavía no tiene opiniones.</div>'; return; }
+        // El texto de una opinión lo escribe un COMPRADOR (un tercero): siempre escapado.
         const reviewsHtml = d.reviews.map(r => `
-            <div class="mobile-card"><div class="mobile-card-top"><strong>${'⭐'.repeat(r.rate || 0)}</strong><span class="text-muted" style="font-size:0.78em;">${r.fecha}</span></div>
-            <div>${r.titulo ? '<strong>' + r.titulo + '</strong><br>' : ''}${r.contenido || ''}</div></div>
+            <div class="mobile-card"><div class="mobile-card-top"><strong>${'⭐'.repeat(Math.max(0, Math.min(5, Number(r.rate) || 0)))}</strong><span class="text-muted" style="font-size:0.78em;">${UX.esc(r.fecha)}</span></div>
+            <div>${r.titulo ? '<strong>' + UX.esc(r.titulo) + '</strong><br>' : ''}${UX.esc(r.contenido || '')}</div></div>
         `).join('');
         cont.innerHTML = `
-            <div class="stat-strip" style="margin-bottom:16px;"><div class="stat-chip accent-gold"><div class="stat-chip-label">Promedio</div><div class="stat-chip-value">${d.rating_average} ⭐</div></div></div>
+            <div class="stat-strip" style="margin-bottom:16px;"><div class="stat-chip accent-gold"><div class="stat-chip-label">Promedio</div><div class="stat-chip-value">${UX.esc(d.rating_average)} ⭐</div></div></div>
             ${reviewsHtml || '<div class="alert-empty">Sin comentarios de texto todavía.</div>'}
         `;
     } catch(e) { cont.innerHTML = '<div class="text-danger">Error al cargar.</div>'; }
@@ -1442,10 +1464,10 @@ async function cargarTabPreguntas(idMeli) {
         if (preguntas.length === 0) { cont.innerHTML = '<div class="alert-empty">Sin preguntas registradas.</div>'; return; }
         cont.innerHTML = preguntas.map(p => `
             <div class="mobile-card">
-                <div class="mobile-card-top"><strong>${p.fecha}</strong>${p.estado === 'UNANSWERED' ? '<span class="badge badge-warning">Sin responder</span>' : '<span class="badge badge-success">Respondida</span>'}</div>
-                <div style="margin-bottom:8px;">${p.texto}</div>
-                ${p.respuesta ? `<div class="text-muted" style="font-size:0.85em;">Respuesta: ${p.respuesta}</div>` : `
-                    <div class="flex-gap"><input type="text" id="respuesta-${p.id}" placeholder="Escribí una respuesta..." style="flex:1;"><button type="button" class="btn btn-secondary" data-click="responderPreguntaDrawer" data-click-args='[${p.id}]'>Enviar</button></div>
+                <div class="mobile-card-top"><strong>${UX.esc(p.fecha)}</strong>${p.estado === 'UNANSWERED' ? '<span class="badge badge-warning">Sin responder</span>' : '<span class="badge badge-success">Respondida</span>'}</div>
+                <div style="margin-bottom:8px;">${UX.esc(p.texto)}</div>
+                ${p.respuesta ? `<div class="text-muted" style="font-size:0.85em;">Respuesta: ${UX.esc(p.respuesta)}</div>` : `
+                    <div class="flex-gap"><input type="text" id="respuesta-${Number(p.id)}" placeholder="Escribí una respuesta..." style="flex:1;"><button type="button" class="btn btn-secondary" data-click="responderPreguntaDrawer" data-click-args='[${Number(p.id)}]'>Enviar</button></div>
                 `}
             </div>
         `).join('');
@@ -1470,7 +1492,7 @@ async function cargarTabSalud(idMeli) {
         const resp = await fetch(`/api/drawer/salud/${idMeli}`);
         const d = await resp.json();
         const color = d.porcentaje >= 70 ? 'var(--success)' : (d.porcentaje >= 40 ? 'var(--warning)' : 'var(--danger)');
-        const recs = d.recomendaciones.map(r => `<li style="margin-bottom:6px;">${r}</li>`).join('');
+        const recs = d.recomendaciones.map(r => `<li style="margin-bottom:6px;">${UX.esc(r)}</li>`).join('');
         cont.innerHTML = `
             <div class="page-subtitle" style="margin-bottom:14px;">Puntaje estimado por CoreLux, no el oficial de MeLi.</div>
             <div style="height:14px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; margin-bottom:16px;"><div style="height:100%; width:${d.porcentaje}%; background:${color};"></div></div>
