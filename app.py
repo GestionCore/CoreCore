@@ -721,9 +721,11 @@ def notificaciones_meli():
     print(f"[Webhook] tema={topic} application_id={presencia}")
 
     # Las notificaciones de otra aplicación (o una inventada) no disparan nada: el contenido tampoco se toma como dato,
-    # solo avisa QUÉ volver a pedirle a Mercado Libre para esa cuenta.
-    if presencia == "ajena":
-        print(f"[Webhook] ignorada: es de otra aplicación (tema={topic})")
+    # solo avisa QUÉ volver a pedirle a Mercado Libre para esa cuenta. Una SIN application_id tampoco: se verificó en los logs de producción que las notificaciones reales
+    # lo traen siempre (11 de 11 en temas post_purchase, shipments, orders_v2 y messages, todas «propia»), así que su ausencia es la marca de un pedido inventado.
+    # Se responde 200 igual (MeLi deja de mandar si fallamos seguido) y la barredora del scheduler cubre cualquier cambio real que se hubiera perdido.
+    if presencia == "ajena" or (presencia == "ausente" and config.MELI_CLIENT_ID):
+        print(f"[Webhook] ignorada: {'es de otra aplicación' if presencia == 'ajena' else 'no trae application_id'} (tema={topic})")
         return "", 200
 
     if topic and meli_user_id:

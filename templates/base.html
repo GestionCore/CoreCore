@@ -28,7 +28,7 @@
         })();
     </script>
 </head>
-<body {% if session.get('mostrar_tutorial') %}data-mostrar-tutorial="1"{% endif %}{% if cuenta_actual %} data-cuenta="{{ cuenta_actual.id }}"{% endif %}>
+<body {% if session.get('mostrar_tutorial') %}data-mostrar-tutorial="1"{% endif %}{% if cuenta_actual %} data-cuenta="{{ cuenta_actual.id }}"{% endif %}{% if session.get('usuario_id') %} data-logueado="1"{% endif %}>
 <a href="#contenido-principal" class="saltar-al-contenido">Saltar al contenido</a>
 <!-- El canvas de partículas (static/js/particulas.js) queda en el repo
      por si hace falta revertir, pero se dejó de incluir acá: era la pieza

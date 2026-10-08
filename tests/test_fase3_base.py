@@ -124,8 +124,9 @@ def test_el_webhook_registra_solo_el_tema_y_no_revienta_con_cuerpos_raros(monkey
     import app as aplicacion
     llamadas = []
     monkeypatch.setattr(aplicacion, "_en_segundo_plano", lambda funcion, *a: llamadas.append(a))
+    monkeypatch.setattr(aplicacion.config, "MELI_CLIENT_ID", "5503910054141466")
     cliente = aplicacion.app.test_client()
-    r = cliente.post("/notificaciones_meli", json={"topic": "orders_v2", "resource": "/orders/2000012345", "user_id": 619292584, "application_id": None})
+    r = cliente.post("/notificaciones_meli", json={"topic": "orders_v2", "resource": "/orders/2000012345", "user_id": 619292584, "application_id": 5503910054141466})
     assert r.status_code == 200 and llamadas == [("orders_v2", "/orders/2000012345", 619292584)]
     salida = capsys.readouterr().out
     assert "[Webhook] tema=orders_v2" in salida and "2000012345" not in salida and "619292584" not in salida

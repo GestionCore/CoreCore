@@ -180,4 +180,18 @@ def test_el_webhook_registra_si_la_notificacion_trae_application_id_propio_ajeno
     for extra, esperado in (({"application_id": 5503910054141466}, "propia"), ({"application_id": "5503910054141466"}, "propia"), ({"application_id": 1}, "ajena"), ({}, "ausente")):
         cliente.post("/notificaciones_meli", json=dict(base, **extra))
         assert f"[Webhook] tema=orders_v2 application_id={esperado}" in capsys.readouterr().out
-    assert len(llamadas) == 3                                                                                  # propia, propia y ausente procesan; la ajena no
+    assert len(llamadas) == 2                                                                                  # solo las dos propias procesan: la ajena y la que no trae application_id se ignoran
+
+
+def test_una_notificacion_sin_application_id_se_ignora_con_200_y_lo_dice_en_el_log(webhook, capsys):
+    cliente, llamadas = webhook
+    r = cliente.post("/notificaciones_meli", json={"topic": "orders_v2", "resource": "/orders/1", "user_id": 5})
+    assert r.status_code == 200 and llamadas == []                                                             # 200 igual: MeLi deja de mandar si fallamos seguido
+    assert "ignorada: no trae application_id" in capsys.readouterr().out
+
+
+def test_sin_cliente_de_meli_configurado_no_se_puede_validar_y_no_se_descarta_nada(webhook, monkeypatch):
+    cliente, llamadas = webhook
+    monkeypatch.setattr("config.MELI_CLIENT_ID", "")
+    r = cliente.post("/notificaciones_meli", json={"topic": "orders_v2", "resource": "/orders/1", "user_id": 5})
+    assert r.status_code == 200 and len(llamadas) == 1                                                         # sin MELI_CLIENT_ID no hay contra qué comparar

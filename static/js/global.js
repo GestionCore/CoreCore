@@ -1605,16 +1605,20 @@ document.addEventListener('DOMContentLoaded', () => {
     envolverIdsCopiables(document.body);
     inicializarComando();
     inicializarAvisos();
-    actualizarTicker();
+    // En las páginas públicas (planes, términos…) no hay sesión: esas consultas a la API devolvían la página de login (HTML) y llenaban la consola de errores en cada visita.
+    const logueado = !!document.body.dataset.logueado;
+    if (logueado) actualizarTicker();
     revisarMensajeEnURL();
-    marcarCurvaRota();
-    cargarOportunidadesSeo();
+    if (logueado) marcarCurvaRota();
+    if (logueado) cargarOportunidadesSeo();
     inicializarSidebar();
     inicializarProtectorInactividad();
-    // El ticker (varias consultas a la base) se actualiza cada 60 s y SOLO con la pestaña a la vista; al volver a mirarla se refresca enseguida.
-    setInterval(() => { if (!document.hidden) actualizarTicker(); }, 60000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) actualizarTicker(); });
-    cargarAlertasPendientes();
-    setInterval(() => { if (!document.hidden) cargarAlertasPendientes(); }, 300000); // cada 5 minutos, con la pestaña a la vista
+    if (logueado) {
+        // El ticker (varias consultas a la base) se actualiza cada 60 s y SOLO con la pestaña a la vista; al volver a mirarla se refresca enseguida.
+        setInterval(() => { if (!document.hidden) actualizarTicker(); }, 60000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) actualizarTicker(); });
+        cargarAlertasPendientes();
+        setInterval(() => { if (!document.hidden) cargarAlertasPendientes(); }, 300000); // cada 5 minutos, con la pestaña a la vista
+    }
     if (document.body.dataset.mostrarTutorial) { setTimeout(iniciarTutorial, 500); }
 });
