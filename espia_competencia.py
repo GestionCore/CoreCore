@@ -17,7 +17,7 @@ import re
 import meli_http
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from utils import ARGENTINA, hoy_argentina
+from utils import ARGENTINA, hoy_argentina, percentil
 
 # Fichas de catálogo: MLA + 6 a 8 dígitos (MLA63419087). Las publicaciones
 # puntuales tienen 9-10 dígitos (MLA2841280276) y esas ya no se pueden seguir.
@@ -106,17 +106,6 @@ def eliminar_competidor(cursor, cuenta_id, id_producto):
     cursor.execute("DELETE FROM competidores_historial WHERE cuenta_id = %s AND id_meli_rival = %s", (cuenta_id, id_producto.upper()))
 
 
-def _percentil(ordenados, p):
-    if not ordenados:
-        return None
-    if len(ordenados) == 1:
-        return ordenados[0]
-    k = (len(ordenados) - 1) * p
-    piso = int(k)
-    techo = min(piso + 1, len(ordenados) - 1)
-    return ordenados[piso] + (ordenados[techo] - ordenados[piso]) * (k - piso)
-
-
 def _relevar_producto(headers, id_producto):
     """Los números de hoy de un producto de catálogo, o None si MeLi no respondió."""
     estado, data = _get_json(f"https://api.mercadolibre.com/products/{id_producto}/items", headers, {"limit": 50})
@@ -133,7 +122,7 @@ def _relevar_producto(headers, id_producto):
         "ofertas": total if isinstance(total, int) else len(ofertas),
         "vendedores": len({o.get("seller_id") for o in ofertas if o.get("seller_id")}),
         "precio_min": precios[0] if precios else None,
-        "precio_mediano": round(_percentil(precios, 0.5), 2) if precios else None,
+        "precio_mediano": round(percentil(precios, 0.5), 2) if precios else None,
         "precio_max": precios[-1] if precios else None,
         "pct_full": round(con_full / len(ofertas) * 100, 1) if ofertas else None,
     }

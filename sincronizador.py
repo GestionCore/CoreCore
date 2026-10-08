@@ -18,6 +18,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 import cache_db
 import meli_http
+import monitoreo
 import validacion_meli
 import db
 import ventas_sync
@@ -319,6 +320,7 @@ def procesar_notificacion_webhook(topic, resource, meli_user_id):
 
     except Exception as e:
         print(f"❌ [Webhook] Error procesando notificación (topic={topic}, resource={resource}): {e}")
+        monitoreo.reportar(f"webhook:{topic}", e, cuenta_id=locals().get("cuenta_id"))
 
 
 LIMITE_PAGINA_ITEMS = 100
@@ -463,6 +465,7 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
 
     except Exception as e:
         print(f"❌ [Error Sincronizador] cuenta {cuenta_id}: {e}")
+        monitoreo.reportar("catalogo", e, cuenta_id)
     finally:
         candado.release()
 
@@ -539,11 +542,13 @@ def _sincronizar_todo_interno(usuario_id, cuenta_id):
     except Exception as e:
         catalogo_ok = False
         print(f"❌ [Error Catálogo] cuenta {cuenta_id}: {e}")
+        monitoreo.reportar("catalogo", e, cuenta_id)
 
     try:
         ventas_sync.sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id)
     except Exception as e:
         print(f"❌ [Error VentasSync] cuenta {cuenta_id}: {e}")
+        monitoreo.reportar("ventas", e, cuenta_id)
 
     # Reclamos/devoluciones y preguntas sin responder — antes esto no
     # tenía sync real, así que Reclamos (en Ganancia Real), Logros y
@@ -560,6 +565,7 @@ def _sincronizar_todo_interno(usuario_id, cuenta_id):
         enriquecimiento.refrescar_todo(usuario_id, cuenta_id, access_token, capacidades_cuenta)
     except Exception as e:
         print(f"❌ [Capacidades/Enriquecimiento] cuenta {cuenta_id}: {e}")
+        monitoreo.reportar("capacidades", e, cuenta_id)
 
     if not catalogo_ok:
         return

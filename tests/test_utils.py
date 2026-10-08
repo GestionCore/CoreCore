@@ -162,3 +162,11 @@ def test_ver_mas_nunca_dice_las_1_restantes():
 def test_diagnostico_del_embudo(visitas, vendidas, global_, esperado):
     import embudo_conversion
     assert embudo_conversion.diagnosticar(visitas, vendidas, global_) == esperado
+
+
+def test_percentil_interpola_y_tolera_listas_cortas():
+    from utils import percentil
+    assert percentil([], 0.5) is None and percentil([7], 0.9) == 7
+    assert percentil([10, 20, 30, 40, 50], 0.5) == 30 and percentil([10, 20, 30, 40], 0.5) == 25      # interpolación lineal
+    assert percentil([10, 20, 30, 40, 50], 0) == 10 and percentil([10, 20, 30, 40, 50], 1) == 50
+    assert percentil([0, 100], 0.25) == 25

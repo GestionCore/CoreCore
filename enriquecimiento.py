@@ -16,6 +16,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 import db
+import monitoreo
 import meli_http
 from utils import hoy_argentina
 
@@ -290,4 +291,5 @@ def refrescar_todo(usuario_id, cuenta_id, access_token, capacidades=None):
             hechos[nombre] = funcion(usuario_id, cuenta_id, access_token)
         except Exception as e:
             print(f"[Enriquecimiento] ⚠️ Cuenta {cuenta_id}, {nombre}: {e}")
+            monitoreo.reportar(f"enriquecimiento:{nombre}", e, cuenta_id)
     return hechos

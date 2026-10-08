@@ -24,6 +24,7 @@ DECLARADOS = {
     ("facturacion.py", "_cache_periodos"): "clave cuenta_id",
     ("facturacion.py", "_cache_resumenes"): "clave (cuenta_id, grupo, período)",
     ("facturacion.py", "_cache_almacenamiento"): "clave (cuenta_id, grupo, período)",
+    ("monitoreo.py", "_ultimos"): "clave (fase, cuenta_id, tipo de error): solo instantes, sin datos de la cuenta; con tope de tamaño",
     ("limitador.py", "_registro"): "contadores por IP/ruta: sin datos de cuentas",
     ("logistica.py", "_cache_flex_habilitado"): "clave user_id de MeLi: de una sola cuenta",
     ("sincronizador.py", "_candados_por_cuenta"): "un candado por cuenta_id",

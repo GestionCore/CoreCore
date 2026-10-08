@@ -1350,7 +1350,7 @@ def promociones_vista():
 
     return render_template(
         "promociones.html", campanias=campanias_vista, hay_cofinanciamiento=hay_cofinanciamiento, con_descuento=con_descuento,
-        catalogo=catalogo_promo, ofertas_relampago=[],
+        catalogo=catalogo_promo,
         impacto_promociones=impacto_promociones, sugerencias_promocion=sugerencias_promocion,
         promociones_por_vencer=promociones_por_vencer, cupones=cupones, active_nav="promociones"
     )

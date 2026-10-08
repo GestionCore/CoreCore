@@ -95,12 +95,12 @@
     </div>
     {% if p.historial %}
     <div style="overflow-x:auto;">
-    <table class="data-table">
-        <thead><tr><th>Fecha</th><th class="num">Ofertas</th><th class="num">Vendedores</th><th class="num">Precio más bajo</th><th class="num">Precio típico</th><th class="num">Precio más alto</th><th class="num">Con FULL</th></tr></thead>
+    <table class="data-table" data-ordenable>
+        <thead><tr><th data-orden="texto" data-primero="desc">Fecha</th><th class="num" data-orden="num">Ofertas</th><th class="num" data-orden="num">Vendedores</th><th class="num" data-orden="num">Precio más bajo</th><th class="num" data-orden="num">Precio típico</th><th class="num" data-orden="num">Precio más alto</th><th class="num" data-orden="num">Con FULL</th></tr></thead>
         <tbody>
             {% for h in p.historial %}
             <tr>
-                <td>{{ h.fecha|fecha }}</td>
+                <td data-orden="{{ h.fecha }}">{{ h.fecha|fecha }}</td>
                 <td class="num">{{ h.ofertas }}</td>
                 <td class="num">{{ h.vendedores }}</td>
                 <td class="num">{% if h.precio_min is not none %}${{ "{:,.0f}".format(h.precio_min).replace(",", ".") }}{% else %}—{% endif %}</td>

@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import meli_http
 import db
+import monitoreo
 import flex
 from utils import ARGENTINA
 
@@ -530,6 +531,7 @@ def _completar_datos_de_envio(usuario_id, cuenta_id, access_token, dias=DIAS_COM
         return completados
     except Exception as e:
         print(f"[VentasSync] ⚠️ No se pudo completar los datos de envío de ventas viejas: {e}")
+        monitoreo.reportar("ventas:envios_viejos", e, cuenta_id)
         return 0
 
 
@@ -595,6 +597,7 @@ def _completar_datos_de_pago(usuario_id, cuenta_id, access_token, dias=DIAS_COMP
         return completados
     except Exception as e:
         print(f"[VentasSync] ⚠️ No se pudo completar los datos de pago de ventas viejas: {e}")
+        monitoreo.reportar("ventas:pagos_viejos", e, cuenta_id)
         return 0
 
 
@@ -637,6 +640,7 @@ def _completar_financiacion(usuario_id, cuenta_id, access_token, dias=DIAS_COMPL
         return completados
     except Exception as e:
         print(f"[VentasSync] ⚠️ No se pudo completar el cargo de financiación de ventas viejas: {e}")
+        monitoreo.reportar("ventas:financiacion_vieja", e, cuenta_id)
         return 0
 
 
@@ -741,6 +745,7 @@ def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
                 print(f"[VentasSync] ↩️ Cuenta {cuenta_id}: {retiradas} venta(s) cuya orden se canceló o reembolsó se retiraron del cálculo.")
         except Exception as e:
             print(f"[VentasSync] ⚠️ No se pudieron retirar las ventas canceladas: {e}")
+            monitoreo.reportar("ventas:canceladas", e, cuenta_id)
 
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -769,6 +774,7 @@ def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
             print(f"[VentasSync] 🚚 Cuenta {cuenta_id}: {aplicadas} envío(s) Flex con su costo de entrega aplicado.")
     except Exception as e:
         print(f"[VentasSync] ⚠️ No se pudo aplicar el costo de entrega Flex: {e}")
+        monitoreo.reportar("ventas:flex", e, cuenta_id)
 
     print(f"[VentasSync] ✨ Cuenta {cuenta_id}: {ordenes_procesadas} orden(es), {filas_insertadas} fila(s) de venta sincronizadas.")
     return ordenes_procesadas, filas_insertadas

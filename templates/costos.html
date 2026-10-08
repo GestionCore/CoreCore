@@ -241,12 +241,12 @@
     <div class="panel-title" style="padding:18px 22px 0;">Gastos del período <span class="text-muted" style="font-weight:600; font-size:0.85em;">{{ gastos|length }}</span></div>
     {% if gastos %}
     <div style="overflow-x:auto; padding:0 12px 12px;">
-    <table class="data-table">
-        <thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th class="num">Monto</th><th></th></tr></thead>
+    <table class="data-table" data-ordenable>
+        <thead><tr><th data-orden="texto" data-primero="desc">Fecha</th><th data-orden="texto">Concepto</th><th data-orden="texto">Tipo</th><th class="num" data-orden="num">Monto</th><th></th></tr></thead>
         <tbody>
             {% for g in gastos %}
             <tr>
-                <td class="text-muted">{{ g.fecha|fecha }}</td>
+                <td class="text-muted" data-orden="{{ g.fecha }}">{{ g.fecha|fecha }}</td>
                 <td><b>{{ g.concepto }}</b>{% if g.recurrente %} <span class="ux-pill ux-info ux-pill-suave" title="Se repite todos los meses: {{ g.monto_mensual_formateado }} por mes">Recurrente</span>{% endif %}</td>
                 <td><span class="ux-pill {{ 'ux-accion ux-pill-suave' if g.categoria == 'fijo' else 'ux-warn ux-pill-suave' }}">{{ g.categoria|capitalize }}</span></td>
                 <td class="num"><b>${{ g.monto_formateado }}</b></td>

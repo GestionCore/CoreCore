@@ -134,6 +134,18 @@ def limpiar_titulo_modelo(titulo):
     return t
 
 
+def percentil(ordenados, p):
+    """Percentil `p` (0 a 1) de una lista YA ORDENADA, con interpolación lineal; None si está vacía."""
+    if not ordenados:
+        return None
+    if len(ordenados) == 1:
+        return ordenados[0]
+    k = (len(ordenados) - 1) * p
+    piso = int(k)
+    techo = min(piso + 1, len(ordenados) - 1)
+    return ordenados[piso] + (ordenados[techo] - ordenados[piso]) * (k - piso)
+
+
 def plata(valor, decimales=0):
     """
     "$1.234.567" — formato único de plata para pantallas y filtros Jinja

@@ -31,6 +31,7 @@ import cache_db
 import meli_http
 import preguntas_sla
 import db
+import monitoreo
 
 TAMANO_PAGINA = 50
 LIMITE_OFFSET = 1000  # mismo tope de MeLi que ya mordimos con órdenes e ítems
@@ -461,9 +462,11 @@ def sincronizar_posventa(usuario_id, cuenta_id, access_token, seller_id):
         print(f"[DevolucionesSync] ✨ Cuenta {cuenta_id}: {n} reclamo(s)/devolución(es) sincronizados.")
     except Exception as e:
         print(f"❌ [DevolucionesSync] Error sincronizando reclamos de la cuenta {cuenta_id}: {e}")
+        monitoreo.reportar("reclamos", e, cuenta_id)
 
     try:
         n = sincronizar_preguntas(usuario_id, cuenta_id, access_token, seller_id)
         print(f"[DevolucionesSync] ✨ Cuenta {cuenta_id}: {n} pregunta(s) sin responder.")
     except Exception as e:
         print(f"❌ [DevolucionesSync] Error sincronizando preguntas de la cuenta {cuenta_id}: {e}")
+        monitoreo.reportar("preguntas", e, cuenta_id)

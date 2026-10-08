@@ -18,7 +18,7 @@ import cache_db
 import meli_http
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
-from utils import hoy_argentina, plural
+from utils import hoy_argentina, limpiar_titulo_modelo, percentil, plural
 
 # Palabras que no distinguen un producto de otro en ningún rubro (para comparar títulos entre sí)
 PALABRAS_GENERICAS = {
@@ -29,20 +29,6 @@ PALABRAS_GENERICAS = {
 PALABRAS_RELLENO_TITULO = {"de", "para", "con", "el", "la", "los", "las", "un", "una", "y", "en"}
 
 _categoria_cache = {}
-
-
-def limpiar_titulo_modelo_local(titulo):
-    # productos_padre.titulo es nullable (puede quedar NULL si una
-    # sincronización se interrumpió a mitad de camino) — sin este guard,
-    # cualquier función de acá abajo que reciba un producto con título
-    # vacío tira un TypeError no capturado y tumba toda /tendencias.
-    if not titulo:
-        return ""
-    t = re.sub(r'\b(talle|size)\s*[:#]?\s*(xxxl|xxl|xl|l|m|s|\d+)\b', '', titulo, flags=re.IGNORECASE)
-    t = re.sub(r'\b(xxxl|xxl|xl|l|m|s)\b', '', t, flags=re.IGNORECASE)
-    t = re.sub(r'\s+\d{1,2}\s*$', '', t)
-    t = re.sub(r'\s+', ' ', t).strip()
-    return t
 
 
 def obtener_categoria_principal(access_token, cuenta_id, cursor, site_id="MLA"):
@@ -200,17 +186,6 @@ def _get_json(url, headers=None, params=None, timeout=10):
         return 200, None
 
 
-def _percentil(ordenados, p):
-    if not ordenados:
-        return None
-    if len(ordenados) == 1:
-        return ordenados[0]
-    k = (len(ordenados) - 1) * p
-    piso = int(k)
-    techo = min(piso + 1, len(ordenados) - 1)
-    return ordenados[piso] + (ordenados[techo] - ordenados[piso]) * (k - piso)
-
-
 def _histograma_precios(precios, bandas=5):
     """5 bandas entre el percentil 5 y el 95 — un par de publicaciones carísimas (o regaladas) estiraban el eje y dejaban todo apilado en la primera banda."""
     if not precios:
@@ -219,7 +194,7 @@ def _histograma_precios(precios, bandas=5):
     p_min, p_max = ordenados[0], ordenados[-1]
     if p_max == p_min:
         return [{"desde": round(p_min), "hasta": round(p_max), "cantidad": len(precios)}]
-    lo, hi = _percentil(ordenados, 0.05), _percentil(ordenados, 0.95)
+    lo, hi = percentil(ordenados, 0.05), percentil(ordenados, 0.95)
     if hi <= lo:
         lo, hi = p_min, p_max
     ancho = (hi - lo) / bandas
@@ -586,10 +561,10 @@ def explorar_mercado(access_token, termino=None, category_id=None, site_id="MLA"
             perfil["publicaciones_muestra"] = cantidad
             top_vendedores.append(perfil)
 
-    mediana = _percentil(precios, 0.5)
+    mediana = percentil(precios, 0.5)
     iqr_relativo = None
     if len(precios) >= 8 and mediana:
-        iqr_relativo = (_percentil(precios, 0.75) - _percentil(precios, 0.25)) / mediana
+        iqr_relativo = (percentil(precios, 0.75) - percentil(precios, 0.25)) / mediana
 
     pct_full, pct_envio, pct_oficial = _pct(con_full, n), _pct(con_envio_gratis, n), _pct(con_oficial, n)
     pct_descuento = _pct(len(descuentos), n)
@@ -1081,7 +1056,7 @@ def calcular_seo_scores_catalogo(cursor, tendencias_relevantes):
     for id_meli, titulo in cursor.fetchall():
         if not titulo:
             continue
-        clave_modelo = limpiar_titulo_modelo_local(titulo)
+        clave_modelo = limpiar_titulo_modelo(titulo)
         if clave_modelo in vistos:
             continue
         vistos.add(clave_modelo)
@@ -1099,7 +1074,7 @@ def detectar_canibalismo(cursor):
 
     modelos = {}
     for id_meli, titulo in filas:
-        clave = limpiar_titulo_modelo_local(titulo)
+        clave = limpiar_titulo_modelo(titulo)
         if clave not in modelos:
             modelos[clave] = {"id_referencia": id_meli, "palabras": {p for p in clave.lower().split() if len(p) > 2 and p not in PALABRAS_GENERICAS}}
     # Una palabra que está en la mayoría de los modelos de la cuenta ("termo", "campera") es el rubro, no un parecido entre dos modelos
