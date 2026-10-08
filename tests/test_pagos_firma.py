@@ -35,6 +35,29 @@ def test_sin_cabecera_o_mal_formada_se_rechaza_cuando_hay_secreto():
     assert not pagos.firma_valida("ts=1", "r", "1", SECRETO)               # falta v1
 
 
+def test_el_diagnostico_dice_si_la_firma_coincide_con_alguna_variante_y_nunca_muestra_la_clave():
+    buena = _firmar("123", "req-1", "1704908010")
+    assert "coincide=estandar" in pagos.diagnostico_firma(buena, "req-1", "123", SECRETO)
+    sin_request = f"ts=1704908010,v1=" + hmac.new(SECRETO.encode(), b"id:123;ts:1704908010;", hashlib.sha256).hexdigest()
+    assert "coincide=sin_request_id" in pagos.diagnostico_firma(sin_request, "req-1", "123", SECRETO)
+    otra_clave = _firmar("123", "req-1", "1704908010", secreto="otra")
+    diag = pagos.diagnostico_firma(otra_clave, "req-1", "123", SECRETO)
+    assert "coincide=ninguna" in diag
+    assert SECRETO not in diag
+    assert "firma=no" in pagos.diagnostico_firma(None, None, None, SECRETO)       # sin cabeceras: no explota
+
+
+def test_el_webhook_rechazado_deja_el_diagnostico_en_el_log(monkeypatch, caplog):
+    import app as modulo_app
+    import config
+    monkeypatch.setattr(config, "MP_WEBHOOK_SECRET", SECRETO)
+    with caplog.at_level("WARNING"):
+        r = modulo_app.app.test_client().post("/webhook/mercadopago?data.id=abc&type=subscription_preapproval", json={}, headers={"x-signature": "ts=1,v1=00", "x-request-id": "r"})
+    assert r.status_code == 401
+    assert "coincide=ninguna" in caplog.text and "subscription_preapproval" in caplog.text
+    assert SECRETO not in caplog.text
+
+
 def test_sin_secreto_configurado_no_se_puede_verificar_y_se_acepta():
     assert pagos.firma_valida(None, None, None, "")
     assert pagos.firma_valida("cualquier cosa", "r", "1", None)

@@ -130,6 +130,28 @@ def firma_valida(x_signature, x_request_id, data_id, secreto):
     return hmac.compare_digest(esperada, recibida)
 
 
+def diagnostico_firma(x_signature, x_request_id, data_id, secreto):
+    """
+    Texto para el log cuando una firma no coincide: dice QUÉ cabeceras llegaron y si la firma recibida coincide con alguna variante razonable del manifiesto
+    (así se distingue "la clave es otra" de "el manifiesto se arma distinto"). Solo muestra los primeros 8 caracteres de cada HMAC: la clave no aparece ni se puede deducir.
+    """
+    partes = dict(p.strip().split("=", 1) for p in (x_signature or "").split(",") if "=" in p)
+    ts, recibida = partes.get("ts"), (partes.get("v1") or "")
+    data_id = str(data_id or "")
+    id_firmado = data_id.lower() if data_id.isalnum() else data_id
+    variantes = {
+        "estandar": f"id:{id_firmado};request-id:{x_request_id or ''};ts:{ts};",
+        "id_tal_cual": f"id:{data_id};request-id:{x_request_id or ''};ts:{ts};",
+        "sin_request_id": f"id:{id_firmado};ts:{ts};",
+        "sin_id": f"request-id:{x_request_id or ''};ts:{ts};",
+    }
+    esperadas = {n: hmac.new((secreto or "").encode(), m.encode(), hashlib.sha256).hexdigest() for n, m in variantes.items()}
+    coincide = [n for n, e in esperadas.items() if recibida and hmac.compare_digest(e, recibida)]
+    resumen = ", ".join(f"{n}={e[:8]}" for n, e in esperadas.items())
+    return (f"firma={'sí' if x_signature else 'no'} ts={'sí' if ts else 'no'} request_id={'sí' if x_request_id else 'no'} "
+            f"v1_recibida={recibida[:8] or '-'} (largo {len(recibida)}) esperadas[{resumen}] coincide={','.join(coincide) or 'ninguna'}")
+
+
 def procesar_webhook(data):
     """
     Procesa un webhook de MP y devuelve (usuario_id, nuevo_plan, preapproval_id) o None.
