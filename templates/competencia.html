@@ -33,7 +33,7 @@
         <div class="ux-rank-valor"><b>{{ i.precio|plata }}</b><div class="text-muted" style="font-size:0.82em;">tu precio</div></div>
     </div>
     {% endfor %}
-    {% if mis_catalogo['items']|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">{{ ver_mas(mis_catalogo['items']|length - 8, 'publicación', 'publicaciones') }}</button>{% endif %}
+    {% if mis_catalogo['items']|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>{{ ver_mas(mis_catalogo['items']|length - 8, 'publicación', 'publicaciones') }}</button>{% endif %}
 </div>
 {% endif %}
 
@@ -86,7 +86,7 @@
             {% if p.tendencia_precio == 'bajó' %}<span class="badge badge-danger">Precio más bajo: bajó</span>
             {% elif p.tendencia_precio == 'subió' %}<span class="badge badge-success">Precio más bajo: subió</span>{% endif %}
         </span>
-        <form action="/competencia/eliminar/{{ p.id_producto }}" method="POST" onsubmit="confirmarAccion('¿Dejar de seguir este producto?', this, 'Dejar de seguir'); return false;" style="display:inline;">
+        <form action="/competencia/eliminar/{{ p.id_producto }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Dejar de seguir este producto?", "$form", "Dejar de seguir"]' data-prevenir style="display:inline;">
             <button type="submit" class="btn btn-danger">Dejar de seguir</button>
         </form>
     </div>
@@ -118,7 +118,7 @@
 </div>
 {% endfor %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 async function seguirProducto(producto, alias) {
     const boton = document.getElementById('btn-seguir-producto');
     boton.disabled = true;

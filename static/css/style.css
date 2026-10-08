@@ -465,6 +465,9 @@ tr.row-alert { background: rgba(239, 68, 68, 0.05); }
    (para evitar doble-click) pero sin esto se veía IDÉNTICO a un botón
    habilitado — mismo color, mismo cursor de mano — nada le avisaba al
    usuario que ya estaba procesando el click. */
+/* Atributos técnicos del cajón de una publicación: el borde se marca al enfocar (antes lo hacían un onfocus/onblur inline: código escrito en el HTML). */
+input[type="text"].ficha-atributo-input { border: 1px solid transparent; transition: border-color 0.15s; }
+input[type="text"].ficha-atributo-input:focus { border-color: var(--accent-brand); outline: none; }
 /* SIN pointer-events: none: con eso el navegador no mostraba el `title` nativo, y los botones deshabilitados lo usan para decir POR QUÉ (zonas Flex sin precio, «solo los que puedo editar»).
    Un <button disabled> ya no recibe clics; a un enlace con .disabled / aria-disabled lo frena ux.js. */
 .btn:disabled, .btn.disabled { opacity: 0.55; cursor: not-allowed; }

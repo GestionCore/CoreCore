@@ -97,7 +97,7 @@
 </details>
 
 <script src="/static/js/vendor/chart.umd.min.js?v=4.4.4"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.Chart) return;
     const estilo = getComputedStyle(document.documentElement);

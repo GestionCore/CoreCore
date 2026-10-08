@@ -35,9 +35,9 @@
         {% if mensaje_coach %}{{ mensaje_coach }}{% elif coach_pendiente %}<span class="skeleton" style="display:inline-block; width:min(520px,90%); height:2.6em; border-radius:8px;">&nbsp;</span>{% endif %}
     </div>
 </div>
-{% if not mensaje_coach and not coach_pendiente %}<script>document.getElementById('coach-texto').remove();</script>{% endif %}
+{% if not mensaje_coach and not coach_pendiente %}<script nonce="{{ csp_nonce }}">document.getElementById('coach-texto').remove();</script>{% endif %}
 {% if coach_pendiente %}
-<script>
+<script nonce="{{ csp_nonce }}">
 // El mensaje lo redacta la IA (tarda unos segundos): se pide aparte para no frenar la carga de la página. Si no llega se deja solo el conteo.
 (function () {
     const el = document.getElementById('coach-texto');
@@ -76,7 +76,7 @@
     </div>
     {% endfor %}
     {% if logros_resueltos|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver {{ logros_resueltos|length - 5 }} más</button>
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver {{ logros_resueltos|length - 5 }} más</button>
     {% endif %}
 </div>
 {% endif %}

@@ -35,7 +35,7 @@
     {% if errores.get('reputacion') %}{{ no_se_pudo("Reputación") }}{% else %}{% include "_dia_reputacion.html" %}{% endif %}
 </section>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // Las pestañas de la sección no cambian de página: se marca la de la parte que se está mirando
 (function () {
     const secciones = Array.from(document.querySelectorAll('.dia-seccion'));

@@ -65,14 +65,14 @@
 
     {% if error %}<div class="onb-error">{{ error }}</div>{% endif %}
 
-    <form action="{{ url_for('onboarding_guardar') }}" method="POST" id="form-onboarding" onsubmit="const b=this.querySelector('.onb-btn-siguiente'); b.disabled=true; b.textContent='Guardando...';">
+    <form action="{{ url_for('onboarding_guardar') }}" method="POST" id="form-onboarding" data-submit="onbEnviando" data-submit-args='["$form"]'>
 
         <div class="onb-paso activo" data-paso="1">
             <div class="onb-titulo">¿Qué es lo que más te importa controlar de tu negocio?</div>
             <div class="onb-pregunta-ayuda">Elegí una o varias — lo que te sirva.</div>
             <div class="onb-opciones">
                 {% for valor, texto in opciones_prioridad.items() %}
-                <label class="onb-opcion"><input type="checkbox" name="prioridad_principal" value="{{ valor }}" onchange="onbValidarPasoActual()"> {{ texto }}</label>
+                <label class="onb-opcion"><input type="checkbox" name="prioridad_principal" value="{{ valor }}" data-change="onbValidarPasoActual"> {{ texto }}</label>
                 {% endfor %}
             </div>
         </div>
@@ -81,7 +81,7 @@
             <div class="onb-titulo">¿Hace cuánto vendés en Mercado Libre?</div>
             <div class="onb-opciones">
                 {% for valor, texto in opciones_experiencia.items() %}
-                <label class="onb-opcion"><input type="radio" name="experiencia_meli" value="{{ valor }}" onchange="onbValidarPasoActual()" required> {{ texto }}</label>
+                <label class="onb-opcion"><input type="radio" name="experiencia_meli" value="{{ valor }}" data-change="onbValidarPasoActual" required> {{ texto }}</label>
                 {% endfor %}
             </div>
         </div>
@@ -90,7 +90,7 @@
             <div class="onb-titulo">¿Qué querés ver primero cuando entrás a CoreLux?</div>
             <div class="onb-opciones">
                 {% for valor, texto in opciones_pantalla.items() %}
-                <label class="onb-opcion"><input type="radio" name="pantalla_preferida" value="{{ valor }}" onchange="onbValidarPasoActual()" required> {{ texto }}</label>
+                <label class="onb-opcion"><input type="radio" name="pantalla_preferida" value="{{ valor }}" data-change="onbValidarPasoActual" required> {{ texto }}</label>
                 {% endfor %}
             </div>
         </div>
@@ -100,19 +100,20 @@
             <div class="onb-pregunta-ayuda">La usamos para mostrarte solo lo que te corresponde. Si no estás seguro, elegí «Prefiero decirlo después»: lo podés cambiar cuando quieras en Mi cuenta.</div>
             <div class="onb-opciones">
                 {% for valor, texto in opciones_fiscal.items() %}
-                <label class="onb-opcion"><input type="radio" name="condicion_fiscal" value="{{ valor }}" onchange="onbValidarPasoActual()" required> {{ texto }}</label>
+                <label class="onb-opcion"><input type="radio" name="condicion_fiscal" value="{{ valor }}" data-change="onbValidarPasoActual" required> {{ texto }}</label>
                 {% endfor %}
             </div>
         </div>
 
         <div class="onb-nav">
-            <button type="button" class="btn btn-secondary onb-btn-atras" id="onb-btn-atras" onclick="onbIrA(onbPasoActual - 1)" style="display:none;">Atrás</button>
-            <button type="button" class="btn btn-primary onb-btn-siguiente" id="onb-btn-siguiente" onclick="onbSiguiente()" disabled>Siguiente</button>
+            <button type="button" class="btn btn-secondary onb-btn-atras" id="onb-btn-atras" data-click="onbAtras" style="display:none;">Atrás</button>
+            <button type="button" class="btn btn-primary onb-btn-siguiente" id="onb-btn-siguiente" data-click="onbSiguiente" disabled>Siguiente</button>
         </div>
     </form>
 </div>
 
-<script>
+<script src="{{ url_for('static', filename='js/ux.js') }}?v={{ static_v('js/ux.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
     const ONB_TOTAL_PASOS = document.querySelectorAll('.onb-paso').length;
     document.getElementById('onb-total').textContent = ONB_TOTAL_PASOS;
     let onbPasoActual = 1;
@@ -146,6 +147,15 @@
     function onbSiguiente() {
         if (!onbPasoTieneSeleccion(onbPasoActual)) return;
         if (onbPasoActual < ONB_TOTAL_PASOS) onbIrA(onbPasoActual + 1);
+    }
+
+    function onbAtras() { if (onbPasoActual > 1) onbIrA(onbPasoActual - 1); }
+
+    // Al enviar: el botón queda deshabilitado con «Guardando…» para que no se mande dos veces
+    function onbEnviando(formulario) {
+        const boton = formulario.querySelector('.onb-btn-siguiente');
+        boton.disabled = true;
+        boton.textContent = 'Guardando...';
     }
 
     onbValidarPasoActual();

@@ -24,7 +24,7 @@
     {% if not catalogo %}
     {{ vacio("Todavía no hay publicaciones para vender", "Sincronizá desde \"Sincronizar Todo\" para traer tu catálogo.", "refresh", "accion") }}
     {% else %}
-    <form action="/ventas_manuales/agregar" method="POST" id="form-venta-manual" onsubmit="return confirmarVentaManual(this);">
+    <form action="/ventas_manuales/agregar" method="POST" id="form-venta-manual" data-submit="confirmarVentaManual" data-submit-args='["$form"]'>
         <div class="filter-row">
             <div class="field-group" style="flex:2; min-width:260px;">
                 <label class="field-label" for="select-variante-manual">Qué vendiste</label>
@@ -78,7 +78,7 @@
                 <td class="num">{{ v.cantidad }}</td>
                 <td class="num"><b>${{ v.precio_formateado }}</b></td>
                 <td>
-                    <form action="/ventas_manuales/eliminar/{{ v.id }}" method="POST" onsubmit="confirmarAccion('¿Eliminar esta venta?', this, 'Eliminar', 'El stock descontado se devuelve automáticamente.'); return false;" style="display:inline;">
+                    <form action="/ventas_manuales/eliminar/{{ v.id }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Eliminar esta venta?", "$form", "Eliminar", "El stock descontado se devuelve automáticamente."]' data-prevenir style="display:inline;">
                         <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Borrar</button>
                     </form>
                 </td>
@@ -92,7 +92,7 @@
     {% endif %}
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     const $sel = document.getElementById('select-variante-manual');
     const $precio = document.getElementById('input-precio-manual');
     const $cant = document.getElementById('input-cantidad-manual');

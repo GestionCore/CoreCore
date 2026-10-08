@@ -22,7 +22,7 @@
 <div class="panel">
     <form action="/comparador_logistica" method="GET" class="filter-row">
         <div class="rango-fechas" id="rango-logistica" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
-            <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-logistica')"></button>
+            <button type="button" class="rango-fechas-boton" data-click="RangoFechas.toggle" data-click-args='["rango-logistica"]'></button>
             <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
         </div>
         <button type="submit" class="btn btn-denim">Ver este período</button>
@@ -31,7 +31,7 @@
         </div>
     </form>
 </div>
-<script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-logistica'));</script>
+<script nonce="{{ csp_nonce }}">document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-logistica'));</script>
 
 <div class="filter-row" style="align-items:stretch;">
     {% for g in resultado %}

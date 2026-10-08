@@ -37,7 +37,7 @@
     </div>
     {% endfor %}
     {% if sugerencias_promocion|length > 4 %}
-    <button type="button" class="btn btn-secondary btn-block" onclick="mostrarMasGenerico(this)">Ver las {{ sugerencias_promocion|length - 4 }} restantes</button>
+    <button type="button" class="btn btn-secondary btn-block" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver las {{ sugerencias_promocion|length - 4 }} restantes</button>
     {% endif %}
 </div>
 {% endif %}
@@ -45,7 +45,7 @@
 <!-- ── 2. CREAR UN DESCUENTO: con el resultado en vivo ──────────────────── -->
 <div class="panel" id="form-crear-descuento-panel">
     <div class="panel-title"><svg class="icon"><use href="#icon-plus"/></svg> Crear un descuento propio</div>
-    <form action="/promociones/crear_descuento" method="POST" class="filter-row" id="form-crear-descuento" onsubmit="return confirmarCrearDescuento(this);">
+    <form action="/promociones/crear_descuento" method="POST" class="filter-row" id="form-crear-descuento" data-submit="confirmarCrearDescuento" data-submit-args='["$form"]'>
         <div class="field-group" style="flex:2; min-width:240px;">
             <label class="field-label" for="select-promo-item">Qué publicación</label>
             <select name="id_meli" id="select-promo-item" required>
@@ -61,7 +61,7 @@
         <div class="field-group">
             <label class="field-label">Hasta cuándo</label>
             <div class="rango-fechas" id="rango-promo-nueva">
-                <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-promo-nueva')">Vigencia del descuento…</button>
+                <button type="button" class="rango-fechas-boton" data-click="RangoFechas.toggle" data-click-args='["rango-promo-nueva"]'>Vigencia del descuento…</button>
                 <input type="hidden" name="fecha_desde" required><input type="hidden" name="fecha_hasta" required>
             </div>
         </div>
@@ -69,7 +69,7 @@
     </form>
     <div id="simulador-impacto-promo" style="display:none; margin-top:16px;"></div>
 </div>
-<script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-promo-nueva'));</script>
+<script nonce="{{ csp_nonce }}">document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-promo-nueva'));</script>
 
 <!-- ── 3. LO QUE YA TENÉS ──────────────────────────────────────────────── -->
 <div class="ux-seccion ux-ok">Publicaciones con descuento activo <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ con_descuento|length }}</span></div>
@@ -86,7 +86,7 @@
                 <td class="num"><b>${{ p.precio_formateado }}</b></td>
                 <td class="num"><span class="ux-pill ux-ok">-{{ p.descuento_pct }}%</span></td>
                 <td>
-                    <form action="/promociones/eliminar_descuento/{{ p.id }}" method="POST" onsubmit="confirmarAccion('¿Quitar el descuento de esta publicación?', this, 'Quitar descuento'); return false;">
+                    <form action="/promociones/eliminar_descuento/{{ p.id }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Quitar el descuento de esta publicación?", "$form", "Quitar descuento"]' data-prevenir>
                         <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Quitar</button>
                     </form>
                 </td>
@@ -95,7 +95,7 @@
         </tbody>
     </table>
     </div>
-    {% if con_descuento|length > 6 %}<div style="padding:0 16px 16px;"><button type="button" class="btn btn-secondary btn-block" onclick="mostrarMasGenerico(this)">Ver {{ con_descuento|length - 6 }} más</button></div>{% endif %}
+    {% if con_descuento|length > 6 %}<div style="padding:0 16px 16px;"><button type="button" class="btn btn-secondary btn-block" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver {{ con_descuento|length - 6 }} más</button></div>{% endif %}
     {% else %}
     <div style="padding:20px;">{{ vacio("No tenés publicaciones con descuento ahora", "Creá uno arriba o elegí una de las que conviene promocionar.", "tag", "info") }}</div>
     {% endif %}
@@ -142,7 +142,7 @@
         </tbody>
     </table>
     </div>
-    {% if impacto_promociones|length > 6 %}<div style="padding:0 16px 16px;"><button type="button" class="btn btn-secondary btn-block" onclick="mostrarMasGenerico(this)">Ver {{ impacto_promociones|length - 6 }} más</button></div>{% endif %}
+    {% if impacto_promociones|length > 6 %}<div style="padding:0 16px 16px;"><button type="button" class="btn btn-secondary btn-block" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver {{ impacto_promociones|length - 6 }} más</button></div>{% endif %}
 </div>
 {% endif %}
 
@@ -161,7 +161,7 @@
                 <td><span class="ux-pill ux-neutral ux-pill-suave">{{ o.status }}</span></td>
                 <td>
                     {% if o.status == 'candidate' %}
-                    <form action="/promociones/participar_relampago" method="POST" class="flex-gap" style="align-items:center;" onsubmit="confirmarAccion('¿Sumarte a esta oferta relámpago?', this, 'Participar', 'Se publica en Mercado Libre con el precio y el stock que cargaste.'); return false;">
+                    <form action="/promociones/participar_relampago" method="POST" class="flex-gap" style="align-items:center;" data-submit="confirmarAccion" data-submit-args='["¿Sumarte a esta oferta relámpago?", "$form", "Participar", "Se publica en Mercado Libre con el precio y el stock que cargaste."]' data-prevenir>
                         <input type="hidden" name="id_meli" value="{{ o.id }}">
                         <input type="number" step="0.01" name="deal_price" placeholder="Precio oferta" required style="max-width:130px;">
                         <input type="number" name="stock" placeholder="Stock" required style="max-width:90px;">
@@ -202,7 +202,7 @@
     </div>
 </details>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     const $sel = document.getElementById('select-promo-item');
     const $deal = document.getElementById('input-deal-price');
     let _pedidoSim = 0, _timerSim = null;

@@ -53,7 +53,7 @@
         {% if email %}{{ kpi("Email en Mercado Pago", email, "neutral", "file-text", "") }}{% endif %}
     </div>
     {% if plan == 'elite' %}<div class="text-muted" style="font-size:0.85em; margin-bottom:12px;">Para bajar al Plan Base: cancelá esta suscripción y suscribite al nuevo plan cuando quieras.</div>{% endif %}
-    <button type="button" class="btn btn-danger" id="btn-cancelar" onclick="confirmarCancelacion()">Cancelar suscripción</button>
+    <button type="button" class="btn btn-danger" id="btn-cancelar" data-click="confirmarCancelacion">Cancelar suscripción</button>
 </div>
 {% endif %}
 
@@ -69,8 +69,8 @@
             Perdés el acceso a CoreLux al terminar el período actual. Se procesa en Mercado Pago y <b>no se puede deshacer</b>.
         </p>
         <div class="flex-gap" style="justify-content:flex-end;">
-            <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Volver</button>
-            <button type="button" class="btn btn-urgente" id="btn-confirmar-cancelar" onclick="ejecutarCancelacion()">Sí, cancelar</button>
+            <button type="button" class="btn btn-secondary" data-click="cerrarModal">Volver</button>
+            <button type="button" class="btn btn-urgente" id="btn-confirmar-cancelar" data-click="ejecutarCancelacion">Sí, cancelar</button>
         </div>
     </div>
 </div>
@@ -81,7 +81,7 @@
 .susc-modal-caja { background: var(--glass-bg-alt); border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); border-radius: var(--radius-md); padding: 28px; max-width: 400px; width: 90%; box-shadow: var(--shadow-elevated); }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function confirmarCancelacion() { document.getElementById("modal-cancelar").hidden = false; }
 function cerrarModal() { document.getElementById("modal-cancelar").hidden = true; }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarModal(); });

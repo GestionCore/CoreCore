@@ -11,6 +11,7 @@ Seguridad y errores de la app web, en un solo lugar (se activa con seguridad.ini
 """
 import logging
 import os
+import secrets
 import threading
 import time
 from datetime import timedelta
@@ -22,7 +23,9 @@ from psycopg_pool import PoolTimeout
 import limitador
 
 METODOS_QUE_ESCRIBEN = {"POST", "PUT", "PATCH", "DELETE"}
-RUTAS_EXENTAS = {"/notificaciones_meli", "/webhook", "/webhook/mercadopago"}
+RUTAS_EXENTAS = {"/notificaciones_meli", "/webhook", "/webhook/mercadopago", "/csp-report"}      # no vienen de un formulario de CoreLux: los manda Mercado Libre, Mercado Pago o el propio navegador
+MAX_REPORTES_CSP_POR_MINUTO = 30
+_reportes_csp = {"desde": 0.0, "cuenta": 0}
 log = logging.getLogger("corelux.seguridad")
 EN_PRODUCCION = bool(os.getenv("FLY_APP_NAME"))
 VERSION = os.getenv("CORELUX_VERSION", "local")        # el commit desplegado (lo pone desplegar.py): ver /healthz
@@ -82,11 +85,34 @@ def _origen_permitido():
 
 
 
-# Política de seguridad de contenido: el navegador solo carga código, estilos, fuentes y datos de CoreLux (ya no hay nada de terceros). Los scripts y estilos "inline"
-# siguen permitidos porque las pantallas los usan (cuando se saquen los onclick, se quita 'unsafe-inline' de script-src). Las fotos de las publicaciones vienen de
-# mlstatic.com (http y https). Sin form-action a propósito: Chrome también lo aplica a las redirecciones y rompería el pago en Mercado Pago.
-CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; "
-       "font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'")
+# Política de seguridad de contenido: el navegador solo carga código, estilos, fuentes y datos de CoreLux (ya no hay nada de terceros). Las fotos de las publicaciones vienen de
+# mlstatic.com (http y https). Sin form-action a propósito: Chrome también lo aplica a las redirecciones y rompería el pago en Mercado Pago. Los estilos «inline» siguen permitidos
+# (840 `style=`: riesgo bajo comparado con el de un script).
+#
+# SCRIPTS: ya no queda ningún manejador escrito en el HTML (onclick=…) ni URL javascript: (lo exige tests/test_correcciones_frontend.py), y todo <script> inline lleva un `nonce` distinto
+# en cada pedido. La política ESTRICTA no usa 'unsafe-inline' en script-src: aunque alguien lograra meter HTML en una pantalla, el navegador no ejecutaría su script. Se activa por etapas con
+# la variable de entorno CSP_MODO (se cambia con `fly secrets set`, sin desplegar código):
+#   · "prueba" (por defecto): se aplica la política de siempre y la ESTRICTA va en Report-Only: el navegador solo avisa a /csp-report qué habría bloqueado (queda en el log de Fly).
+#   · "estricta": se aplica la estricta (después de mirar el log con uso real y ver que no hay violaciones propias).
+#   · "actual": la de siempre (con 'unsafe-inline'), por si hubiera que volver atrás.
+_BASE_CSP = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+CSP = "script-src 'self' 'unsafe-inline'; " + _BASE_CSP                       # la de siempre (también la que usan las pruebas)
+CSP_MODO = os.getenv("CSP_MODO", "prueba").strip().lower()
+if CSP_MODO not in ("prueba", "estricta", "actual"):
+    CSP_MODO = "prueba"
+
+
+def csp_estricta(nonce):
+    return f"script-src 'self' 'nonce-{nonce}'; " + _BASE_CSP + "; report-uri /csp-report"
+
+
+def cabeceras_csp(nonce):
+    """[(nombre de cabecera, valor)] según CSP_MODO."""
+    if CSP_MODO == "estricta":
+        return [("Content-Security-Policy", csp_estricta(nonce))]
+    if CSP_MODO == "actual":
+        return [("Content-Security-Policy", CSP)]
+    return [("Content-Security-Policy", CSP), ("Content-Security-Policy-Report-Only", csp_estricta(nonce))]
 
 
 def iniciar(app):
@@ -101,6 +127,14 @@ def iniciar(app):
         PERMANENT_SESSION_LIFETIME=timedelta(days=14),
         MAX_CONTENT_LENGTH=5 * 1024 * 1024,      # 5 MB: alcanza de sobra para los archivos que se suben (planillas de costos)
     )
+
+    @app.before_request
+    def _nonce_del_pedido():
+        g.csp_nonce = secrets.token_urlsafe(16)        # uno por pedido: lo llevan los <script> inline de la página y la cabecera de la política
+
+    @app.context_processor
+    def _nonce_para_plantillas():
+        return {"csp_nonce": g.get("csp_nonce", "")}
 
     @app.before_request
     def _verificar_origen():
@@ -125,12 +159,31 @@ def iniciar(app):
         resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-        resp.headers.setdefault("Content-Security-Policy", CSP)
+        for nombre, valor in cabeceras_csp(g.get("csp_nonce", "")):
+            resp.headers.setdefault(nombre, valor)
         if EN_PRODUCCION:
             resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
         if request.path.startswith("/static/") and "v" in request.args and resp.status_code == 200:
             resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return resp
+
+    @app.route("/csp-report", methods=["POST"])
+    def csp_report():
+        """
+        Receptor de las violaciones que informa el navegador (política en Report-Only): una línea de log con la directiva, qué se bloqueó y en qué página, para ver con uso real si
+        la política estricta rompería algo. Sin login (lo manda el navegador), exento del anti-CSRF y con tope por minuto para que nadie llene el log.
+        """
+        ahora = time.monotonic()
+        if ahora - _reportes_csp["desde"] > 60:
+            _reportes_csp.update(desde=ahora, cuenta=0)
+        _reportes_csp["cuenta"] += 1
+        if _reportes_csp["cuenta"] <= MAX_REPORTES_CSP_POR_MINUTO:
+            datos = request.get_json(silent=True, force=True)
+            informe = (datos or {}).get("csp-report", datos) if isinstance(datos, dict) else {}
+            informe = informe if isinstance(informe, dict) else {}
+            campos = {k: str(informe.get(k, ""))[:140] for k in ("violated-directive", "blocked-uri", "document-uri", "source-file", "line-number", "script-sample")}
+            log.warning("[CSP] violación: %s", " | ".join(f"{k}={v}" for k, v in campos.items() if v))
+        return "", 204
 
     @app.route("/healthz")
     def healthz():

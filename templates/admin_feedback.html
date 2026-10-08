@@ -22,11 +22,11 @@
                 {{ c.cuando.strftime('%d/%m %H:%M') }} · {{ c.cuenta or c.email }} · <code>{{ c.pantalla or '—' }}</code> · versión {{ c.version or '—' }}
             </div>
         </div>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="atender({{ c.id }}, {{ 'false' if c.atendido else 'true' }}, this)">{{ 'Reabrir' if c.atendido else 'Atendido' }}</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-click="atender" data-click-args='{{ [c.id, not c.atendido, "$el"]|tojson }}'>{{ 'Reabrir' if c.atendido else 'Atendido' }}</button>
     </div>
     {% endfor %}
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 async function atender(id, atendido, boton) {
     boton.disabled = true;
     try {

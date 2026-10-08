@@ -5,7 +5,7 @@
 {% macro fila(i) %}
 <div class="ux-precio-fila ux-{{ 'danger' if i.estado == 'pierde' else ('warn' if i.estado == 'justo' else 'ok') }}">
     <div class="ux-precio-pub">
-        {% if i.aplicable %}<input type="checkbox" class="precio-check no-imprimir" aria-label="Elegir {{ i.titulo }}" data-id="{{ i.id_meli }}" data-titulo="{{ i.titulo }}" data-actual="{{ i.precio }}" data-nuevo="{{ i.recomendado }}" data-pierde="{{ 1 if i.estado == 'pierde' else 0 }}" onchange="preciosActualizarBarra()">{% endif %}
+        {% if i.aplicable %}<input type="checkbox" class="precio-check no-imprimir" aria-label="Elegir {{ i.titulo }}" data-id="{{ i.id_meli }}" data-titulo="{{ i.titulo }}" data-actual="{{ i.precio }}" data-nuevo="{{ i.recomendado }}" data-pierde="{{ 1 if i.estado == 'pierde' else 0 }}" data-change="preciosActualizarBarra">{% endif %}
         {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
         <div class="ux-precio-titulo">
             <div>{% if i.permalink %}<a href="{{ i.permalink }}" target="_blank" rel="noopener"><b>{{ i.titulo }}</b> ↗</a>{% else %}<b>{{ i.titulo }}</b>{% endif %}</div>
@@ -101,9 +101,9 @@
 <div class="ux-seccion {{ 'ux-danger' if pierden else 'ux-warn' }}" id="revisar">Para revisar <span class="text-muted" style="font-weight:600; font-size:0.8em;">las que más pierden, primero</span></div>
 {% if (pierden + justos)|selectattr('aplicable')|list %}
 <div class="panel ux-precios-barra no-imprimir" id="precios-barra">
-    <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="precios-marcar-pierden" onchange="preciosMarcarPierden(this.checked)"> Marcar las que pierden plata</label>
+    <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="precios-marcar-pierden" data-change="preciosMarcarPierden" data-change-args='["$checked"]'> Marcar las que pierden plata</label>
     <span class="text-muted" id="precios-resumen" style="font-size:0.88em;">Elegí las publicaciones a las que querés subir el precio al recomendado.</span>
-    <button type="button" class="btn btn-primary" id="btn-precios-revisar" onclick="preciosRevisar()" disabled>Revisar cambios</button>
+    <button type="button" class="btn btn-primary" id="btn-precios-revisar" data-click="preciosRevisar" disabled>Revisar cambios</button>
 </div>
 
 <div class="panel" id="precios-revision" hidden>
@@ -111,8 +111,8 @@
     <div class="text-muted" style="font-size:0.88em; margin-bottom:10px;"><b>Estos precios se cambian en Mercado Libre ahora mismo.</b> Con las ventas de tu historial, cada publicación queda con el margen que elegiste.</div>
     <div id="precios-revision-lista"></div>
     <div class="flex-gap" style="margin-top:14px;">
-        <button type="button" class="btn btn-primary btn-lg" id="btn-precios-confirmar" onclick="preciosAplicar()">Cambiar precios en Mercado Libre</button>
-        <button type="button" class="btn btn-secondary" onclick="preciosVolver()">Volver</button>
+        <button type="button" class="btn btn-primary btn-lg" id="btn-precios-confirmar" data-click="preciosAplicar">Cambiar precios en Mercado Libre</button>
+        <button type="button" class="btn btn-secondary" data-click="preciosVolver">Volver</button>
     </div>
 </div>
 {% endif %}
@@ -120,7 +120,7 @@
     {% for i in (pierden + justos) %}
     <div class="{% if loop.index > 8 %}oculto-mostrar-mas{% endif %}">{{ fila(i) }}</div>
     {% endfor %}
-    {% if (pierden|length + justos|length) > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ pierden|length + justos|length - 8 }} restantes</button>{% endif %}
+    {% if (pierden|length + justos|length) > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver las {{ pierden|length + justos|length - 8 }} restantes</button>{% endif %}
 </div>
 {% elif items %}
 {{ banner("ok", "check", "<b>Todos tus precios cubren el margen que buscás</b>", "Si querés ser más competitivo, el precio recomendado de cada publicación es el piso hasta donde podés bajar sin salirte de tu objetivo.") }}
@@ -173,13 +173,13 @@
                 <label class="field-label" for="aj-pct"><b>Porcentaje</b> <span class="text-muted" style="font-weight:400;">(+ sube, − baja)</span></label>
                 <input type="number" id="aj-pct" step="0.1" min="-50" max="50" inputmode="decimal" placeholder="Ej: 10 o -5">
             </div>
-            <button type="button" class="btn btn-primary" onclick="ajusteVerPrevia(this)">Ver qué pasaría</button>
+            <button type="button" class="btn btn-primary" data-click="ajusteVerPrevia" data-click-args='["$el"]'>Ver qué pasaría</button>
         </div>
         <div class="text-muted" style="font-size:0.8em; margin-top:8px;">Hasta 50% en cada vez. Las publicaciones que quedarían por debajo de su precio mínimo no se cambian.</div>
         <div id="aj-resultado" hidden style="margin-top:18px;">
             <div class="ux-precios-barra no-imprimir">
                 <span class="text-muted" id="aj-resumen"></span>
-                <button type="button" class="btn btn-primary" id="aj-aplicar" onclick="ajusteAplicar(this)" disabled>Cambiar en Mercado Libre</button>
+                <button type="button" class="btn btn-primary" id="aj-aplicar" data-click="ajusteAplicar" data-click-args='["$el"]' disabled>Cambiar en Mercado Libre</button>
             </div>
             <div id="aj-lista"></div>
         </div>
@@ -189,7 +189,7 @@
 <div class="text-muted" style="font-size:0.8em; margin-top:18px; line-height:1.5;">Antes de cambiar un precio, confirmalo en la <a href="/calculadora">Calculadora</a>: la comisión y el envío pueden variar con el precio, la logística y las cuotas que ofrezcas.</div>
 {% endif %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
     const MARGEN = {{ margen_objetivo }}, PUBLICIDAD = {{ publicidad_pct }};
     const marcadas = () => [...document.querySelectorAll('.precio-check:checked')];

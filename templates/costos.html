@@ -93,8 +93,8 @@
 <div class="ux-barra-accion" id="barra-costos" style="display:none;" role="status">
     <div class="ux-barra-accion-texto"><b id="texto-cambios-costos">0 costos</b> sin guardar</div>
     <div class="flex-gap">
-        <button type="button" class="btn btn-secondary" onclick="descartarCostos()">Descartar</button>
-        <button type="button" class="btn btn-primary btn-lg" id="btn-guardar-costos-masivo" onclick="guardarCostosMasivo()"><svg class="icon"><use href="#icon-check"/></svg><span id="btn-guardar-texto">Guardar costos</span></button>
+        <button type="button" class="btn btn-secondary" data-click="descartarCostos">Descartar</button>
+        <button type="button" class="btn btn-primary btn-lg" id="btn-guardar-costos-masivo" data-click="guardarCostosMasivo"><svg class="icon"><use href="#icon-check"/></svg><span id="btn-guardar-texto">Guardar costos</span></button>
     </div>
 </div>
 {% endif %}
@@ -117,7 +117,7 @@
         <div id="importar-resultado"></div>
     </div>
 </details>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
     let cambiosPendientes = [];
     const caja = () => document.getElementById('importar-resultado');
@@ -182,16 +182,16 @@
                 <div style="font-weight:800; font-size:1.05em;">Cargá lo que te cobra tu logística por entrega</div>
                 <div class="text-muted" style="font-size:0.88em; line-height:1.55; margin-top:4px;">Las zonas las define Mercado Libre según tu domicilio. Vos solo ponés el precio de cada umbral y qué zonas cubre: <b>lo que no muevas cae en "Resto de las zonas"</b>. Se suma al costo de envío de cada venta en Ganancia Real.</div>
             </div>
-            <button type="button" class="btn btn-secondary" id="btn-flex-sync" onclick="sincronizarFlex()"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Sincronizar zonas con MeLi</button>
+            <button type="button" class="btn btn-secondary" id="btn-flex-sync" data-click="sincronizarFlex"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Sincronizar zonas con MeLi</button>
         </div>
         <div id="flex-origen" class="text-muted" style="font-size:0.85em; margin:10px 0 4px;"></div>
         <div class="ux-banner ux-info" style="display:block; margin:12px 0;">
             <b>Mercado Libre te reintegra el <span id="flex-reintegro-pct">10</span>% del envío.</b> Por eso en tu ganancia se descuenta el precio de tu logística <b>menos ese reintegro</b>: así ves lo que de verdad te cuesta cada entrega.
         </div>
 
-        <div class="flex-titulo-fila"><div style="font-weight:800;">Tus umbrales</div><button type="button" class="btn btn-secondary" onclick="nuevoUmbralFlex()" id="btn-flex-nuevo"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-plus"/></svg> Nuevo umbral</button></div>
+        <div class="flex-titulo-fila"><div style="font-weight:800;">Tus umbrales</div><button type="button" class="btn btn-secondary" data-click="nuevoUmbralFlex" id="btn-flex-nuevo"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-plus"/></svg> Nuevo umbral</button></div>
         <div id="flex-umbrales" class="flex-umbrales"></div>
-        <div class="flex-guardar"><button type="button" class="btn btn-primary" id="btn-flex-guardar" onclick="guardarUmbralesFlex()">Guardar y ver qué envíos resuelve</button><span class="text-muted" id="flex-sin-guardar" style="font-size:0.85em; display:none;"><b style="color:var(--semantic-warning);">Hay cambios sin guardar</b></span></div>
+        <div class="flex-guardar"><button type="button" class="btn btn-primary" id="btn-flex-guardar" data-click="guardarUmbralesFlex">Guardar y ver qué envíos resuelve</button><span class="text-muted" id="flex-sin-guardar" style="font-size:0.85em; display:none;"><b style="color:var(--semantic-warning);">Hay cambios sin guardar</b></span></div>
         <div id="flex-vista-previa"></div>
     </div>
 </details>
@@ -205,7 +205,7 @@
         {{ botones_periodo() }}
     </div>
     <div class="rango-fechas" id="rango-costos" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
-        <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-costos')"></button>
+        <button type="button" class="rango-fechas-boton" data-click="RangoFechas.toggle" data-click-args='["rango-costos"]'></button>
         <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
     </div>
     <button type="submit" class="btn btn-secondary">Ver período</button>
@@ -216,7 +216,7 @@
     <div class="page-subtitle" style="margin-bottom:12px;">Gastos: <em>"el alquiler sale 150 mil por mes desde julio"</em>. Costo de tus productos: <em>"los termos de acero me cuestan 12000 y las medias 3000"</em>. <b>Antes de guardar te muestro todo lo que va a cambiar para que lo confirmes.</b></div>
     <div id="costos-chat-mensajes" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px; max-height:280px; overflow-y:auto;"></div>
     <div id="costos-chat-propuesta" style="display:none;"></div>
-    <form id="costos-chat-form" onsubmit="return enviarMensajeCostosChat(event)" class="filter-row" style="margin:0;">
+    <form id="costos-chat-form" data-submit="enviarMensajeCostosChat" data-submit-args='["$ev"]' class="filter-row" style="margin:0;">
         <input type="text" id="costos-chat-input" class="field-input" placeholder="Escribí un gasto o el costo de tus productos…" style="flex:1;" autocomplete="off">
         <button type="submit" class="btn btn-primary">Enviar</button>
     </form>
@@ -251,7 +251,7 @@
                 <td><span class="ux-pill {{ 'ux-accion ux-pill-suave' if g.categoria == 'fijo' else 'ux-warn ux-pill-suave' }}">{{ g.categoria|capitalize }}</span></td>
                 <td class="num"><b>${{ g.monto_formateado }}</b></td>
                 <td>
-                    <form action="/eliminar_gasto/{{ g.id }}" method="POST" onsubmit="confirmarAccion('¿Eliminar este gasto?', this, 'Eliminar'); return false;" style="display:inline;">
+                    <form action="/eliminar_gasto/{{ g.id }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Eliminar este gasto?", "$form", "Eliminar"]' data-prevenir style="display:inline;">
                         <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
                         <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
                         <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Borrar</button>
@@ -267,7 +267,7 @@
     {% endif %}
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     // ── Ganancia por unidad en vivo: precio − comisión − envío − costo ────────
     function pintarGanancia(fila) {
         const precio = parseFloat(fila.dataset.precio), comision = parseFloat(fila.dataset.comision), envio = parseFloat(fila.dataset.envio) || 0;
@@ -478,8 +478,8 @@
             ${filas}
             ${vp.ordenes ? `<div class="flex-prev-fila flex-prev-total"><div><b>Costo de entrega que se suma a tu ganancia</b> <span class="text-muted" style="font-size:0.85em;">(ya con el reintegro de MeLi)</span></div><div style="font-size:1.15em;"><b>${UX.plata(vp.costo_total)}</b></div></div>` : ''}
             ${aviso}
-            <label class="flex-incluir"><input type="checkbox" id="flex-incluir" ${incluir ? 'checked' : ''} onchange="refrescarVistaPreviaFlex()"> Incluir también los envíos que ya tienen costo cargado (se recalculan con estos precios; los que elegiste a mano no se tocan)</label>
-            ${vp.ordenes ? `<button type="button" class="btn btn-primary" id="btn-aplicar-flex" style="margin-top:12px;" onclick="aplicarFlex()">Aplicar a estos ${vp.ordenes} envíos</button>` : ''}
+            <label class="flex-incluir"><input type="checkbox" id="flex-incluir" ${incluir ? 'checked' : ''} data-change="refrescarVistaPreviaFlex"> Incluir también los envíos que ya tienen costo cargado (se recalculan con estos precios; los que elegiste a mano no se tocan)</label>
+            ${vp.ordenes ? `<button type="button" class="btn btn-primary" id="btn-aplicar-flex" style="margin-top:12px;" data-click="aplicarFlex">Aplicar a estos ${vp.ordenes} envíos</button>` : ''}
         </div>`;
     }
 

@@ -76,11 +76,11 @@
 <div class="panel" id="panel-reactivar" data-mostrar-mas-scope>
     <div class="text-muted" style="font-size:0.88em; margin-bottom:10px; line-height:1.5;"><b>Estas publicaciones están pausadas pero tienen unidades:</b> no se están vendiendo. Elegí cuáles reactivar; solo se tocan las que marques. Las bloqueadas por Mercado Libre no aparecen acá.</div>
     <div class="flex-gap" style="margin-bottom:8px;">
-        <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="reactivar-todas" onchange="reactivarMarcarTodas(this.checked)"> Marcar todas</label>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="reactivar-todas" data-change="reactivarMarcarTodas" data-change-args='["$checked"]'> Marcar todas</label>
     </div>
     {% for r in reactivables %}
     <label class="ux-rank-fila ux-warn {% if loop.index > 4 %}oculto-mostrar-mas{% endif %}" style="cursor:pointer;" data-reactivar-fila="{{ r.id_meli }}">
-        <input type="checkbox" class="reactivar-check" value="{{ r.id_meli }}" onchange="reactivarActualizarBoton()">
+        <input type="checkbox" class="reactivar-check" value="{{ r.id_meli }}" data-change="reactivarActualizarBoton">
         {% if r.thumbnail %}<img src="{{ r.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
         <div class="ux-rank-info">
             <div class="ux-rank-titulo">{{ r.titulo }}</div>
@@ -90,10 +90,10 @@
         <div class="ux-rank-valor"><b>{{ r.stock }} u.</b></div>
     </label>
     {% endfor %}
-    {% if reactivables|length > 4 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:10px;" onclick="mostrarMasGenerico(this)">{{ ver_mas(reactivables|length - 4, "publicación", "publicaciones", "las") }}</button>{% endif %}
-    <div style="margin-top:14px;"><button type="button" class="btn btn-primary" id="btn-reactivar" onclick="reactivarAplicar()" disabled>Reactivar publicaciones</button></div>
+    {% if reactivables|length > 4 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:10px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>{{ ver_mas(reactivables|length - 4, "publicación", "publicaciones", "las") }}</button>{% endif %}
+    <div style="margin-top:14px;"><button type="button" class="btn btn-primary" id="btn-reactivar" data-click="reactivarAplicar" disabled>Reactivar publicaciones</button></div>
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 function reactivarMarcadas() { return [...document.querySelectorAll('.reactivar-check:checked')].map(c => c.value); }
 function reactivarActualizarBoton() {
     const n = reactivarMarcadas().length, b = document.getElementById('btn-reactivar');
@@ -158,18 +158,18 @@ async function reactivarAplicar() {
 
 <div class="ux-periodo" style="margin-bottom:16px;">
     <div class="field-group" style="flex:1; min-width:220px;">
-        <input type="text" id="input-buscador" placeholder="Buscar por nombre, {{ vocab.v1 }} o ID…" aria-label="Buscar modelo" onkeyup="aplicarFiltros()">
+        <input type="text" id="input-buscador" placeholder="Buscar por nombre, {{ vocab.v1 }} o ID…" aria-label="Buscar modelo" data-keyup="aplicarFiltros">
     </div>
     <div class="ux-periodo-botones" style="flex-wrap:wrap;">
-        <button type="button" id="chip-activas" class="btn btn-secondary active" onclick="toggleEstado('active')">Activas</button>
-        <button type="button" id="chip-pausadas" class="btn btn-secondary" onclick="toggleEstado('paused')">Pausadas <span class="text-muted">{{ pausadas|length }}</span></button>
-        <button type="button" id="chip-inactivas" class="btn btn-secondary" onclick="toggleEstado('closed')">Inactivas <span class="text-muted">{{ inactivas|length }}</span></button>
-        <button type="button" id="chip-sin-stock" class="btn btn-secondary" onclick="toggleSolo('sinStock')" aria-pressed="false">Solo sin stock <span class="ux-pill {{ 'ux-danger' if sin_stock else 'ux-neutral ux-pill-suave' }}" style="padding:1px 8px;">{{ sin_stock|length }}</span></button>
+        <button type="button" id="chip-activas" class="btn btn-secondary active" data-click="toggleEstado" data-click-args='["active"]'>Activas</button>
+        <button type="button" id="chip-pausadas" class="btn btn-secondary" data-click="toggleEstado" data-click-args='["paused"]'>Pausadas <span class="text-muted">{{ pausadas|length }}</span></button>
+        <button type="button" id="chip-inactivas" class="btn btn-secondary" data-click="toggleEstado" data-click-args='["closed"]'>Inactivas <span class="text-muted">{{ inactivas|length }}</span></button>
+        <button type="button" id="chip-sin-stock" class="btn btn-secondary" data-click="toggleSolo" data-click-args='["sinStock"]' aria-pressed="false">Solo sin stock <span class="ux-pill {{ 'ux-danger' if sin_stock else 'ux-neutral ux-pill-suave' }}" style="padding:1px 8px;">{{ sin_stock|length }}</span></button>
         {% if riesgo is not none %}
-        <button type="button" id="chip-riesgo" class="btn btn-secondary" onclick="toggleSolo('riesgo')" aria-pressed="false" title="Modelos con {{ vocab.v1 }} que se agota pronto al ritmo de venta actual">Se agota pronto <span class="ux-pill {{ 'ux-warn' if en_riesgo else 'ux-neutral ux-pill-suave' }}" style="padding:1px 8px;">{{ en_riesgo|length }}</span></button>
+        <button type="button" id="chip-riesgo" class="btn btn-secondary" data-click="toggleSolo" data-click-args='["riesgo"]' aria-pressed="false" title="Modelos con {{ vocab.v1 }} que se agota pronto al ritmo de venta actual">Se agota pronto <span class="ux-pill {{ 'ux-warn' if en_riesgo else 'ux-neutral ux-pill-suave' }}" style="padding:1px 8px;">{{ en_riesgo|length }}</span></button>
         {% endif %}
         {% if capacidades.get('full') is not false and con_full %}
-        <button type="button" id="chip-full" class="btn btn-secondary" onclick="toggleSolo('full')" aria-pressed="false">Con stock en FULL <span class="ux-pill ux-neutral ux-pill-suave" style="padding:1px 8px;">{{ con_full|length }}</span></button>
+        <button type="button" id="chip-full" class="btn btn-secondary" data-click="toggleSolo" data-click-args='["full"]' aria-pressed="false">Con stock en FULL <span class="ux-pill ux-neutral ux-pill-suave" style="padding:1px 8px;">{{ con_full|length }}</span></button>
         {% endif %}
     </div>
 </div>
@@ -206,7 +206,7 @@ async function reactivarAplicar() {
                                 {% if p.estado == 'paused' %}<span class="ux-pill ux-warn">Pausada</span>{% elif p.estado != 'active' %}<span class="ux-pill ux-neutral ux-pill-suave">Inactiva</span>{% endif %}
                                 {% for v in p.variantes %}
                                 {% set total_v = v.propio + v.full %}
-                                <a href="javascript:void(0)" onclick="abrirDrawer('{{ v.id_meli }}')" style="text-decoration:none;"
+                                <a href="#" data-click="abrirDrawer" data-click-args='{{ [v.id_meli|string]|tojson }}' data-prevenir style="text-decoration:none;"
                                    title="Gestionar talle {{ v.talle }} — {{ v.propio }} propias, {{ v.full }} en FULL{% if v.revisar_duplicado %} · hay publicaciones hermanas con distinto stock, revisar en MeLi{% endif %}">
                                     <span class="ux-pill ux-pill-suave {{ 'ux-danger' if total_v == 0 else ('ux-warn' if total_v <= 2 or v.revisar_duplicado else 'ux-neutral') }}" style="font-weight:700;">
                                         <b>{{ v.talle }}</b> {{ total_v }}{% if v.full > 0 and v.propio == 0 %}<span style="opacity:.7; font-weight:600;"> FULL</span>{% elif v.full > 0 %}<span style="opacity:.7; font-weight:600;"> ({{ v.propio }}+{{ v.full }}F)</span>{% endif %}
@@ -248,7 +248,7 @@ async function reactivarAplicar() {
                     {% else %}<span class="ux-pill ux-{{ p.dias_stock_tono }}{{ ' ux-pill-suave' if p.dias_stock_tono == 'neutral' }}" {% if pista %}title="{{ pista }}"{% endif %}>{{ p.dias_stock_texto }}</span>{% endif %}
                     {% else %}<span class="text-faint">—</span>{% endif %}
                 </td>
-                <td><button type="button" class="btn btn-secondary" onclick="abrirDrawer('{{ p.id }}')">Gestionar</button></td>
+                <td><button type="button" class="btn btn-secondary" data-click="abrirDrawer" data-click-args='{{ [p.id|string]|tojson }}'>Gestionar</button></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -262,7 +262,7 @@ async function reactivarAplicar() {
 
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     const CLAVE_FILTRO_ESTADO = 'filtro_estado_stock';
     let estadosVisibles = { active: true, paused: false, closed: false };
     try { estadosVisibles = JSON.parse(localStorage.getItem(CLAVE_FILTRO_ESTADO)) || estadosVisibles; } catch (e) { /* preferencias corruptas: se usan las de fábrica */ }

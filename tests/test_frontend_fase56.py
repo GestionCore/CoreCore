@@ -176,11 +176,10 @@ def test_el_toast_queda_por_encima_del_menu_movil_el_buscador_y_los_modales():
 
 
 # ── Ratchet de manejadores inline: lo que quedó migrado no puede volver ────────────────────────────────────────────────────────────────────
-def test_las_pantallas_y_el_layout_migrados_no_vuelven_a_tener_manejadores_inline():
-    from tests.test_correcciones_frontend import INLINE, SIN_INLINE
-    assert "base.html" in SIN_INLINE
-    for nombre in SIN_INLINE:
-        assert not INLINE.search(_leer("templates", nombre)), nombre
+def test_el_layout_no_tiene_manejadores_inline():
+    # Desde el 2026-10-08 NINGUNA plantilla los tiene (test_correcciones_frontend::test_ninguna_pantalla_tiene_manejadores_en_el_html): acá queda el layout, que todas heredan.
+    from tests.test_correcciones_frontend import INLINE
+    assert not INLINE.search(_leer("templates", "base.html"))
 
 
 # ── 54. El PDF de Ganancia Real no sale cortado ────────────────────────────────────────────────────────────────────────────────────────────

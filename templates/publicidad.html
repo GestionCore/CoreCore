@@ -17,12 +17,12 @@
         {{ botones_periodo() }}
     </div>
     <div class="rango-fechas" id="rango-publicidad" data-desde="{{ fecha_desde }}" data-hasta="{{ fecha_hasta }}">
-        <button type="button" class="rango-fechas-boton" onclick="RangoFechas.toggle('rango-publicidad')"></button>
+        <button type="button" class="rango-fechas-boton" data-click="RangoFechas.toggle" data-click-args='["rango-publicidad"]'></button>
         <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
     </div>
     <button type="submit" class="btn btn-primary">Ver período</button>
 </form>
-<script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-publicidad'));</script>
+<script nonce="{{ csp_nonce }}">document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-publicidad'));</script>
 
 {% if not ads_disponible %}
 {{ vacio("No encontramos una cuenta de anunciante de Product Ads", "Si nunca activaste publicidad en Mercado Libre es normal que no haya nada acá todavía. Cuando tengas campañas, ves si te convienen.", "percent", "info") }}
@@ -183,7 +183,7 @@
         <div class="ux-rank-roas">{% if i.sin_ventas %}<span class="ux-pill ux-danger">Sin ventas</span>{% else %}<span class="ux-pill ux-{{ 'ok' if estado == 'ok' else ('warn' if estado == 'warn' else 'danger') }}">ROAS {{ i.roas|string|replace('.', ',') }}x</span><div class="text-muted" style="font-size:0.8em; text-align:right;">{{ i.unidades }} u.</div>{% endif %}</div>
     </div>
     {% endfor %}
-    {% if items_ads|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ items_ads|length - 8 }} restantes</button>{% endif %}
+    {% if items_ads|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver las {{ items_ads|length - 8 }} restantes</button>{% endif %}
 </div>
 {% endif %}
 
@@ -259,7 +259,7 @@
 </details>
 
 <script src="/static/js/vendor/chart.umd.min.js?v=4.4.4"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.Chart) return;   // Chart.js no cargó (ej. sin internet) — no rompemos la página por esto
     const est = getComputedStyle(document.documentElement);

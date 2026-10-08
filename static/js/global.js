@@ -1377,9 +1377,8 @@ async function cargarTabFicha(idMeli) {
         const atributosHtml = (d.atributos || []).map((a, i) => `
             <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--glass-border);">
                 <span style="color:var(--text-secondary); font-size:0.82em; width:42%; flex-shrink:0;">${UX.esc(a.nombre)}</span>
-                <input type="text" data-attr-id="${UX.esc(a.id || '')}" value="${UX.esc(a.valor || '')}"
-                    style="flex:1; background:rgba(255,255,255,0.04); border:1px solid transparent; border-radius:4px; color:var(--text-primary); padding:4px 8px; font-size:0.85em; transition:border-color 0.15s;"
-                    onfocus="this.style.borderColor='var(--accent-brand)'" onblur="this.style.borderColor='transparent'"
+                <input type="text" class="ficha-atributo-input" data-attr-id="${UX.esc(a.id || '')}" value="${UX.esc(a.valor || '')}"
+                    style="flex:1; background:rgba(255,255,255,0.04); border-radius:4px; color:var(--text-primary); padding:4px 8px; font-size:0.85em;"
                     placeholder="(vacío)">
             </div>`).join('');
         cont.innerHTML = `

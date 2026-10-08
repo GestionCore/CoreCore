@@ -74,7 +74,7 @@
         </div>
     </div>
     {% endfor %}
-    {% if con_mejoras|length > 6 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">{{ ver_mas(con_mejoras|length - 6, 'publicación', 'publicaciones') }}</button>{% endif %}
+    {% if con_mejoras|length > 6 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>{{ ver_mas(con_mejoras|length - 6, 'publicación', 'publicaciones') }}</button>{% endif %}
 </div>
 {% elif con_dato %}
 {{ banner("ok", "check", "<b>Todas tus publicaciones están al 100%</b>", "Mercado Libre no te pide mejorar nada por ahora. Volvé a mirar cuando publiques algo nuevo.") }}

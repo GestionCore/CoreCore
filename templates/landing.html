@@ -546,7 +546,7 @@
     </div>
 </footer>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
     // Entrada suave de cada bloque al llegar a la pantalla. Sin JavaScript (o con "menos movimiento") se ve todo desde el principio.
     var prefiereMenos = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;

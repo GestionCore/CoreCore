@@ -95,7 +95,7 @@
 </div>
 {% endif %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
     const CORTES = {{ cortes_js|default([])|tojson }};      // [{nombre, hora: "HH:MM"}]: solo los que se conocen
     // La fecha y el corte son de Argentina: se leen en esa zona y no en la de la PC (si la PC está en otra zona o tiene mal el huso, la cuenta regresiva y "hoy" salían corridos)
     const ZONA_ARGENTINA = 'America/Argentina/Buenos_Aires';

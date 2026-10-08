@@ -19,7 +19,7 @@
 
 <form action="/reporte_fiscal" method="GET" class="ux-periodo no-imprimir">
     <label class="field-label" for="select-anio" style="margin:0;"><b>Año</b></label>
-    <select id="select-anio" name="anio" onchange="this.form.submit()" style="max-width:140px;">
+    <select id="select-anio" name="anio" data-change="enviarFormulario" data-change-args='["$form"]' style="max-width:140px;">
         {% for a in anios_disponibles %}
         <option value="{{ a }}" {% if a == anio_seleccionado %}selected{% endif %}>{{ a }}</option>
         {% endfor %}

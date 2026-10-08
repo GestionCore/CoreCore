@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ux.css') }}?v={{ static_v('css/ux.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/shell.css') }}?v={{ static_v('css/shell.css') }}">
     <script src="{{ url_for('static', filename='js/ux.js') }}?v={{ static_v('js/ux.js') }}"></script>
-    <script>
+    <script nonce="{{ csp_nonce }}">
         // Aplicamos el tema y el modo privacidad guardados ANTES de que se
         // pinte la página, para que no haya ni un parpadeo del tema por
         // defecto ni, más importante, un instante con montos sensibles
@@ -240,7 +240,7 @@
         </div>
     </div>
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
     let _pendingForm = null;
     let _pendingResolve = null;
@@ -459,7 +459,7 @@
 .menu-lateral-logout { color: var(--danger); margin-bottom: 8px; }
 .menu-lateral-logout:hover { background: var(--danger-bg); color: var(--danger); }
 </style>
-<script>
+<script nonce="{{ csp_nonce }}">
 function abrirMenuLateral() {
     document.getElementById('menu-lateral-overlay').classList.add('abierto');
     document.body.style.overflow = 'hidden';
@@ -481,7 +481,7 @@ document.addEventListener('keydown', e => {
 });
 </script>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // El ticker-bar de arriba puede wrappear a 2 líneas en pantallas angostas,
 // así que la altura del header no es un número fijo — se mide de verdad
 // para que el tab-strip persistente (.subnav-tabs) quede pegado justo
@@ -497,7 +497,7 @@ document.addEventListener('keydown', e => {
 })();
 </script>
 
-<script>window.CAPACIDADES = {{ (capacidades or {})|tojson }}; window.MARGEN_MINIMO = {{ (margen_minimo if margen_minimo is defined else 15)|tojson }};</script>
+<script nonce="{{ csp_nonce }}">window.CAPACIDADES = {{ (capacidades or {})|tojson }}; window.MARGEN_MINIMO = {{ (margen_minimo if margen_minimo is defined else 15)|tojson }};</script>
 <script src="{{ url_for('static', filename='js/global.js') }}?v={{ static_v('js/global.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tablas.js') }}?v={{ static_v('js/tablas.js') }}"></script>
 
@@ -514,7 +514,7 @@ document.addEventListener('keydown', e => {
         <div class="fb-pie"><span class="text-muted" id="fb-estado" style="font-size:0.85em;"></span><button type="button" class="btn btn-primary" id="fb-enviar" data-click="enviarComentario">Enviar</button></div>
     </div>
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
     let tipo = 'problema';
     const overlay = () => document.getElementById('fb-overlay');

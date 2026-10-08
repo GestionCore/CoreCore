@@ -35,7 +35,7 @@
     {# Filtrar es secundario: el botón primario de la pantalla es la descarga del resultado, debajo del número #}
     <button type="submit" class="btn btn-secondary">Ver período</button>
 </form>
-<script>document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-metricas'));</script>
+<script nonce="{{ csp_nonce }}">document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-metricas'));</script>
 
 {% if not hay_ventas %}
 {{ vacio("No hay ventas en este período", "Probá con un rango más amplio — o sincronizá para traer lo último de Mercado Libre.", "calendar", "info", "Ver los últimos 30 días", "/metricas") }}
@@ -514,7 +514,7 @@
 {% endif %}
 
 <script src="/static/js/vendor/chart.umd.min.js?v=4.4.4"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 // Los gráficos viven dentro de secciones plegadas: Chart.js mide el canvas al crearlo y, si está oculto
 // (display:none), queda con tamaño 0 sin recuperarse. Por eso se arman recién la primera vez que la
 // pestaña se muestra (evento "ux:tab-visible", ver ux.js). Además el mapa de calor y la correlación recién piden sus datos ahí:

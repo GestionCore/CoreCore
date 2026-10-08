@@ -74,13 +74,13 @@
                     <button type="button" id="btn-activo-{{ u.id }}"
                         class="badge {% if u.activo %}badge-success{% else %}badge-neutral{% endif %}"
                         style="border:none; cursor:pointer; background:inherit;"
-                        onclick="toggleActivo({{ u.id }}, this)">
+                        data-click="toggleActivo" data-click-args='{{ [u.id, "$el"]|tojson }}'>
                         {% if u.activo %}Activo{% else %}Inactivo{% endif %}
                     </button>
                 </td>
                 <td class="num" style="white-space:nowrap;">
-                    {% if u.plan == 'trial' %}<button type="button" class="btn btn-secondary" style="font-size:0.82em; padding:3px 8px;" onclick="extenderPrueba({{ u.id }})">+7 días</button>{% endif %}
-                    <select class="btn btn-secondary" style="font-size:0.82em; padding:3px 6px;" onchange="cambiarPlan({{ u.id }}, this)">
+                    {% if u.plan == 'trial' %}<button type="button" class="btn btn-secondary" style="font-size:0.82em; padding:3px 8px;" data-click="extenderPrueba" data-click-args='{{ [u.id]|tojson }}'>+7 días</button>{% endif %}
+                    <select class="btn btn-secondary" style="font-size:0.82em; padding:3px 6px;" data-change="cambiarPlan" data-change-args='{{ [u.id, "$el"]|tojson }}'>
                         <option value="">Cambiar plan...</option>
                         <option value="trial" {% if u.plan == 'trial' %}disabled{% endif %}>→ Trial</option>
                         <option value="base" {% if u.plan == 'base' %}disabled{% endif %}>→ Base</option>
@@ -94,7 +94,7 @@
     </table>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 async function cambiarPlan(uid, sel) {
     const nuevo = sel.value;
     if (!nuevo) return;

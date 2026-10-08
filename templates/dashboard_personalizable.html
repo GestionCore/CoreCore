@@ -102,7 +102,7 @@
     </div>
     {% if proyeccion.serie.anterior|sum > 0 or proyeccion.serie.actual|sum > 0 %}
     <div style="position:relative; height:220px; margin:16px 0 6px;"><canvas id="chart-mes-vs-anterior" role="img" aria-label="Facturación acumulada de {{ proyeccion.mes_nombre }} contra {{ proyeccion.mes_anterior_nombre }}"></canvas></div>
-    <script>
+    <script nonce="{{ csp_nonce }}">
     window.addEventListener('DOMContentLoaded', function () {
         const canvas = document.getElementById('chart-mes-vs-anterior');
         if (!canvas || !window.Chart) { if (canvas) canvas.parentElement.style.display = 'none'; return; }
@@ -287,7 +287,7 @@
 </div>
 
 <script src="/static/js/vendor/chart.umd.min.js?v=4.4.4"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
     // Tarjetas opcionales del panel "Personalizar". Las piezas clave del día (ganancia, acciones,
     // KPIs, resultado de 14 días) ya son fijas arriba: antes se repetían acá como widgets.
     const WIDGETS_DISPONIBLES = [

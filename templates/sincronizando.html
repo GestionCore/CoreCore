@@ -142,7 +142,8 @@
   </div>
 </div>
 
-<script>
+<script src="{{ url_for('static', filename='js/ux.js') }}?v={{ static_v('js/ux.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
 var TIPS = [
   'CoreLux calcula tu <strong>ganancia neta real</strong> descontando comisiones, envíos, publicidad y costo de fabricación — no solo la facturación bruta.',
   'En <strong>Precios</strong> ves el precio mínimo de cada publicación para no perder plata, con su comisión y su envío reales.',
@@ -181,7 +182,7 @@ function mostrarDiagnostico(d) {
   var caja = document.getElementById('sync-problema');
   if (!d || d === 'normal') { caja.hidden = true; return; }
   var titulo = document.getElementById('sync-problema-titulo'), texto = document.getElementById('sync-problema-texto'), botones = document.getElementById('sync-problema-botones');
-  var reintentar = '<button type="button" class="btn btn-primary" onclick="reintentarSync(this)">Reintentar ahora</button>';
+  var reintentar = '<button type="button" class="btn btn-primary" data-click="reintentarSync" data-click-args="[&quot;$el&quot;]">Reintentar ahora</button>';
   var escribir = '<a class="btn btn-secondary" href="mailto:soporte@corelux.app?subject=Mi%20cuenta%20no%20termina%20de%20sincronizar">Escribirnos</a>';
   var salir = '<a class="btn btn-secondary" href="/logout">Salir</a>';       // nunca se queda sin salida: puede cerrar la sesión y volver más tarde
   if (d === 'desconectada') {

@@ -26,8 +26,9 @@
     <p>{{ detalle }}</p>
     <div class="acciones">
         <a class="primario" href="/">{{ 'Ir al inicio' if logueado else 'Volver a CoreLux' }}</a>
-        <a class="secundario" href="javascript:history.back()">Volver atrás</a>
+        <a class="secundario" href="#" data-click="history.back" data-prevenir>Volver atrás</a>
     </div>
 </main>
+<script src="{{ url_for('static', filename='js/ux.js') }}"></script>
 </body>
 </html>

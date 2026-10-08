@@ -17,7 +17,7 @@
 {% if periodos %}
 <form action="/facturacion" method="GET" class="ux-periodo no-imprimir">
     <label class="field-label" for="select-periodo" style="margin:0;"><b>Período de facturación</b></label>
-    <select id="select-periodo" name="key" onchange="this.form.submit()" style="max-width:340px;">
+    <select id="select-periodo" name="key" data-change="enviarFormulario" data-change-args='["$form"]' style="max-width:340px;">
         {% for p in periodos %}
         <option value="{{ p.key }}" {% if p.key == key_seleccionada %}selected{% endif %}>{{ rango_fechas(p.date_from, p.date_to) }}{% if p.en_curso %} (en curso){% endif %}</option>
         {% endfor %}
@@ -68,7 +68,7 @@
     </div>
     {% endfor %}
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
     document.querySelectorAll('#waterfall-facturacion .ux-barra span').forEach(b => { requestAnimationFrame(() => { b.style.width = Math.min(100, b.dataset.w || 0) + '%'; }); });
 </script>
 {% endif %}

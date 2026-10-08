@@ -106,7 +106,7 @@
 </form>
 {% endif %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
     let soloEditables = false;
 
     function abrirItem(item, abrir) {

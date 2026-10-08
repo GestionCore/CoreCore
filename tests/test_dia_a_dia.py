@@ -125,7 +125,7 @@ def test_los_scripts_de_las_cuatro_partes_no_se_pisan_entre_si(tmp_path):
         pytest.skip("node no está instalado")
     html = _render()
     cuerpo = html[html.index("<main"):html.index("</main>")]
-    scripts = re.findall(r"<script>(.*?)</script>", cuerpo, flags=re.S)
+    scripts = re.findall(r"<script(?:\s[^>]*)?>(.*?)</script>", cuerpo, flags=re.S)           # con nonce="…" desde la CSP estricta
     assert len(scripts) >= 3
     archivo = tmp_path / "dia.js"
     archivo.write_text("\n;\n".join(scripts), encoding="utf-8")

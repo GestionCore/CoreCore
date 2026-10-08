@@ -84,7 +84,7 @@ def test_la_pantalla_de_sincronizacion_ofrece_reintentar_y_salir_cuando_se_traba
     assert 'href="/logout"' in t and t.count("var salir =") == 1 and "reintentar + escribir + salir" in t
     assert "'sin_conexion'" in t and "FALLAS_PARA_AVISAR" in t and "fallasSeguidas = 0" in t                              # si el servidor deja de contestar también avisa
     assert "MINUTOS_MAXIMOS_DE_ESPERA" in t and "pasoDemasiado" in t                                                       # y si pasa mucho tiempo aunque el servidor diga «normal»
-    assert "reintentarSync(this)" in t and "/sincronizar_todo" in t
+    assert 'data-click="reintentarSync"' in t and "/sincronizar_todo" in t
     assert "cada 4 minutos: tus números" not in t
 
 

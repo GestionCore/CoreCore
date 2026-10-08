@@ -73,12 +73,13 @@ const UX = (() => {
  *
  *   <button data-click="funcion" data-click-args='["$el", 7]'>   →   window.funcion(<el botón>, 7)
  *
- * Eventos: data-click | data-change | data-input | data-keyup | data-keydown (los argumentos van en data-<evento>-args, un arreglo JSON; en Jinja: `{{ [a, b]|tojson }}` entre comillas simples).
+ * Eventos: data-click | data-change | data-input | data-keyup | data-keydown | data-submit (los argumentos van en data-<evento>-args, un arreglo JSON; en Jinja: `{{ [a, b]|tojson }}` entre comillas simples).
+ * En un data-submit, si la función devuelve `false` se cancela el envío (lo que hacía `onsubmit="return f(this)"`) y "$form" es el propio formulario.
  * data-keydown se usa con data-keydown-tecla="Enter" (o varias separadas por coma): solo corre con esas teclas.
  * data-<evento>-propio: solo corre si el evento fue en el propio elemento y no en uno de adentro (el «clic en el fondo» de un modal: antes `if(event.target===this)`).
  * data-prevenir: cancela la acción por defecto del navegador antes de llamar (un enlace que no tiene que navegar: antes `return false`).
  * "funcion" puede ser una ruta (`RangoFechas.toggle`, `window.print`): se llama con su objeto como `this`.
- * Argumentos especiales: "$el" (el elemento), "$ev" (el evento), "$valor" (su value), "$form" (su formulario), "$closest:.selector" (el ancestro más cercano).
+ * Argumentos especiales: "$el" (el elemento), "$ev" (el evento), "$valor" (su value), "$checked" (si está tildado), "$form" (su formulario), "$closest:.selector" (el ancestro más cercano).
  * data-aislar en un elemento frena el click ahí (hace lo que antes `event.stopPropagation()`): un click adentro no activa el data-click de los de afuera.
  * Un elemento con role="button" (que no es un <button>) también se activa con Enter y espacio.
  */
@@ -92,7 +93,8 @@ const UX = (() => {
         if (a === '$el') return el;
         if (a === '$ev') return ev;
         if (a === '$valor') return el.value;
-        if (a === '$form') return el.form;
+        if (a === '$checked') return !!el.checked;
+        if (a === '$form') return el.form || (el.tagName === 'FORM' ? el : el.closest('form'));
         if (typeof a === 'string' && a.startsWith('$closest:')) return el.closest(a.slice(9));
         return a;
     };
@@ -111,11 +113,12 @@ const UX = (() => {
             if (!funcion) { console.error('[ux] ' + atributo + ': no existe la función "' + el.getAttribute(atributo) + '"'); return; }
             let args = [];
             try { args = JSON.parse(el.getAttribute(atributo + '-args') || '[]'); } catch (e) { console.error('[ux] ' + atributo + '-args no es un JSON válido', e); return; }
-            funcion.apply(dueno, args.map(a => argumento(a, el, ev)));
+            const resultado = funcion.apply(dueno, args.map(a => argumento(a, el, ev)));
+            if (resultado === false && ev.type === 'submit') ev.preventDefault();         // antes un onsubmit="return f(this)" impedía enviar el formulario; solo en submit, para no alterar a los click ya migrados
             return;
         }
     };
-    ['click', 'change', 'input', 'keyup', 'keydown'].forEach(tipo => document.addEventListener(tipo, atender));
+    ['click', 'change', 'input', 'keyup', 'keydown', 'submit'].forEach(tipo => document.addEventListener(tipo, atender));
     document.addEventListener('keydown', (ev) => {
         if (ev.key !== 'Enter' && ev.key !== ' ') return;
         const el = ev.target;
@@ -306,6 +309,8 @@ document.addEventListener('click', (e) => {
 
 // Para data-change="enviarFormulario" data-change-args='["$form"]': enviar el formulario apenas cambia un campo (por ejemplo, la fecha de Despacho).
 function enviarFormulario(formulario) { if (formulario) formulario.submit(); }
+// Para data-click="seleccionarTodo" data-click-args='["$el"]': seleccionar el texto de un campo al hacer clic (un link que se copia).
+function seleccionarTodo(campo) { if (campo && campo.select) campo.select(); }
 
 // Al imprimir / exportar a PDF se abren todas las secciones plegables (cerradas no se imprimen) y después se restauran.
 window.addEventListener('beforeprint', () => document.querySelectorAll('details.ux-detalle').forEach(d => { d.dataset.estabaAbierto = d.open ? '1' : '0'; d.open = true; }));

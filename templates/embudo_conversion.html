@@ -81,10 +81,10 @@
     <div class="flex-gap" style="font-size:0.85em; margin-bottom:14px;">
         <span class="text-muted">Ordenar por:</span>
         <div class="ux-periodo-botones">
-            <button type="button" class="btn btn-secondary embudo-orden-btn active" data-orden="visitas" onclick="ordenarEmbudo('visitas', this)">Visitas</button>
-            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="preguntas" onclick="ordenarEmbudo('preguntas', this)">Preguntas</button>
-            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="vendidas" onclick="ordenarEmbudo('vendidas', this)">Ventas</button>
-            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="tasa_conversion" onclick="ordenarEmbudo('tasa_conversion', this)">Conversión</button>
+            <button type="button" class="btn btn-secondary embudo-orden-btn active" data-orden="visitas" data-click="ordenarEmbudo" data-click-args='["visitas", "$el"]'>Visitas</button>
+            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="preguntas" data-click="ordenarEmbudo" data-click-args='["preguntas", "$el"]'>Preguntas</button>
+            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="vendidas" data-click="ordenarEmbudo" data-click-args='["vendidas", "$el"]'>Ventas</button>
+            <button type="button" class="btn btn-secondary embudo-orden-btn" data-orden="tasa_conversion" data-click="ordenarEmbudo" data-click-args='["tasa_conversion", "$el"]'>Conversión</button>
         </div>
     </div>
     <div id="embudo-lista">
@@ -115,7 +115,7 @@
     {% endfor %}
     </div>
     {% if embudo|length > 6 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" id="embudo-btn-mostrar-mas" onclick="mostrarMasGenerico(this)">{{ ver_mas(embudo|length - 6, 'publicación', 'publicaciones') }}</button>
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" id="embudo-btn-mostrar-mas" data-click="mostrarMasGenerico" data-click-args='["$el"]'>{{ ver_mas(embudo|length - 6, 'publicación', 'publicaciones') }}</button>
     {% endif %}
 </div>
 
@@ -133,7 +133,7 @@
 </details>
 {% endif %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
     document.addEventListener('click', (ev) => { const b = ev.target.closest('[data-drawer]'); if (b) abrirDrawer(b.dataset.drawer); });
     document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(() => requestAnimationFrame(() => {

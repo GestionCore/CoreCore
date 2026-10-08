@@ -17,7 +17,7 @@
   {% if referral_link %}
   <div class="flex-gap" style="margin-top:12px; flex-wrap:wrap;">
     <input id="referral-input" type="text" value="{{ referral_link }}" readonly aria-label="Tu link de invitación" style="flex:1; min-width:240px; font-size:0.95em; font-weight:700;">
-    <button type="button" class="btn btn-primary btn-lg" onclick="copiarLink()" id="btn-copiar"><svg class="icon"><use href="#icon-copy"/></svg>Copiar mi link</button>
+    <button type="button" class="btn btn-primary btn-lg" data-click="copiarLink" id="btn-copiar"><svg class="icon"><use href="#icon-copy"/></svg>Copiar mi link</button>
   </div>
   <div class="ux-hero-nota" style="margin-top:12px;">Tu código: <b style="font-family:var(--font-data); letter-spacing:1px; color:var(--text-primary);">{{ referral_code }}</b></div>
   {% else %}
@@ -52,7 +52,7 @@
   {% endif %}
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function copiarLink() {
   const input = document.getElementById('referral-input');
   const btn = document.getElementById('btn-copiar');

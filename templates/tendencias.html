@@ -55,12 +55,12 @@
     </div>
 
     <div class="tendencias-tabs">
-        <button type="button" class="tendencias-tab activo" id="tab-btn-termino" onclick="cambiarTabExplorador('termino')">Buscar por término</button>
-        <button type="button" class="tendencias-tab" id="tab-btn-categoria" onclick="cambiarTabExplorador('categoria')">Explorar por categoría</button>
+        <button type="button" class="tendencias-tab activo" id="tab-btn-termino" data-click="cambiarTabExplorador" data-click-args='["termino"]'>Buscar por término</button>
+        <button type="button" class="tendencias-tab" id="tab-btn-categoria" data-click="cambiarTabExplorador" data-click-args='["categoria"]'>Explorar por categoría</button>
     </div>
 
     <div id="tab-termino-explorador">
-        <form id="form-explorar-demanda" class="filter-row" onsubmit="return buscarDemandaPorTermino(event)">
+        <form id="form-explorar-demanda" class="filter-row" data-submit="buscarDemandaPorTermino" data-submit-args='["$ev"]'>
             <div class="field-group" style="flex:2; min-width:220px;">
                 <input type="text" id="input-demanda-termino" placeholder="Ej: termo acero inoxidable, zapatillas running, campera de jean hombre" required>
             </div>
@@ -72,7 +72,7 @@
         <div class="text-muted" style="font-size:0.82em; margin-bottom:10px;">Navegá las ramas de cualquier rubro — el tuyo o uno nuevo que quieras evaluar.</div>
         <div id="breadcrumb-categorias" class="flex-gap" style="margin-bottom:10px; font-size:0.85em;"></div>
         <div id="lista-categorias" class="flex-gap" style="margin-bottom:14px;"></div>
-        <button type="button" class="btn btn-primary" id="btn-analizar-categoria" style="display:none;" onclick="analizarCategoriaActual()">Analizar esta categoría</button>
+        <button type="button" class="btn btn-primary" id="btn-analizar-categoria" style="display:none;" data-click="analizarCategoriaActual">Analizar esta categoría</button>
     </div>
 
     <div id="resultado-demanda" style="margin-top:18px;"></div>
@@ -109,7 +109,7 @@
             <div style="position:relative; height:60px; width:180px;"><canvas id="chart-seg-{{ s.id }}" role="img" aria-label="Evolución de publicaciones de {{ s.etiqueta }}"></canvas></div>
             {% endif %}
             {% if not s.automatico %}
-            <button type="button" class="btn btn-secondary" style="font-size:0.8em; padding:6px 12px;" onclick="dejarDeSeguir({{ s.id }})">Dejar de seguir</button>
+            <button type="button" class="btn btn-secondary" style="font-size:0.8em; padding:6px 12px;" data-click="dejarDeSeguir" data-click-args='{{ [s.id]|tojson }}'>Dejar de seguir</button>
             {% endif %}
         </div>
         {% endfor %}
@@ -144,7 +144,7 @@
     {% for s in seo_scores %}
     <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="padding:14px 0; border-bottom:1px solid var(--border-soft);">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:8px;">
-            <a href="javascript:void(0)" onclick="abrirDrawer('{{ s.id_meli }}')" style="font-weight:600; flex:1;">{{ s.titulo }}</a>
+            <a href="#" data-click="abrirDrawer" data-click-args='{{ [s.id_meli|string]|tojson }}' data-prevenir style="font-weight:600; flex:1;">{{ s.titulo }}</a>
             <div class="seo-score-circulo {% if s.score >= 80 %}seo-score-alto{% elif s.score >= 50 %}seo-score-medio{% else %}seo-score-bajo{% endif %}">{{ s.score }}</div>
         </div>
         <div class="text-muted" style="font-size:0.8em; line-height:1.6;">
@@ -153,7 +153,7 @@
     </div>
     {% endfor %}
     {% if seo_scores|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ seo_scores|length - 5 }} más...</button>
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Mostrar {{ seo_scores|length - 5 }} más...</button>
     {% endif %}
 </div>
 {% endif %}
@@ -189,7 +189,7 @@
     <div class="flex-gap">
         {% for t in oportunidades %}
         <button type="button" class="badge badge-warning" style="cursor:pointer; font-size:0.9em; padding:8px 14px; border:none;"
-            onclick="abrirDrawerConSugerencia({{ t.id_meli_sugerido|tojson }}, {{ t.titulo_sugerido|tojson }})">
+            data-click="abrirDrawerConSugerencia" data-click-args='{{ [t.id_meli_sugerido, t.titulo_sugerido]|tojson }}'>
             {% if t.es_emergente %}<svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><use href="#icon-bolt"/></svg>{% else %}<svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"><use href="#icon-info"/></svg>{% endif %}{{ t.keyword }}
         </button>
         {% endfor %}
@@ -224,7 +224,7 @@
         {% endfor %}
     </div>
     {% if resto|length > 5 %}
-    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Mostrar {{ resto|length - 5 }} más...</button>
+    <button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Mostrar {{ resto|length - 5 }} más...</button>
     {% endif %}
 </div>
 {% endif %}
@@ -242,9 +242,9 @@
     <div style="padding:12px 0; border-bottom:1px solid var(--border-soft);">
         <div class="flex-gap" style="justify-content:space-between; align-items:center;">
             <div>
-                <a href="javascript:void(0)" onclick="abrirDrawer('{{ c.id_a }}')">{{ c.modelo_a }}</a>
+                <a href="#" data-click="abrirDrawer" data-click-args='{{ [c.id_a|string]|tojson }}' data-prevenir>{{ c.modelo_a }}</a>
                 <span class="text-muted"> vs. </span>
-                <a href="javascript:void(0)" onclick="abrirDrawer('{{ c.id_b }}')">{{ c.modelo_b }}</a>
+                <a href="#" data-click="abrirDrawer" data-click-args='{{ [c.id_b|string]|tojson }}' data-prevenir>{{ c.modelo_b }}</a>
             </div>
             <span class="badge badge-warning">{{ c.similitud_pct }}% similares</span>
         </div>
@@ -255,7 +255,7 @@
 {% endif %}
 
 <script src="/static/js/vendor/chart.umd.min.js?v=4.4.4"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 // ── Helpers de formato y escape ──────────────────────────────────────────────
 // Todo lo que viene de MeLi (nombres de producto, apodos de vendedores, marcas,
 // categorías) es texto libre: se escapa SIEMPRE antes de meterlo en innerHTML.
@@ -316,7 +316,7 @@ let _categoriaActual = null; // {id, nombre}
 let _caminoCategorias = [];
 
 // Botones/links de categoría se arman con createElement + addEventListener
-// a propósito (no innerHTML con onclick="..." armado a mano): el nombre de
+// a propósito (no innerHTML con un manejador escrito en el atributo): el nombre de
 // una categoría es texto libre y podría traer comillas — insertarlo con
 // textContent es inmune a eso, un onclick-string no.
 function _crearBotonCategoria(id, nombre, cantidad) {
@@ -384,19 +384,19 @@ function renderizarBreadcrumb() {
     if (!_caminoCategorias.length) { cont.innerHTML = '<span class="text-muted">Elegí un rubro para empezar a bajar por sus ramas</span>'; return; }
     _caminoCategorias.forEach((c, i) => {
         const a = document.createElement('a');
-        a.href = 'javascript:void(0)';
+        a.href = '#';                                   // un href con esquema de script no sirve: una política de seguridad estricta bloquea esas URLs
         a.style.textDecoration = 'none';
         a.textContent = c.nombre;
-        a.addEventListener('click', () => elegirCategoria(c.id, c.nombre));
+        a.addEventListener('click', (e) => { e.preventDefault(); elegirCategoria(c.id, c.nombre); });
         cont.appendChild(a);
         if (i < _caminoCategorias.length - 1) cont.appendChild(document.createTextNode(' › '));
     });
     const volver = document.createElement('a');
-    volver.href = 'javascript:void(0)';
+    volver.href = '#';
     volver.className = 'text-muted';
     volver.style.cssText = 'margin-left:10px; font-size:0.85em;';
     volver.textContent = '(volver al inicio)';
-    volver.addEventListener('click', cargarCategoriasRaiz);
+    volver.addEventListener('click', (e) => { e.preventDefault(); cargarCategoriasRaiz(); });
     cont.appendChild(volver);
 }
 
@@ -571,7 +571,7 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
             </div>
         `;
 
-        // Los handlers se enganchan acá (no con onclick="..." en el string de arriba)
+        // Los handlers se enganchan acá (no con un manejador escrito en el string de arriba)
         // a propósito: tipo, categoryId, termino y etiqueta pueden traer comillas si el
         // usuario tipeó un término raro, y serializarlos dentro de un atributo HTML
         // rompe el parseo — con addEventListener se usan los valores de JS tal cual.

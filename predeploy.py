@@ -60,10 +60,13 @@ def correr(titulo, comando, entorno=None, sin_omitidas=False):
 
 
 RECORRIDO = r'''
-import sys, traceback
+import re, sys, traceback
 sys.stdout.reconfigure(encoding="utf-8")
 import app as a
 import db
+# Con la política estricta de scripts (seguridad.py, CSP_MODO) ningún <script> inline puede ir sin nonce ni quedar un manejador (onclick=…) o una URL javascript: en el HTML ya renderizado.
+SCRIPT_SIN_NONCE = re.compile(r"<script(?![^>]*\bsrc=)(?![^>]*application/(?:ld\+)?json)(?![^>]*\bnonce=)[^>]*>")
+MANEJADOR = re.compile(r"\son(?:click|change|input|submit|keyup|keydown|focus|blur)=[\"']|href=[\"']javascript:")
 OMITIR = {omitir!r}
 with db.conexion_admin() as con:
     cur = con.cursor(); cur.execute("SELECT usuario_id, id FROM cuentas_meli ORDER BY id LIMIT 1"); fila = cur.fetchone()
@@ -82,6 +85,12 @@ for rule in sorted(a.app.url_map.iter_rules(), key=lambda r: r.rule):
         r = c.get(rule.rule)
         if r.status_code >= 500:
             malas.append(f"{{rule.rule}} -> {{r.status_code}}")
+        elif r.status_code == 200 and r.mimetype == "text/html":
+            pagina = r.get_data(as_text=True)
+            if SCRIPT_SIN_NONCE.search(pagina):
+                malas.append(f"{{rule.rule}} -> hay un <script> inline sin nonce (la política estricta lo bloquearía)")
+            if MANEJADOR.search(pagina):
+                malas.append(f"{{rule.rule}} -> hay un manejador escrito en el HTML (onclick=…) o una URL javascript: (la política estricta lo bloquearía)")
     except Exception as e:
         tb = traceback.extract_tb(e.__traceback__)[-1]
         malas.append(f"{{rule.rule}} -> {{type(e).__name__}}: {{str(e)[:100]}} ({{tb.filename.split(chr(92))[-1]}}:{{tb.lineno}})")

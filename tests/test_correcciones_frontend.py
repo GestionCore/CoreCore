@@ -16,12 +16,10 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CON_BASE = pytest.mark.skipif(not os.getenv("DATABASE_URL"), reason="Sin DATABASE_URL: se omiten las pruebas con la app real")
 CON_NODE = pytest.mark.skipif(shutil.which("node") is None, reason="node no está instalado")
 PLANTILLAS = sorted(glob.glob(os.path.join(RAIZ, "templates", "*.html")))
-INLINE = re.compile(r"\son(?:click|change|input|keyup|keydown|submit|mouseover|mouseout|focus|blur|load|error)=\"")
+INLINE = re.compile(r"\son(?:click|change|input|keyup|keydown|submit|mouseover|mouseout|focus|blur|load|error)=[\"']")
 
-# Pantallas ya migradas a data-click: no pueden volver a tener un manejador escrito en el HTML.
-SIN_INLINE = ("_ux.html", "base.html", "metricas.html", "stock_masivo.html", "_dia_despacho.html", "dashboard_personalizable.html")
-# Tope de manejadores inline que quedan (plantillas + global.js). Solo puede BAJAR: al migrar otra pantalla se baja el número. Es el camino para sacar 'unsafe-inline' del script-src.
-PRESUPUESTO_INLINE = 90
+# Ninguna pantalla puede tener un manejador escrito en el HTML (onclick=…): es código inline y bloquea sacar 'unsafe-inline' del script-src. Se usa el despachador de ux.js (data-click, data-submit…).
+PRESUPUESTO_INLINE = 0
 
 
 def _leer(*partes):
@@ -29,14 +27,39 @@ def _leer(*partes):
 
 
 # ── 11. Menos onclick inline, más data-click ──────────────────────────────────────────────────────────────────────────────────────────────────
-def test_las_pantallas_migradas_no_tienen_manejadores_en_el_html():
-    for nombre in SIN_INLINE:
-        assert not INLINE.search(_leer("templates", nombre)), nombre
+def test_ninguna_pantalla_tiene_manejadores_en_el_html():
+    con_inline = []
+    for ruta in PLANTILLAS + glob.glob(os.path.join(RAIZ, "static", "js", "*.js")):
+        texto = open(ruta, encoding="utf-8").read()
+        if ruta.endswith("ux.js"):
+            texto = re.sub(r"/\*.*?\*/|//[^\n]*", "", texto, flags=re.S)           # los comentarios de ux.js citan el onclick de antes
+        if INLINE.search(texto):
+            con_inline.append(os.path.basename(ruta))
+    assert not con_inline, f"Manejadores escritos en el HTML (usá data-click / data-change / data-submit, ver static/js/ux.js): {con_inline}"
 
 
-def test_los_manejadores_inline_que_quedan_no_aumentan():
+def test_ninguna_pantalla_usa_urls_javascript():
+    """Un `href="javascript:…"` es código inline: una política de seguridad estricta lo bloquea. Para un enlace que no navega: href="#" + data-prevenir (o preventDefault en el manejador)."""
+    con_url = [os.path.basename(r) for r in PLANTILLAS + glob.glob(os.path.join(RAIZ, "static", "js", "*.js")) if re.search(r"javascript:", open(r, encoding="utf-8").read())]
+    assert not con_url, con_url
+
+
+def test_toda_pagina_que_usa_el_despachador_carga_ux_js():
+    """Las plantillas que no extienden base.html (onboarding, sincronizando…) tienen que cargar ux.js ellas mismas, o sus botones dejan de responder."""
+    sin_ux = []
+    for ruta in PLANTILLAS:
+        nombre = os.path.basename(ruta)
+        texto = open(ruta, encoding="utf-8").read()
+        if nombre.startswith("_") or "{% extends" in texto or nombre == "base.html":
+            continue                                           # los parciales se incluyen en una pantalla que ya lo carga; las que extienden base lo heredan
+        if re.search(r"\bdata-(?:click|change|input|keyup|keydown|submit)=", texto) and "js/ux.js" not in texto:
+            sin_ux.append(nombre)
+    assert not sin_ux, f"Usan data-* pero no cargan ux.js: {sin_ux}"
+
+
+def test_los_manejadores_inline_no_aumentan():
     total = sum(len(INLINE.findall(_leer("templates", os.path.basename(r)))) for r in PLANTILLAS) + len(INLINE.findall(_leer("static", "js", "global.js")))
-    assert total <= PRESUPUESTO_INLINE, f"Hay {total} manejadores inline (tope {PRESUPUESTO_INLINE}): usá data-click (ver static/js/ux.js). Si migraste pantallas, bajá el tope."
+    assert total <= PRESUPUESTO_INLINE, f"Hay {total} manejadores inline (tope {PRESUPUESTO_INLINE})"
 
 
 def test_cada_data_click_llama_a_una_funcion_que_cuelga_de_window():
@@ -53,16 +76,16 @@ def test_cada_data_click_llama_a_una_funcion_que_cuelga_de_window():
     for nombre_archivo, texto in {**js, **plantillas}.items():
         if nombre_archivo == "ux.js":
             continue                                                           # solo trae ejemplos en sus comentarios
-        for evento, nombre in re.findall(r'\bdata-(click|change|input|keyup|keydown)="([A-Za-z_$][\w$.]*)"', texto):
+        for evento, nombre in re.findall(r'\bdata-(click|change|input|keyup|keydown|submit)="([A-Za-z_$][\w$.]*)"', texto):
             base = nombre.split(".")[0]
-            if base not in globales and base != "window":
+            if base not in globales and base not in ("window", "history"):                  # window.* e history.* son del navegador
                 faltan.setdefault(base, set()).add(nombre_archivo)
     assert not faltan, {k: sorted(v) for k, v in faltan.items()}
 
 
 def test_los_argumentos_escritos_a_mano_son_json_valido():
     for ruta in PLANTILLAS:
-        for args in re.findall(r"data-(?:click|change|input|keyup)-args='([^']*)'", _leer("templates", os.path.basename(ruta))):
+        for args in re.findall(r"data-(?:click|change|input|keyup|submit)-args='([^']*)'", _leer("templates", os.path.basename(ruta))):
             if "{{" in args:
                 continue                                                      # los armados con Jinja se prueban renderizados
             json.loads(args)
@@ -115,6 +138,44 @@ def test_una_ruta_con_puntos_se_llama_con_su_objeto_como_this(tmp_path):
       process.stdout.write(JSON.stringify(llamadas));
     """, tmp_path)
     assert r == [["objeto", "rango"], ["print", "ventana"]]
+
+
+@CON_NODE
+def test_el_envio_de_un_formulario_usa_data_submit_y_si_la_funcion_devuelve_false_se_cancela(tmp_path):
+    """Lo que hacían `onsubmit="return f(this)"` y `onsubmit="confirmarAccion(…, this, …); return false;"`."""
+    r = _correr_ux("""
+      caja.valida = (formulario) => { llamadas.push(['valida', formulario.id]); return false; };
+      caja.deja_pasar = (formulario) => { llamadas.push(['deja_pasar', formulario.id]); return true; };
+      caja.sin_valor = () => { llamadas.push('sin_valor'); };
+      const form = (attrs) => elemento(Object.assign({ 'data-submit-args': '["$form"]' }, attrs), null, { tagName: 'FORM', form: null, id: 'mi-form' });
+      disparar('submit', form({ 'data-submit': 'valida' }));         // devuelve false → se cancela el envío
+      disparar('submit', form({ 'data-submit': 'deja_pasar' }));     // devuelve true → sigue
+      disparar('submit', form({ 'data-submit': 'sin_valor' }));      // no devuelve nada → sigue
+      disparar('submit', form({ 'data-submit': 'sin_valor', 'data-prevenir': '' }));   // data-prevenir: se cancela siempre (el confirmarAccion que envía después con form.submit())
+      process.stdout.write(JSON.stringify(llamadas));
+    """, tmp_path)
+    assert r == [["valida", "mi-form"], "preventDefault", ["deja_pasar", "mi-form"], "sin_valor", "preventDefault", "sin_valor"]
+
+
+@CON_NODE
+def test_un_click_que_devuelve_false_no_se_cancela_solo_el_submit(tmp_path):
+    r = _correr_ux("""
+      caja.f = () => false;
+      disparar('click', elemento({ 'data-click': 'f' }));
+      process.stdout.write(JSON.stringify(llamadas));
+    """, tmp_path)
+    assert r == []                                  # un enlace con data-click no deja de navegar por un `return false` accidental
+
+
+@CON_NODE
+def test_checked_pasa_si_el_campo_esta_tildado(tmp_path):
+    r = _correr_ux("""
+      caja.marcar = (v) => llamadas.push(v);
+      const casilla = (tildada) => elemento({ 'data-change': 'marcar', 'data-change-args': '["$checked"]' }, null, { checked: tildada });
+      disparar('change', casilla(true)); disparar('change', casilla(false)); disparar('change', elemento({ 'data-change': 'marcar', 'data-change-args': '["$checked"]' }));
+      process.stdout.write(JSON.stringify(llamadas));
+    """, tmp_path)
+    assert r == [True, False, False]
 
 
 @CON_NODE

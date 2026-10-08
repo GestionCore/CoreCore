@@ -64,8 +64,8 @@
             <li><span>Iniciá sesión ahí con la cuenta de Mercado Libre que querés sumar. Antes de vincularla te mostramos a qué cuenta de CoreLux se suma y te pedimos que confirmes: si no la pediste vos, cancelás y no se guarda nada.</span></li>
         </ul>
         <div class="coa-link-box">
-            <input type="text" readonly value="{{ url_autorizacion }}" id="coa-link" onclick="this.select()">
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em; flex-shrink:0;" onclick="coaCopiarLink()" id="coa-btn-copiar">Copiar</button>
+            <input type="text" readonly value="{{ url_autorizacion }}" id="coa-link" data-click="seleccionarTodo" data-click-args='["$el"]'>
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em; flex-shrink:0;" data-click="coaCopiarLink" id="coa-btn-copiar">Copiar</button>
         </div>
         <div class="coa-acciones">
             <a href="{{ url_autorizacion }}" class="btn btn-denim btn-block">Continuar acá mismo (si ya cerraste sesión de MeLi)</a>
@@ -73,7 +73,8 @@
         </div>
     </div>
 </div>
-<script>
+<script src="{{ url_for('static', filename='js/ux.js') }}?v={{ static_v('js/ux.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
 function coaCopiarLink() {
     const input = document.getElementById('coa-link');
     const boton = document.getElementById('coa-btn-copiar');

@@ -69,7 +69,7 @@
         <div class="text-muted" style="font-size:0.82em; margin-top:4px;">sobre {% if c.permalink %}<a href="{{ c.permalink }}" target="_blank" rel="noopener">{{ c.producto }} ↗</a>{% else %}{{ c.producto }}{% endif %}</div>
     </div>
     {% endfor %}
-    {% if criticas|length > 5 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">Ver las {{ criticas|length - 5 }} restantes</button>{% endif %}
+    {% if criticas|length > 5 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver las {{ criticas|length - 5 }} restantes</button>{% endif %}
 </div>
 {% endif %}
 

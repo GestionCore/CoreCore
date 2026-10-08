@@ -48,7 +48,7 @@
         <span class="ux-dist-val" style="width:150px;"><b>{{ d.monto|plata }}</b> <span class="text-muted">({{ d.ventas }} venta{{ 's' if d.ventas != 1 }})</span></span>
     </div>
     {% endfor %}
-    {% if dias|length > 10 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="mostrarMasGenerico(this)">{{ ver_mas(dias|length - 10, 'día', 'días', 'los') }}</button>{% endif %}
+    {% if dias|length > 10 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>{{ ver_mas(dias|length - 10, 'día', 'días', 'los') }}</button>{% endif %}
     {% if mas_adelante %}<div class="text-muted" style="font-size:0.85em; margin-top:10px;">Y <b>{{ mas_adelante|plata }}</b> más con fechas posteriores a los próximos {{ dias_vista }} días.</div>{% endif %}
 </div>
 {% endif %}
