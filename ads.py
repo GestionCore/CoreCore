@@ -28,33 +28,6 @@ TTL_COSTOS_SEGUNDOS = 300  # 5 minutos
 METRICAS_CAMPANA = "clicks,prints,ctr,cost,cpc,acos,roas,cvr,units_quantity,direct_amount,indirect_amount,total_amount"
 
 
-def obtener_ad_de_item(access_token, id_meli):
-    headers = {"Authorization": f"Bearer {access_token}"}
-    try:
-        resp = meli_http.get(f"https://api.mercadolibre.com/advertising/product_ads/items/{id_meli}", headers=headers, timeout=8)
-        if resp.status_code != 200:
-            return None
-        data = resp.json()
-        return {"campaign_id": data.get("campaign_id"), "status": data.get("status")}
-    except Exception as e:
-        print(f"[Ads] ⚠️ Error buscando anuncio de {id_meli}: {e}")
-        return None
-
-
-def pausar_ad_item(access_token, id_meli):
-    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-    try:
-        resp = meli_http.put(
-            f"https://api.mercadolibre.com/advertising/product_ads/items/{id_meli}",
-            json={"status": "paused"}, headers=headers, timeout=10
-        )
-        if resp.status_code == 200:
-            return True, "ok"
-        return False, f"HTTP {resp.status_code}: {resp.text[:200]}"
-    except Exception as e:
-        return False, f"Error de conexión: {e}"
-
-
 def obtener_advertiser_info(access_token, cuenta_id, site_id_esperado="MLA"):
     """
     cuenta_id es obligatorio a propósito — es lo que hace que la caché no

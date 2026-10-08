@@ -38,7 +38,6 @@ def test_la_hora_se_normaliza_y_lo_que_no_es_una_hora_se_rechaza():
         assert despacho_corte.normalizar_hora(entrada) == esperada, entrada
     for mala in ("", None, "24:00", "12:60", "abc", "25", "14:5", "-3", "14:30:10", "1430", "14 30 x"):
         assert despacho_corte.normalizar_hora(mala) is None, mala
-    assert despacho_corte.minutos_del_dia("13:30") == 810 and despacho_corte.minutos_del_dia("x") is None
 
 
 # ── Correo: la semana real ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -30,12 +30,6 @@ def normalizar_hora(texto):
     return f"{hora:02d}:{minutos:02d}"
 
 
-def minutos_del_dia(hora):
-    """«13:30» → 810 (minutos desde la medianoche); None si no es una hora."""
-    h = normalizar_hora(hora)
-    return int(h[:2]) * 60 + int(h[3:]) if h else None
-
-
 def semana_desde_schedule(datos):
     """
     {dia: «HH:MM» | None} a partir de la respuesta REAL de /users/{id}/shipping/schedule/drop_off. None = ese día no hay retiro (`work: false`) o no informa corte.

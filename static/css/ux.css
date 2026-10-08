@@ -118,10 +118,10 @@ a.ux-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated)
 
 /* ---------- Botones: tamaño de acción principal + variantes de estado ---------- */
 .btn-lg { padding: 13px 26px; font-size: 1em; font-weight: 800; border-radius: var(--radius-md); }
-.btn-ok { background: var(--success); color: #07130b; box-shadow: 0 2px 14px -2px color-mix(in srgb, var(--success) 50%, transparent); }
+
 .btn-alerta { background: var(--semantic-warning); color: #1a1000; box-shadow: 0 2px 14px -2px color-mix(in srgb, var(--semantic-warning) 50%, transparent); }
 .btn-urgente { background: var(--danger); color: #fff; box-shadow: 0 2px 14px -2px color-mix(in srgb, var(--danger) 55%, transparent); }
-.btn-ok:hover, .btn-alerta:hover, .btn-urgente:hover { transform: translateY(-1px); }
+.btn-alerta:hover, .btn-urgente:hover { transform: translateY(-1px); }
 
 /* ---------- Título de sección con punto de color ---------- */
 .ux-seccion { display: flex; align-items: center; gap: 10px; font-size: 1.08em; font-weight: 800; margin: 30px 0 14px; }
@@ -616,22 +616,17 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 :root[data-theme="light"] .ux-pill-suave.ux-accion, :root[data-theme="light"] .ux-pill-suave.ux-neutral { color: var(--ux-c); }
 
 /* ── Primeros pasos (checklist de arranque en el Dashboard) ─────────────────────────────────────────────────────────────── */
-.ux-pasos { margin-bottom: 20px; }
-.ux-pasos-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
 .ux-paso { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--border-soft); }
 .ux-paso:first-of-type { border-top: 0; }
-.ux-paso-marca { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border-soft); display: grid; place-items: center; color: #fff; }
-.ux-paso-marca .icon { width: 14px; height: 14px; }
-.ux-paso-hecho .ux-paso-marca { background: var(--success); border-color: var(--success); }
-.ux-paso-hecho .ux-paso-titulo { color: var(--text-secondary); }
+
 .ux-paso-cuerpo { flex: 1; min-width: 0; }
-.ux-paso-titulo { font-weight: 700; }
 
 /* ── Cambio de precios guiado (/precios) ────────────────────────────────────────────────────────────────────────────── */
 .ux-precios-barra { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
 .ux-precios-barra .text-muted { flex: 1; min-width: 200px; }
 .precio-check { flex-shrink: 0; width: 18px; height: 18px; margin-right: 4px; cursor: pointer; }
-.ux-precios-barra[hidden], .ux-pasos[hidden] { display: none; }
+.ux-precios-barra[hidden] { display: none; }
 
 /* ── Ventana de comentarios ─────────────────────────────────────────────────────────────────────────────────────────── */
 .fb-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 16px; }

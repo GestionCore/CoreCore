@@ -67,13 +67,11 @@
     display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: var(--radius-pill); font-size: 0.8em; font-weight: 600; white-space: nowrap;
     background: rgba(255,255,255,0.04); color: var(--text-secondary); border: 1px solid var(--border-soft);
 }
-.ticker-btn { cursor: pointer; }
-.ticker-btn:hover { background: rgba(255,255,255,0.09); color: var(--text-primary); }
+
 .ticker-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 .dot-emerald { background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse 1.8s infinite; }
 .dot-blue { background: var(--accent-primary); box-shadow: 0 0 6px var(--accent-primary); }
-.dot-off { background: var(--text-faint); }
-.dot-on { background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse 1.8s infinite; }
+
 .btn-icono-barra {
     display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: var(--radius-sm); cursor: pointer;
     background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-secondary);

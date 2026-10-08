@@ -852,13 +852,17 @@ def listar_seguimientos_con_historial(cursor, cuenta_id, dias=60):
         return []
 
     desde = (hoy_argentina() - timedelta(days=dias)).strftime("%Y-%m-%d")
+    # Los historiales de TODOS los seguimientos en una sola consulta (antes, una por seguimiento)
+    cursor.execute("""
+        SELECT seguimiento_id, fecha, total_publicaciones, ventas_muestra, precio_promedio
+        FROM tendencias_snapshots WHERE seguimiento_id = ANY(%s) AND fecha >= %s ORDER BY fecha ASC
+    """, ([s[0] for s in seguimientos], desde))
+    historiales = {}
+    for sid, f, p, v, pp in cursor.fetchall():
+        historiales.setdefault(sid, []).append((f, p, v, pp))
     resultado = []
     for sid, tipo, valor, etiqueta, automatico in seguimientos:
-        cursor.execute("""
-            SELECT fecha, total_publicaciones, ventas_muestra, precio_promedio
-            FROM tendencias_snapshots WHERE seguimiento_id = %s AND fecha >= %s ORDER BY fecha ASC
-        """, (sid, desde))
-        historial = cursor.fetchall()
+        historial = historiales.get(sid, [])
         serie = [
             {"fecha": f.strftime("%Y-%m-%d") if hasattr(f, "strftime") else f, "publicaciones": p, "ventas": v,
              "precio_promedio": float(pp) if pp is not None else None}

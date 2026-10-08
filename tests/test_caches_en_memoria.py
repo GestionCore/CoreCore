@@ -25,7 +25,6 @@ DECLARADOS = {
     ("facturacion.py", "_cache_resumenes"): "clave (cuenta_id, grupo, período)",
     ("facturacion.py", "_cache_almacenamiento"): "clave (cuenta_id, grupo, período)",
     ("limitador.py", "_registro"): "contadores por IP/ruta: sin datos de cuentas",
-    ("logistica.py", "_cache_horarios"): "clave (user_id de MeLi, tipo de logística): el user_id es de una sola cuenta",
     ("logistica.py", "_cache_flex_habilitado"): "clave user_id de MeLi: de una sola cuenta",
     ("sincronizador.py", "_candados_por_cuenta"): "un candado por cuenta_id",
     ("sincronizador.py", "_sincronizando"): "conjunto de cuenta_id con sync en curso",

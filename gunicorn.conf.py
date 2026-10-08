@@ -48,9 +48,9 @@ max_requests_jitter = 100  # evita que todos los workers se recarguen al mismo t
 
 # Preload: en False a propósito. Gunicorn busca este archivo en el
 # directorio de trabajo y lo aplica SIEMPRE, incluso cuando el proceso
-# real arranca por el Procfile con --worker-class gevent (Railway) — el
-# Procfile puede pisar worker_class por CLI, pero no pisa preload_app
-# acá. Con preload_app=True, el módulo de la app (y con él requests/
+# real arranca con --worker-class gevent por la línea de comandos del
+# Dockerfile (Fly): la línea de comandos puede pisar worker_class, pero no
+# pisa preload_app acá. Con preload_app=True, el módulo de la app (y con él requests/
 # urllib3/ssl) se importa en el proceso master ANTES de que gevent
 # parchee ssl en cada worker — el resultado real, encontrado en
 # producción: cualquier pedido HTTPS de la app (ej. auth/oauth_meli.py

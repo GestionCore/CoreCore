@@ -6,6 +6,7 @@ Promociones — portado de Santi Mens. Cambios reales (no cosméticos):
 - El join de variantes pasa a usar productos_padre.id (igual que en el
   resto del port), no id_meli.
 """
+import historial_precios
 import meli_errores
 import meli_http
 from datetime import datetime, timedelta
@@ -59,15 +60,17 @@ def obtener_impacto_promociones(cursor):
     filas = cursor.fetchall()
     hoy = hoy_argentina()
 
+    # Las unidades vendidas durante cada promoción salen de UNA consulta de ventas (por publicación y día) para las 30 promociones (antes, una consulta por promoción)
+    ventanas = [(_a_fecha(f[5]), _a_fecha(f[6]) if f[6] else hoy) for f in filas]
+    ventas = historial_precios.ventas_diarias(
+        cursor, {f[1] for f in filas},
+        min((d.strftime("%Y-%m-%d") for d, _ in ventanas), default=None), max((h.strftime("%Y-%m-%d") for _, h in ventanas), default=None)) if filas else {}
+
     resultados = []
-    for id_hist, id_meli, titulo, precio_orig, precio_promo, fecha_inicio, fecha_fin, promedio_previo, activo, thumbnail in filas:
-        fecha_inicio_dt = _a_fecha(fecha_inicio)
-        fecha_hasta_calculo_dt = _a_fecha(fecha_fin) if fecha_fin else hoy
+    for (id_hist, id_meli, titulo, precio_orig, precio_promo, fecha_inicio, fecha_fin, promedio_previo, activo, thumbnail), (fecha_inicio_dt, fecha_hasta_calculo_dt) in zip(filas, ventanas):
         dias_transcurridos = max((fecha_hasta_calculo_dt - fecha_inicio_dt).days, 1)
 
-        cursor.execute("SELECT COALESCE(SUM(cantidad),0) FROM ventas WHERE id_meli = %s AND fecha_venta BETWEEN %s AND %s",
-                        (id_meli, fecha_inicio_dt.strftime("%Y-%m-%d"), fecha_hasta_calculo_dt.strftime("%Y-%m-%d")))
-        unidades_durante = cursor.fetchone()[0] or 0
+        unidades_durante = historial_precios.unidades_en_ventana(ventas, id_meli, fecha_inicio_dt.strftime("%Y-%m-%d"), fecha_hasta_calculo_dt.strftime("%Y-%m-%d"))
         promedio_durante = round(unidades_durante / dias_transcurridos, 2)
 
         variacion_pct = None
@@ -190,18 +193,6 @@ def obtener_promociones_usuario(access_token, user_id):
     return []
 
 
-def obtener_items_oferta_relampago(access_token, promotion_id):
-    headers = {"Authorization": f"Bearer {access_token}"}
-    try:
-        resp = meli_http.get(f"https://api.mercadolibre.com/seller-promotions/promotions/{promotion_id}/items",
-                             headers=headers, params={"app_version": APP_VERSION, "promotion_type": "LIGHTNING"}, timeout=10)
-        if resp.status_code == 200:
-            return resp.json().get("results", [])
-    except Exception as e:
-        print(f"[Promociones] ❌ Error de conexión: {e}")
-    return []
-
-
 def crear_descuento_individual(access_token, item_id, deal_price, fecha_desde, fecha_hasta):
     headers = {"Authorization": f"Bearer {access_token}"}
     body = {"deal_price": deal_price, "start_date": f"{fecha_desde}T00:00:00", "finish_date": f"{fecha_hasta}T23:59:59", "promotion_type": "PRICE_DISCOUNT"}
@@ -224,19 +215,6 @@ def eliminar_promocion_item(access_token, item_id, promotion_type):
         return False, meli_errores.explicar_respuesta(resp)
     except Exception as e:
         print(f"[Promociones] ⚠️ Sin conexión al eliminar el descuento de {item_id}: {e}")
-        return False, meli_errores.SIN_CONEXION
-
-
-def participar_oferta_relampago(access_token, item_id, deal_price, stock):
-    headers = {"Authorization": f"Bearer {access_token}"}
-    try:
-        resp = meli_http.post(f"https://api.mercadolibre.com/seller-promotions/promotions/items/{item_id}",
-                              headers=headers, params={"app_version": APP_VERSION}, json={"deal_price": deal_price, "stock_quantity": stock, "promotion_type": "LIGHTNING"}, timeout=10)
-        if resp.status_code in (200, 201):
-            return True, resp.json()
-        return False, meli_errores.explicar_respuesta(resp)
-    except Exception as e:
-        print(f"[Promociones] ⚠️ Sin conexión al sumar {item_id} a la oferta: {e}")
         return False, meli_errores.SIN_CONEXION
 
 

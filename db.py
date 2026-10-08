@@ -107,7 +107,6 @@ def _cerrar_pools_al_salir():
     los pools de forma prolija ANTES de que el intérprete empiece a
     apagarse evita ese ruido.
     """
-    global _pool, _pool_admin
     if _pool is not None:
         _pool.close()
     if _pool_admin is not None:

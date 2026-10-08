@@ -23,9 +23,6 @@ OPCIONES_PANTALLA = {
 # Condición fiscal (por cuenta, ver fiscal.py): nunca se supone. «Todavía no lo sé» (valor vacío) la deja sin informar.
 OPCIONES_FISCAL = {**fiscal.CONDICIONES, "": "Prefiero decirlo después"}
 
-RUTA_POR_PANTALLA = {"dashboard": "dashboard_personalizable", "stock": "landing", "metricas": "metricas_vista"}
-
-
 def guardar_respuestas(usuario_id, prioridades, experiencia, pantalla, condicion_fiscal="", cuenta_id=None):
     """
     `prioridades` es una lista (pedido explícito: esta pregunta admite
@@ -51,16 +48,6 @@ def guardar_respuestas(usuario_id, prioridades, experiencia, pantalla, condicion
     if cuenta_id and condicion_fiscal:
         fiscal.guardar(usuario_id, cuenta_id, condicion_fiscal)
     return True
-
-
-def obtener_endpoint_home(usuario_id):
-    """A qué pantalla mandar a este usuario cuando entra — según lo que eligió en la encuesta."""
-    with db.conexion_usuario(usuario_id) as conexion:
-        cursor = conexion.cursor()
-        cursor.execute("SELECT pantalla_preferida FROM usuarios WHERE id = %s", (usuario_id,))
-        fila = cursor.fetchone()
-    pantalla = fila[0] if fila and fila[0] else "stock"
-    return RUTA_POR_PANTALLA.get(pantalla, "landing")
 
 
 PORCENTAJE_COSTOS_COMPLETO = 90      # con el 90 % de las publicaciones activas con costo, el paso se da por hecho (siempre queda alguna promo sin costo)

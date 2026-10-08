@@ -27,7 +27,6 @@ function reproducirTono(notas, volumen = 0.06) {
 
 function sonidoExito() { reproducirTono([{freq: 523, t: 0, dur: 0.10}, {freq: 784, t: 0.07, dur: 0.16}]); }
 function sonidoError() { reproducirTono([{freq: 220, t: 0, dur: 0.16}], 0.05); }
-function sonidoUrgente() { reproducirTono([{freq: 587, t: 0, dur: 0.09}, {freq: 587, t: 0.14, dur: 0.12}], 0.055); }
 
 function mostrarToast(mensaje, tipo = 'info') {
     const cont = document.getElementById('toast-container');
@@ -57,40 +56,6 @@ function revisarMensajeEnURL() {
 function alternarModoPrivacidad() {
     document.documentElement.classList.toggle('modo-privacidad');
     localStorage.setItem('modo_privacidad', document.documentElement.classList.contains('modo-privacidad') ? '1' : '0');
-}
-
-// ---------- Panel personalizable (mostrar/ocultar paneles opcionales) ----------
-const CLAVE_PANELES_HABILITADOS = 'paneles_stock_habilitados';
-
-function _obtenerPreferenciasPaneles() {
-    return JSON.parse(localStorage.getItem(CLAVE_PANELES_HABILITADOS) || '{}');
-}
-
-function panelHabilitado(clave) {
-    const prefs = _obtenerPreferenciasPaneles();
-    return prefs[clave] !== false;  // por defecto, todo visible
-}
-
-function togglePanelPersonalizar() {
-    const panel = document.getElementById('panel-personalizar');
-    if (!panel) return;
-    const abrir = panel.style.display === 'none';
-    if (abrir) { mostrarPanelConAnimacion(panel); } else { panel.style.display = 'none'; }
-    if (abrir) {
-        const prefs = _obtenerPreferenciasPaneles();
-        document.getElementById('chk-mostrar-agotamiento').checked = prefs.agotamiento !== false;
-        document.getElementById('chk-mostrar-oportunidades').checked = prefs.oportunidades !== false;
-    }
-}
-
-function guardarPreferenciaPanel() {
-    const prefs = {
-        agotamiento: document.getElementById('chk-mostrar-agotamiento').checked,
-        oportunidades: document.getElementById('chk-mostrar-oportunidades').checked
-    };
-    localStorage.setItem(CLAVE_PANELES_HABILITADOS, JSON.stringify(prefs));
-    if (typeof cargarRiesgoStock === 'function') cargarRiesgoStock();
-    cargarOportunidadesSeo();
 }
 
 // ---------- Tema claro/oscuro ----------
@@ -839,14 +804,6 @@ function _inicializarIconoTema() {
 }
 
 // ---------- Números que ruedan ----------
-function parsearValorMoneda(texto) {
-    const match = texto.match(/^([^\d]*)([\d.,]+)(.*)$/);
-    if (!match) return null;
-    const [, prefijo, numeroStr, sufijo] = match;
-    const numero = parseFloat(numeroStr.replace(/\./g, '').replace(',', '.'));
-    if (isNaN(numero)) return null;
-    return { prefijo, numero, sufijo, tieneDecimales: numeroStr.includes(',') };
-}
 function formatearNumeroAR(valor, conDecimales) {
     return valor.toLocaleString('es-AR', conDecimales ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 });
 }
@@ -1008,35 +965,6 @@ function _posicionarTooltipTicker(el, ancla) {
     const rect = ancla.getBoundingClientRect();
     el.style.left = Math.max(10, rect.left) + 'px';
     el.style.top = (rect.bottom + 10) + 'px';
-}
-
-function mostrarTooltipSalud(ancla) {
-    const data = window._ultimoTickerData;
-    const el = _crearTooltipTicker();
-    if (!data || data.salud_score === undefined) {
-        el.innerHTML = '<div class="tooltip-ticker-cuerpo">Cargando...</div>';
-        el.style.removeProperty('--tooltip-acento');
-    } else {
-        const detalle = data.salud_detalle || [];
-        const estilo = getComputedStyle(document.documentElement);
-        const color = data.salud_score >= 80 ? estilo.getPropertyValue('--success').trim()
-            : data.salud_score >= 65 ? estilo.getPropertyValue('--semantic-warning').trim()
-            : estilo.getPropertyValue('--danger').trim();
-        el.style.setProperty('--tooltip-acento', color);
-        el.innerHTML = `
-            <div class="tooltip-ticker-acento"></div>
-            <div class="tooltip-ticker-cuerpo">
-                <div class="tooltip-ticker-titulo">Score de salud: ${UX.esc(data.salud_score)}/100 (${UX.esc(data.salud_etiqueta)})</div>
-                ${detalle.length ? `
-                    <div class="tooltip-ticker-sub">En qué se basó:</div>
-                    <ul class="tooltip-ticker-lista">${detalle.map(d => `<li>${UX.esc(d)}</li>`).join('')}</ul>
-                    <div class="tooltip-ticker-sub">Resolviendo estos puntos, el score sube solo.</div>
-                ` : `<div class="tooltip-ticker-sub">Sin descuentos activos — todo en orden.</div>`}
-            </div>
-        `;
-    }
-    _posicionarTooltipTicker(el, ancla);
-    el.classList.add('visible');
 }
 
 function mostrarTooltipVentas(ancla) {
@@ -1227,7 +1155,7 @@ async function cargarOportunidadesSeo() {
         const oportunidades = await resp.json();
         const panel = document.getElementById('panel-oportunidades-seo');
         if (!panel) return;
-        if (!oportunidades.length || !panelHabilitado('oportunidades')) { panel.style.display = 'none'; return; }
+        if (!oportunidades.length) { panel.style.display = 'none'; return; }
         const cont = document.getElementById('lista-oportunidades-seo');
         mostrarPanelConAnimacion(panel);
         cont.innerHTML = oportunidades.map(o => `

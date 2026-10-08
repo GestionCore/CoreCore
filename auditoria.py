@@ -42,7 +42,6 @@ ETIQUETAS = {
     "publicacion_atributos": "Atributos editados",
     "pregunta_responder": "Pregunta respondida",
     "costos_chat": "Costos cargados por chat",
-    "costo_producto": "Costo de un producto",
     "costos_masivo": "Costos guardados en bloque",
     "costos_importar": "Costos importados desde planilla",
     "gasto_agregar": "Gasto agregado",

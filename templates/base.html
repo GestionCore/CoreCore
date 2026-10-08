@@ -30,11 +30,6 @@
 </head>
 <body {% if session.get('mostrar_tutorial') %}data-mostrar-tutorial="1"{% endif %}{% if cuenta_actual %} data-cuenta="{{ cuenta_actual.id }}"{% endif %}{% if session.get('usuario_id') %} data-logueado="1"{% endif %}>
 <a href="#contenido-principal" class="saltar-al-contenido">Saltar al contenido</a>
-<!-- El canvas de partículas (static/js/particulas.js) queda en el repo
-     por si hace falta revertir, pero se dejó de incluir acá: era la pieza
-     más literal de la estética Tron/vaporwave, y esa dirección se
-     reemplazó por un fondo grafito plano de alta gama (ver style.css). -->
-
 <svg style="display:none;">
     <symbol id="icon-shirt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4 4 7v3h3v10h10V10h3V7l-4-3-2 2h-4z"/></symbol>
     <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>

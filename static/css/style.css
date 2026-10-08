@@ -198,7 +198,6 @@ body {
 a { color: inherit; text-decoration: none; }
 
 .icon { width: 18px; height: 18px; flex-shrink: 0; }
-.stat-chip-icon { width: 22px; height: 22px; color: var(--accent-gold); margin-bottom: 10px; opacity: 0.9; }
 
 /* Cada variante de acento tiñe su ícono, borde, sombra Y el número en sí
    — antes (bug real, no solo estético) solo el ícono chiquito de arriba
@@ -209,21 +208,18 @@ a { color: inherit; text-decoration: none; }
    intención de color puesta en el HTML y nunca llegaba a mostrarse —
    toda la app se leía "de un solo color" aunque el dato de que algo es
    bueno/malo/neutro ya estaba ahí, solo no se veía. */
-.stat-chip.accent-gold .stat-chip-icon, .stat-chip.accent-gold .stat-chip-value { color: var(--accent-gold); }
-.stat-chip.accent-denim .stat-chip-icon, .stat-chip.accent-primary .stat-chip-icon,
-.stat-chip.accent-denim .stat-chip-value, .stat-chip.accent-primary .stat-chip-value { color: var(--accent-primary); }
-.stat-chip.accent-success .stat-chip-icon, .stat-chip.accent-success .stat-chip-value { color: var(--success); }
-.stat-chip.accent-danger .stat-chip-icon, .stat-chip.accent-danger .stat-chip-value { color: var(--danger); }
-.stat-chip.accent-warning .stat-chip-icon, .stat-chip.accent-warning .stat-chip-value { color: var(--semantic-warning); }
-.stat-chip.accent-warning { border-color: rgba(240, 161, 59, 0.3); }
+.stat-chip.accent-gold .stat-chip-value { color: var(--accent-gold); }
+.stat-chip.accent-denim .stat-chip-value,
+.stat-chip.accent-primary .stat-chip-value { color: var(--accent-primary); }
+.stat-chip.accent-success .stat-chip-value { color: var(--success); }
+
 /* Las tarjetas SIN variante de acento (conteos neutros, "total histórico",
    etc.) siguen con .stat-chip-value en blanco por default — a propósito:
    no todo dato necesita un color, solo el que sí importa resaltar. */
 .stat-chip.accent-gold:hover { border-color: rgba(251, 191, 36, 0.4); box-shadow: var(--shadow-glow-gold); }
 .stat-chip.accent-denim:hover, .stat-chip.accent-primary:hover { border-color: rgba(139, 92, 246, 0.4); box-shadow: var(--shadow-glow-primary); }
-.stat-chip.accent-warning:hover { border-color: rgba(240, 161, 59, 0.5); box-shadow: 0 0 32px -4px rgba(240, 161, 59, 0.35); }
+
 .stat-chip.accent-success:hover { border-color: rgba(34, 211, 165, 0.4); box-shadow: 0 0 32px -4px rgba(34, 211, 165, 0.35); }
-.stat-chip.accent-danger:hover { border-color: rgba(245, 72, 107, 0.4); box-shadow: 0 0 32px -4px rgba(245, 72, 107, 0.35); }
 
 /* Layout & Panels */
 .page-container { max-width: 1440px; margin: 0 auto; padding: 34px 24px 104px; animation: fadeInUp 0.3s cubic-bezier(0.16,1,0.3,1); }
@@ -339,25 +335,9 @@ button.mini-list-row:focus-visible, button.top-prod-fila:focus-visible { outline
    Ícono chico en chip redondeado (no el ícono suelto de 22px de antes)
    + la cifra bien grande y en negrita, como corresponde al número que
    más se mira en toda la pantalla. */
-.kpi-card { padding: 20px 22px; }
-.kpi-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.kpi-card-icon {
-    width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(139, 92, 246, 0.12); color: var(--accent-primary);
-}
-.kpi-card-icon .icon { width: 16px; height: 16px; }
-.kpi-card.accent-gold .kpi-card-icon { background: var(--accent-gold-glow); color: var(--accent-gold); }
-.kpi-card.accent-success .kpi-card-icon { background: var(--success-bg); color: var(--success); }
-.kpi-card.accent-danger .kpi-card-icon { background: var(--danger-bg); color: var(--danger); }
-.kpi-card .stat-chip-label { margin-bottom: 0; }
-.kpi-card .stat-chip-value { font-size: 30px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; }
-.kpi-card .stat-chip-desc { margin-top: 8px; }
+
 /* Flecha de tendencia vs. período anterior — verde/rojo según signo,
    nunca mezclado con el color base de la tarjeta. */
-.kpi-tendencia { font-weight: 700; font-variant-numeric: tabular-nums; }
-.kpi-tendencia.up { color: var(--success); }
-.kpi-tendencia.down { color: var(--danger); }
 
 /* ---------- Badge "En vivo" — señal de frescura en datos de HOY ---------- */
 .badge-en-vivo {
@@ -377,34 +357,14 @@ button.mini-list-row:focus-visible, button.top-prod-fila:focus-visible { outline
    verdad" — el mensaje central de CoreLux, hecho visual. Caja izquierda
    apagada (el número que MeLi te resalta), caja derecha con borde vivo
    (el número real, después de todos los costos). ---------- */
-.comparador-real { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
-@media (max-width: 640px) { .comparador-real { grid-template-columns: 1fr; } }
-.comparador-caja { border-radius: var(--radius-md); padding: 16px 18px; }
-.comparador-caja-oficial { background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); }
-.comparador-caja-real { background: rgba(139, 92, 246, 0.06); border: 1px solid rgba(139, 92, 246, 0.35); }
-.comparador-caja-eyebrow { font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 700; margin-bottom: 8px; }
-.comparador-caja-valor { font-family: var(--font-data); font-size: 1.5em; font-weight: 700; font-variant-numeric: tabular-nums; }
-.comparador-caja-oficial .comparador-caja-valor { color: var(--text-secondary); }
-.comparador-caja-real .comparador-caja-valor { color: var(--accent-primary); }
-.comparador-caja-nota { font-size: 0.82em; color: var(--text-faint); margin-top: 4px; }
+
+@media (max-width: 640px) {  }
 
 /* ---------- Waterfall de costos: fila por fila (label + barra + monto)
    en vez de una sola barra apilada — se lee de un vistazo cuánto pesa
    cada concepto y a dónde llega la plata al final. ---------- */
-.waterfall-fila { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
-.waterfall-fila-label { flex: 0 0 150px; font-size: 0.85em; color: var(--text-secondary); }
-.waterfall-fila-barra-fondo { flex: 1; height: 8px; border-radius: 99px; background: rgba(255,255,255,0.05); overflow: hidden; }
-.waterfall-fila-barra { height: 100%; border-radius: 99px; background: var(--danger); transition: width 0.6s cubic-bezier(0.16,1,0.3,1); }
-.waterfall-fila-monto { flex: 0 0 120px; text-align: right; font-family: var(--font-data); font-weight: 600; font-size: 0.88em; font-variant-numeric: tabular-nums; color: var(--danger); }
-.waterfall-fila.total-inicial .waterfall-fila-barra { background: var(--text-secondary); }
-.waterfall-fila.total-inicial .waterfall-fila-monto { color: var(--text-primary); font-weight: 700; }
-.waterfall-fila.total-final { border-top: 1px solid var(--border-soft); margin-top: 4px; padding-top: 14px; }
-.waterfall-fila.total-final .waterfall-fila-label { font-weight: 700; color: var(--text-primary); }
-.waterfall-fila.total-final .waterfall-fila-barra { background: var(--success); }
-.waterfall-fila.total-final .waterfall-fila-monto { color: var(--success); font-weight: 800; font-size: 1.05em; }
-.waterfall-fila.total-final.negativo .waterfall-fila-barra { background: var(--danger); }
-.waterfall-fila.total-final.negativo .waterfall-fila-monto { color: var(--danger); }
-@media (max-width: 560px) { .waterfall-fila-label { flex-basis: 100px; } .waterfall-fila-monto { flex-basis: 90px; } }
+
+@media (max-width: 560px) {   }
 
 /* ---------- Hero Numbers: la cifra que más importa en cada pantalla ---------- */
 .hero-number {
@@ -419,10 +379,7 @@ button.mini-list-row:focus-visible, button.top-prod-fila:focus-visible { outline
     background-clip: text;
     -webkit-text-fill-color: transparent;
 }
-.hero-number.acento-primario {
-    background: linear-gradient(135deg, var(--text-primary) 20%, var(--accent-primary) 90%);
-    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-}
+
 .hero-number.acento-danger { background: none; -webkit-text-fill-color: var(--danger); color: var(--danger); }
 .hero-number.acento-success { background: none; -webkit-text-fill-color: var(--success); color: var(--success); }
 .hero-number.acento-warning { background: none; -webkit-text-fill-color: var(--semantic-warning); color: var(--semantic-warning); }
@@ -430,8 +387,6 @@ button.mini-list-row:focus-visible, button.top-prod-fila:focus-visible { outline
    por ejemplo) en vez de un acento fijo — el color final lo pone el
    caller vía style="color:...", esta clase solo saca el gradiente base. */
 .hero-number.plano { background: none; -webkit-text-fill-color: currentColor; filter: none; }
-.hero-number-label { font-size: 0.32em; font-weight: 600; color: var(--text-secondary); -webkit-text-fill-color: var(--text-secondary); margin-left: 8px; vertical-align: middle; }
-.stat-chip-desc { font-size: 0.82em; color: var(--text-faint); margin-top: 5px; }
 
 /* Modo privacidad — la clase va en <html>, no en <body> (se aplica
    desde un script inline en <head>, antes de que <body> exista, para
@@ -457,7 +412,6 @@ table.data-table td.num, table.data-table th.num { text-align: right; font-famil
 /* Los costos de cada venta son lo esperable, no una alarma: van en gris y el color queda para el resultado (verde gana, rojo pierde).
    Con todas las columnas de costo en rojo, la fila que de verdad pierde plata no se distinguía de las demás. */
 table.data-table td.costo { color: var(--text-secondary); }
-tr.row-alert { background: rgba(239, 68, 68, 0.05); }
 
 /* Buttons & Inputs */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 0.9em; font-weight: 600; cursor: pointer; transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast); border: 1px solid transparent; font-family: var(--font-ui); position: relative; overflow: hidden; }
@@ -543,7 +497,7 @@ select option { background: #14162a; color: var(--text-primary); }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
 .badge-warning { background: var(--semantic-warning-bg); color: var(--semantic-warning); }
 .badge-info { background: var(--semantic-info-bg); color: var(--semantic-info); }
-.badge-achieve { background: var(--semantic-achieve-bg); color: var(--semantic-achieve); }
+
 .badge-brand { background: var(--accent-brand-glow); color: var(--accent-brand); }
 .badge-neutral { background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--glass-border); }
 
@@ -558,8 +512,7 @@ select option { background: #14162a; color: var(--text-primary); }
 .alert { padding: 11px 15px; border-radius: var(--radius-sm); font-size: 0.85em; margin-bottom: 16px; border: 1px solid; }
 .alert-warning { background: var(--semantic-warning-bg); border-color: var(--semantic-warning); color: var(--semantic-warning); }
 .alert-info { background: var(--semantic-info-bg); border-color: var(--semantic-info); color: var(--semantic-info); }
-.alert-danger { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
-.alert-success { background: var(--success-bg); border-color: var(--success); color: var(--success); }
+
 /* Estado vacío: un mensaje tranquilo, sin animación. Antes llevaba un círculo que giraba, y un círculo se lee como "está cargando"
    aunque el dato ya esté confirmado vacío (lo pidió el dueño en cosas.txt). El círculo queda solo para lo que de verdad espera algo. */
 .alert-empty {
@@ -618,7 +571,7 @@ select option { background: #14162a; color: var(--text-primary); }
 .chat-footer { padding: 12px; background: rgba(255,255,255,0.03); border-top: 1px solid var(--glass-border); display: flex; gap: 8px; }
 
 /* Utilidades y compatibilidad con templates más viejos */
-.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; margin-right: 7px; box-shadow: 0 0 8px var(--success); animation: pulse 1.8s infinite; }
+
 .thumb-sm { width: 42px; height: 42px; object-fit: cover; border-radius: 8px; border: 1px solid var(--glass-border); transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.25s, border-color 0.25s; }
 tr:hover .thumb-sm, .thumb-sm:hover { transform: scale(1.5); position: relative; z-index: 5; border-color: var(--accent-primary); box-shadow: var(--shadow-glow-primary); }
 .row-flex { display: flex; align-items: center; gap: 12px; }
@@ -687,24 +640,17 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 
 /* ---------- Animación de venta nueva en "Hoy en vivo" ---------- */
 @keyframes ventaEntrada { from { opacity:0; transform: translateY(-8px); background: rgba(16,185,129,0.15); } to { opacity:1; transform: translateY(0); background: transparent; } }
-.venta-nueva { animation: ventaEntrada 0.6s ease; }
 
 /* Fallback responsive para templates que todavía usan tarjetas mobile */
-.mobile-cards { display: none; }
+
 .mobile-card { background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 10px; }
 .mobile-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
-.mobile-card-title { font-weight: 600; font-size: 0.92em; }
-.mobile-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
-.mobile-card-field { display: flex; justify-content: space-between; font-size: 0.82em; }
-.mobile-card-field .k { color: var(--text-secondary); }
-.mobile-card-field .v { font-family: var(--font-data); }
 
 @media (max-width: 760px) {
-    .only-desktop { display: none !important; }
-    .only-mobile { display: block; }
+    
+    
     .page-container { padding: 16px 16px 96px; }
 }
-.only-mobile { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -713,14 +659,11 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .badge-curva-rota { background: var(--semantic-warning-bg); color: var(--semantic-warning); margin-left: 6px; display:inline-block; }
 @keyframes pulseCurva { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 
-
 /* ---------- Hero de Ganancia Neta Real del día (Dashboard) ---------- */
-.panel-hero-ganancia { margin-bottom: 20px; }
-.hero-ganancia-compara { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+
 .hero-ganancia-fila { display: flex; align-items: center; gap: 12px; }
 .hero-ganancia-fila-label { width: 100px; flex-shrink: 0; font-size: 0.82em; color: var(--text-secondary); font-weight: 600; }
 .hero-ganancia-fila-valor { width: 110px; flex-shrink: 0; text-align: right; font-size: 0.86em; font-weight: 700; font-variant-numeric: tabular-nums; }
-.hero-ganancia-fill-neutro { background: linear-gradient(90deg, var(--text-faint), var(--text-secondary)) !important; }
 
 /* ---------- P&L waterfall de 14 días (Dashboard) ---------- */
 .pl-waterfall { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
@@ -745,9 +688,6 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 }
 
 /* ---------- Punto de equilibrio (Ganancia Real) ---------- */
-.pe-badge { display: inline-flex; align-items: center; padding: 7px 14px; border-radius: var(--radius-pill); font-size: 0.88em; font-weight: 700; }
-.pe-badge-ok { background: var(--success-bg); color: var(--success); }
-.pe-badge-falta { background: var(--semantic-warning-bg); color: var(--semantic-warning); }
 
 /* ---------- Margen por canal de envío (Ganancia Real) ---------- */
 .canal-envio-lista { display: flex; flex-direction: column; gap: 14px; }
@@ -756,21 +696,8 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .canal-envio-valores { display: flex; justify-content: space-between; font-size: 0.82em; color: var(--text-secondary); }
 
 /* ---------- ROAS vs. punto de equilibrio (Publicidad) ---------- */
-.roas-slider { margin-top: 20px; max-width: 420px; margin-left: auto; margin-right: auto; }
-.roas-slider-track { position: relative; height: 10px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: visible; }
-.roas-slider-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-brand), var(--success)); transition: width 0.5s cubic-bezier(0.16,1,0.3,1); }
-.roas-slider-fill-riesgo { background: linear-gradient(90deg, var(--danger), var(--semantic-warning, #f0a13b)); }
-.roas-slider-marca { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--text-primary); opacity: 0.55; }
-.roas-slider-etiquetas { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.8em; color: var(--text-faint); }
 
 /* ---------- Barra partida directa/indirecta, pago/orgánico (Publicidad) ---------- */
-.split-bar { display: flex; height: 14px; border-radius: 99px; overflow: hidden; }
-.split-bar-directa { background: var(--accent-brand); }
-.split-bar-indirecta { background: rgba(255,255,255,0.1); }
-.split-bar-leyenda { display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.8em; color: var(--text-secondary); flex-wrap: wrap; gap: 6px; }
-.split-bar-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-.split-bar-dot-directa { background: var(--accent-brand); }
-.split-bar-dot-indirecta { background: rgba(255,255,255,0.3); }
 
 /* ---------- Color-code de margen por producto (Ganancia Real) ---------- */
 .margen-leyenda { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.82em; color: var(--text-secondary); margin-bottom: 12px; }
@@ -778,9 +705,6 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .margen-dot-ok { background: var(--success); }
 .margen-dot-limite { background: var(--semantic-warning, #f0a13b); }
 .margen-dot-pierde { background: var(--danger); }
-.fila-margen-ok { border-left: 3px solid var(--success); }
-.fila-margen-limite { border-left: 3px solid var(--semantic-warning, #f0a13b); }
-.fila-margen-pierde { border-left: 3px solid var(--danger); background: rgba(244, 63, 94, 0.04); }
 
 /* ---------- Tendencias: tabs del explorador, veredicto, seguimientos ---------- */
 .tendencias-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--glass-border); }
@@ -888,7 +812,7 @@ body.modo-despacho-limpio .despacho-check {
     width: 50px; height: 50px; min-width: 50px; font-size: 1.8em; border-width: 3px;
 }
 body.modo-despacho-limpio .despacho-info .text-muted { font-size: 0.82em; }
-body.modo-despacho-limpio .despacho-progreso-panel .hero-number { font-size: 1.3em; }
+
 body.modo-despacho-limpio { padding-top: 20px; }
 
 /* ---------- Sparklines (tendencia de 7 días en las tablas) ---------- */
@@ -896,39 +820,10 @@ body.modo-despacho-limpio { padding-top: 20px; }
 .sparkline polyline { filter: drop-shadow(0 0 3px var(--accent-primary-glow)); }
 
 /* ---------- Costo por publicación: tarjetas + Unit Economics ---------- */
-.costo-item { padding: 16px 0; border-bottom: 1px solid var(--border-soft); }
-.costo-item:last-child { border-bottom: none; }
-.costo-item-header { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; flex-wrap: wrap; }
-.costo-item-titulo { flex: 1; min-width: 180px; font-weight: 600; font-size: 0.92em; }
-.costo-item-header input, .costo-item-header select { width: 100%; }
 
-.unit-economics-bar {
-    display: flex; width: 100%; height: 14px; border-radius: 99px; overflow: hidden;
-    background: rgba(255,255,255,0.04); margin-bottom: 8px;
-}
-.ue-segmento { height: 100%; transition: width 0.4s ease; }
-.ue-costo { background: #55556b; }
-.ue-envio { background: var(--accent-cyan); }
-.ue-comision { background: var(--danger); }
-.ue-ganancia { background: linear-gradient(90deg, var(--success), #16a37e); }
-.ue-ganancia-negativa { background: var(--danger); }
-.unit-economics-leyenda { display: flex; align-items: center; gap: 16px; font-size: 0.82em; color: var(--text-secondary); flex-wrap: wrap; }
 .ue-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
-.ue-dot.ue-costo { background: #55556b; }
-.ue-dot.ue-envio { background: var(--accent-cyan); }
-.ue-dot.ue-comision { background: var(--danger); }
-.ue-dot.ue-ganancia { background: var(--success); }
-.ue-dot.ue-ganancia-negativa { background: var(--danger); }
 
 /* ---------- Progreso de Despacho ---------- */
-.despacho-progreso-panel { text-align: center; padding: 30px 26px; }
-.despacho-progreso-numero { margin-bottom: 14px; }
-.despacho-progreso-barra { height: 10px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; max-width: 420px; margin: 0 auto; }
-.despacho-progreso-fill {
-    height: 100%; border-radius: 99px; transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    background: linear-gradient(90deg, var(--accent-gold), var(--success));
-    box-shadow: 0 0 12px rgba(34, 211, 165, 0.4);
-}
 
 /* ---------- "Mostrar más" genérico ---------- */
 /* Lo que el «Ver más» deja escondido se esconde SOLO en pantalla: al imprimir (el PDF de Ganancia Real es lo que se le manda al contador) tiene que salir todo, no cortado en la fila 10.
@@ -972,7 +867,7 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
     overflow: hidden;
 }
 .tooltip-ticker.visible { opacity: 1; transform: translateY(0); }
-.tooltip-ticker-acento { height: 4px; width: 100%; background: var(--tooltip-acento, var(--accent-primary)); }
+
 .tooltip-ticker-cuerpo { padding: 14px 16px; }
 .tooltip-ticker-titulo { font-weight: 700; font-family: var(--font-display); font-size: 1.05em; margin-bottom: 8px; color: var(--text-primary); }
 .tooltip-ticker-sub { color: var(--text-secondary); margin-top: 8px; font-size: 0.92em; }
@@ -992,34 +887,10 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text-secondary) 30%, transparent) var(--bg-base); }
 
 /* ---------- Orbe de salud pulsante (más visual que el puntito genérico) ---------- */
-.orbe-salud {
-    width: 10px; height: 10px; border-radius: 50%; display: inline-block;
-    background: var(--success); box-shadow: 0 0 6px var(--success);
-    position: relative;
-}
-.orbe-salud::after {
-    content: ''; position: absolute; inset: -4px; border-radius: 50%;
-    background: inherit; opacity: 0.5; animation: pulsoOrbe 2s ease-out infinite;
-}
+
 @keyframes pulsoOrbe { 0% { transform: scale(0.6); opacity: 0.6; } 100% { transform: scale(2.2); opacity: 0; } }
 
 /* ---------- Tarjetas de Misión (Logros) ---------- */
-.mision-card {
-    display: flex; align-items: center; gap: 18px; padding: 18px 20px; margin-bottom: 14px;
-    background: var(--glass-bg); border: 1px solid var(--glass-border); border-left: 4px solid var(--text-faint);
-    border-radius: var(--radius-md); backdrop-filter: blur(14px); transition: transform 0.2s, box-shadow 0.2s;
-    animation: fadeInUp 0.4s cubic-bezier(0.16,1,0.3,1) backwards;
-}
-.mision-card:hover { transform: translateX(4px); box-shadow: var(--shadow-elevated); }
-.mision-card.mision-urgente { border-left-color: var(--danger); }
-.mision-card.mision-importante { border-left-color: var(--semantic-warning); }
-.mision-card.mision-opcional { border-left-color: var(--accent-primary); }
-.mision-card.mision-logro { border-left-color: var(--semantic-achieve); }
-.mision-icono { font-size: 1.8em; flex-shrink: 0; }
-.mision-cuerpo { flex: 1; min-width: 0; }
-.mision-titulo { font-weight: 700; font-size: 1em; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.mision-descripcion { color: var(--text-secondary); font-size: 0.88em; line-height: 1.5; }
-.mision-boton { flex-shrink: 0; white-space: nowrap; }
 
 /* ---------- Score de SEO (círculo de puntaje) ---------- */
 .seo-score-circulo {
@@ -1046,40 +917,12 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 .widget-dashboard:hover { border-color: rgba(139,92,246,0.4); }
 .widget-dashboard-ancho { cursor: default; position: relative; }
 .widget-dashboard-ancho:hover { border-color: var(--glass-border); }
-.btn-descargar-grafico {
-    position: absolute; top: 14px; right: 14px; width: 26px; height: 26px; border-radius: 7px;
-    background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: var(--text-faint);
-    display: flex; align-items: center; justify-content: center; cursor: pointer;
-    opacity: 0.5; transition: opacity 0.15s, color 0.15s, background 0.15s;
-}
-.btn-descargar-grafico:hover { opacity: 1; color: var(--text-primary); background: rgba(255,255,255,0.08); }
-.grafico-tendencia-barras { display: flex; align-items: flex-end; gap: 4px; height: 90px; margin-top: 14px; }
-.grafico-tendencia-barra { flex: 1; background: linear-gradient(180deg, var(--accent-primary), var(--accent-primary-dim)); border-radius: 3px 3px 0 0; min-height: 3px; position: relative; transition: opacity 0.15s; }
-.grafico-tendencia-barra:hover { opacity: 0.75; }
-.grafico-tendencia-barra:hover::after {
-    content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
-    background: var(--glass-bg-alt); border: 1px solid var(--glass-border); border-radius: 6px;
-    padding: 4px 8px; font-size: 0.8em; white-space: nowrap; margin-bottom: 6px; pointer-events: none; z-index: 10;
-}
+
 .grafico-tendencia-ejes { display: flex; justify-content: space-between; font-size: 0.78em; color: var(--text-faint); margin-top: 6px; }
 
 /* ---------- Calculadora de Costos: panel deslizable 3/4 desde la derecha ---------- */
-.calc-overlay {
-    position: fixed; inset: 0; background: rgba(5,6,10,0.6); backdrop-filter: blur(6px);
-    display: none; z-index: 400;
-}
-.calc-overlay.open { display: block; }
-.calc-panel {
-    position: fixed; top: 0; right: 0; height: 100vh; width: 75vw; max-width: 900px;
-    background: var(--bg-surface); border-left: 1px solid var(--glass-border);
-    box-shadow: -20px 0 60px rgba(0,0,0,0.5); transform: translateX(100%);
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    display: flex; flex-direction: column;
-}
-.calc-overlay.open .calc-panel { transform: translateX(0); }
-.calc-header { display: flex; justify-content: space-between; align-items: center; padding: 22px 28px; border-bottom: 1px solid var(--border-soft); }
-.calc-body { padding: 28px; overflow-y: auto; flex: 1; }
-@media (max-width: 900px) { .calc-panel { width: 100vw; max-width: none; } }
+
+@media (max-width: 900px) {  }
 
 /* ---------- Tutorial guiado (spotlight con blur alrededor) ---------- */
 #tour-capa { position: fixed; inset: 0; z-index: 9000; pointer-events: none; }
@@ -1114,8 +957,11 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 /* ---------- Impresión (usado por el botón "Exportar a PDF" de Ganancia
    Real — window.print(), sin depender de ninguna librería de PDF) ---------- */
 @media print {
-    .chat-fab, .chat-window, .hud-fijo, #toast-container,
-    #fondo-particulas, .no-imprimir { display: none !important; }
+    .chat-fab,
+.chat-window,
+#toast-container,
+#fondo-particulas,
+.no-imprimir { display: none !important; }
     body { background: #fff !important; color: #111 !important; }
     .page-container { max-width: none; padding: 0; animation: none; }
     .panel, .stat-chip, table.data-table { break-inside: avoid; }
@@ -1147,40 +993,10 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
    ═══════════════════════════════════════════════════════════════════ */
 
 /* Nivel 1 — Hero: el foco de la pantalla, máxima elevación */
-.card-hero {
-    background: var(--glass-bg-alt);
-    border: 1px solid rgba(139, 92, 246, 0.28);
-    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-    border-radius: var(--radius-md); padding: 30px;
-    box-shadow: var(--shadow-elevated), 0 0 40px -10px var(--accent-primary-glow);
-    transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
-    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-}
-
 
 /* Nivel 2 — Panel: agrupador estándar (alias semántico de .panel) */
-.card-panel {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border-radius: var(--radius-md); padding: 26px; margin-bottom: 24px;
-    box-shadow: var(--shadow-card); overflow-x: auto;
-    transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
-    animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-}
-
 
 /* Nivel 3 — Detail: soporte y contexto, mínima elevación */
-.card-detail {
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid var(--border-soft);
-    border-radius: var(--radius-sm); padding: 14px 18px;
-    transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-.card-detail:hover {
-    background: rgba(255, 255, 255, 0.045);
-    border-color: var(--glass-border);
-}
 
 /* ═══════════════════════════════════════════════════════════════════
    F1 — HOVER STATES UNIFICADOS
@@ -1188,19 +1004,8 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
    ═══════════════════════════════════════════════════════════════════ */
 
 /* Link de acción genérico (sin decoración pero clicable) */
-.action-link {
-    color: var(--accent-texto);
-    text-decoration: none;
-    transition: color var(--transition-fast), opacity var(--transition-fast);
-}
-.action-link:hover { color: var(--accent-cyan); opacity: 0.9; }
 
 /* Contenedor clicable — fondo + borde al hover, sin estados de botón */
-.hover-surface {
-    transition: background var(--transition-fast), border-color var(--transition-fast);
-    cursor: pointer;
-}
-.hover-surface:hover { background: rgba(255, 255, 255, 0.05); }
 
 /* Focus ring global — accesibilidad + coherencia visual */
 :focus-visible {

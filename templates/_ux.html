@@ -1,6 +1,6 @@
 {#
   Macros de los componentes de foco (static/css/ux.css). Uso:
-      {% from "_ux.html" import banner, kpi, vacio, seccion %}
+      {% from "_ux.html" import banner, kpi, vacio %}
   tono: ok | danger | warn | info | accion | gold | neutral
   Los textos que llevan **negrita** se pasan como HTML ya armado (titulo_html):
   si vienen de la base o de MeLi, escaparlos con |e ANTES de meterles <b>.
@@ -50,6 +50,3 @@
 <button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} data-click="aplicarMes" data-click-args='[-1, "$el"]'>Mes pasado</button>
 {% endmacro %}
 
-{% macro seccion(titulo, tono="accion") %}
-<div class="ux-seccion ux-{{ tono }}">{{ titulo }}</div>
-{% endmacro %}

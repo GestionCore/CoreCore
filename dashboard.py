@@ -387,22 +387,6 @@ def obtener_resumen_diario(usuario_id, cuenta_id=None):
         return resumen_semanal.obtener_datos_resumen_diario(cursor)
 
 
-def obtener_reclamos_resumen(usuario_id, cuenta_id=None):
-    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        # Solo tipo='claim' es un reclamo real (el único que MeLi puede
-        # contar contra la reputación) — 'return' es una devolución simple
-        # (botón de arrepentimiento) y 'cancelacion' ni siquiera es eso.
-        # Antes solo se excluía 'cancelacion', así que toda devolución
-        # sin resolver se mostraba acá como si fuera un reclamo grave.
-        cursor.execute(f"""
-            SELECT COUNT(*), COALESCE(SUM(monto_retenido),0) FROM incidencias_posventa
-            WHERE estado NOT IN ('closed','resolved') AND tipo = 'claim' AND {SQL_RECLAMO_AFECTA}
-        """)
-        cantidad, monto = cursor.fetchone()
-    return {"cantidad": cantidad, "monto_formateado": formatear_moneda(monto)}
-
-
 def obtener_costos_resumen(usuario_id, cuenta_id=None):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()

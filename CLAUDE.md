@@ -389,8 +389,7 @@ y color donde hay que mirar. Piezas (usarlas, no reinventar HTML):
   (`<details>` plegable), `ux-vacio`, `ux-barra`, `ux-barra-accion`
   (barra fija "N cambios sin guardar"), `ux-tabla-cards` (tabla → tarjetas
   en celular), `ux-periodo` (barra de período).
-- `templates/_ux.html` — macros Jinja (`banner`, `kpi`, `delta`, `vacio`,
-  `seccion`) y `static/js/ux.js` — `UX.banner/kpi/accion/plata/pct/esc`
+- `templates/_ux.html` — macros Jinja (`banner`, `kpi`, `delta`, `vacio`) y `static/js/ux.js` — `UX.banner/kpi/accion/plata/pct/esc`
   para pantallas armadas con fetch. Filtros Jinja `|plata |pct |numero`.
 - Componentes visuales agregados después (en `ux.css`, mismos tokens): `ux-medidor`
   (ROAS contra equilibrio con zonas), `ux-embudo`, `ux-rank-fila` (ranking con

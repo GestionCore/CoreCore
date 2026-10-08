@@ -898,26 +898,6 @@ def api_dashboard_tendencia_ventas():
         return jsonify({"serie": [], "total_formateado": "0,00", "promedio_diario_formateado": "0,00"})
 
 
-@app.route("/api/dashboard/tendencia_ventas.png")
-@login_requerido
-def api_dashboard_tendencia_ventas_png():
-    """Descarga del gráfico de tendencia como imagen — botón de exportar del widget."""
-    import graficos_export
-    datos = dashboard_mod.obtener_tendencia_ventas(g.usuario_id, g.cuenta_id)
-    serie = [{"etiqueta": p["fecha"], "valor": p["facturado"]} for p in datos["serie"]]
-    buffer = graficos_export.generar_barras_png(
-        serie, titulo=f"Tendencia de Ventas — últimos {len(serie)} días",
-        subtitulo=f"Total del período: ${datos['total_formateado']}"
-    )
-    return send_file(buffer, mimetype="image/png", as_attachment=True, download_name="tendencia_ventas.png")
-
-
-@app.route("/api/dashboard/reclamos_resumen")
-@login_requerido
-def api_dashboard_reclamos_resumen():
-    return jsonify(dashboard_mod.obtener_reclamos_resumen(g.usuario_id, g.cuenta_id))
-
-
 @app.route("/api/dashboard/costos_resumen")
 @login_requerido
 def api_dashboard_costos_resumen():
@@ -2386,18 +2366,6 @@ def agregar_gasto():
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
             cursor.execute("INSERT INTO gastos_operativos (cuenta_id, concepto, categoria, monto, fecha) VALUES (%s, %s, %s, %s, %s)", (g.cuenta_id, concepto, categoria, monto, fecha))
-    return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}")
-
-
-@app.route("/guardar_costo_producto/<id_meli>", methods=["POST"])
-@login_requerido
-@auditar("costo_producto")
-def guardar_costo_producto(id_meli):
-    import db
-    nuevo_costo = float(request.form.get("precio_costo", 0.0))
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        cursor.execute("UPDATE productos_padre SET precio_costo = %s WHERE id_meli = %s", (nuevo_costo, id_meli))
     return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}")
 
 
