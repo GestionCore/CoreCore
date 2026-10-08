@@ -168,6 +168,7 @@ def test_un_usuario_en_prueba_arma_su_primera_suscripcion(entorno):
     assert destino == "https://mp.test/checkout"
     assert llamadas["creadas"] == [("base", 77)] and llamadas["canceladas"] == []
     assert any(e[0].startswith("UPDATE usuarios SET mp_suscripcion_id") for e in llamadas["escrituras"])
+    assert llamadas["auditadas"] == [("suscripcion_iniciar", {"plan": "base", "preapproval_id": "nueva-id"})]       # arma un cobro: queda registrado
 
 
 # ── El aviso tardío de una suscripción vieja no baja el plan nuevo ──────────────────────────────────────────────────────────

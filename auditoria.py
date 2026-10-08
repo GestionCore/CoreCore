@@ -63,6 +63,7 @@ ETIQUETAS = {
     "datos_descargar": "Datos descargados",
     "suscripcion_cancelar": "Suscripción cancelada",
     "suscripcion_cambiar_plan": "Plan de la suscripción cambiado",
+    "suscripcion_iniciar": "Suscripción iniciada",
 }
 
 

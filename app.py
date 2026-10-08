@@ -3884,6 +3884,7 @@ def suscripcion_iniciar():
             "UPDATE usuarios SET mp_suscripcion_id = %s WHERE id = %s",
             (preapproval_id, g.usuario_id)
         )
+    auditoria.registrar("suscripcion_iniciar", {"plan": plan, "preapproval_id": preapproval_id})        # arma un cobro: queda en el historial de actividad
 
     return redirect(init_point)
 
