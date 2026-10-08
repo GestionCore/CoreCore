@@ -66,7 +66,7 @@
     <div class="ux-rank-fila ux-{{ 'info' if r.sin_impacto else 'warn' }}">
         <div class="ux-rank-info">
             <div class="ux-rank-titulo"><a href="{{ r.link }}" target="_blank" rel="noopener" style="color:var(--text-primary); text-decoration:none;">Orden #{{ r.id_orden }} ↗</a></div>
-            <div class="text-muted" style="font-size:0.8em;">{{ r.motivo or 'Sin motivo informado' }}{% if r.fecha %} · desde el {{ r.fecha }}{% endif %}{% if r.sin_impacto %} · <b>no afecta tu reputación</b>{% endif %}</div>
+            <div class="text-muted" style="font-size:0.8em;">{{ r.motivo or 'Sin motivo informado' }}{% if r.fecha %} · desde el {{ r.fecha|fecha }}{% endif %}{% if r.sin_impacto %} · <b>no afecta tu reputación</b>{% endif %}</div>
         </div>
         <div class="ux-rank-valor"><b>{{ r.monto|plata }}</b></div>
     </div>

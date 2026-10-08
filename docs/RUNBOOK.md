@@ -139,6 +139,28 @@ legítimo choca con un límite, subir el valor en `REGLAS` de `limitador.py`.
 - El workflow *Vulnerabilidades* corre `pip-audit` cada lunes y cuando cambia `requirements.txt`: si falla, el log nombra el paquete y la versión que lo arregla.
 - Después de subir una versión importante (Flask, cryptography, psycopg), probar localmente un sync completo contra la base real antes del deploy.
 
+## 9b. Cobro con Mercado Pago (suscripciones)
+
+- **Estado hoy (2026-10-08): EN PRUEBAS.** `MP_ACCESS_TOKEN` es el del vendedor de **prueba** y `MP_WEBHOOK_SECRET` la clave del panel de webhooks; con el token cargado la app ya está en modo cobro (`config.PAGOS_HABILITADOS`).
+  Hay un solo usuario real (id 3, Elite de cortesía, sin suscripción de Mercado Pago: nunca se cobra ni se bloquea).
+- **Pasar a cobro real**: `fly secrets set MP_ACCESS_TOKEN=<token de producción> MP_WEBHOOK_SECRET=<clave secreta del panel> -a corecore` (las cargás vos, no las pegues en un chat) y probar un cobro real chico. Regenerar las credenciales
+  de producción antes de usarlas es lo recomendable si alguna vez se compartieron por un canal inseguro.
+- **Probar en el sandbox**: se necesitan un usuario vendedor y uno comprador de prueba. Con credenciales de prueba, `payer_email` tiene que ser el del comprador de prueba (`test_user_<número>@testuser.com`); otro email da `guest_site_mismatch`.
+  Tarjeta de prueba aprobada: Mastercard `5031 7557 3453 0604`, vencimiento `11/30`, código `123`, nombre `APRO`. El pago se hace en una ventana de incógnito, con el comprador de prueba.
+- **Webhook** (`/webhook/mercadopago`): rechaza lo que no trae una firma válida (HMAC con `MP_WEBHOOK_SECRET`). Un rechazo deja en el log `firma inválida … coincide=…` con qué variante del manifiesto coincidiría (solo prefijos de HMAC).
+  ⚠️ En el sandbox los avisos REALES no pasan la firma (el «Simular notificación» del panel sí); por eso hay un chequeo propio que no depende del webhook (siguiente punto).
+- **Renovaciones** (`renovaciones_mp.py`, tarea de las 09:00 ART): cada usuario guarda `usuarios.mp_proximo_cobro`; ese día se consulta a Mercado Pago si el cobro se acreditó. Rechazado: se sigue mirando 3 días y recién después se da de baja el plan
+  (y se cancela la suscripción en Mercado Pago). Una cuenta sin `mp_suscripcion_id` (cortesía) nunca entra. En el log: `[Renovaciones] Usuario N (plan …): cobrado | cancelada | sin_cobro — motivo`.
+- **Cambiar de plan** (Base → Elite): modifica el monto de la suscripción que ya existe (no crea otra, para no cobrar dos veces) y deja registro («Plan de la suscripción cambiado»). Elite → Base no se ofrece: se resuelve a mano.
+- Si hay que cortar un cobro a mano: cancelar la suscripción desde el panel de Mercado Pago y poner `plan = 'cancelado'` desde `/admin`.
+
+## 9c. Política de seguridad del navegador (CSP)
+
+- `seguridad.py` manda `Content-Security-Policy`. La variable `CSP_MODO` (se cambia con `fly secrets set CSP_MODO=<modo> -a corecore`, sin desplegar) elige: `prueba` (la de siempre en vigor; la estricta solo avisa en `Content-Security-Policy-Report-Only`), `estricta` (los scripts inline sin el
+  código de un solo uso —`nonce`— no se ejecutan) o `actual` (marcha atrás).
+- Los avisos de lo que la estricta habría bloqueado llegan a `/csp-report` y quedan en el log: `fly logs -a corecore | grep "\[CSP\]"`. Sin avisos propios después de usar todas las pantallas, pasar a `estricta`. Si algo se rompe, `CSP_MODO=actual` lo deshace en segundos.
+- Para escribir un botón o un formulario nuevo no se usa `onclick=`: se usa `data-click` / `data-submit` (ver `static/js/ux.js`). Un test impide los manejadores escritos en el HTML y los `<script>` sin `nonce`.
+
 ## 10. Pendientes que dependen del dueño
 
 - **Corregir la hora de las ventas viejas** (una hora atrasadas respecto de Argentina; 35 de 1.092 ventas caen en el día anterior): después del próximo deploy, `python normalizar_horas.py` muestra cuántas cambian (no modifica nada) y `python normalizar_horas.py --aplicar` las corrige. Es seguro repetirlo. Las ventas nuevas ya entran bien.

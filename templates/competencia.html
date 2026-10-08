@@ -100,7 +100,7 @@
         <tbody>
             {% for h in p.historial %}
             <tr>
-                <td>{{ h.fecha }}</td>
+                <td>{{ h.fecha|fecha }}</td>
                 <td class="num">{{ h.ofertas }}</td>
                 <td class="num">{{ h.vendedores }}</td>
                 <td class="num">{% if h.precio_min is not none %}${{ "{:,.0f}".format(h.precio_min).replace(",", ".") }}{% else %}—{% endif %}</td>
