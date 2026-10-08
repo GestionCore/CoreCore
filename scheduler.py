@@ -8,6 +8,7 @@ dueño) las tareas se delegaban a Celery y el sistema se portaba distinto que en
   · cada 4 minutos: SOLO las cuentas cuya primera sincronización todavía no terminó (reintento rápido de las recién conectadas; normalmente ninguna)
   · cada hora: verificación de los permisos de Mercado Libre (salud_tokens) y limpieza de vinculaciones de OAuth abandonadas
   · cada madrugada (03:30 de Argentina): borrado físico de lo «eliminado» hace más de un día (soft deletes)
+  · cada día a las 09:00 de Argentina: renovaciones de Mercado Pago, solo de quienes ya les llegó su fecha de cobro (renovaciones_mp.py)
   · cada 24 horas: relevamiento de competencia y de tendencias
 """
 import os
@@ -177,6 +178,20 @@ def _tarea_limpiar_soft_deletes():
         print(f"[Scheduler] 🧹 Soft deletes purgados: {borrados}")
 
 
+def _tarea_renovaciones_mp():
+    """
+    Día de renovación de las suscripciones de Mercado Pago: consulta SOLO a quienes ya les llegó su fecha de cobro (renovaciones_mp.py). Corre una vez al día, pero si hoy no le toca
+    a nadie no hace ninguna consulta. Sin cobro habilitado (beta gratuita) no hace nada.
+    """
+    import config
+    if not config.PAGOS_HABILITADOS:
+        return
+    import renovaciones_mp
+    resumen = renovaciones_mp.chequear_renovaciones()
+    if any(resumen.values()):
+        print(f"[Scheduler] 💳 Renovaciones de Mercado Pago: {resumen}")
+
+
 TABLAS_CON_SOFT_DELETE = ("gastos_operativos", "ventas")
 
 
@@ -229,5 +244,7 @@ def _arrancar_apscheduler():
     _scheduler_apscheduler.add_job(_tarea_limpiar_vinculaciones_oauth, "interval", hours=1, id="limpiar_oauth", max_instances=1, coalesce=True)
     # De madrugada: 06:30 UTC = 03:30 en Argentina (sin horario de verano). En UTC a propósito: no depende de que el sistema tenga la base de zonas horarias
     _scheduler_apscheduler.add_job(_tarea_limpiar_soft_deletes, "cron", hour=6, minute=30, timezone="UTC", id="limpiar_soft_deletes", max_instances=1, coalesce=True)
+    # 12:00 UTC = 09:00 en Argentina: Mercado Pago cobra a la misma hora del día en que se contrató (a la noche), así que la mañana siguiente al día de cobro ya está acreditado o rechazado.
+    _scheduler_apscheduler.add_job(_tarea_renovaciones_mp, "cron", hour=12, minute=0, timezone="UTC", id="renovaciones_mp", max_instances=1, coalesce=True)
     _scheduler_apscheduler.start()
     print(f"[Scheduler] ✅ APScheduler iniciado (barredora cada {_intervalo_barredora()} min para todas las cuentas; cada {INTERVALO_CUENTAS_NUEVAS_MINUTOS} min solo las de primera sincronización pendiente).")

@@ -16,6 +16,8 @@ El flujo completo:
 """
 import hashlib
 import hmac
+from datetime import datetime, timedelta, timezone
+
 import requests
 import config
 
@@ -159,9 +161,54 @@ def diagnostico_firma(x_signature, x_request_id, data_id, secreto, ids_alternati
             f"v1_recibida={recibida[:8] or '-'} (largo {len(recibida)}) esperadas[{resumen}] coincide={','.join(coincide) or 'ninguna'}")
 
 
+DIAS_DE_GRACIA_COBRO = 3     # decisión de Diego: si el cobro sale rechazado se sigue mirando 3 días (la tarjeta puede reintentarse y pasar); pasados sin cobro, el plan se da de baja
+
+
+def _fecha_mp(valor):
+    """Fecha ISO de Mercado Pago ('2026-11-07T20:25:37.000-04:00') → datetime con zona, o None si falta o no se entiende."""
+    try:
+        fecha = datetime.fromisoformat(str(valor))
+    except (TypeError, ValueError):
+        return None
+    return fecha if fecha.tzinfo else fecha.replace(tzinfo=timezone.utc)
+
+
+def proximo_cobro(info):
+    """Día del próximo cobro de una suscripción (el `next_payment_date` de MP) o None."""
+    return _fecha_mp((info or {}).get("next_payment_date"))
+
+
+def evaluar_renovacion(info, vencia_en, ahora):
+    """
+    Decide qué hacer el día de renovación de una suscripción, con lo que Mercado Pago informa hoy (`info` = GET /preapproval/{id}). Devuelve (accion, proximo_cobro, motivo):
+      "cobrado"   → el cobro se acreditó (hay un cobro cerca de la fecha o después): se anota el próximo día de cobro y no se vuelve a mirar hasta entonces.
+      "cancelada" → la suscripción está cancelada en Mercado Pago: el plan pasa a «cancelado».
+      "sin_cobro" → pasaron más de DIAS_DE_GRACIA_COBRO días de la renovación sin cobro y la suscripción no está al día: se da de baja (y se cancela en MP para que no cobre a escondidas).
+      "esperar"   → todavía no se puede saber (sin respuesta de MP, o dentro de los días de gracia): se vuelve a mirar en la próxima corrida.
+    `vencia_en` es el día de cobro que teníamos anotado (None si todavía no se sabía).
+    """
+    if not info:
+        return "esperar", vencia_en, "Mercado Pago no respondió"
+    estado = info.get("status")
+    if estado == "cancelled":
+        return "cancelada", None, "la suscripción está cancelada en Mercado Pago"
+
+    siguiente = proximo_cobro(info)
+    ultimo_cobro = _fecha_mp((info.get("summarized") or {}).get("last_charged_date"))
+    # Un día de margen: el cobro puede quedar acreditado unas horas antes o después de la hora anotada.
+    cobrado = estado == "authorized" and ultimo_cobro is not None and (vencia_en is None or ultimo_cobro >= vencia_en - timedelta(days=1))
+    if cobrado:
+        return "cobrado", siguiente, "cobro acreditado"
+    if vencia_en is None:
+        return "esperar", siguiente, "todavía sin cobro registrado"
+    if ahora - vencia_en > timedelta(days=DIAS_DE_GRACIA_COBRO):
+        return "sin_cobro", None, f"sin cobro {DIAS_DE_GRACIA_COBRO} días después de la renovación (estado en Mercado Pago: {estado})"
+    return "esperar", vencia_en, f"cobro pendiente (estado en Mercado Pago: {estado})"
+
+
 def procesar_webhook(data, data_id_url=None, tipo_url=None):
     """
-    Procesa un webhook de MP y devuelve (usuario_id, nuevo_plan, preapproval_id) o None.
+    Procesa un webhook de MP y devuelve (usuario_id, nuevo_plan, preapproval_id, proximo_cobro) o None.
     data = el JSON que mandó MP; data_id_url / tipo_url = los parámetros `data.id` y `type` de la URL (MP los manda ahí).
     Solo procesa topic="preapproval" — el de "payment" se ignora porque el
     estado del preapproval ya refleja si el cobro se acreditó o no.
@@ -210,4 +257,4 @@ def procesar_webhook(data, data_id_url=None, tipo_url=None):
     else:
         return None  # "pending" todavía no cambia nada
 
-    return usuario_id, nuevo_plan, preapproval_id
+    return usuario_id, nuevo_plan, preapproval_id, proximo_cobro(info)

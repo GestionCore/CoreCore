@@ -3873,8 +3873,8 @@ def suscripcion_retorno():
             with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
                 cursor = conexion.cursor()
                 cursor.execute(
-                    "UPDATE usuarios SET plan = %s, suscripcion_activada_en = now() WHERE id = %s",
-                    (plan_str, g.usuario_id)
+                    "UPDATE usuarios SET plan = %s, mp_proximo_cobro = %s, suscripcion_activada_en = now() WHERE id = %s",
+                    (plan_str, pagos.proximo_cobro(info), g.usuario_id)
                 )
             print(f"[Pagos] ✅ Usuario {g.usuario_id} activó plan {plan_str} vía retorno MP.")
 
@@ -3903,7 +3903,7 @@ def suscripcion_cancelar():
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             cursor = conexion.cursor()
             cursor.execute(
-                "UPDATE usuarios SET plan = 'cancelado' WHERE id = %s",
+                "UPDATE usuarios SET plan = 'cancelado', mp_proximo_cobro = NULL WHERE id = %s",
                 (g.usuario_id,)
             )
         print(f"[Pagos] ⚠️ Usuario {g.usuario_id} canceló su suscripción {mp_id}.")
@@ -3933,18 +3933,18 @@ def webhook_mercadopago():
     if not resultado:
         return "", 200  # MP espera 200 aunque ignoremos el evento
 
-    usuario_id, nuevo_plan, preapproval_id = resultado
+    usuario_id, nuevo_plan, preapproval_id, proximo_cobro = resultado
     try:
         with db.conexion_admin() as conexion:
             cursor = conexion.cursor()
             if nuevo_plan in ("base", "elite"):
                 cursor.execute(
-                    "UPDATE usuarios SET plan = %s, mp_suscripcion_id = %s, suscripcion_activada_en = COALESCE(suscripcion_activada_en, now()) WHERE id = %s",
-                    (nuevo_plan, preapproval_id, usuario_id)
+                    "UPDATE usuarios SET plan = %s, mp_suscripcion_id = %s, mp_proximo_cobro = %s, suscripcion_activada_en = COALESCE(suscripcion_activada_en, now()) WHERE id = %s",
+                    (nuevo_plan, preapproval_id, proximo_cobro, usuario_id)
                 )
             elif nuevo_plan == "cancelado":
                 cursor.execute(
-                    "UPDATE usuarios SET plan = 'cancelado' WHERE id = %s",
+                    "UPDATE usuarios SET plan = 'cancelado', mp_proximo_cobro = NULL WHERE id = %s",
                     (usuario_id,)
                 )
         print(f"[Pagos] 🔔 Webhook MP: usuario {usuario_id} → plan {nuevo_plan} (preapproval {preapproval_id})")

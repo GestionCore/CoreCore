@@ -1,6 +1,7 @@
 """El webhook de Mercado Pago: qué id usa para consultar la suscripción y que un aviso bien firmado llegue hasta la base."""
 import hashlib
 import hmac
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -8,6 +9,7 @@ import pagos
 
 SECRETO = "secreto-de-prueba"
 PREAPPROVAL = "6e27f74e29fb44abbfa583901801f3e3"
+PROXIMO_COBRO = datetime(2026, 11, 7, 20, 25, 37, tzinfo=timezone(timedelta(hours=-4)))     # el next_payment_date que informa Mercado Pago, con su zona
 
 
 def _firma(data_id, request_id="req-1", ts="1704908010"):
@@ -22,7 +24,7 @@ def consultas(monkeypatch):
 
     def falso(preapproval_id):
         pedidas.append(preapproval_id)
-        return {"status": "authorized", "external_reference": "base|77"}
+        return {"status": "authorized", "external_reference": "base|77", "next_payment_date": "2026-11-07T20:25:37.000-04:00"}
 
     monkeypatch.setattr(pagos, "obtener_estado_suscripcion", falso)
     return pedidas
@@ -31,12 +33,12 @@ def consultas(monkeypatch):
 def test_en_un_aviso_real_el_id_de_la_suscripcion_es_data_id_y_no_el_numero_del_aviso(consultas):
     # En el formato nuevo `id` es el número del AVISO (distinto del recurso): consultar con él nunca encontraba la suscripción.
     cuerpo = {"action": "updated", "type": "subscription_preapproval", "id": "125000000001", "data": {"id": PREAPPROVAL}}
-    assert pagos.procesar_webhook(cuerpo) == (77, "base", PREAPPROVAL)
+    assert pagos.procesar_webhook(cuerpo) == (77, "base", PREAPPROVAL, PROXIMO_COBRO)
     assert consultas == [PREAPPROVAL]
 
 
 def test_el_id_de_la_url_manda_y_el_tipo_puede_venir_solo_en_la_url(consultas):
-    assert pagos.procesar_webhook({}, data_id_url=PREAPPROVAL, tipo_url="subscription_preapproval") == (77, "base", PREAPPROVAL)
+    assert pagos.procesar_webhook({}, data_id_url=PREAPPROVAL, tipo_url="subscription_preapproval") == (77, "base", PREAPPROVAL, PROXIMO_COBRO)
     assert consultas == [PREAPPROVAL]
 
 
@@ -48,7 +50,7 @@ def test_los_avisos_de_cobro_y_otros_temas_no_consultan_nada(consultas):
 
 def test_una_suscripcion_cancelada_deja_el_plan_cancelado(monkeypatch):
     monkeypatch.setattr(pagos, "obtener_estado_suscripcion", lambda _id: {"status": "cancelled", "external_reference": "elite|9"})
-    assert pagos.procesar_webhook({"type": "subscription_preapproval", "data": {"id": PREAPPROVAL}}) == (9, "cancelado", PREAPPROVAL)
+    assert pagos.procesar_webhook({"type": "subscription_preapproval", "data": {"id": PREAPPROVAL}}) == (9, "cancelado", PREAPPROVAL, None)
 
 
 def test_sin_referencia_valida_o_sin_respuesta_no_se_toca_a_nadie(monkeypatch):
@@ -97,7 +99,7 @@ def test_un_aviso_bien_firmado_actualiza_el_plan_del_usuario(monkeypatch, consul
                                           headers={"x-signature": _firma(PREAPPROVAL), "x-request-id": "req-1"})
     assert r.status_code == 200
     assert consultas == [PREAPPROVAL]
-    assert len(escrituras) == 1 and escrituras[0][1] == ("base", PREAPPROVAL, 77)
+    assert len(escrituras) == 1 and escrituras[0][1] == ("base", PREAPPROVAL, PROXIMO_COBRO, 77)      # el plan, la suscripción y el día del próximo cobro
 
 
 def test_un_cuerpo_que_no_es_un_objeto_no_rompe_el_webhook(monkeypatch):
