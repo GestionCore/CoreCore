@@ -38,8 +38,12 @@ def test_sin_cabecera_o_mal_formada_se_rechaza_cuando_hay_secreto():
 def test_el_diagnostico_dice_si_la_firma_coincide_con_alguna_variante_y_nunca_muestra_la_clave():
     buena = _firmar("123", "req-1", "1704908010")
     assert "coincide=estandar" in pagos.diagnostico_firma(buena, "req-1", "123", SECRETO)
-    sin_request = f"ts=1704908010,v1=" + hmac.new(SECRETO.encode(), b"id:123;ts:1704908010;", hashlib.sha256).hexdigest()
+    sin_request = "ts=1704908010,v1=" + hmac.new(SECRETO.encode(), b"id:123;ts:1704908010;", hashlib.sha256).hexdigest()
     assert "coincide=sin_request_id" in pagos.diagnostico_firma(sin_request, "req-1", "123", SECRETO)
+    con_espacios = "ts=1704908010,v1=" + hmac.new(SECRETO.encode(), b"id:123 request-id:req-1 ts:1704908010", hashlib.sha256).hexdigest()
+    assert "coincide=con_espacios" in pagos.diagnostico_firma(con_espacios, "req-1", "123", SECRETO)
+    sin_final = "ts=1704908010,v1=" + hmac.new(SECRETO.encode(), b"id:123;request-id:req-1;ts:1704908010", hashlib.sha256).hexdigest()
+    assert "coincide=sin_punto_y_coma_final" in pagos.diagnostico_firma(sin_final, "req-1", "123", SECRETO)
     otra_clave = _firmar("123", "req-1", "1704908010", secreto="otra")
     diag = pagos.diagnostico_firma(otra_clave, "req-1", "123", SECRETO)
     assert "coincide=ninguna" in diag

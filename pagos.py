@@ -144,6 +144,8 @@ def diagnostico_firma(x_signature, x_request_id, data_id, secreto):
         "id_tal_cual": f"id:{data_id};request-id:{x_request_id or ''};ts:{ts};",
         "sin_request_id": f"id:{id_firmado};ts:{ts};",
         "sin_id": f"request-id:{x_request_id or ''};ts:{ts};",
+        "sin_punto_y_coma_final": f"id:{id_firmado};request-id:{x_request_id or ''};ts:{ts}",
+        "con_espacios": f"id:{id_firmado} request-id:{x_request_id or ''} ts:{ts}",
     }
     esperadas = {n: hmac.new((secreto or "").encode(), m.encode(), hashlib.sha256).hexdigest() for n, m in variantes.items()}
     coincide = [n for n, e in esperadas.items() if recibida and hmac.compare_digest(e, recibida)]
