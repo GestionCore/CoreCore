@@ -154,6 +154,19 @@ legítimo choca con un límite, subir el valor en `REGLAS` de `limitador.py`.
 - **Cambiar de plan** (Base → Elite): modifica el monto de la suscripción que ya existe (no crea otra, para no cobrar dos veces) y deja registro («Plan de la suscripción cambiado»). Elite → Base no se ofrece: se resuelve a mano.
 - Si hay que cortar un cobro a mano: cancelar la suscripción desde el panel de Mercado Pago y poner `plan = 'cancelado'` desde `/admin`.
 
+## 9b-2. Mails del servicio (`correos.py`)
+
+- **Estado hoy: APAGADO.** Sin las variables `CORREO_PROVEEDOR`, `CORREO_API_KEY` y `CORREO_REMITENTE` no se manda nada ni se escribe nada en la base; todo el código ya está enganchado y probado con un proveedor simulado.
+- **Qué mails existen** (todos del servicio, ninguno de marketing): `cobro_pendiente` (el cobro de la renovación no se acreditó; se manda al día siguiente, una vez por ciclo), `plan_dado_de_baja` (pasaron los 3 días de gracia), `suscripcion_cancelada`
+  (la persona la canceló en CoreLux o en Mercado Pago), `plan_cambiado` (Base → Elite, sin cobro adicional), `prueba_por_vencer` (3 días antes) y `prueba_vencida` (hasta 2 días después; solo con cobro habilitado).
+- **Para encenderlo**: (1) elegir proveedor — hoy está implementado `resend` (resend.com; el plan gratis alcanza al principio); (2) en el proveedor, verificar el dominio `corelux.app` (te pide agregar registros DNS en Cloudflare: SPF y DKIM);
+  (3) cargar las variables con `fly secrets set CORREO_PROVEEDOR=resend CORREO_API_KEY=<clave> CORREO_REMITENTE="CoreLux <avisos@corelux.app>" -a corecore` (opcional `CORREO_RESPONDER_A=<tu mail>` para que las respuestas te lleguen a vos). No pegues la clave en un chat.
+  (4) Probarlo: dejar que la tarea de las 10:00 ART avise una prueba que vence, o mandar un aviso a mano desde `fly ssh console` con `python -c "import correos; print(correos.enviar('tu@mail.com','Prueba','Hola'))"` (devuelve `enviado`).
+- **Qué se guarda**: la tabla `correos_enviados` (persona, tipo, clave, a qué dirección, cuándo). El aviso se reserva ANTES de mandarlo y se libera si el proveedor falla (se reintenta en la próxima corrida); el mismo hecho no sale dos veces.
+  Nunca se manda a `meli-<id>@pendiente.corelux.app` (el email todavía no es real) ni a una dirección con saltos de línea.
+- **Si algo sale mal**: en el log aparece `[Correos] No se pudo enviar el mail (resend): HTTP 4xx…` (sin dirección ni texto). Para apagarlo en segundos: `fly secrets unset CORREO_API_KEY -a corecore`.
+- **Para sumar otro proveedor**: una función `_enviar_por_<nombre>(cfg, destino, asunto, texto, html) -> (ok, detalle)` en `correos.py` y registrarla en `PROVEEDORES`.
+
 ## 9c. Política de seguridad del navegador (CSP)
 
 - `seguridad.py` manda `Content-Security-Policy`. La variable `CSP_MODO` (se cambia con `fly secrets set CSP_MODO=<modo> -a corecore`, sin desplegar) elige: `prueba` (la de siempre en vigor; la estricta solo avisa en `Content-Security-Policy-Report-Only`), `estricta` (los scripts inline sin el

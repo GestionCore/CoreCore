@@ -9,6 +9,7 @@ dueño) las tareas se delegaban a Celery y el sistema se portaba distinto que en
   · cada hora: verificación de los permisos de Mercado Libre (salud_tokens) y limpieza de vinculaciones de OAuth abandonadas
   · cada madrugada (03:30 de Argentina): borrado físico de lo «eliminado» hace más de un día (soft deletes)
   · cada día a las 09:00 de Argentina: renovaciones de Mercado Pago, solo de quienes ya les llegó su fecha de cobro (renovaciones_mp.py)
+  · cada día a las 10:00 de Argentina: mails de la prueba gratuita (solo con cobro habilitado y mails configurados; ver correos.py)
   · cada 24 horas: relevamiento de competencia y de tendencias
 """
 import os
@@ -192,6 +193,17 @@ def _tarea_renovaciones_mp():
         print(f"[Scheduler] 💳 Renovaciones de Mercado Pago: {resumen}")
 
 
+def _tarea_avisos_de_prueba():
+    """
+    Mails de la prueba gratuita («termina el …», «terminó»): una vez al día. Solo hace algo con el cobro habilitado Y los mails configurados (correos.habilitado):
+    mientras no haya proveedor de mail no consulta nada ni escribe en la base.
+    """
+    import renovaciones_mp
+    resumen = renovaciones_mp.avisar_pruebas()
+    if any(resumen.values()):
+        print(f"[Scheduler] ✉️ Avisos de la prueba gratuita: {resumen}")
+
+
 TABLAS_CON_SOFT_DELETE = ("gastos_operativos", "ventas")
 
 
@@ -246,5 +258,7 @@ def _arrancar_apscheduler():
     _scheduler_apscheduler.add_job(_tarea_limpiar_soft_deletes, "cron", hour=6, minute=30, timezone="UTC", id="limpiar_soft_deletes", max_instances=1, coalesce=True)
     # 12:00 UTC = 09:00 en Argentina: Mercado Pago cobra a la misma hora del día en que se contrató (a la noche), así que la mañana siguiente al día de cobro ya está acreditado o rechazado.
     _scheduler_apscheduler.add_job(_tarea_renovaciones_mp, "cron", hour=12, minute=0, timezone="UTC", id="renovaciones_mp", max_instances=1, coalesce=True)
+    # 13:00 UTC = 10:00 en Argentina: una hora después de las renovaciones, a una hora razonable para recibir un mail
+    _scheduler_apscheduler.add_job(_tarea_avisos_de_prueba, "cron", hour=13, minute=0, timezone="UTC", id="avisos_de_prueba", max_instances=1, coalesce=True)
     _scheduler_apscheduler.start()
     print(f"[Scheduler] ✅ APScheduler iniciado (barredora cada {_intervalo_barredora()} min para todas las cuentas; cada {INTERVALO_CUENTAS_NUEVAS_MINUTOS} min solo las de primera sincronización pendiente).")

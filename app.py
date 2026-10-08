@@ -70,6 +70,7 @@ import exportador_redes
 import scheduler
 import ventas_manuales
 import pagos
+import correos
 import admin_usuarios
 import mis_datos
 import preferencias
@@ -690,6 +691,16 @@ def _en_segundo_plano(funcion, *args):
     """
     import threading
     threading.Thread(target=funcion, args=args, daemon=True).start()
+
+
+def _avisar_por_mail(usuario_id, email, tipo, clave, **datos):
+    """Aviso por mail (correos.py) en segundo plano: el pedido al proveedor no demora la respuesta. Con los mails apagados no hace nada y nunca levanta una excepción."""
+    if not correos.habilitado():
+        return
+    try:
+        _en_segundo_plano(lambda: correos.avisar(usuario_id, email, tipo, clave, **datos))
+    except Exception as e:
+        print(f"[Correos] ⚠️ No se pudo programar el aviso {tipo} del usuario {usuario_id}: {e}")
 
 
 @app.route("/notificaciones_meli", methods=["POST"])
@@ -3866,6 +3877,7 @@ def suscripcion_iniciar():
                     conexion.cursor().execute("UPDATE usuarios SET plan = %s WHERE id = %s", (plan, g.usuario_id))
                 auditoria.registrar("suscripcion_cambiar_plan", {"de": plan_actual, "a": plan, "preapproval_id": mp_id_actual})
                 print(f"[Pagos] 🔁 Usuario {g.usuario_id}: {plan_actual} → {plan} sobre la misma suscripción {mp_id_actual}.")
+                _avisar_por_mail(g.usuario_id, email, "plan_cambiado", f"{mp_id_actual}:{plan}", plan_anterior=plan_actual, plan_nuevo=plan, proximo_cobro=pagos.proximo_cobro(info_actual))
                 return redirect(url_for("planes_vista", aviso="plan_cambiado"))
         if (info_actual or {}).get("status") not in (None, "cancelled"):
             pagos.cancelar_suscripcion(mp_id_actual)
@@ -3932,13 +3944,13 @@ def suscripcion_cancelar():
     """Cancela la suscripción activa en MP y actualiza el plan."""
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("SELECT mp_suscripcion_id, plan FROM usuarios WHERE id = %s", (g.usuario_id,))
+        cursor.execute("SELECT mp_suscripcion_id, plan, email FROM usuarios WHERE id = %s", (g.usuario_id,))
         fila = cursor.fetchone()
 
     if not fila or not fila[0]:
         return jsonify({"ok": False, "detalle": "No hay suscripción activa para cancelar."}), 400
 
-    mp_id, plan_actual = fila
+    mp_id, plan_actual, email = fila
     if plan_actual not in ("base", "elite"):
         return jsonify({"ok": False, "detalle": "Solo podés cancelar una suscripción paga."}), 400
 
@@ -3951,6 +3963,7 @@ def suscripcion_cancelar():
                 (g.usuario_id,)
             )
         print(f"[Pagos] ⚠️ Usuario {g.usuario_id} canceló su suscripción {mp_id}.")
+        _avisar_por_mail(g.usuario_id, email, "suscripcion_cancelada", mp_id, plan=plan_actual)
         return jsonify({"ok": True})
     else:
         return jsonify({"ok": False, "detalle": "No se pudo cancelar en Mercado Pago. Intentá de nuevo o contactá soporte."}), 502
@@ -3978,6 +3991,7 @@ def webhook_mercadopago():
         return "", 200  # MP espera 200 aunque ignoremos el evento
 
     usuario_id, nuevo_plan, preapproval_id, proximo_cobro = resultado
+    aviso_de_baja = None
     try:
         with db.conexion_admin() as conexion:
             cursor = conexion.cursor()
@@ -3988,14 +4002,21 @@ def webhook_mercadopago():
                 )
             elif nuevo_plan == "cancelado":
                 # Solo si el aviso es de la suscripción que el usuario tiene guardada: el aviso tardío de una vieja (cambiada o cancelada a propósito) no le baja el plan nuevo.
+                cursor.execute("SELECT email, plan FROM usuarios WHERE id = %s", (usuario_id,))
+                previo = cursor.fetchone()
                 cursor.execute(
                     "UPDATE usuarios SET plan = 'cancelado', mp_proximo_cobro = NULL WHERE id = %s AND (mp_suscripcion_id IS NULL OR mp_suscripcion_id = %s)",
                     (usuario_id, preapproval_id)
                 )
+                if cursor.rowcount and previo and previo[1] in ("base", "elite"):      # quien ya figuraba cancelado (lo hizo desde CoreLux) ya recibió su aviso
+                    aviso_de_baja = (previo[0], previo[1])
         print(f"[Pagos] 🔔 Webhook MP: usuario {usuario_id} → plan {nuevo_plan} (preapproval {preapproval_id})")
     except Exception as e:
         print(f"[Pagos] ❌ Error procesando webhook para usuario {usuario_id}: {e}")
         return "", 500
+
+    if aviso_de_baja:
+        _avisar_por_mail(usuario_id, aviso_de_baja[0], "suscripcion_cancelada", preapproval_id, plan=aviso_de_baja[1])
 
     return "", 200
 

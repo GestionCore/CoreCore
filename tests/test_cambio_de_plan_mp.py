@@ -69,6 +69,8 @@ def test_si_la_lectura_posterior_no_muestra_el_cambio_tampoco(monkeypatch):
 # ── La ruta, con Mercado Pago y la base simulados ───────────────────────────────────────────────────────────────────────────
 
 class _Cursor:
+    rowcount = 1
+
     def __init__(self, fila, escrituras):
         self.fila, self.escrituras = fila, escrituras
 
