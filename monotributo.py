@@ -123,14 +123,15 @@ def evaluar_categoria(usuario_id, cuenta_id):
                     "tipo": "oportunidad",
                     "texto": f"Estás usando el {porcentaje_uso}% del techo de tu categoría declarada ({categoria_declarada}). Facturando lo que facturás, la Categoría {categoria_real['categoria']} te alcanzaría — bajar podría significar pagar menos cuota mensual."
                 })
-    elif categoria_declarada and idx_declarada is not None:
-        escala_actual = ESCALAS[idx_declarada]
-        porcentaje_uso = round((facturacion_12m / escala_actual["tope_anual"]) * 100, 1)
-        if porcentaje_uso >= 85:
-            alertas.append({
-                "tipo": "importante",
-                "texto": f"Estás usando el {porcentaje_uso}% del techo de tu categoría ({categoria_declarada}). Falta poco para necesitar recategorizarte a la próxima."
-            })
+        else:
+            # La categoría real es la declarada: lo que importa es cuánto falta para el techo. (Antes esta rama colgaba de un `elif` que solo se alcanzaba al superar TODAS las categorías: el aviso nunca salía cuando correspondía.)
+            escala_actual = ESCALAS[idx_declarada]
+            porcentaje_uso = round((facturacion_12m / escala_actual["tope_anual"]) * 100, 1)
+            if porcentaje_uso >= 85:
+                alertas.append({
+                    "tipo": "importante",
+                    "texto": f"Estás usando el {porcentaje_uso}% del techo de tu categoría ({categoria_declarada}). Falta poco para necesitar recategorizarte a la próxima."
+                })
 
     if meses_para_cruzar is not None and meses_para_cruzar <= 6:
         proxima_ventana = _proxima_ventana_recategorizacion(hoy)

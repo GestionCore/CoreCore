@@ -29,11 +29,11 @@ def calcular_score_salud(cursor):
     if talles_sin_stock > 0:
         resta = min(talles_sin_stock * 4, 20)
         score -= resta
-        detalle.append(f"-{resta} por {talles_sin_stock} talle(s) sin stock dentro de publicaciones activas")
+        detalle.append(f"-{resta} por {plural(talles_sin_stock, 'talle')} sin stock dentro de publicaciones activas")
     if talles_stock_bajo > 0:
         resta = min(talles_stock_bajo * 2, 10)
         score -= resta
-        detalle.append(f"-{resta} por {talles_stock_bajo} talle(s) con stock muy bajo (1-2 u.)")
+        detalle.append(f"-{resta} por {plural(talles_stock_bajo, 'talle')} con stock muy bajo (1-2 u.)")
 
     try:
         modelos_con_curva_rota = len(analisis_stock.evaluar_curva_talles(cursor))

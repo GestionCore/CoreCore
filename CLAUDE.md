@@ -337,7 +337,7 @@ scopeado por cuenta_id antes de confiar en él.
 - Auditoría automática de devoluciones/cancelaciones más allá de lo
   que ya cubre `ventas_sync.py` (el mapeo de motivo de reclamo sigue
   sin terminar de ajustar, ver `cosas.txt`)
-- Cobro por Mercado Pago
+- Cobro REAL por Mercado Pago (el flujo completo existe y anda en el sandbox: producción corre con credenciales de PRUEBA; ver `PENDIENTES.md` §4 y `docs/RUNBOOK.md` §9b) y mails a las personas (`correos.py` está listo pero APAGADO hasta que el dueño elija proveedor)
 - El Dashboard ya tiene tarjetas KPI (Design System v2), pero sigue
   siendo mayormente cuadros de resumen — más variedad real de
   gráficos (no solo el de tendencia de ventas) sigue sin hacerse
@@ -594,6 +594,27 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
 - **Cobro con Mercado Pago, pruebas (2026-10-07)**: ver `PENDIENTES.md` §4. `pagos.procesar_webhook` usa `data.id` (URL o cuerpo) y NO el `id` de arriba del cuerpo (en el formato nuevo es el número del AVISO: antes un aviso real consultaba una suscripción inexistente y nunca activaba el plan; el simulador del panel no lo mostraba porque ambos valen igual). `pagos.diagnostico_firma` deja en el log del 401 si la firma coincide con alguna variante del manifiesto (solo prefijos de HMAC). Producción corre con credenciales de PRUEBA: no es cobro real todavía. El «Simular notificación» pasa la firma; los avisos reales del sandbox no (sin resolver). **Renovaciones**: `renovaciones_mp.py` + `usuarios.mp_proximo_cobro` (migración 0043): el scheduler (09:00 ART) consulta a MP SOLO a quienes ya les llegó su fecha de cobro, no todos los días; rechazo = 3 días de gracia y luego se corta (plan «cancelado» + cancelación en MP); la baja exige `mp_suscripcion_id` (cortesía a salvo). Para probar el webhook sin depender de eso: correr la app en la PC con `MP_WEBHOOK_SECRET` propia, el scheduler apagado (`scheduler.iniciar_scheduler = lambda: None`) y un usuario temporal con email `@corelux.invalid`; borrarlo al terminar.
 - **Respaldos** (`respaldo.py`): fuera del proyecto (`~/CoreLux-respaldos`), se niega a escribir adentro, cifra con `RESPALDO_CLAVE` (Fernet). Ver `docs/RUNBOOK.md`.
 
+## Lo que dejaron las sesiones del 2026-10-08 al 12 (rendimiento, limpieza, mails, pruebas de plata)
+- **Publicidad por publicación = UN listado, no una llamada por publicación**: `ads.obtener_anuncios_con_metricas` usa `GET /advertising/{site}/advertisers/{id}/product_ads/ads/search` (50 por página; mismos números que la consulta
+  individual, verificado con 2 cuentas y períodos de 14 y 60 días; si falla vuelve a la consulta por publicación). Lo comparten Publicidad y Ganancia Real. **No existe un endpoint masivo de visitas** (`/visits/items?ids=` responde «máximo 1 ítem»):
+  las visitas de las publicaciones sin ventas viven en `cache_db` 6 h con la hora de cada dato (`embudo_conversion.visitas_con_cache`), y un error de MeLi es «no sé», NUNCA «0 visitas».
+- **Medir desde la PC engaña**: cada `with conexion_usuario` cuesta ~80 ms acá y ~5 ms en Fly, y el primer pedido de un proceso paga ~3 s de arranque del pool. Para saber qué es lento de verdad: `fly logs -a corecore | grep "\[Lento\]"`
+  (una línea por pedido de más de 2,5 s, sin parámetros; `seguridad._registrar_si_fue_lento`). No agregar cachés por pantalla sin ver números reales de ahí.
+- **Una consulta por pantalla, no por fila**: Historial de precios, impacto de Promociones y seguimientos de Tendencias leían una consulta por fila; ahora una sola (`tests/test_consultas_en_lote.py` compara contra la forma vieja con datos reales). Al armar una lista, no abrir `cursor.execute` dentro de un `for`.
+- **Código muerto ya borrado, no reintroducir**: pausar anuncios y ofertas relámpago (escribían en MeLi y nadie las llamaba), el horario de corte viejo de `logistica.py`, el panel «personalizar» de Stock, `particulas.js`, el `Procfile` de Railway, 16 KB de CSS de
+  funciones que ya no existen. Para podar CSS: una clase solo sale si no aparece en ninguna plantilla, JS ni `.py` NI como prefijo armado a mano (`toast-${tipo}`, `timeline-{{ e.tipo }}`, `aviso-${tono}`, `ux-fila-{{ … }}`).
+  Hay UNA sola `utils.limpiar_titulo_modelo` y UNA `utils.percentil` (tendencias tenía una copia exacta del título: dos claves de «modelo» se desfasan sin que nadie lo note).
+- **Mails** (`correos.py`, tabla `correos_enviados`): 6 avisos del servicio (cobro pendiente, plan dado de baja, suscripción cancelada, plan cambiado, prueba por vencer / vencida), proveedor `resend` por `CORREO_PROVEEDOR` + `CORREO_API_KEY` + `CORREO_REMITENTE`.
+  Sin esas tres variables no manda ni escribe nada. Cada aviso se reserva ANTES de mandarlo (UNIQUE persona + tipo + clave) y se libera si falla; nunca a `…@pendiente.corelux.app`. NO encenderlo sin el dueño. Cómo: `docs/RUNBOOK.md` §9b-2.
+- **Errores de fase de la sincronización a Sentry** (`monitoreo.reportar(fase, error, cuenta_id)`): solo el fallo de una FASE de una cuenta (catálogo, ventas, reclamos, preguntas, enriquecimiento…), agrupado por fase + tipo, tope de uno cada 10 min por cuenta, sin datos de la persona.
+  Sin `SENTRY_DSN` (hoy producción no lo tiene) no hace nada. Un paso nuevo de la sincronización que se trague un error por cuenta tiene que llamarlo (hay una prueba que lista los puntos conectados).
+- **Red de seguridad de la plata** (pruebas con números hechos a mano, no «capturas» del resultado): `test_ganancia_real` (la fórmula central), `test_ventas_sync_cargos` (cargos de cada venta, reparto del envío, hora argentina), `test_costos` (prorrateo de gastos recurrentes),
+  `test_flex_costos` (costo de entrega Flex contra la base real revertida), `test_monotributo`, `test_salud_cuenta`, `test_dashboard_numeros`. Salieron errores reales: Ganancia Real mostraba el gasto en publicidad en $0 si la API de Publicidad fallaba,
+  y la alerta de Monotributo «usás ≥ 85 % del techo» nunca salía cuando la categoría real coincide con la declarada (estaba en un `elif` que solo se alcanzaba al superar TODAS las categorías).
+  `round()` de Python redondea medios hacia el par (2500,5 → 2500): en las pruebas usar valores que no sean exactamente «.5».
+- **Para ver una pantalla en un navegador real sin login**: servidor local sin scheduler (`scheduler.iniciar_scheduler = lambda: None`) + cookie firmada con `app.session_interface.get_signing_serializer(app).dumps({...})`; el token de MeLi local vence y esas partes dan error (no desconecta la cuenta).
+  NUNCA enviar formularios (usa la base de producción). El modo de verificación no debe quedar en `.claude/launch.json` (está versionado).
+
 ## `cosas.txt` — bugs reportados por el usuario usando la app real
 Archivo en la raíz (no es código, son notas del usuario navegando la
 app real como usuario nuevo). Es la fuente de verdad de bugs
@@ -621,7 +642,4 @@ MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones corridas hasta `0033_feedback.sql` (0029 auditoria, 0030 sub_estado, 0031 hora_normalizada, 0032 cache_valores, 0033 feedback) — 
-  verificá `migrate.py --status` contra Supabase real antes de asumir
-  cuál es la última aplicada, el número más alto en `migrations/` no
-  siempre coincide con lo corrido de verdad.
+- Migraciones aplicadas hasta `0044_correos_enviados.sql` (0043 `mp_proximo_cobro`, 0044 `correos_enviados`); verificá `migrate.py --status` contra Supabase real antes de asumir cuál es la última aplicada, el número más alto en `migrations/` no siempre coincide con lo corrido de verdad.
