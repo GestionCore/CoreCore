@@ -12,6 +12,9 @@ Proceso acordado por Diego: **fase por fase**; respetar gevent, Postgres con RLS
   contra el servidor local (usa la base de PRODUCCIÓN); llegó sin sesión, lo mandó a la portada y no cambió nada (la tabla `auditoria` no tiene ninguna fila de `stock_masivo`).
 - Prueba en vivo del refresco de tokens NO se pudo hacer desde la PC: el `.env` local da `invalid_client` en MeLi (no gasta el refresh_token ni desconecta). Mirar los logs de Fly: un refresco por cuenta cada ~6 h, sin `invalid_grant`. La cuenta 7 quedó como estaba (se restauró su `expira_en`).
 
+## 0c. Plan de UI/UX de 200 puntos (2026-10-12)
+`PLAN_UX_200.md`: 200 ítems armados recorriendo 14 pantallas en escritorio y 5 en celular con la cuenta real y midiendo el DOM (★ = medido). Lo más urgente: los montos que se parten en dos líneas en Facturación, el color de las variaciones que no distingue «bueno»/«malo», el botón de chat que tapa contenido en celular, y el celular en general (Costos mide 18.181 px, Stock 13.055 px, 83-88 % de las áreas táctiles por debajo de 40 px). Ordenado en 4 olas. Pendiente de decisión del dueño: ítem 120 (sacar los estilos escritos a mano de las plantillas) e ítem 111 (rótulos «MÁS USADO»).
+
 ## 0b. Evaluación objetiva y plan del día (2026-10-08)
 **Medido hoy**: 852 pruebas (60 % de cobertura de líneas), 19,9 k líneas de Python, 9,5 k de plantillas, 138 rutas, 43 migraciones, `pip-audit` sin vulnerabilidades, producción sana (`/healthz/db` 0,17 s). **Puntaje (juicio mío, con la evidencia de abajo)**:
 plata 85 · confiabilidad 78 · seguridad 85 · experiencia 70 · listo para cobrar 45 · generalidad 70 · capacidad 55 · mantenibilidad 65 · operación/soporte 60.
