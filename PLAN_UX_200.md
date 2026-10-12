@@ -25,15 +25,15 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 ## 1. Defectos visibles: corregir ya (10)
 
-1. [A·S] ★ **Facturación: los montos se parten en dos líneas** («$1.040.7 / 35», «$480.39 / 5», «-$388.8 / 98») porque seis tarjetas entran en una fila con `minmax(150px)` y el valor es grande → tamaño de letra del valor según el ancho (`clamp`), nunca partir un número (`white-space: nowrap`) y abreviar («$1,04 M») cuando no entra.
-2. [A·S] **Delta de 9,5 px** («▼ 30,5%» en Ganancia Real) es el texto más chico de toda la app → mínimo 12 px y misma altura que la píldora vecina.
-3. [A·S] **El color de una variación no depende de si es bueno o malo.** En Publicidad, «Inversión ▼ 34,7%» sale en rojo, pero gastar menos no es malo → cada métrica declara si «subir es bueno» y el verde/rojo sale de ahí (costos y envíos al revés que ventas).
+1. [A·S] ★ **HECHO (2026-10-12) · Facturación: los montos se parten en dos líneas** («$1.040.7 / 35», «$480.39 / 5», «-$388.8 / 98») porque seis tarjetas entran en una fila con `minmax(150px)` y el valor es grande → tamaño de letra del valor según el ancho (`clamp`), nunca partir un número (`white-space: nowrap`) y abreviar («$1,04 M») cuando no entra.
+2. [A·S] **HECHO (2026-10-12) · Delta de 9,5 px** («▼ 30,5%» en Ganancia Real) es el texto más chico de toda la app → mínimo 12 px y misma altura que la píldora vecina.
+3. [A·S] **Precios celebra con 30 de 70 analizadas:** el héroe verde decía «✓ Todos tus precios cubren tu margen» mientras el KPI de al lado marcaba «Sin calcular 40» → solo es «todo bien» si se analizó todo; con faltantes, «30 de 70 · faltan 40 sin calcular» en tono neutro. **HECHO (2026-10-12).**
 4. [A·S] **El botón flotante de chat tapa contenido en celular** (pisa el «Hacerlo →» del checklist y el borde derecho de las tarjetas) → que viva en la barra inferior o dentro de «Más», y si queda flotante, que se pueda minimizar y que el contenido tenga un margen inferior que lo respete.
-5. [M·S] **Publicidad: «Contra el período anterior (—):»** muestra un «(—)» suelto → mostrar las fechas del período anterior o no mostrar nada.
+5. [M·S] **HECHO (2026-10-12) · Publicidad: «Contra el período anterior (—):»** era un bug: pasaba las fechas en dd/mm a una función que espera ISO; ahora dice «(15 – 28 sep)».
 6. [M·S] **El nombre de la cuenta sale en mayúsculas** («DIEGOARIELSANTIAGO», «NOENOEINDUMENTARIA») porque es el nickname de Mercado Libre; y en Planes el menú dice «Mi Cuenta» mientras en el resto dice el nombre → un nombre del negocio editable (`PM#102`) y el mismo rótulo en todas las pantallas.
 7. [M·S] **Dashboard repite lo mismo tres veces:** «Facturado hoy» está en el hero y en la fila de KPIs, y «Resultado de los últimos 14 días» vuelve a explicar «facturado − costos = margen» → una sola vez cada cosa.
 8. [M·S] **Costos muestra tres tarjetas en $0** (gastos fijos, variables, del período) cuando no hay gastos → un solo estado vacío con el botón «Cargar un gasto» (alquiler, sueldos, packaging).
-9. [M·S] **Dos nombres para la misma pantalla:** pestaña «Calculadora MeLi», título «Calculadora de comisiones» → uno solo, sin la sigla.
+9. [M·S] **HECHO (2026-10-12) · Dos nombres para la misma pantalla:** pestaña «Calculadora MeLi», título «Calculadora de comisiones» → uno solo, sin la sigla.
 10. [M·S] **Día a día tiene dos títulos seguidos con el mismo peso** («Día a día» y «Despacho»), más una frase de tres líneas que explica lo obvio → el segundo pasa a título de sección (`h2`), la frase se va.
 
 ## 2. Celular (22)

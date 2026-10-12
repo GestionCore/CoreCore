@@ -42,7 +42,7 @@ GRUPOS_NAV = {
         "paginas": [
             {"nav_key": "costos", "label": "Costos", "href": "/costos", "endpoint": "costos_vista"},
             {"nav_key": "precios", "label": "Precios", "href": "/precios", "endpoint": "precios_vista"},
-            {"nav_key": "calculadora", "label": "Calculadora MeLi", "href": "/calculadora", "endpoint": "calculadora_vista"},
+            {"nav_key": "calculadora", "label": "Calculadora", "href": "/calculadora", "endpoint": "calculadora_vista"},
             {"nav_key": "historial_precios", "label": "Historial de Precios", "href": "/historial_precios", "endpoint": "historial_precios_vista"},
         ],
     },

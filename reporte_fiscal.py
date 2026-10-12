@@ -14,15 +14,7 @@ del reporte (no al momento de la venta).
 from datetime import date, timedelta
 from io import BytesIO
 import db
-from utils import formatear_moneda
-
-DIAS_MES_REFERENCIA = 30
-
-
-def _dias_solapamiento(fecha_inicio, fecha_fin, desde, hasta):
-    inicio = max(fecha_inicio, desde)
-    fin = min(fecha_fin or hasta, hasta)
-    return max((fin - inicio).days + 1, 0)
+from utils import formatear_moneda, prorratear_mensual
 
 
 def calcular_meses(anio: int):
@@ -108,8 +100,7 @@ def calcular_reporte_anual(usuario_id, anio: int, cuenta_id=None):
 
         for mes_num, (desde, hasta) in enumerate(meses, 1):
             if recurrente:
-                dias = _dias_solapamiento(fecha_inicio, fecha_fin, desde, hasta)
-                monto_mes = round(monto_base * (dias / DIAS_MES_REFERENCIA), 2)
+                monto_mes = prorratear_mensual(monto_base, fecha_inicio, fecha_fin, desde, hasta)       # un mes completo = el monto exacto (no 31/30 ni 28/30)
             else:
                 # Gasto único: aplica al mes en que cae
                 if desde <= fecha_inicio <= hasta:

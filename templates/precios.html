@@ -47,14 +47,16 @@
 {% else %}
 
 <!-- ── 1. CÓMO ESTÁN ─────────────────────────────────────────────────────── -->
-{% set tono = 'danger' if pierden else ('warn' if justos else ('ok' if items else 'info')) %}
+{% set sin_analizar = (sin_costo|length) + (sin_ventas|length) %}
+{# Verde solo si TODAS se analizaron: con 30 de 70 sin calcular, «todo bien» sería una falsa tranquilidad #}
+{% set tono = 'danger' if pierden else ('warn' if justos else (('info' if sin_analizar else 'ok') if items else 'info')) %}
 <div class="ux-hero ux-{{ tono }}">
-    <div class="ux-hero-etiqueta">{% if pierden %}Publicaciones que hoy pierden plata{% elif justos %}Publicaciones por debajo de tu margen objetivo{% elif items %}Todos tus precios cubren tu margen{% else %}Todavía no hay con qué calcular{% endif %}</div>
-    <div class="ux-hero-numero">{% if pierden %}{{ pierden|length }}{% elif justos %}{{ justos|length }}{% elif items %}✓{% else %}—{% endif %}</div>
+    <div class="ux-hero-etiqueta">{% if pierden %}Publicaciones que hoy pierden plata{% elif justos %}Publicaciones por debajo de tu margen objetivo{% elif items %}{% if sin_analizar %}Las que se pudieron analizar cubren tu margen{% else %}Todos tus precios cubren tu margen{% endif %}{% else %}Todavía no hay con qué calcular{% endif %}</div>
+    <div class="ux-hero-numero">{% if pierden %}{{ pierden|length }}{% elif justos %}{{ justos|length }}{% elif items %}{% if sin_analizar %}{{ items|length }} de {{ total_activas }}{% else %}✓{% endif %}{% else %}—{% endif %}</div>
     <div class="ux-hero-frase">
         {% if pierden %}Cada venta de {{ 'esta publicación' if pierden|length == 1 else 'estas publicaciones' }} deja pérdida{% if perdida_mensual %}: <b>unos {{ perdida_mensual|plata }} por mes</b> al ritmo de venta actual{% endif %}. Subir el precio hasta el mínimo ya la saca de pérdida.
         {% elif justos %}<b>{{ justos|length }}</b> {{ 'publicación gana' if justos|length == 1 else 'publicaciones ganan' }} menos que el <b>{{ margen_objetivo|round|int }}%</b> que buscás.
-        {% elif items %}Las <b>{{ items|length }}</b> publicaciones analizadas dejan al menos el <b>{{ margen_objetivo|round|int }}%</b> de margen.
+        {% elif items %}Las <b>{{ items|length }}</b> publicaciones analizadas dejan al menos el <b>{{ margen_objetivo|round|int }}%</b> de margen.{% if sin_analizar %} Faltan <b>{{ sin_analizar }}</b> sin calcular: les falta el costo de fabricación o todavía no vendieron.{% endif %}
         {% else %}Para calcular el precio mínimo hace falta el <b>costo de fabricación</b> de cada publicación y al menos una venta.{% endif %}
     </div>
     <div class="ux-hero-nota">Calculado con la comisión y el envío que pagó cada publicación en los últimos {{ ventana_dias }} días.</div>
@@ -122,7 +124,7 @@
     {% endfor %}
     {% if (pierden|length + justos|length) > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver las {{ pierden|length + justos|length - 8 }} restantes</button>{% endif %}
 </div>
-{% elif items %}
+{% elif items and not sin_analizar %}
 {{ banner("ok", "check", "<b>Todos tus precios cubren el margen que buscás</b>", "Si querés ser más competitivo, el precio recomendado de cada publicación es el piso hasta donde podés bajar sin salirte de tu objetivo.") }}
 {% endif %}
 

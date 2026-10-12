@@ -2,17 +2,16 @@
 el origen del cursor (RLS) y los placeholders (%s en vez de ?).
 
 Los gastos RECURRENTES (alquiler, sueldos, abonos) se prorratean por
-día dentro del período que se esté mirando — si elegís 14 días, un
-gasto recurrente de $150.000/mes cuenta como $150.000 * 14/30, no el
-mes entero ni $0. Esto se decidió así a propósito en vez de contar el
-mes completo siempre, para que el número tenga sentido en períodos
-cortos como "últimos 7 días"."""
+día dentro del período que se esté mirando — si elegís 14 días de un
+mes de 30, un gasto recurrente de $150.000/mes cuenta como $150.000 * 14/30,
+no el mes entero ni $0; un mes completo cuenta EXACTAMENTE el monto (cada día
+vale el monto ÷ los días de su mes: ver utils.prorratear_mensual). Se prorratea
+a propósito en vez de contar el mes completo siempre, para que el número tenga
+sentido en períodos cortos como "últimos 7 días"."""
 from datetime import datetime
 from psycopg.rows import dict_row
 import db
-from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle
-
-DIAS_MES_REFERENCIA = 30  # para prorratear "monto mensual" a días
+from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle, prorratear_mensual
 
 
 UMBRAL_AVISO_SIN_COSTO = 5       # % de lo facturado sin costo de fabricación a partir del cual se avisa que la ganancia puede estar inflada
@@ -37,12 +36,6 @@ def cobertura_de_costos(cursor, desde, hasta):
     pct = round(sin_costo / facturado * 100, 1) if facturado > 0 else 0.0
     return {"facturado": facturado, "sin_costo": sin_costo, "pct_sin_costo": pct, "publicaciones": int(publicaciones or 0),
             "avisar": facturado > 0 and pct >= UMBRAL_AVISO_SIN_COSTO}
-
-
-def _dias_de_solapamiento(fecha_inicio_gasto, fecha_fin_gasto, fecha_desde_periodo, fecha_hasta_periodo):
-    inicio = max(fecha_inicio_gasto, fecha_desde_periodo)
-    fin = min(fecha_fin_gasto or fecha_hasta_periodo, fecha_hasta_periodo)
-    return max((fin - inicio).days + 1, 0)
 
 
 def _talle_de_titulo(titulo):
@@ -70,8 +63,7 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
         for fila in gastos_db:
             monto_base = float(fila["monto"])
             if fila["recurrente"]:
-                dias = _dias_de_solapamiento(fila["fecha"], fila["fecha_fin"], fecha_desde_dt, fecha_hasta_dt)
-                monto = round(monto_base * (dias / DIAS_MES_REFERENCIA), 2)
+                monto = prorratear_mensual(monto_base, fila["fecha"], fila["fecha_fin"], fecha_desde_dt, fecha_hasta_dt)
             else:
                 monto = monto_base
 

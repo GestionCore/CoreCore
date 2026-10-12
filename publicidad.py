@@ -23,7 +23,7 @@ def _comparar_con_periodo_anterior(access_token, advertiser_id, fecha_desde, fec
         roas_ant = round(ventas_ant / costo_ant, 2) if costo_ant > 0 else None
         pct = lambda actual, previo: round((actual - previo) / previo * 100, 1) if previo and previo > 0 else None
         return {
-            "desde": desde_ant.strftime("%d/%m"), "hasta": hasta_ant.strftime("%d/%m"),
+            "desde": desde_ant.strftime("%Y-%m-%d"), "hasta": hasta_ant.strftime("%Y-%m-%d"),      # ISO: la plantilla las muestra con rango_fechas ("15 sep – 28 sep"); en dd/mm salía «—»
             "costo_pct": pct(costo, costo_ant), "ventas_pct": pct(ventas, ventas_ant),
             "roas": roas_ant, "roas_diff": round(roas - roas_ant, 2) if (roas is not None and roas_ant is not None) else None,
         }

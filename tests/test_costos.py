@@ -1,5 +1,5 @@
 """
-costos.py: gastos operativos (los recurrentes se prorratean por día del período: monto × días/30), ganancia estimada por producto y cobertura de costos de fabricación.
+costos.py: gastos operativos (los recurrentes se prorratean por día del período: cada día vale el monto ÷ los días de su mes), ganancia estimada por producto y cobertura de costos de fabricación.
 Entra en Ganancia Real (costos fijos del punto de equilibrio) y en el aviso de «ganancia inflada». Números calculados a mano; la base está simulada.
 """
 from datetime import date
@@ -7,23 +7,6 @@ from datetime import date
 import pytest
 
 import costos
-
-
-# ── Cuántos días de un gasto caen dentro del período ─────────────────────────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("inicio, fin, desde, hasta, esperado", [
-    (date(2026, 1, 1), None, date(2026, 9, 1), date(2026, 9, 14), 14),                       # arrancó antes y sigue vigente: todo el período
-    (date(2026, 9, 5), None, date(2026, 9, 1), date(2026, 9, 14), 10),                       # arranca el 5: 5 al 14 inclusive = 10 días
-    (date(2026, 9, 14), None, date(2026, 9, 1), date(2026, 9, 14), 1),                       # arranca el último día: cuenta ese día
-    (date(2026, 8, 1), date(2026, 9, 3), date(2026, 9, 1), date(2026, 9, 14), 3),            # termina el 3: 1 al 3 inclusive
-    (date(2026, 8, 1), date(2026, 9, 1), date(2026, 9, 1), date(2026, 9, 14), 1),            # termina el primer día del período
-    (date(2026, 8, 1), date(2026, 8, 31), date(2026, 9, 1), date(2026, 9, 14), 0),           # terminó antes: nada
-    (date(2026, 9, 15), None, date(2026, 9, 1), date(2026, 9, 14), 0),                       # empieza después: nada
-    (date(2026, 9, 3), date(2026, 9, 6), date(2026, 9, 1), date(2026, 9, 30), 4),            # adentro del período: sus propios 4 días
-    (date(2026, 8, 1), date(2026, 10, 30), date(2026, 9, 1), date(2026, 9, 30), 30),         # cubre todo el mes
-])
-def test_dias_de_solapamiento(inicio, fin, desde, hasta, esperado):
-    assert costos._dias_de_solapamiento(inicio, fin, desde, hasta) == esperado
 
 
 # ── Base simulada ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -95,10 +78,12 @@ def test_los_gastos_se_separan_en_fijos_y_variables_y_los_recurrentes_se_prorrat
     assert por_id[3]["monto_mensual_formateado"] is None and por_id[3]["fecha"] == "2026-09-05"
 
 
-def test_un_periodo_de_un_mes_corrido_prorratea_con_30_dias_de_referencia(monkeypatch):
-    """Decisión documentada (DIAS_MES_REFERENCIA = 30): un período de 31 días cuenta 31/30 del gasto mensual."""
-    (_, stats, _), _c = _datos(monkeypatch, [_gasto(1, "Alquiler", "fijo", 30000, date(2026, 1, 1), recurrente=True)], [], [], desde="2026-10-01", hasta="2026-10-31")
-    assert stats["fijos_raw"] == 31000.0
+def test_un_mes_completo_vale_exactamente_el_monto_sea_cual_sea_su_largo(monkeypatch):
+    """Un alquiler de $30.000 por mes cuenta $30.000 en octubre (31 días), en septiembre (30) y en febrero (28): antes dividía siempre por 30 y octubre daba $31.000."""
+    alquiler = [_gasto(1, "Alquiler", "fijo", 30000, date(2026, 1, 1), recurrente=True)]
+    for desde, hasta in (("2026-10-01", "2026-10-31"), ("2026-09-01", "2026-09-30"), ("2026-02-01", "2026-02-28"), ("2028-02-01", "2028-02-29")):
+        (_, stats, _), _c = _datos(monkeypatch, alquiler, [], [], desde=desde, hasta=hasta)
+        assert stats["fijos_raw"] == 30000.0, (desde, hasta)
 
 
 def test_la_consulta_trae_los_recurrentes_vigentes_y_los_puntuales_del_periodo(monkeypatch):

@@ -115,7 +115,7 @@ scopeado por cuenta_id antes de confiar en él.
   confirmación explícita antes de guardar — nunca escribe directo.
   `gastos_operativos` ahora soporta `recurrente` + `fecha_fin`, con
   prorrateo por día en `costos.py` cuando el período elegido es más
-  corto que un mes. También carga **costo de fabricación por grupo de
+  corto que un mes (`utils.prorratear_mensual`: cada día vale el monto ÷ los días de SU mes, así un mes completo cuenta exactamente el monto; antes dividía siempre por 30 y octubre daba 103 %, y el reporte fiscal anual sumaba 12,17 meses). También carga **costo de fabricación por grupo de
   productos** ("las camperas de jean valen 12000"): la IA solo extrae
   grupo + monto; quién es el grupo lo resuelve
   `resolver_grupos_de_productos` SIN IA (todas las palabras del grupo

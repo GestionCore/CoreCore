@@ -134,6 +134,23 @@ def limpiar_titulo_modelo(titulo):
     return t
 
 
+def prorratear_mensual(monto_mensual, inicio, fin, desde, hasta):
+    """
+    Lo que le toca al período [desde, hasta] de un gasto de `monto_mensual` por mes, vigente desde `inicio` y hasta `fin` (None = sin fecha de fin; todas son `date`, extremos incluidos).
+    Cada día vale el monto ÷ los días del MES en el que cae: un mes completo vale exactamente el monto (un alquiler de $150.000 son $150.000 en octubre, que tiene 31 días, y también en
+    febrero) y 14 días de un mes de 30 valen 14/30. Antes se dividía siempre por 30: octubre daba $155.000, febrero $140.000 y un año entero sumaba 12,17 meses.
+    """
+    import calendar
+    primero, ultimo = max(inicio, desde), min(fin or hasta, hasta)
+    total, dia = 0.0, primero
+    while dia <= ultimo:
+        dias_del_mes = calendar.monthrange(dia.year, dia.month)[1]
+        fin_del_tramo = min(dia.replace(day=dias_del_mes), ultimo)
+        total += monto_mensual * ((fin_del_tramo - dia).days + 1) / dias_del_mes
+        dia = fin_del_tramo + timedelta(days=1)
+    return round(total, 2)
+
+
 def percentil(ordenados, p):
     """Percentil `p` (0 a 1) de una lista YA ORDENADA, con interpolación lineal; None si está vacía."""
     if not ordenados:
