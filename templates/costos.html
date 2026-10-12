@@ -27,13 +27,20 @@
 {% endif %}
 {% endif %}
 
+{% set sin_gastos = (stats.fijos_raw == 0 and stats.variables_raw == 0) %}
 <div class="ux-kpis">
     {{ kpi("Publicaciones con costo", con_costo ~ " de " ~ activos|length, "ok" if not sin_costo else "warn", "check", "activas con costo de fabricación cargado") }}
     {{ kpi("Venden a pérdida", con_perdida|length, "danger" if con_perdida else "ok", "alert", "precio menor que todos los costos") }}
+    {% if not sin_gastos %}
     {{ kpi("Gastos fijos", "$" ~ stats.fijos.split(',')[0], "accion", "wallet", "alquiler, sueldos, abonos…") }}
     {{ kpi("Gastos variables", "$" ~ stats.variables.split(',')[0], "info", "receipt", "bolsas, embalaje, etc.") }}
     {{ kpi("Gastos del período", "$" ~ stats.total.split(',')[0], "neutral", "coin", "fijos + variables · " ~ rango_fechas(fecha_desde, fecha_hasta)) }}
+    {% endif %}
 </div>
+{% if sin_gastos %}
+{# Sin gastos en el período no se muestran tres tarjetas en $0: una sola línea con la salida #}
+<div class="page-subtitle" id="aviso-sin-gastos">Sin gastos cargados del {{ rango_fechas(fecha_desde, fecha_hasta) }}. <a href="#gastos-negocio"><b>Cargar un gasto</b></a>: el alquiler, los sueldos y el packaging entran al punto de equilibrio.</div>
+{% endif %}
 
 <!-- ── 2. COSTO DE FABRICACIÓN POR MODELO ───────────────────────────────── -->
 <div class="ux-seccion ux-warn" id="costos-fabricacion">Costo de fabricación por modelo
@@ -198,7 +205,7 @@
 {% endif %}
 
 <!-- ── 3. GASTOS DEL NEGOCIO ───────────────────────────────────────────── -->
-<div class="ux-seccion ux-info">Gastos del negocio</div>
+<div class="ux-seccion ux-info" id="gastos-negocio">Gastos del negocio</div>
 
 <form action="/costos" method="GET" class="ux-periodo no-imprimir">
     <div class="ux-periodo-botones">

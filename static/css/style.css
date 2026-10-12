@@ -606,6 +606,8 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .toast-warning { --ux-toast: var(--semantic-warning); }
 .toast-warning::before { content: "!"; }
 .toast-info { --ux-toast: var(--semantic-info); }
+.toast-cerrar { margin-left: auto; flex-shrink: 0; min-width: 28px; min-height: 28px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 1em; line-height: 1; cursor: pointer; }
+.toast-cerrar:hover { color: var(--text-primary); background: color-mix(in srgb, var(--text-primary) 10%, transparent); }
 
 /* ---------- Typing indicator del chat ---------- */
 .typing-dots { display: inline-flex; gap: 4px; }

@@ -30,11 +30,11 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 3. [A·S] **Precios celebra con 30 de 70 analizadas:** el héroe verde decía «✓ Todos tus precios cubren tu margen» mientras el KPI de al lado marcaba «Sin calcular 40» → solo es «todo bien» si se analizó todo; con faltantes, «30 de 70 · faltan 40 sin calcular» en tono neutro. **HECHO (2026-10-12).**
 4. [A·S] **El botón flotante de chat tapa contenido en celular** (pisa el «Hacerlo →» del checklist y el borde derecho de las tarjetas) → que viva en la barra inferior o dentro de «Más», y si queda flotante, que se pueda minimizar y que el contenido tenga un margen inferior que lo respete.
 5. [M·S] **HECHO (2026-10-12) · Publicidad: «Contra el período anterior (—):»** era un bug: pasaba las fechas en dd/mm a una función que espera ISO; ahora dice «(15 – 28 sep)».
-6. [M·S] **El nombre de la cuenta sale en mayúsculas** («DIEGOARIELSANTIAGO», «NOENOEINDUMENTARIA») porque es el nickname de Mercado Libre; y en Planes el menú dice «Mi Cuenta» mientras en el resto dice el nombre → un nombre del negocio editable (`PM#102`) y el mismo rótulo en todas las pantallas.
+6. [M·S] **HECHO en parte (2026-10-12) · El nombre de la cuenta sale en mayúsculas** («DIEGOARIELSANTIAGO», «NOENOEINDUMENTARIA») porque es el nickname de Mercado Libre; y en Planes el menú dice «Mi Cuenta» mientras en el resto dice el nombre → un nombre del negocio editable (`PM#102`) y el mismo rótulo en todas las pantallas.
 7. [M·S] **Dashboard repite lo mismo tres veces:** «Facturado hoy» está en el hero y en la fila de KPIs, y «Resultado de los últimos 14 días» vuelve a explicar «facturado − costos = margen» → una sola vez cada cosa.
-8. [M·S] **Costos muestra tres tarjetas en $0** (gastos fijos, variables, del período) cuando no hay gastos → un solo estado vacío con el botón «Cargar un gasto» (alquiler, sueldos, packaging).
+8. [M·S] **HECHO (2026-10-12) · Costos muestra tres tarjetas en $0** (gastos fijos, variables, del período) cuando no hay gastos → un solo estado vacío con el botón «Cargar un gasto» (alquiler, sueldos, packaging).
 9. [M·S] **HECHO (2026-10-12) · Dos nombres para la misma pantalla:** pestaña «Calculadora MeLi», título «Calculadora de comisiones» → uno solo, sin la sigla.
-10. [M·S] **Día a día tiene dos títulos seguidos con el mismo peso** («Día a día» y «Despacho»), más una frase de tres líneas que explica lo obvio → el segundo pasa a título de sección (`h2`), la frase se va.
+10. [M·S] **HECHO en parte (2026-10-12: se quitó la frase; falta bajar el peso del segundo título) · Día a día tiene dos títulos seguidos con el mismo peso** («Día a día» y «Despacho»), más una frase de tres líneas que explica lo obvio → el segundo pasa a título de sección (`h2`), la frase se va.
 
 ## 2. Celular (22)
 
@@ -224,8 +224,8 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 ## 16. Accesibilidad (8)
 
-155. [A·S] ★ **Cero regiones `aria-live`:** los avisos (toasts) y los cambios de estado no se anuncian → `role="status"` o `aria-live="polite"` en el contenedor de avisos y en los contadores que cambian.
-156. [A·S] ★ **Foco visible en TODO lo interactivo:** hoy hay 7 reglas `:focus-visible` → un anillo uniforme de 2 px en botones, links, campos, pestañas y filas clickeables.
+155. [A·S] ★ **HECHO (2026-10-12) · Cero regiones `aria-live`:** los avisos (toasts) y los cambios de estado no se anuncian → `role="status"` o `aria-live="polite"` en el contenedor de avisos y en los contadores que cambian.
+156. [A·S] **Los avisos desaparecían a los 3,2 s aunque fueran errores largos** (no da tiempo a leer qué hacer, y menos con lector de pantalla) → duración según el largo (4-9 s), un error se queda hasta cerrarlo con ✕, se pausan al pasar el mouse y nunca hay más de 3 a la vez. **HECHO (2026-10-12).** (Corrección: el ítem original decía que faltaba un anillo de foco global; ya existe `:focus-visible` global y los campos tienen anillo con brillo, se verificó en el código.)
 157. [A·M] **Títulos con jerarquía real:** casi todas las pantallas pasan de `h1` a nada o a `h3` → cada sección es un `h2` (y las subsecciones `h3`).
 158. [M·S] **Contraste del texto secundario sobre tarjetas teñidas** (naranja, violeta, verde) medido con herramienta, no a ojo; ajustar los tintes que no llegan a 4,5:1.
 159. [M·S] **Los gráficos con descripción accesible** (`aria-label` + la alternativa en texto del ítem 134).

@@ -28,14 +28,33 @@ function reproducirTono(notas, volumen = 0.06) {
 function sonidoExito() { reproducirTono([{freq: 523, t: 0, dur: 0.10}, {freq: 784, t: 0.07, dur: 0.16}]); }
 function sonidoError() { reproducirTono([{freq: 220, t: 0, dur: 0.16}], 0.05); }
 
+const TOASTS_MAXIMOS = 3;
+
 function mostrarToast(mensaje, tipo = 'info') {
+    const texto = String(mensaje == null ? '' : mensaje);
     const cont = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast-item toast-${tipo}`;
-    toast.textContent = mensaje;
+    // Los lectores de pantalla lo anuncian: un error enseguida (alert), el resto sin interrumpir lo que estaban leyendo (status)
+    toast.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
+    toast.append(document.createTextNode(texto));
+    // Un error NO se va solo (leerlo y entender qué hacer lleva más de 3 s): se cierra con la ✕. El resto dura según su largo, y se queda mientras se lo mira.
+    const persistente = tipo === 'error';
+    let temporizador = null;
+    const cerrar = () => { clearTimeout(temporizador); toast.classList.remove('visible'); setTimeout(() => toast.remove(), 300); };
+    const programar = (ms) => { clearTimeout(temporizador); if (!persistente) temporizador = setTimeout(cerrar, ms); };
+    if (persistente) {
+        const boton = document.createElement('button');
+        boton.type = 'button'; boton.className = 'toast-cerrar'; boton.setAttribute('aria-label', 'Cerrar aviso'); boton.textContent = '✕';
+        boton.addEventListener('click', cerrar);
+        toast.append(boton);
+    }
+    toast.addEventListener('mouseenter', () => clearTimeout(temporizador));
+    toast.addEventListener('mouseleave', () => programar(2000));
+    while (cont.children.length >= TOASTS_MAXIMOS) cont.firstElementChild.remove();     // nunca más de 3 a la vez: los errores que se quedan no pueden apilarse sin fin
     cont.appendChild(toast);
     requestAnimationFrame(() => toast.classList.add('visible'));
-    setTimeout(() => { toast.classList.remove('visible'); setTimeout(() => toast.remove(), 300); }, 3200);
+    programar(Math.min(9000, Math.max(4000, 2500 + texto.length * 60)));
     if (tipo === 'success') sonidoExito();
     else if (tipo === 'error') sonidoError();
 }

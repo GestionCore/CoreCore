@@ -26,7 +26,7 @@
     {% for c in cuentas_disponibles %}
     <div class="cuenta-fila">
         <div>
-            <div style="font-weight:700;">{{ c.nombre_negocio or c.nickname }}{% if cuenta_actual and c.id == cuenta_actual.id %} <span class="ux-pill ux-ok ux-pill-suave">la que estás viendo</span>{% endif %}</div>
+            <div style="font-weight:700;">{{ c.nombre_negocio or c.nickname|capitalize }}{% if cuenta_actual and c.id == cuenta_actual.id %} <span class="ux-pill ux-ok ux-pill-suave">la que estás viendo</span>{% endif %}</div>
             <div class="text-muted" style="font-size:0.85em;">{{ c.nickname }}</div>
         </div>
         {% if not cuenta_actual or c.id != cuenta_actual.id %}

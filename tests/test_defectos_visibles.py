@@ -102,3 +102,22 @@ def test_la_calculadora_se_llama_igual_en_la_pestana_y_en_el_titulo():
 def test_el_ejemplo_de_fechas_usa_el_mes_de_la_fecha_y_no_el_actual():
     from utils import rango_fechas
     assert rango_fechas(date(2026, 9, 15), date(2026, 9, 28)) == "15 – 28 sep"
+
+
+# ── Costos sin gastos, Día a día y Cuenta ───────────────────────────────────────────────────────────────────────────────────
+
+def test_costos_sin_gastos_no_muestra_tres_tarjetas_en_cero_y_enlaza_a_donde_cargarlos():
+    costos = _leer("templates", "costos.html")
+    assert "{% set sin_gastos = (stats.fijos_raw == 0 and stats.variables_raw == 0) %}" in costos
+    bloque = costos[costos.index('{% if not sin_gastos %}'):costos.index("{% endif %}", costos.index('{% if not sin_gastos %}'))]
+    assert bloque.count("kpi(") == 3                                                                # las tres tarjetas de gastos solo salen si hay gastos
+    assert 'id="aviso-sin-gastos"' in costos and 'href="#gastos-negocio"' in costos and 'id="gastos-negocio"' in costos
+
+
+def test_dia_a_dia_no_explica_lo_obvio_en_tres_lineas():
+    dia = _leer("templates", "dia.html")
+    assert "todo en una sola pantalla" not in dia and "Despacho, preguntas, pendientes y reputación de hoy." in dia
+
+
+def test_el_nombre_de_la_cuenta_no_se_muestra_en_mayusculas_si_no_hay_nombre_de_negocio():
+    assert "c.nombre_negocio or c.nickname|capitalize" in _leer("templates", "cuenta.html")
