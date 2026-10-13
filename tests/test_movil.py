@@ -98,6 +98,63 @@ console.log(JSON.stringify([a.scrollLeft, b.scrollLeft, c.scrollLeft]));
     assert r == [462.5, 0, 0]
 
 
+# ── Botón flotante del chat ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+def _chat(codigo, tmp_path, celular=True, chat_abierto=False):
+    ruta = os.path.join(RAIZ, "static", "js", "ux.js").replace("\\", "/")
+    guion = tmp_path / "chat_prueba.js"
+    guion.write_text("""
+const fs = require('fs'), vm = require('vm');
+const oyentes = {}, timers = [];
+const boton = { clases: new Set(), classList: { add: (c) => boton.clases.add(c), remove: (c) => boton.clases.delete(c), contains: (c) => boton.clases.has(c) } };
+const chat = { classList: { contains: () => %s } };
+const caja = { console, setTimeout: (f, ms) => { const t = { f, ms, activo: true }; timers.push(t); return t; }, clearTimeout: (t) => { if (t) t.activo = false; },
+  document: { addEventListener() {}, querySelectorAll: () => [], querySelector: (s) => s === '.chat-fab' ? boton : null, getElementById: (id) => id === 'chat-window' ? chat : null },
+  matchMedia: () => ({ matches: %s }) };
+caja.window = caja; caja.addEventListener = (t, f) => { (oyentes[t] = oyentes[t] || []).push(f); };
+vm.createContext(caja);
+vm.runInContext(fs.readFileSync(%s, 'utf8') + ';this.UX = UX;', caja);
+const UX = caja.UX;
+UX.botonChatAlDeslizar();
+const deslizar = () => oyentes.scroll.forEach((f) => f());
+%s
+""" % ("true" if chat_abierto else "false", "true" if celular else "false", json.dumps(ruta), codigo), encoding="utf-8")
+    r = subprocess.run(["node", str(guion)], capture_output=True, encoding="utf-8")
+    assert r.returncode == 0, r.stderr[:800]
+    return json.loads(r.stdout)
+
+
+@CON_NODE
+def test_en_el_celular_el_boton_del_chat_se_esconde_al_deslizar_y_vuelve_cuando_se_frena(tmp_path):
+    r = _chat("""
+deslizar();
+const escondido = boton.clases.has('chat-fab-oculto');
+const primero = timers[timers.length - 1];
+deslizar();                                                  // sigue deslizando: el retorno anterior se cancela y se reprograma
+const reprogramado = !primero.activo && timers[timers.length - 1].activo;
+timers[timers.length - 1].f();
+console.log(JSON.stringify({ escondido, reprogramado, ms: primero.ms, vuelve: !boton.clases.has('chat-fab-oculto') }));
+""", tmp_path)
+    assert r == {"escondido": True, "reprogramado": True, "ms": 700, "vuelve": True}
+
+
+@CON_NODE
+def test_en_pantalla_ancha_el_boton_del_chat_no_se_mueve(tmp_path):
+    assert _chat("deslizar(); console.log(JSON.stringify({ oculto: boton.clases.has('chat-fab-oculto'), timers: timers.length }));", tmp_path, celular=False) == {"oculto": False, "timers": 0}
+
+
+@CON_NODE
+def test_con_el_chat_abierto_el_boton_no_se_esconde(tmp_path):
+    assert _chat("deslizar(); console.log(JSON.stringify({ oculto: boton.clases.has('chat-fab-oculto') }));", tmp_path, chat_abierto=True) == {"oculto": False}
+
+
+def test_el_boton_del_chat_es_mas_chico_solo_en_celular():
+    shell = _leer("static", "css", "shell.css")
+    bloque = shell[shell.index("@media (max-width: 900px)"):shell.index("/* ── Tema claro")]
+    assert "width: 44px; height: 44px" in bloque and ".chat-fab.chat-fab-oculto { opacity: 0" in bloque
+    assert "width: 52px; height: 52px" in _leer("static", "css", "style.css")                    # en escritorio sigue como siempre
+
+
 # ── Checklist plegado en el celular ─────────────────────────────────────────────────────────────────────────────────────────
 
 def test_el_checklist_de_perfil_arranca_plegado_en_el_celular():

@@ -84,24 +84,27 @@ SECCION_DE_NAV = {item["nav_key"]: grupo for grupo, datos in GRUPOS_NAV.items() 
 # Pantallas que no están en el menú pero pertenecen a una sección (se llega por un link, el buscador o un botón)
 SECCION_DE_NAV.update({"comparador_logistica": "ventas", "timeline_publicacion": "stock"})
 
-# Piso mínimo de visitas antes de mostrar el badge "MÁS USADO" — evita marcar una sección al azar después de un solo click.
-UMBRAL_MAS_USADO = 3
+# El badge "MÁS USADO" solo aparece cuando hay uso real de ESA persona que lo respalde: antes se marcaba la pantalla más visitada de cada sección apenas pasaba de 3 visitas,
+# y con poco uso (o con dos pantallas casi empatadas) era ruido. Ahora hace falta que la sección tenga al menos VISITAS_MINIMAS_SECCION visitas en total y que la
+# favorita se lleve al menos PROPORCION_MAS_USADO de ellas (una preferencia clara, no un empate).
+VISITAS_MINIMAS_SECCION = 10
+PROPORCION_MAS_USADO = 0.6
 
 
 def calcular_mas_usado(contadores_por_nav_key):
     """
-    contadores_por_nav_key: dict {nav_key: contador} (de navegacion_visitas).
-    Devuelve dict {sección: nav_key} con la pantalla más visitada de cada sección, solo si superó UMBRAL_MAS_USADO.
+    contadores_por_nav_key: dict {nav_key: contador} (de navegacion_visitas, de UNA persona).
+    Devuelve dict {sección: nav_key} con la pantalla favorita de cada sección, solo si hay datos suficientes y una preferencia clara.
     """
     resultado = {}
     for grupo, datos in GRUPOS_NAV.items():
         if len(datos["paginas"]) < 2 or datos.get("una_pantalla"):
             continue                      # con una sola pantalla no hay nada que destacar
-        mejor_key, mejor_contador = None, 0
-        for item in datos["paginas"]:
-            c = contadores_por_nav_key.get(item["nav_key"], 0)
-            if c > mejor_contador:
-                mejor_key, mejor_contador = item["nav_key"], c
-        if mejor_key and mejor_contador >= UMBRAL_MAS_USADO:
+        visitas = {item["nav_key"]: contadores_por_nav_key.get(item["nav_key"], 0) for item in datos["paginas"]}
+        total = sum(visitas.values())
+        if total < VISITAS_MINIMAS_SECCION:
+            continue                      # todavía no hay datos
+        mejor_key = max(visitas, key=visitas.get)
+        if visitas[mejor_key] / total >= PROPORCION_MAS_USADO:
             resultado[grupo] = mejor_key
     return resultado

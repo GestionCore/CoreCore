@@ -381,12 +381,39 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-fila-costo:last-child { border-bottom: 0; }
 .ux-fila-costo-input input { width: 130px; text-align: right; font-weight: 800; }
 .ux-fila-costo-perdida { background: color-mix(in srgb, var(--danger) 7%, transparent); box-shadow: inset 4px 0 0 var(--danger); margin: 0 -20px; padding-left: 20px; padding-right: 20px; }
+.ux-modelo-nombre { flex: 1; min-width: 0; }
+.ux-modelo-titulo { font-weight: 800; overflow-wrap: anywhere; }
+.ux-modelo-meta { font-size: 0.8em; }
+.ux-modelo-linea { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+.ux-grupo-resumen { white-space: nowrap; }
+.ux-thumb-vacio { width: 42px; height: 42px; }
+.ux-det-texto { flex: 1; min-width: 0; }
+.ux-variante-costo { border-bottom: 1px solid var(--border-soft); }
+.ux-variante-costo:last-child { border-bottom: 0; }
+.ux-variante-cabecera { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; padding: 12px 20px; }
+.ux-variante-nombre { flex: 1; min-width: 140px; overflow-wrap: anywhere; }
+.ux-filas-det-anidado > summary { padding-top: 6px; padding-bottom: 10px; font-size: 0.82em; font-weight: 600; color: var(--text-secondary); }
+.ux-filas-det-anidado[open] > summary { border-bottom: 0; }
 @media (max-width: 720px) {
     .ux-fila-costo { grid-template-columns: 1fr 1fr; gap: 6px 12px; }
     .ux-fila-costo-ganancia { grid-column: 1 / -1; }
     .ux-fila-costo-input input { width: 100%; }
     .ux-copiar-costo { width: 100%; }
     .ux-copiar-costo input { flex: 1; width: auto; }
+    .ux-copiar-costo .flex-gap { flex-wrap: nowrap; }
+    .ux-modelo-cabecera, .ux-variante-cabecera { padding: 12px 14px; gap: 8px 10px; }
+    .ux-filas-det > summary { padding: 10px 14px; }
+    .ux-filas-costo { padding: 4px 14px 10px; }
+    .ux-fila-costo-perdida { margin: 0 -14px; padding-left: 14px; padding-right: 14px; }
+    .ux-modelo-costo { margin-bottom: 10px; }
+    /* Cabecera compacta: miniatura + título (2 líneas) + resumen, y abajo el campo con su botón */
+    .ux-modelo-cabecera { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; }
+    .ux-modelo-cabecera > .ux-modelo-nombre { grid-column: 2; }
+    .ux-modelo-cabecera > .ux-copiar-costo { grid-column: 1 / -1; }
+    .ux-modelo-titulo { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
+    .ux-variante-cabecera { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+    .ux-variante-cabecera > .ux-copiar-costo { grid-column: 1 / -1; }
+    .ux-aplicar-largo { display: none; }
 }
 
 /* ---------- Calculadora: datos a la izquierda, resultado a la derecha (se apilan en celular) ---------- */

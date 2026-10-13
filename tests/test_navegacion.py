@@ -49,5 +49,13 @@ def test_cada_titulo_de_pantalla_del_menu_lleva_su_icono():
 
 def test_el_mas_usado_solo_se_calcula_donde_hay_algo_que_elegir():
     assert nav_config.calcular_mas_usado({"dashboard": 99}) == {}                      # una sola pantalla: nada que destacar
-    assert nav_config.calcular_mas_usado({"stock": 5, "stock_masivo": 1}) == {"stock": "stock"}
-    assert nav_config.calcular_mas_usado({"stock": 2}) == {}                           # por debajo del umbral
+    assert nav_config.calcular_mas_usado({"stock": 12, "stock_masivo": 2}) == {"stock": "stock"}        # 14 visitas y la favorita se lleva el 86 %
+    assert nav_config.calcular_mas_usado({"stock": 2}) == {}                           # todavía no hay datos
+
+
+def test_el_mas_usado_pide_datos_suficientes_y_una_preferencia_clara():
+    assert nav_config.calcular_mas_usado({"stock": 5, "stock_masivo": 1}) == {}        # 6 visitas en la sección: antes bastaba con 3 y se marcaba una pantalla sin que nadie la prefiriera
+    assert nav_config.calcular_mas_usado({"stock": 9, "stock_masivo": 1}) == {"stock": "stock"}          # justo 10 visitas, 90 %
+    assert nav_config.calcular_mas_usado({"stock": 6, "stock_masivo": 5}) == {}        # casi empatadas: ninguna es «la más usada»
+    assert nav_config.calcular_mas_usado({"stock": 6, "stock_masivo": 4}) == {"stock": "stock"}          # justo el 60 %
+    assert nav_config.calcular_mas_usado({"stock": 5, "stock_masivo": 5}) == {}        # empate exacto

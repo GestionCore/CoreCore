@@ -237,6 +237,22 @@ UX.centrarActiva = (barra) => {
 };
 window.addEventListener('DOMContentLoaded', () => document.querySelectorAll('.subnav-tabs-inner').forEach((barra) => { UX.centrarActiva(barra); UX.bordesDeslizables(barra); }));
 
+// En el celular el botón del asistente flota sobre lo que se lee: se esconde mientras la página se desliza y vuelve cuando se frena (en pantalla ancha no se mueve, y con el chat abierto tampoco).
+UX.botonChatAlDeslizar = () => {
+    const boton = document.querySelector('.chat-fab');
+    if (!boton || !window.matchMedia) return;
+    const celular = window.matchMedia('(max-width: 900px)');
+    let temporizador = null;
+    window.addEventListener('scroll', () => {
+        const chat = document.getElementById('chat-window');
+        if (!celular.matches || (chat && chat.classList.contains('open'))) return;
+        boton.classList.add('chat-fab-oculto');
+        clearTimeout(temporizador);
+        temporizador = setTimeout(() => boton.classList.remove('chat-fab-oculto'), 700);
+    }, { passive: true });
+};
+window.addEventListener('DOMContentLoaded', () => UX.botonChatAlDeslizar());
+
 // ── Colores de los gráficos y cambio de tema ─────────────────────────────────────────────────────────────────────────────────
 // Chart.js lee los colores UNA vez, al crear el gráfico: al cambiar el tema en vivo (data-theme) un gráfico ya dibujado conservaba los del tema anterior hasta recargar la página.
 // Acá se recolorea todo gráfico vivo: se reemplaza cada color que era el de un token del tema viejo por el del mismo token en el nuevo (también las versiones con transparencia,

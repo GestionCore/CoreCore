@@ -2202,15 +2202,8 @@ def costos_vista():
     fecha_hasta = request.args.get("fecha_hasta") or hoy_argentina().strftime("%Y-%m-%d")
     fecha_desde = request.args.get("fecha_desde") or hoy_argentina().replace(day=1).strftime("%Y-%m-%d")
     gastos, stats, productos = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta, g.cuenta_id)
-    # Los talles de un mismo modelo se cargan juntos. Primero los modelos activos con talles sin costo (lo urgente), después el resto.
-    grupos = {}
-    for p in productos:
-        grupos.setdefault(p["modelo"], []).append(p)
-    modelos = sorted(
-        ({"modelo": m, "talles": it, "activo": any(x["estado"] == "active" for x in it),
-          "sin_costo": sum(1 for x in it if x["estado"] == "active" and not x["precio_costo"])} for m, it in grupos.items()),
-        key=lambda gr: (not gr["activo"], -gr["sin_costo"], gr["modelo"])
-    )
+    # Modelo → variante (el color) → talle: el costo se carga una vez por modelo o por variante, y por talle solo si de verdad cambia. Primero lo que falta cargar.
+    modelos = costos_mod.agrupar_modelos(productos)
     flex_config, flex_vista_previa, hay_flex, flex_pendientes_n = {"umbrales": [], "info": None}, {"umbrales": [], "ordenes": 0, "costo_total": 0, "sin_precio": 0}, False, 0
     try:
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:

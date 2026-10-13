@@ -42,57 +42,89 @@
 <div class="page-subtitle" id="aviso-sin-gastos">Sin gastos cargados del {{ rango_fechas(fecha_desde, fecha_hasta) }}. <a href="#gastos-negocio"><b>Cargar un gasto</b></a>: el alquiler, los sueldos y el packaging entran al punto de equilibrio.</div>
 {% endif %}
 
-<!-- ── 2. COSTO DE FABRICACIÓN POR MODELO ───────────────────────────────── -->
+<!-- ── 2. COSTO DE FABRICACIÓN POR MODELO → VARIANTE → TALLE ──────────────── -->
+{# El rubro no se supone: «talle» solo si la cuenta vende con talles; si no, lo de más abajo son «publicaciones». La variante (el color u otra versión) sale de la familia de Mercado Libre. #}
+{% set usa_talles = vocab.v1 == 'talle' %}
+{% set u1 = vocab.v1 if usa_talles else 'publicación' %}
+{% set uN = vocab.vN if usa_talles else 'publicaciones' %}
+
+{% macro num(x) -%}{{ x|int if x == x|int else x }}{%- endmacro %}
+
+{% macro rango_cargado(g) -%}
+    {%- if g.costo_min is not none %} · {% if g.costo_min == g.costo_max %}{{ g.costo_max|plata }} en todas{% else %}de {{ g.costo_min|plata }} a {{ g.costo_max|plata }}{% endif %}{% endif -%}
+{%- endmacro %}
+
+{% macro campo_grupo(g, nombre, boton) -%}
+<div class="ux-copiar-costo">
+    <span class="flex-gap" style="gap:6px;">
+        <input type="number" step="0.01" min="0" inputmode="decimal" placeholder="{{ 'Varios costos' if g.costo_min is not none and not g.costo_comun else '$ por unidad' }}" {% if g.costo_comun %}value="{{ num(g.costo_comun) }}"{% endif %} class="input-costo-grupo" aria-label="Costo por unidad de {{ nombre }}">
+        <button type="button" class="btn btn-secondary btn-copiar-costo" title="Aplicar {{ boton }}">Aplicar<span class="ux-aplicar-largo"> {{ boton }}</span></button>
+    </span>
+</div>
+{%- endmacro %}
+
+{% macro fila_costo(p, rotulo) -%}
+<div class="ux-fila-costo" data-activa="{{ 1 if p.estado == 'active' else 0 }}" data-precio="{{ p.precio }}" data-comision="{{ p.comision if p.comision is not none else '' }}" data-envio="{{ p.envio }}">
+    <div class="ux-fila-costo-talle"><span class="ux-pill ux-neutral ux-pill-suave"><b>{{ rotulo }}</b></span>{% if p.estado != 'active' %} <span class="ux-pill ux-warn ux-pill-suave">Pausada</span>{% endif %}</div>
+    <div class="ux-fila-costo-precio text-muted">Precio <b style="color:var(--text-primary);">{{ ('$' ~ p.precio_formateado.split(',')[0]) if p.precio_formateado else '—' }}</b></div>
+    <div class="ux-fila-costo-input">
+        <input type="number" step="0.01" min="0" inputmode="decimal" class="input-costo-producto" data-id-meli="{{ p.id }}" data-original="{{ num(p.precio_costo) }}" value="{{ num(p.precio_costo) if p.precio_costo else '' }}" placeholder="0" aria-label="Costo de fabricación, {{ rotulo }}">
+    </div>
+    <div class="ux-fila-costo-ganancia" data-ganancia></div>
+</div>
+{%- endmacro %}
+
 <div class="ux-seccion ux-warn" id="costos-fabricacion">Costo de fabricación por modelo
     {% if sin_costo %}<span class="ux-pill ux-warn">{{ sin_costo|length }} sin costo</span>{% endif %}
 </div>
-<div class="text-muted" style="font-size:0.88em; margin:-6px 0 14px;">Escribí lo que te cuesta cada unidad. Abajo de cada {{ vocab.v1 }} ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>
+<div class="text-muted" style="font-size:0.88em; margin:-6px 0 14px;">Escribí lo que te cuesta cada unidad y tocá <b>Aplicar</b>: se carga a todo el modelo de una vez. Si el costo cambia de una variante a otra, ajustalo en esa variante{% if usa_talles %} (y por {{ u1 }} solo si de verdad cambia){% endif %}. Ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>
 
 {% if not productos %}
 {{ vacio("Todavía no hay publicaciones sincronizadas", "Sincronizá para traer tu catálogo y poder cargarles el costo.", "refresh", "accion") }}
 {% else %}
 <div id="lista-costos-productos">
-    {% for gr in modelos %}
-    {% set modelo = gr.modelo %}{% set items = gr.talles %}
-    {# Solo las activas cuentan: una publicación pausada sin costo no infla ninguna ganancia #}
-    {% set activas_modelo = items|selectattr('estado', 'equalto', 'active')|list %}
-    {% set sin_c = activas_modelo|selectattr('precio_costo', 'equalto', 0.0)|list %}
-    <div class="ux-modelo-costo panel" data-modelo="{{ modelo }}" style="padding:0; overflow:hidden;">
+    {% for m in modelos %}
+    <div class="ux-grupo-costo ux-modelo-costo panel" data-modelo="{{ m.nombre }}" style="padding:0; overflow:hidden;">
         <div class="ux-modelo-cabecera">
-            {% if items[0].thumbnail %}<img src="{{ items[0].thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}
-            <div style="flex:1; min-width:0;">
-                <div style="font-weight:800;">{{ modelo }}</div>
-                <div class="text-muted" style="font-size:0.8em;">{{ items|length }} {{ vocab.v1 }}{{ 's' if items|length != 1 }}{% if sin_c %} · <b style="color:var(--semantic-warning);">{{ sin_c|length }} sin costo</b>{% elif activas_modelo %} · <b style="color:var(--success);">con costo cargado</b>{% else %} · <span class="text-muted">todas pausadas</span>{% endif %}</div>
+            {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<span class="ux-thumb-vacio" aria-hidden="true"></span>{% endif %}
+            <div class="ux-modelo-nombre">
+                <div class="ux-modelo-titulo" title="{{ m.nombre }}">{{ m.nombre }}</div>
+                <div class="ux-modelo-linea"><span class="text-muted ux-modelo-meta">{% if m.n_variantes > 1 %}{{ m.n_variantes|plural("variante") }} · {% endif %}{{ m.n_publicaciones|plural(u1, uN) }}{% if m.n_publicaciones > m.n_activas %} · {{ (m.n_publicaciones - m.n_activas)|plural("pausada") }}{% endif %}</span>{% if m.n_publicaciones > 1 %}<span class="ux-grupo-resumen" data-resumen></span>{% endif %}</div>
             </div>
-            <div class="ux-copiar-costo">
-                <label class="field-label" style="margin:0;">Mismo costo para todo el modelo</label>
-                <span class="flex-gap" style="gap:6px;">
-                    <input type="number" step="0.01" min="0" inputmode="decimal" placeholder="$ por unidad" class="input-costo-modelo" aria-label="Costo de {{ vocab.vN }} de {{ modelo }}">
-                    <button type="button" class="btn btn-secondary btn-copiar-costo">Aplicar a todos</button>
-                </span>
-            </div>
+            {% if m.n_publicaciones > 1 %}
+            {{ campo_grupo(m, m.nombre, "a todo el modelo") }}
+            {% endif %}
         </div>
-        {# Con varios talles las filas van plegadas: lo normal es cargar UN costo para todo el modelo (arriba). Se abren solas si el modelo está a medias o algún talle vende a pérdida #}
-        {% set colapsable = items|length > 1 %}
-        {% set costos_cargados = items|map(attribute='precio_costo')|select|list %}
-        {% set a_atender = (sin_c and costos_cargados) or (items|selectattr('ganancia_negativa')|list) %}
-        {% if colapsable %}
-        <details class="ux-filas-det" {% if a_atender %}open{% endif %}>
-            <summary>Costo distinto por {{ vocab.v1 }} <span class="text-muted">· {{ items|length }}{% if costos_cargados %} · {% if costos_cargados|min == costos_cargados|max %}{{ costos_cargados|max|plata }} en {{ 'todos los cargados' if sin_c else 'todos' }}{% else %}de {{ costos_cargados|min|plata }} a {{ costos_cargados|max|plata }}{% endif %}{% endif %}</span></summary>
-        {% endif %}
-        <div class="ux-filas-costo">
-            {% for p in items %}
-            <div class="ux-fila-costo" data-precio="{{ p.precio }}" data-comision="{{ p.comision if p.comision is not none else '' }}" data-envio="{{ p.envio }}">
-                <div class="ux-fila-costo-talle"><span class="ux-pill ux-neutral ux-pill-suave"><b>{{ p.talle }}</b></span>{% if p.estado != 'active' %} <span class="ux-pill ux-warn ux-pill-suave">Pausada</span>{% endif %}</div>
-                <div class="ux-fila-costo-precio text-muted">Precio <b style="color:var(--text-primary);">{{ ('$' ~ p.precio_formateado.split(',')[0]) if p.precio_formateado else '—' }}</b></div>
-                <div class="ux-fila-costo-input">
-                    <input type="number" step="0.01" min="0" inputmode="decimal" class="input-costo-producto" data-id-meli="{{ p.id }}" data-original="{{ p.precio_costo }}" value="{{ p.precio_costo if p.precio_costo else '' }}" placeholder="0" aria-label="Costo de fabricación, talle {{ p.talle }}">
+        {% if m.n_publicaciones == 1 %}
+        <div class="ux-filas-costo">{{ fila_costo(m.filas[0], m.filas[0].rotulo) }}</div>
+        {% elif m.n_variantes > 1 %}
+        {# Con varias variantes: lo normal es cargar UN costo para todo el modelo (arriba). Cada variante se abre sola si quedó a medias o si alguna vende a pérdida #}
+        <details class="ux-filas-det" {% if m.a_atender %}open{% endif %}>
+            <summary><span class="ux-det-texto">Ajustar por variante <span class="text-muted">· {{ m.n_variantes }}{{ rango_cargado(m) }}</span></span></summary>
+            {% for v in m.variantes %}
+            {% if v.filas|length == 1 %}
+            <div class="ux-filas-costo">{{ fila_costo(v.filas[0], v.etiqueta) }}</div>
+            {% else %}
+            <div class="ux-grupo-costo ux-variante-costo">
+                <div class="ux-variante-cabecera">
+                    <div class="ux-variante-nombre"><b>{{ v.etiqueta }}</b> <span class="text-muted">· {{ v.filas|length|plural(u1, uN) }}</span></div>
+                    <span class="ux-grupo-resumen" data-resumen></span>
+                    {{ campo_grupo(v, v.etiqueta, "a todas") }}
                 </div>
-                <div class="ux-fila-costo-ganancia" data-ganancia></div>
+                <details class="ux-filas-det ux-filas-det-anidado" {% if v.a_atender %}open{% endif %}>
+                    <summary><span class="ux-det-texto">Ajustar por {{ u1 }} <span class="text-muted">· {{ v.filas|length }}{{ rango_cargado(v) }}</span></span></summary>
+                    <div class="ux-filas-costo">{% for p in v.filas %}{{ fila_costo(p, p.rotulo) }}{% endfor %}</div>
+                </details>
             </div>
+            {% endif %}
             {% endfor %}
-        </div>
-        {% if colapsable %}</details>{% endif %}
+        </details>
+        {% else %}
+        <details class="ux-filas-det" {% if m.a_atender %}open{% endif %}>
+            <summary><span class="ux-det-texto">Ajustar por {{ u1 }} <span class="text-muted">· {{ m.n_publicaciones }}{{ rango_cargado(m) }}</span></span></summary>
+            <div class="ux-filas-costo">{% for p in m.filas %}{{ fila_costo(p, p.rotulo) }}{% endfor %}</div>
+        </details>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
@@ -303,23 +335,52 @@
         document.getElementById('btn-guardar-texto').textContent = n === 1 ? 'Guardar 1 costo' : 'Guardar ' + n + ' costos';
     }
 
+    // Lo que hace falta mirar de un grupo (un modelo o una variante) sin abrir cada fila: cuántas activas no tienen costo, cuántas pierden plata o cuánto ganás en la peor. Las pausadas no cuentan.
+    function pintarResumen(grupo) {
+        const marca = grupo.querySelector('[data-resumen]');
+        if (!marca) return;
+        let activas = 0, sinCosto = 0, pierden = 0, peorGanancia = null, peorMargen = null;
+        grupo.querySelectorAll('.ux-fila-costo').forEach(fila => {
+            if (fila.dataset.activa !== '1') return;
+            activas++;
+            const costo = parseFloat(fila.querySelector('.input-costo-producto').value) || 0;
+            if (!costo) { sinCosto++; return; }
+            const precio = parseFloat(fila.dataset.precio), comision = parseFloat(fila.dataset.comision), envio = parseFloat(fila.dataset.envio) || 0;
+            if (!precio || isNaN(comision)) return;
+            const ganancia = precio - comision - envio - costo;
+            if (ganancia < 0) pierden++;
+            if (peorGanancia === null || ganancia < peorGanancia) { peorGanancia = ganancia; peorMargen = ganancia / precio * 100; }
+        });
+        let tono, texto;
+        if (!activas) { tono = 'neutral'; texto = 'Todas pausadas'; }
+        else if (sinCosto) { tono = 'warn'; texto = sinCosto + ' sin costo'; }
+        else if (pierden) { tono = 'danger'; texto = pierden === 1 ? '1 pierde plata' : pierden + ' pierden plata'; }
+        else if (peorGanancia !== null) { tono = peorMargen < window.MARGEN_MINIMO ? 'warn' : 'ok'; texto = 'Ganás desde ' + UX.plata(peorGanancia) + ' por unidad'; }
+        else { tono = 'ok'; texto = 'Costo cargado'; }
+        marca.className = 'ux-grupo-resumen ux-pill ux-' + tono + ' ux-pill-suave';
+        marca.textContent = texto;
+    }
+
     function alCambiarCosto(input) {
         if (input.value !== '' && parseFloat(input.value) < 0) input.value = 0;
         input.classList.toggle('ux-campo-cambiado', (parseFloat(input.value) || 0) !== (parseFloat(input.dataset.original) || 0));
         pintarGanancia(input.closest('.ux-fila-costo'));
+        for (let grupo = input.closest('.ux-grupo-costo'); grupo; grupo = grupo.parentElement && grupo.parentElement.closest('.ux-grupo-costo')) pintarResumen(grupo);      // la variante y el modelo que la contienen
         refrescarBarraCostos();
     }
 
     document.querySelectorAll('.input-costo-producto').forEach(i => i.addEventListener('input', () => alCambiarCosto(i)));
     document.querySelectorAll('.ux-fila-costo').forEach(pintarGanancia);
+    document.querySelectorAll('.ux-grupo-costo').forEach(pintarResumen);
 
-    // "Mismo costo para todo el modelo"
+    // «Aplicar»: el costo escrito en un modelo o en una variante pasa a todas sus publicaciones (nada se guarda hasta tocar «Guardar»).
     document.querySelectorAll('.btn-copiar-costo').forEach(btn => btn.addEventListener('click', () => {
-        const modelo = btn.closest('.ux-modelo-costo');
-        const valor = modelo.querySelector('.input-costo-modelo').value;
+        const grupo = btn.closest('.ux-grupo-costo');
+        const valor = grupo.querySelector('.input-costo-grupo').value;
         if (valor === '' || parseFloat(valor) < 0) { mostrarToast('Escribí primero el costo por unidad', 'error'); return; }
-        modelo.querySelectorAll('.input-costo-producto').forEach(i => { i.value = valor; alCambiarCosto(i); });
-        const detalle = modelo.querySelector('.ux-filas-det'); if (detalle) detalle.open = true;      // para ver cuánto deja cada talle con ese costo (y cuál queda a pérdida)
+        grupo.querySelectorAll('.input-costo-producto').forEach(i => { i.value = valor; alCambiarCosto(i); });
+        // Se abren solo las listas donde queda alguna publicación a pérdida con ese costo, para verla
+        grupo.querySelectorAll('.ux-fila-costo-perdida').forEach(fila => { for (let d = fila.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true; });
     }));
 
     function descartarCostos() {
@@ -332,6 +393,17 @@
         const cambios = {};
         cambiosCostos().forEach(i => { cambios[i.dataset.idMeli] = parseFloat(i.value) || 0; });
         if (!Object.keys(cambios).length) return;
+
+        // Es plata: si se cambia un costo que ya estaba cargado se muestra el antes y el después, y no se guarda sin confirmar
+        const pisados = cambiosCostos().filter(i => (parseFloat(i.dataset.original) || 0) > 0);
+        if (pisados.length) {
+            const antes = pisados.map(i => parseFloat(i.dataset.original)), ahora = pisados.map(i => parseFloat(i.value) || 0);
+            const rango = v => Math.min(...v) === Math.max(...v) ? UX.plata(v[0]) : 'entre ' + UX.plata(Math.min(...v)) + ' y ' + UX.plata(Math.max(...v));
+            const nuevos = Object.keys(cambios).length - pisados.length;
+            const detalle = 'Antes: ' + rango(antes) + '. Ahora: ' + rango(ahora) + '.' + (nuevos ? ' Además se cargan ' + nuevos + (nuevos === 1 ? ' costo nuevo.' : ' costos nuevos.') : '');
+            const pregunta = pisados.length === 1 ? '¿Cambiar el costo de una publicación que ya tenía uno?' : '¿Cambiar el costo de ' + pisados.length + ' publicaciones que ya tenían uno?';
+            if (!(await confirmarDecision(pregunta, 'Guardar costos', detalle))) return;
+        }
 
         const boton = document.getElementById('btn-guardar-costos-masivo');
         const htmlOriginal = boton.innerHTML;

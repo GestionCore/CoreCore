@@ -28,7 +28,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 1. [A·S] ★ **HECHO (2026-10-12) · Facturación: los montos se parten en dos líneas** («$1.040.7 / 35», «$480.39 / 5», «-$388.8 / 98») porque seis tarjetas entran en una fila con `minmax(150px)` y el valor es grande → tamaño de letra del valor según el ancho (`clamp`), nunca partir un número (`white-space: nowrap`) y abreviar («$1,04 M») cuando no entra.
 2. [A·S] **HECHO (2026-10-12) · Delta de 9,5 px** («▼ 30,5%» en Ganancia Real) es el texto más chico de toda la app → mínimo 12 px y misma altura que la píldora vecina.
 3. [A·S] **Precios celebra con 30 de 70 analizadas:** el héroe verde decía «✓ Todos tus precios cubren tu margen» mientras el KPI de al lado marcaba «Sin calcular 40» → solo es «todo bien» si se analizó todo; con faltantes, «30 de 70 · faltan 40 sin calcular» en tono neutro. **HECHO (2026-10-12).**
-4. [A·S] **El botón flotante de chat tapa contenido en celular** (pisa el «Hacerlo →» del checklist y el borde derecho de las tarjetas) → que viva en la barra inferior o dentro de «Más», y si queda flotante, que se pueda minimizar y que el contenido tenga un margen inferior que lo respete.
+4. [A·S] **HECHO (2026-10-12, el dueño eligió «más chico y se esconde al deslizar»; en escritorio no cambia) · El botón flotante de chat tapa contenido en celular** (pisa el «Hacerlo →» del checklist y el borde derecho de las tarjetas) → que viva en la barra inferior o dentro de «Más», y si queda flotante, que se pueda minimizar y que el contenido tenga un margen inferior que lo respete.
 5. [M·S] **HECHO (2026-10-12) · Publicidad: «Contra el período anterior (—):»** era un bug: pasaba las fechas en dd/mm a una función que espera ISO; ahora dice «(15 – 28 sep)».
 6. [M·S] **HECHO en parte (2026-10-12) · El nombre de la cuenta sale en mayúsculas** («DIEGOARIELSANTIAGO», «NOENOEINDUMENTARIA») porque es el nickname de Mercado Libre; y en Planes el menú dice «Mi Cuenta» mientras en el resto dice el nombre → un nombre del negocio editable (`PM#102`) y el mismo rótulo en todas las pantallas.
 7. [M·S] **Dashboard repite lo mismo tres veces:** «Facturado hoy» está en el hero y en la fila de KPIs, y «Resultado de los últimos 14 días» vuelve a explicar «facturado − costos = margen» → una sola vez cada cosa.
@@ -38,7 +38,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 ## 2. Celular (22)
 
-11. [A·M] ★ **Costos mide 18.181 px en celular.** Un acordeón por modelo con UN campo de costo («para todos los talles») y el detalle por talle detrás de «Ajustar por talle»; la lista de 70 publicaciones se agrupa por modelo y se pagina de a 10.
+11. [A·M] ★ **HECHO (2026-10-12: modelo → variante → talle; el dueño pidió cargar por modelo o por variante, no por talle; mide 9.400 px y no 18.181) · Costos mide 18.181 px en celular.** Un acordeón por modelo con UN campo de costo («para todos los talles») y el detalle por talle detrás de «Ajustar por talle»; la lista de 70 publicaciones se agrupa por modelo y se pagina de a 10.
 12. [A·M] ★ **Stock mide 13.055 px:** tarjetas compactas de una línea (foto, modelo, unidades, estado) que se expanden; las 22 «pausadas con stock» en una sola tarjeta plegada con la acción «Reactivar».
 13. [A·S] **HECHO (2026-10-12) · En Inicio lo primero es «Completá tu perfil 3/7»** y el número que importa (ganancia de hoy) queda a más de una pantalla de scroll → el hero arriba, y el checklist como una barra de una línea («Perfil 3/7 · Seguir»).
 14. [A·S] **HECHO (2026-10-12) · Los KPI se apilan a una columna** (en Stock, cinco tarjetas de ~135 px una sobre otra antes de ver nada útil) → grilla de 2 columnas con mini-KPI de ~80 px; los de menor valor, plegados.
@@ -162,7 +162,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 109. [M·S] **Migas de pan** en pantallas profundas y un «volver» que respete de dónde se vino (`PM#105`).
 110. [M·M] **Ctrl+K:** resultados agrupados (pantallas, publicaciones, acciones), atajos visibles y recientes (`PM#103`); también buscar una venta por número de orden.
-111. [M·S] **«MÁS USADO» en cada sección** (Stock, Ganancia Real, Costos, Publicidad, Calidad): con pocos usuarios es ruido → mostrarlo solo cuando sale del uso real de esa persona.
+111. [M·S] **HECHO (2026-10-12, el dueño eligió el uso real de cada persona) · «MÁS USADO» en cada sección** (Stock, Ganancia Real, Costos, Publicidad, Calidad): con pocos usuarios es ruido → mostrarlo solo cuando sale del uso real de esa persona.
 112. [M·S] **Selector de cuenta bajo el logo:** mostrar el nombre del negocio, el plan y «Agregar cuenta» ahí mismo.
 113. [M·S] **Dos píldoras en la barra** («Hoy: 5 ventas · $197.202», «Depósito: $60.198 · 26 oct») con letra de 11,6 px → una sola con un panel de detalle al tocar.
 114. [M·S] **El botón violeta «Actualizar» en todas las pantallas compite con la acción principal** (`PM#99`) → ícono discreto con «Actualizado hace X».
@@ -304,6 +304,9 @@ KPIs de a dos columnas (con una tarjeta suelta a ancho entero), aclaración de c
 «Completá tu perfil» arranca plegado. Medido en 375 px: Dashboard sin textos < 12 px ni áreas < 43 px, sin desborde horizontal en Dashboard, Stock, Costos, Día a día, Ganancia Real, Publicidad, Precios y Facturación; escritorio idéntico.
 **Ítem 29 revisado, no tocado:** no se agregó `viewport-fit=cover`. La app se instala como PWA (`display: standalone`) y con `cover` el contenido pasa por debajo de la hora y la muesca: habría que sumar el borde superior a la barra y a todo lo que cuelga de `--topbar-h`, y no se puede probar en un iPhone desde acá. Sin `cover` el navegador ya respeta las zonas seguras.
 Siguen en la ola 2: 11 (Costos en acordeón), 12 (Stock en tarjetas compactas), 20-22, 24-27, 30-32 y las decisiones 4 y 111.
+
+**Decisiones del dueño (2026-10-12) y lo que se hizo:** 120 → después de terminar el celular; 111 → «MÁS USADO» por uso real de cada persona (solo aparece con ≥ 10 visitas en la sección y una favorita con ≥ 60 %); 4 → botón del chat más chico (44 px) que se esconde al deslizar, en escritorio queda flotante como siempre;
+11 → Costos por modelo y por variante (ver `CLAUDE.md`, «Costos: modelo → variante → talle»).
 
 ## Dos decisiones que necesito de vos
 

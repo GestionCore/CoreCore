@@ -23,7 +23,7 @@ def test_las_cuatro_pestañas_van_a_una_sola_pantalla_con_su_ancla():
 def test_no_se_destaca_una_pantalla_mas_usada_donde_todo_es_la_misma_pagina():
     assert nav_config.GRUPOS_NAV["dia"]["una_pantalla"] is True
     assert nav_config.calcular_mas_usado({"despacho": 50, "preguntas": 1, "logros": 0, "reputacion": 0}) == {}
-    assert nav_config.calcular_mas_usado({"stock": 5, "stock_masivo": 1, "despacho": 50, "preguntas": 1}) == {"stock": "stock"}      # el resto sigue funcionando
+    assert nav_config.calcular_mas_usado({"stock": 12, "stock_masivo": 1, "despacho": 50, "preguntas": 1}) == {"stock": "stock"}      # el resto sigue funcionando
 
 
 def test_cada_pestaña_tiene_su_seccion_en_la_pagina():

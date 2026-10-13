@@ -182,7 +182,9 @@ a.aviso-fila:hover { background: rgba(255,255,255,0.05); }
     .bottombar-item .icon { width: 22px; height: 22px; }
     .bottombar-item.active { color: var(--accent-primary); }
     .bottombar-item .nav-badge { position: absolute; top: 6px; left: calc(50% + 6px); margin: 0; }
-    .chat-fab { bottom: calc(var(--bottombar-h) + 14px); right: 14px; }
+    .chat-fab { bottom: calc(var(--bottombar-h) + 14px); right: 14px; width: 44px; height: 44px; transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast); }
+    .chat-fab .icon { width: 20px !important; height: 20px !important; }
+    .chat-fab.chat-fab-oculto { opacity: 0; transform: translateY(10px) scale(0.85); pointer-events: none; }     /* se esconde mientras se desliza la página (ux.js) */
     /* La ventana del asistente entra en la pantalla (era de 390 px fijos: en un celular de 375 px quedaba cortada) y se apoya sobre su botón, no sobre la barra de abajo */
     .chat-window { width: min(390px, calc(100vw - 24px)); right: 12px; bottom: calc(var(--bottombar-h) + 76px); height: min(510px, calc(100vh - var(--topbar-h) - var(--bottombar-h) - 100px)); height: min(510px, calc(100dvh - var(--topbar-h) - var(--bottombar-h) - 100px)); }
     .page-container { padding-bottom: calc(var(--bottombar-h) + 40px); }

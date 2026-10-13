@@ -632,6 +632,13 @@ MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
   Las reglas que pisan un `style="font-size:…"` escrito en la etiqueta necesitan `!important`. Los ejes de dinero de los gráficos usan `UX.plataEje` (abrevia solo en pantalla angosta); `UX.centrarActiva` centra la pestaña activa del subnav. NO se agregó `viewport-fit=cover`
   (la app es PWA `standalone`: habría que compensar el borde superior de la barra y todo lo que usa `--topbar-h`, y no se puede probar un iPhone desde la PC). Para medir en el navegador local: el servidor de verificación cachea las plantillas, hay que reiniciarlo tras editar un `.html`; y hay que PARARLO antes de correr `pytest` (el pool de 15 conexiones de Supabase se agota: `EMAXCONNSESSION`).
 
+- **Costos: modelo → variante → talle (2026-10-12)**: `costos.agrupar_modelos` arma 3 niveles SIN suponer el rubro: MODELO = la familia de Mercado Libre (`productos_padre.family_id`, junta todos los colores y talles; sin familia, el título sin su talle), VARIANTE = cada título-de-modelo dentro de la familia
+  (el color u otra versión; se etiqueta con las palabras que la distinguen, `nombres_de_variantes`), PUBLICACIÓN = cada talle. Se carga UN costo por modelo o por variante («Aplicar») y por talle solo si cambia; el guardado sigue siendo un costo por publicación (`/guardar_costos_masivo`, sin cambios) y pisar un costo ya cargado muestra antes/después
+  (`confirmarDecision`). Si lo único que distingue a las «variantes» son talles escritos en el título («… Azul 2 Denim») se fusionan en una sola. Con la cuenta real: 192 publicaciones → 21 modelos (antes 45 «modelos» por color). «talle» solo si la cuenta vende con talles (`vocab`); si no, «publicación».
+  Trampa repetida: en Jinja un dict con clave `items` choca con `dict.items` (acá la clave es `filas`). El resumen vivo de cada grupo (`pintarResumen` en `costos.html`) cuenta solo publicaciones activas.
+- **Celular, segunda tanda (2026-10-12)**: el botón del chat (`.chat-fab`) mide 44 px en ≤ 900 px y se esconde mientras se desliza (`UX.botonChatAlDeslizar`); en escritorio no cambia. «MÁS USADO» (`nav_config.calcular_mas_usado`) pide ≥ 10 visitas en la sección y una favorita con ≥ 60 % (por persona, `navegacion_visitas`).
+  Ítem 120 del plan (sacar los `style="…"` de las plantillas): el dueño dijo que se hace DESPUÉS de terminar el celular.
+
 ## Datos de entorno
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de
   transacción — el puerto importa para que RLS sea confiable),
