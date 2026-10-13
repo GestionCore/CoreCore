@@ -14,6 +14,22 @@ Proceso acordado por Diego: **fase por fase**; respetar gevent, Postgres con RLS
 
 **Prorrateo de gastos recurrentes corregido (2026-10-12)**: `costos.py` y `reporte_fiscal.py` dividían siempre por 30 (un alquiler de $150.000 figuraba como $155.000 en octubre, $140.000 en febrero y el reporte fiscal anual sumaba 12,17 meses). Ahora `utils.prorratear_mensual` reparte cada día según los días de SU mes: un mes completo = el monto exacto (`tests/test_prorrateo.py`, incluye el reporte anual). Afecta a la pantalla Costos, al punto de equilibrio y al Reporte fiscal; NO a la ganancia neta real (que no resta gastos operativos).
 
+## 0e. PIVOT MULTI-RUBRO + TENDENCIAS Y DEMANDA (2026-10-13) — informe en `docs/PIVOT_SAAS.md`, sondeo en `docs/SONDEO_FASE0.md`
+Autorizado por el dueño con 7 decisiones (variantes JSONB, costo por variante, panel de demanda con N = 5, token de aplicación, adiós a la curva de talles, costo en USD, solo Argentina). Cada punto se itera con él uno por uno.
+
+- **Fase 0 · sondeo de endpoints — ✅ HECHA** (`sondeo_meli.py`, 190 pedidos de solo lectura en Fly). Resultado: token de aplicación OK; sin volumen en `/trends`; sin ventas de terceros; cobertura de catálogo muy desigual por rubro; variantes = `allow_variations` + `pickers`.
+- **Fase 1 · relevador global y tablas de mercado — migración ✅ preparada (`0045`), código ⏳.** Falta: módulo del relevador (token de aplicación; 2 llamadas por categoría por día; muestra de catálogo con menos frecuencia; interpretar cada palabra nueva con `domain_discovery`; actualizar `mercado_keyword_estado`), tarea del scheduler con `conexion_admin`,
+  alta automática de las categorías donde vende cada cuenta (`ultimo_interes`), registro en `mercado_relevamientos` + panel en `/admin/salud` (avisar si un tipo de relevamiento falla en todas las categorías: así se enteran los cierres de endpoints), pasar `tendencias_snapshots`/`tendencias_historial` (por cuenta) a las tablas globales y sacar los cachés en memoria de tendencias.py.
+  Conviene PRENDERLO antes que la pantalla: la historia no se puede recuperar.
+- **Fase 2 · variantes por atributos, costo por variante y en dólares — migración ✅ preparada (`0046`, aditiva), código ⏳.** Falta: el sincronizador guarda `atributos` (solo los de variación de la categoría + `pickers`, sin «Único»), `etiqueta`, `domain_id` y `atributos_clave`; `extraer_variantes` reemplaza a `extraer_talle`/`limpiar_titulo_modelo`
+  (clave de modelo: `family_id` → id del ítem con variaciones → `catalog_product_id` → título como último recurso); migrar los lectores de `talle`/`color` (`analisis_stock`, `catalogo`, `metricas`, `ventas_manuales`, CSV de `app.py`, `cuenta_usa_talles`/`vocabulario`, `costos`, `stock_masivo.ORDEN_LETRAS`); costo por variante en los ~7 módulos de plata (68 usos de `precio_costo` en 16 archivos);
+  conversión USD→ARS con `cotizaciones_dolar` (tarea diaria del scheduler; qué dólar usa cada cuenta: por defecto MEP = `bolsa`; decidir si se elige por cuenta); «Cobertura de variantes clave» en lugar de la curva de talles (`analisis_stock.evaluar_curva_talles`, misión de Logros, penalización de Salud de cuenta, tabla muerta `alertas_curva_talles`);
+  textos «Talle» de las plantillas (21 en 9) y de los prompts de IA; al final, una migración que elimina `talle` y `color` (y el caso de relleno de `tests/test_mercado_migraciones.py`).
+- **Fase 3 · pantalla «Mercado» v1** (Radar, Categoría, Comparar, Mis seguimientos) sobre las tablas globales. ⏳
+- **Fase 4 · panel de demanda con las ventas anonimizadas de todos los clientes (N = 5, función `SECURITY DEFINER`, nunca `conexion_admin` desde la web).** ⏳ Antes: el dueño actualiza Términos y Privacidad (y se revisan los términos de la API de MeLi sobre guardar y agregar datos).
+- **Fase 5 · oportunidad, alertas y estacionalidad** (Hot Sale y Cyber Monday faltan en el calendario; hacen falta ~12 meses de historia para la curva). ⏳
+- **Se aplican con el próximo deploy** `0045` y `0046` (son aditivas e idempotentes; `desplegar.py` corre `migrate.py`). Antes de desplegar: correr la suite con y sin `REDIS_URL`.
+
 ## 0d. LISTA ÚNICA DE LO QUE FALTA (2026-10-13, producción corre `38049ee`)
 Todo lo de abajo está sin hacer. Lo hecho está en las secciones 0c/0b y en `PLAN_UX_200.md` (los ítems marcados «HECHO»). Orden sugerido: A → B → C.
 

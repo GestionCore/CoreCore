@@ -654,6 +654,18 @@ MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
   Glosario de la plata (usarlo igual en toda pantalla nueva): **Ganancia neta real** = facturación − cargos de MeLi − envíos − publicidad − costo de fabricación − cargos mensuales de MeLi (título y KPI); **Te queda** = esa misma ganancia dicha en una frase o en una cascada («facturado − costos = te queda»);
   **Margen** = ese número sobre lo facturado, en %; **Ganancia bruta real** (Facturación) = facturado − cargos de MeLi, antes de gastos; «(est.)» cuando es una estimación (Reporte fiscal). No inventar otro nombre para la misma cifra, ni usar uno de estos para una cifra distinta.
 
+- **Pivot multi-rubro + Tendencias y Demanda (2026-10-13, `docs/PIVOT_SAAS.md`, `docs/SONDEO_FASE0.md`)**: el dueño aprobó pasar CoreLux a SaaS B2B multi-rubro (solo Argentina/MLA) con el análisis de mercado como diferencial.
+  Decisiones: variantes por atributos de MeLi (`atributos JSONB` + `etiqueta`) en vez de `talle`/`color`; costo por variante (prioridad sobre el de la publicación) y en dólares (`moneda_costo`, cotización de dolarapi.com/bluelytics, tabla `cotizaciones_dolar`);
+  la «curva de talles» se ELIMINA y se reemplaza por «Cobertura de variantes clave» (avisa cuando se agota la variante que aporta > 30 % de las ventas de su modelo); panel de demanda con las ventas anonimizadas de todos los clientes, anonimato N = 5 (los Términos los actualiza el dueño).
+  Hechos verificados contra Mercado Libre real (sondeo, `python sondeo_meli.py <cuenta_id>` en Fly, solo lectura): un token de APLICACIÓN (`client_credentials`) alcanza para `/trends`, `/categories`, `/categories/{id}/attributes`, `domain_discovery`, `/products/search` y `listing_prices` (sin token dan 403): no hay que rotar tokens de clientes;
+  `/trends` da 9 a 50 palabras SIN volumen (solo posición); las ofertas de `/products/{id}/items` NO traen `sold_quantity` ni `available_quantity` (la demanda de terceros no existe: el panel propio es la única fuente); lo cerrado sigue cerrado (`/items` ajeno —el multiget da 200 con `code: 403` por ítem—, visitas ajenas, `/sites/MLA/search`, `/highlights`);
+  `/products/search` corta el total en 10.000; la cobertura de catálogo es muy desigual (celulares y pintura sí, herramientas/discos/ropa a medias, repuestos nula). Las dimensiones de variante son los `allow_variations` de la categoría + los `pickers` del producto de catálogo (en celulares la memoria es un `picker`, no una variación de la categoría);
+  la marca `variation_attribute` incluye datos técnicos (PACKAGE_*, GTIN, MPN, SKU): NO decide sola qué es una variante. `domain_discovery` extrae atributos de una búsqueda («iphone 15 128 gb» → Apple / iPhone 15 / 128 GB): sirve para interpretar cada palabra en alza una sola vez.
+  ⚠️ Defecto conocido todavía SIN corregir: `utils.limpiar_titulo_modelo` y `extraer_talle` unen «Apple iPhone 14» y «Apple iPhone 15» en el mismo modelo (quitan el número final) y dan talle «L» a «Pintura … 4 L» / «20 L»; se corrige en la Fase 2 al dejar de leer el título.
+  Migraciones `0045_mercado_global.sql` (tablas globales de solo lectura para la app: `mercado_categorias`, `mercado_categoria_diaria`, `mercado_keywords`, `mercado_tendencias_diaria`, `mercado_keyword_estado`, `mercado_relevamientos`) y `0046_variantes_atributos_y_costo.sql` (aditiva: NO borra `talle`/`color`) preparadas y probadas en una
+  transacción revertida contra la base real (`tests/test_mercado_migraciones.py`); NO aplicadas: las aplica el próximo deploy (`desplegar.py` corre `migrate.py`). Las tablas de mercado las escribe un solo trabajo del scheduler con `conexion_admin` (scheduler.py ya está permitido), nunca una ruta web.
+  Estado y lo que falta, fase por fase: `PENDIENTES.md` §0e.
+
 ## Datos de entorno
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de
   transacción — el puerto importa para que RLS sea confiable),
@@ -668,4 +680,4 @@ MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - `FLASK_DEBUG` SIEMPRE en `false` en cualquier entorno expuesto
   públicamente (ngrok, Fly.io) — con debug activo, un error muestra
   una consola de Python interactiva a cualquiera que la vea.
-- Migraciones aplicadas hasta `0044_correos_enviados.sql` (0043 `mp_proximo_cobro`, 0044 `correos_enviados`); verificá `migrate.py --status` contra Supabase real antes de asumir cuál es la última aplicada, el número más alto en `migrations/` no siempre coincide con lo corrido de verdad.
+- Migraciones aplicadas hasta `0044_correos_enviados.sql` (0043 `mp_proximo_cobro`, 0044 `correos_enviados`; 0045 y 0046 del pivot multi-rubro están preparadas y pendientes); verificá `migrate.py --status` contra Supabase real antes de asumir cuál es la última aplicada, el número más alto en `migrations/` no siempre coincide con lo corrido de verdad.
