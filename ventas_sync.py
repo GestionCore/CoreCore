@@ -11,6 +11,7 @@ arranca desde ahí, con un colchón de 2 horas hacia atrás para no perder
 una orden por un desfasaje de reloj o huso horario. `ON CONFLICT DO
 UPDATE` hace que reprocesar ese colchón sea seguro (no duplica).
 """
+import json
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -647,8 +648,12 @@ def _completar_financiacion(usuario_id, cuenta_id, access_token, dias=DIAS_COMPL
 DIAS_HISTORIAL_CANCELADAS = 540
 
 
+MOTIVO_RETIRADA = "cancelada"                       # estaba en `ventas` y contaba: se saca de facturación y ganancia
+MOTIVO_SIN_CONTAR = "cancelada_sin_contar"          # se creó y se canceló antes de que el sync la viera: nunca contó; se archiva solo para que «Ventas de hoy» muestre la realidad completa
+
+
 def _pagina_canceladas(headers, seller_id, desde, hasta, offset):
-    """(ids de la página, total de la ventana) o None si Mercado Libre no respondió."""
+    """(órdenes de la página, total de la ventana) o None si Mercado Libre no respondió."""
     params = {"seller": seller_id, "order.status": "cancelled", "sort": "date_desc", "offset": offset, "limit": TAMANO_PAGINA,
               "order.date_last_updated.from": _iso(desde), "order.date_last_updated.to": _iso(hasta)}
     try:
@@ -660,44 +665,96 @@ def _pagina_canceladas(headers, seller_id, desde, hasta, offset):
         print(f"[VentasSync] ⚠️ Órdenes canceladas: {resp.status_code} - {resp.text[:200]}")
         return None
     datos = resp.json()
-    return [str(o["id"]) for o in (datos.get("results") or []) if o.get("id")], (datos.get("paging") or {}).get("total", 0)
+    return [o for o in (datos.get("results") or []) if o.get("id")], (datos.get("paging") or {}).get("total", 0)
 
 
-def _ids_canceladas_en_ventana(headers, seller_id, desde, hasta):
+def _canceladas_en_ventana(headers, seller_id, desde, hasta):
     """
-    Las canceladas cuya última modificación cae en [desde, hasta]. Si la ventana tiene más de LIMITE_OFFSET_MELI resultados se parte por fecha en dos mitades
+    Las órdenes canceladas cuya última modificación cae en [desde, hasta]. Si la ventana tiene más de LIMITE_OFFSET_MELI resultados se parte por fecha en dos mitades
     (como _sincronizar_rango) en vez de paginar más allá del tope, que MeLi rechaza: antes lo que quedaba después del resultado 1000 se perdía sin avisar.
     None si Mercado Libre no respondió en algún tramo (no se sabe: no se retira nada).
     """
     primera = _pagina_canceladas(headers, seller_id, desde, hasta, 0)
     if primera is None:
         return None
-    ids, total = primera
+    ordenes, total = primera
     if total > LIMITE_OFFSET_MELI and (hasta - desde) > VENTANA_MINIMA:
         medio = desde + (hasta - desde) / 2
-        a = _ids_canceladas_en_ventana(headers, seller_id, desde, medio)
-        b = _ids_canceladas_en_ventana(headers, seller_id, medio, hasta)
+        a = _canceladas_en_ventana(headers, seller_id, desde, medio)
+        b = _canceladas_en_ventana(headers, seller_id, medio, hasta)
         return None if a is None or b is None else a + b
     offset = TAMANO_PAGINA
-    while len(ids) >= offset and offset < min(total, LIMITE_OFFSET_MELI):
+    while len(ordenes) >= offset and offset < min(total, LIMITE_OFFSET_MELI):
         pagina = _pagina_canceladas(headers, seller_id, desde, hasta, offset)
         if pagina is None:
             return None
-        ids += pagina[0]
+        ordenes += pagina[0]
         offset += TAMANO_PAGINA
-    return ids
+    return ordenes
 
 
-def _ids_ordenes_canceladas(access_token, seller_id, desde=None, hasta=None):
+def _ordenes_canceladas(access_token, seller_id, desde=None, hasta=None):
     """
-    IDs de las órdenes canceladas en Mercado Libre que CAMBIARON entre `desde` y `hasta` (order.date_last_updated): el sync pide las órdenes por fecha de
+    Las órdenes canceladas en Mercado Libre que CAMBIARON entre `desde` y `hasta` (order.date_last_updated): el sync pide las órdenes por fecha de
     creación, así que una orden creada hace 8 días y cancelada hoy no se volvía a ver nunca. Sin `desde` se mira el historial de DIAS_HISTORIAL_CANCELADAS.
     Devuelve None si Mercado Libre no respondió (no se sabe: no se retira nada).
     """
     headers = {"Authorization": f"Bearer {access_token}"}
     hasta = hasta or datetime.now(timezone.utc)
     desde = desde or hasta - timedelta(days=DIAS_HISTORIAL_CANCELADAS)
-    return _ids_canceladas_en_ventana(headers, seller_id, desde, hasta)
+    return _canceladas_en_ventana(headers, seller_id, desde, hasta)
+
+
+def _ids_ordenes_canceladas(access_token, seller_id, desde=None, hasta=None):
+    """Solo los ids de `_ordenes_canceladas` (None si Mercado Libre no respondió)."""
+    ordenes = _ordenes_canceladas(access_token, seller_id, desde, hasta)
+    return None if ordenes is None else [str(o["id"]) for o in ordenes]
+
+
+def _filas_de_orden_cancelada(orden):
+    """
+    Una orden cancelada que nunca llegó a `ventas`, como las filas que se archivan en `ventas_retiradas` (las mismas claves que usa `ventas` para lo que se muestra:
+    modelo, variante, cantidad, precio, fecha/hora argentina y comprador). Una fila por ítem, igual que `ventas`. [] si no trae fecha o ítems.
+    """
+    if not orden.get("date_created"):
+        return []
+    fecha_venta, hora_venta = _fecha_hora_argentina(orden["date_created"])
+    buyer = orden.get("buyer") or {}
+    filas = []
+    for it in orden.get("order_items") or []:
+        item = it.get("item") or {}
+        if not item.get("id"):
+            continue
+        cantidad = int(it.get("quantity") or 1)
+        precio = float(it.get("unit_price") or 0.0)
+        filas.append({
+            "id_orden": str(orden["id"]), "id_meli": item["id"], "id_variante": str(item.get("variation_id") or ""), "titulo": item.get("title"),
+            "cantidad": cantidad, "precio_venta": precio, "fecha_venta": fecha_venta, "hora_venta": hora_venta, "origen": "meli",
+            "comprador_nickname": buyer.get("nickname"), "comprador_nombre": buyer.get("first_name"), "monto": round(precio * cantidad, 2),
+        })
+    return filas
+
+
+def _archivar_canceladas_sin_contar(cursor, cuenta_id, ordenes):
+    """
+    Archiva (motivo `cancelada_sin_contar`) las órdenes canceladas que no están ni en `ventas` ni ya archivadas: se crearon y se cancelaron entre dos
+    sincronizaciones, así que nunca contaron para la facturación. Sin esto «Ventas brutas» de hoy quedaba corta frente a Mercado Libre. No toca ningún
+    número de plata (Ganancia Real las ignora: solo lee las de motivo `cancelada`). Devuelve cuántas filas archivó.
+    """
+    ids = [str(o["id"]) for o in ordenes]
+    cursor.execute("SELECT id_orden FROM ventas WHERE cuenta_id = %s AND id_orden = ANY(%s) UNION SELECT id_orden FROM ventas_retiradas WHERE cuenta_id = %s AND id_orden = ANY(%s)",
+                   (cuenta_id, ids, cuenta_id, ids))
+    conocidas = {r[0] for r in cursor.fetchall()}
+    archivadas = 0
+    for orden in ordenes:
+        id_orden = str(orden["id"])
+        if id_orden in conocidas:
+            continue
+        for fila in _filas_de_orden_cancelada(orden):
+            cursor.execute("INSERT INTO ventas_retiradas (cuenta_id, id_orden, motivo, monto, fila) VALUES (%s, %s, %s, %s, %s::jsonb)",
+                           (cuenta_id, id_orden, MOTIVO_SIN_CONTAR, fila["monto"], json.dumps(fila)))
+            archivadas += 1
+    return archivadas
 
 
 def retirar_ventas_canceladas(usuario_id, cuenta_id, access_token, seller_id, desde=None):
@@ -705,10 +762,12 @@ def retirar_ventas_canceladas(usuario_id, cuenta_id, access_token, seller_id, de
     Saca de `ventas` las filas de órdenes que Mercado Libre ya tiene canceladas o reembolsadas (el sync nunca guarda una orden
     cancelada, pero una que estaba paga y se cancela después seguía sumando a facturación y ganancia). La fila completa queda
     archivada en `ventas_retiradas` (JSON), así que no se pierde nada. Devuelve cuántas filas retiró.
+    Las canceladas que el sync nunca llegó a guardar se archivan aparte (`_archivar_canceladas_sin_contar`): no restan nada, solo se cuentan en «Ventas de hoy».
     """
-    ids = _ids_ordenes_canceladas(access_token, seller_id, desde)
-    if not ids:
+    ordenes = _ordenes_canceladas(access_token, seller_id, desde)
+    if not ordenes:
         return 0
+    ids = [str(o["id"]) for o in ordenes]
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
@@ -716,9 +775,11 @@ def retirar_ventas_canceladas(usuario_id, cuenta_id, access_token, seller_id, de
                 DELETE FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND id_orden = ANY(%s) RETURNING *
             )
             INSERT INTO ventas_retiradas (cuenta_id, id_orden, motivo, monto, fila)
-            SELECT cuenta_id, id_orden, 'cancelada', precio_venta * cantidad, to_jsonb(retiradas) FROM retiradas
-        """, (cuenta_id, ids))
-        return cursor.rowcount
+            SELECT cuenta_id, id_orden, %s, precio_venta * cantidad, to_jsonb(retiradas) FROM retiradas
+        """, (cuenta_id, ids, MOTIVO_RETIRADA))
+        retiradas = cursor.rowcount
+        _archivar_canceladas_sin_contar(cursor, cuenta_id, ordenes)
+        return retiradas
 
 
 def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):

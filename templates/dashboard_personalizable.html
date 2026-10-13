@@ -86,6 +86,23 @@
     <div class="ux-kpi ux-ok" id="kpi-salud"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-star"/></svg>Salud de la cuenta</div><div class="ux-kpi-valor"><span class="skeleton">00</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
 </div>
 
+<!-- ── 3b. VENTAS DE HOY: brutas − canceladas/devueltas = netas, con el detalle por modelo y variante ─── -->
+<div class="panel" id="panel-ventas-hoy">
+    <div class="ux-panel-cab">
+        <div class="panel-title" style="margin:0;"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-box"/></svg> Ventas de hoy</div>
+        <span class="text-muted" style="font-size:0.82em;">Solo las netas suman a tu ganancia</span>
+    </div>
+    <div class="pl-waterfall ux-cascada vh-cuenta" id="conciliacion-hoy" tabindex="0" role="group" aria-label="Cómo se arma la cuenta de ventas de hoy">
+        <div class="pl-tile" id="conc-brutas"><div class="stat-chip-label">Ventas brutas</div><div class="pl-tile-valor skeleton">$0</div><div class="vh-cifras-bloque">&nbsp;</div></div>
+        <div class="pl-operador">−</div>
+        <div class="pl-tile" id="conc-canceladas"><div class="stat-chip-label">Canceladas / devueltas</div><div class="pl-tile-valor skeleton">$0</div><div class="vh-cifras-bloque">&nbsp;</div></div>
+        <div class="pl-operador">=</div>
+        <div class="pl-tile pl-tile-resultado" id="conc-netas"><div class="stat-chip-label">Ventas netas</div><div class="pl-tile-valor skeleton">$0</div><div class="vh-cifras-bloque">&nbsp;</div></div>
+    </div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:10px;" id="conc-nota">Brutas: todo lo que entró hoy. Canceladas / devueltas: lo que Mercado Libre canceló o reembolsó. Netas: lo que de verdad te quedó vendido.</div>
+    <div class="vh-acordeon" id="acordeon-ventas-hoy"></div>
+</div>
+
 <!-- ── 4. ESTE MES: cómo viene contra el mes pasado ───────────────────────── -->
 {% if proyeccion %}
 <div class="panel">
@@ -312,6 +329,7 @@
     const _fetchResumenDiarioCompartido = () => _compartida('resumen_diario', '/api/resumen_diario');
     const _fetchGananciaCompartida = () => _compartida('ganancia', '/api/dashboard/ganancia_dia_vs_promedio');
     const _fetchTendenciaCompartida = () => _compartida('tendencia', '/api/dashboard/tendencia_ventas');
+    const _fetchHoyCompartido = () => _compartida('hoy', '/api/hoy');
 
     // Los gráficos que se rearman al cambiar las preferencias se destruyen antes de crear el nuevo: sin esto cada cambio dejaba una instancia de Chart.js viva con su canvas ya borrado de la página
     const _graficos = {};
@@ -589,7 +607,7 @@
 
     async function cargarKpisDia() {
         const [resumen, hoy, tendencia, ticker] = await Promise.allSettled([
-            _fetchResumenDiarioCompartido(), fetch('/api/hoy').then(r => r.json()), _fetchTendenciaCompartida(), _fetchTickerCompartido(),
+            _fetchResumenDiarioCompartido(), _fetchHoyCompartido(), _fetchTendenciaCompartida(), _fetchTickerCompartido(),
         ]);
 
         if (resumen.status === 'fulfilled' && resumen.value) {
@@ -629,6 +647,68 @@
             const sub = sk.closest('.ux-kpi')?.querySelector('.ux-kpi-sub');
             if (sub) sub.textContent = 'No se pudo cargar ahora';
         });
+    }
+
+    // ── 3b. Ventas de hoy: brutas − canceladas/devueltas = netas, y el acordeón por modelo y variante ──
+    const MODELOS_VISIBLES_HOY = 8;
+    const _unidades = (n) => `<b>${n}</b> ${n === 1 ? 'unidad' : 'unidades'}`;
+
+    function _pintarBloqueHoy(id, b) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const valor = el.querySelector('.pl-tile-valor');
+        valor.classList.remove('skeleton');
+        valor.textContent = UX.plata(b.facturado);
+        el.querySelector('.vh-cifras-bloque').innerHTML = `<b>${b.ordenes}</b> ${b.ordenes === 1 ? 'orden' : 'órdenes'} · <b>${b.compradores}</b> ${b.compradores === 1 ? 'comprador' : 'compradores'} · ${_unidades(b.unidades)}`;
+    }
+
+    function _filaVarianteHoy(v) {
+        const n = v.netas, c = v.canceladas;
+        return `<div class="vh-fila">
+            <span class="vh-var" title="${UX.esc(v.etiqueta)}">${UX.esc(v.etiqueta)}</span>
+            <span class="vh-uds">${n.unidades ? _unidades(n.unidades) : '<span class="text-muted">—</span>'}</span>
+            <span class="vh-canc">${c.unidades ? `${c.unidades} ${c.unidades === 1 ? 'cancelada' : 'canceladas'}` : ''}</span>
+            <span class="vh-plata">${n.unidades ? UX.plata(n.facturado) : '—'}</span>
+        </div>`;
+    }
+
+    function _modeloHoy(m) {
+        const n = m.netas, c = m.canceladas;
+        return `<details class="vh-modelo">
+            <summary>
+                <span class="vh-nombre" title="${UX.esc(m.nombre)}">${UX.esc(m.nombre)}</span>
+                <span class="vh-cifras">${n.unidades ? `${_unidades(n.unidades)} · ${UX.plata(n.facturado)}` : '<span class="text-muted">sin ventas netas</span>'}</span>
+                ${c.unidades ? `<span class="vh-canc">${c.unidades} ${c.unidades === 1 ? 'cancelada' : 'canceladas'}</span>` : ''}
+            </summary>
+            <div class="vh-variantes">${m.variantes.map(_filaVarianteHoy).join('')}</div>
+        </details>`;
+    }
+
+    function mostrarRestoVentasHoy(boton) {
+        const resto = document.getElementById('vh-resto');
+        if (resto) resto.hidden = false;
+        if (boton) boton.remove();
+    }
+
+    async function cargarVentasHoy() {
+        const panel = document.getElementById('panel-ventas-hoy');
+        const acordeon = document.getElementById('acordeon-ventas-hoy');
+        try {
+            const c = (await _fetchHoyCompartido()).conciliacion;
+            _pintarBloqueHoy('conc-brutas', c.brutas);
+            _pintarBloqueHoy('conc-canceladas', c.canceladas);
+            _pintarBloqueHoy('conc-netas', c.netas);
+            document.getElementById('conc-canceladas').classList.toggle('vh-con-canceladas', c.canceladas.ordenes > 0);
+            document.getElementById('conciliacion-hoy').setAttribute('aria-label', c.frase);
+            if (typeof adjuntarTooltipConciliacion === 'function') adjuntarTooltipConciliacion(document.getElementById('conciliacion-hoy'), c.frase);
+            if (!c.modelos.length) { acordeon.innerHTML = '<div class="text-muted" style="margin-top:6px;">Todavía no entraron ventas hoy.</div>'; return; }
+            const visibles = c.modelos.slice(0, MODELOS_VISIBLES_HOY), resto = c.modelos.slice(MODELOS_VISIBLES_HOY);
+            acordeon.innerHTML = visibles.map(_modeloHoy).join('')
+                + (resto.length ? `<div id="vh-resto" hidden>${resto.map(_modeloHoy).join('')}</div><button type="button" class="btn btn-secondary" data-click="mostrarRestoVentasHoy" data-click-args='["$el"]'>Ver ${resto.length} ${resto.length === 1 ? 'modelo más' : 'modelos más'}</button>` : '');
+        } catch (e) {
+            panel.querySelectorAll('.skeleton').forEach(sk => { sk.classList.remove('skeleton'); sk.textContent = '—'; });
+            acordeon.innerHTML = '<div class="text-muted">No se pudo cargar el detalle de hoy ahora. Probá recargar en un rato.</div>';
+        }
     }
 
     // ── 1b. Ganancia día por día: barras verdes/rojas + línea del promedio ─────────
@@ -786,6 +866,7 @@
         cargarGananciaDiaVsPromedio();
         cargarAcciones();
         cargarKpisDia();
+        cargarVentasHoy();
         renderizarWidgetsActivos();
         cargarChecklistPerfil();
     });

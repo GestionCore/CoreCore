@@ -10,6 +10,7 @@ import db
 import analisis_stock
 import salud_cuenta
 import resumen_semanal
+import ventas_hoy
 from utils import ARGENTINA, formatear_moneda, hoy_argentina, limpiar_titulo_modelo, normalizar_talle, SQL_RECLAMO_AFECTA, sql_momento_argentina
 
 
@@ -70,16 +71,15 @@ def obtener_ventas_hoy(usuario_id, cuenta_id=None):
             FROM ventas v LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
             WHERE v.fecha_venta = %s ORDER BY v.id DESC
         """, (hoy_local,))
-        ventas_hoy = cursor.fetchall()
+        filas_hoy = cursor.fetchall()
 
-        cursor.execute("""
-            SELECT COALESCE(SUM(precio_venta * cantidad), 0), COALESCE(SUM(cantidad), 0), COUNT(DISTINCT id_orden)
-            FROM ventas WHERE fecha_venta = %s
-        """, (hoy_local,))
-        facturado_hoy, unidades_hoy, ordenes_hoy = cursor.fetchone()
+        # Las tres etapas del día (brutas, canceladas/devueltas, netas) y el acordeón por modelo y variante; "hoy" facturado = las netas
+        conciliacion = ventas_hoy.conciliar_dia(cursor, hoy_local)
+        netas = conciliacion["netas"]
+        facturado_hoy, unidades_hoy, ordenes_hoy = netas["facturado"], netas["unidades"], netas["ordenes"]
 
     lista_ventas = []
-    for titulo, id_variante, cant, precio_unitario, hora_venta, id_orden, id_meli, talle in ventas_hoy:
+    for titulo, id_variante, cant, precio_unitario, hora_venta, id_orden, id_meli, talle in filas_hoy:
         hora_str = hora_venta.strftime("%H:%M") if hasattr(hora_venta, "strftime") else (hora_venta or arg_now.strftime("%H:%M"))
         lista_ventas.append({
             "id_venta": f"{id_orden}_{id_variante}", "id_orden": id_orden, "titulo": _detalle_venta(titulo, talle),
@@ -89,7 +89,7 @@ def obtener_ventas_hoy(usuario_id, cuenta_id=None):
 
     return {
         "facturado_hoy": formatear_moneda(facturado_hoy), "unidades_hoy": unidades_hoy,
-        "ordenes_hoy": ordenes_hoy, "ultimas_ventas": lista_ventas
+        "ordenes_hoy": ordenes_hoy, "ultimas_ventas": lista_ventas, "conciliacion": conciliacion,
     }
 
 
@@ -282,8 +282,9 @@ def obtener_ticker(usuario_id, cuenta_id=None):
 
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0), COUNT(DISTINCT id_orden) FROM ventas WHERE fecha_venta = %s", (hoy,))
-        fact_hoy, ord_hoy = cursor.fetchone()
+        # Lo de hoy en tres etapas (la píldora muestra las NETAS; el tooltip explica la cuenta completa)
+        conciliacion_hoy = ventas_hoy.totales_del_dia(cursor, hoy)
+        fact_hoy, ord_hoy = conciliacion_hoy["netas"]["facturado"], conciliacion_hoy["netas"]["ordenes"]
 
         cursor.execute("SELECT COALESCE(SUM(monto_liberacion), 0) FROM ventas WHERE fecha_liberacion = %s", (manana,))
         liberacion_manana = cursor.fetchone()[0] or 0.0
@@ -339,7 +340,7 @@ def obtener_ticker(usuario_id, cuenta_id=None):
         "a_liberar_total": formatear_moneda(a_liberar_total), "hay_liberaciones": a_liberar_total > 0, "bridge_activo": False,
         "incidencias_activas": incidencias_activas, "devoluciones_activas": devoluciones_activas, "reclamos_sin_impacto": reclamos_sin_impacto, "salud_score": salud["score"], "racha_dias": racha_dias,
         "salud_etiqueta": salud["etiqueta"], "salud_detalle": salud["detalle"],
-        "ventas_hoy_detalle": ventas_hoy_detalle,
+        "ventas_hoy_detalle": ventas_hoy_detalle, "conciliacion_hoy": conciliacion_hoy,
         "avisos": armar_avisos(preguntas_sin_responder, incidencias_activas, devoluciones_activas, publicaciones_sin_stock),
     }
 

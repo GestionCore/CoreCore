@@ -146,7 +146,7 @@ def test_el_ticker_arma_lo_de_hoy_lo_que_falta_acreditar_y_los_avisos(monkeypatc
     monkeypatch.setattr(dashboard.salud_cuenta, "calcular_score_salud", lambda cursor: {"score": 72, "etiqueta": "Bien", "detalle": ["-15 por 1 reclamo activo"]})
     monkeypatch.setattr(dashboard, "contar_preguntas_y_sin_stock", lambda cursor: (4, 2))
     _con(monkeypatch, {
-        "COUNT(DISTINCT id_orden) FROM ventas WHERE fecha_venta": [(168548, 5)],
+        "GROUPING SETS": [(None, 7, 6, 9, 213548.0), ("cancelada", 2, 2, 3, 45000.0), ("neta", 5, 5, 6, 168548.0)],       # estado, órdenes, compradores, unidades, $
         "WHERE fecha_liberacion = ": [(1250.4,)],
         "GROUP BY fecha_liberacion": [(date(2026, 10, 9), 8000)],
         "WHERE fecha_liberacion >= %s": [(50300,)],
@@ -155,7 +155,10 @@ def test_el_ticker_arma_lo_de_hoy_lo_que_falta_acreditar_y_los_avisos(monkeypatc
         "SELECT racha_dias": [(6,)],
     })
     t = dashboard.obtener_ticker(1, 7)
-    assert t["ventas_hoy"] == 5 and t["facturado_hoy"] == "168.548"
+    assert t["ventas_hoy"] == 5 and t["facturado_hoy"] == "168.548"                                              # la píldora muestra las NETAS
+    c = t["conciliacion_hoy"]
+    assert (c["brutas"]["ordenes"], c["canceladas"]["ordenes"], c["netas"]["ordenes"]) == (7, 2, 5) and c["brutas"]["compradores"] == 6 and c["brutas"]["unidades"] == 9
+    assert c["frase"] == "Ventas brutas: 7 órdenes ($213.548) | Canceladas/Devueltas: 2 órdenes ($45.000) | Netas: 5 órdenes ($168.548)"
     assert t["liberacion_manana"] == "1.250" and t["proxima_liberacion"] == {"fecha": "09/10", "monto": "8.000"}
     assert t["a_liberar_total"] == "50.300" and t["hay_liberaciones"] is True
     assert (t["incidencias_activas"], t["devoluciones_activas"], t["reclamos_sin_impacto"]) == (2, 3, 1)       # reclamos que afectan, devoluciones y reclamos que no afectan, por separado
@@ -168,7 +171,7 @@ def test_el_ticker_sin_nada_acreditar_ni_vendido_no_inventa_datos(monkeypatch):
     monkeypatch.setattr(dashboard.salud_cuenta, "calcular_score_salud", lambda cursor: {"score": 100, "etiqueta": "Muy bien", "detalle": []})
     monkeypatch.setattr(dashboard, "contar_preguntas_y_sin_stock", lambda cursor: (0, 0))
     _con(monkeypatch, {
-        "COUNT(DISTINCT id_orden) FROM ventas WHERE fecha_venta": [(0, 0)], "WHERE fecha_liberacion = ": [(None,)], "GROUP BY fecha_liberacion": [],
+        "GROUPING SETS": [(None, 0, 0, 0, 0)], "WHERE fecha_liberacion = ": [(None,)], "GROUP BY fecha_liberacion": [],
         "WHERE fecha_liberacion >= %s": [(None,)], "ORDER BY hora_venta DESC": [], "FROM incidencias_posventa": [(0, 0, 0)], "SELECT racha_dias": [(None,)],
     })
     t = dashboard.obtener_ticker(1, 7)
@@ -180,10 +183,10 @@ def test_el_ticker_usa_el_dia_de_argentina(monkeypatch):
     """«Hoy» es el día en Argentina aunque el servidor corra en UTC: se consulta con la fecha de ARGENTINA."""
     monkeypatch.setattr(dashboard.salud_cuenta, "calcular_score_salud", lambda cursor: {"score": 100, "etiqueta": "Muy bien", "detalle": []})
     monkeypatch.setattr(dashboard, "contar_preguntas_y_sin_stock", lambda cursor: (0, 0))
-    cursor = _con(monkeypatch, {"COUNT(DISTINCT id_orden) FROM ventas WHERE fecha_venta": [(0, 0)], "WHERE fecha_liberacion = ": [(0,)], "GROUP BY fecha_liberacion": [],
+    cursor = _con(monkeypatch, {"GROUPING SETS": [(None, 0, 0, 0, 0)], "WHERE fecha_liberacion = ": [(0,)], "GROUP BY fecha_liberacion": [],
                                 "WHERE fecha_liberacion >= %s": [(0,)], "ORDER BY hora_venta DESC": [], "FROM incidencias_posventa": [(0, 0, 0)], "SELECT racha_dias": [(0,)]})
     dashboard.obtener_ticker(1, 7)
     hoy_ar = datetime.now(ARGENTINA)
-    consultado = cursor.consultas[0][1][0]
+    consultado = cursor.consultas[0][1]["fecha"]
     assert consultado in ((hoy_ar).strftime("%Y-%m-%d"), (hoy_ar - timedelta(minutes=1)).strftime("%Y-%m-%d"))       # (tolera cambiar de día entre las dos lecturas)
     assert date.fromisoformat(cursor.consultas[1][1][0]) - date.fromisoformat(consultado) == timedelta(days=1)                          # «mañana» es el día siguiente a ese hoy

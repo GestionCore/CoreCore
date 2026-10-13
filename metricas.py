@@ -291,10 +291,10 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         """, (fecha_desde, fecha_hasta))
         incidencias_db = cursor.fetchall()
 
-        # Ventas cuya orden se canceló o reembolsó después de sincronizarla: ya no cuentan (ver ventas_sync.retirar_ventas_canceladas)
+        # Ventas cuya orden se canceló o reembolsó después de sincronizarla: ya no cuentan (ver ventas_sync.retirar_ventas_canceladas). Las 'cancelada_sin_contar' nunca contaron: no restan nada
         cursor.execute("""
             SELECT COUNT(DISTINCT id_orden) AS ordenes, COALESCE(SUM(monto), 0) AS monto
-            FROM ventas_retiradas WHERE (fila->>'fecha_venta')::date BETWEEN %s AND %s
+            FROM ventas_retiradas WHERE motivo = 'cancelada' AND (fila->>'fecha_venta')::date BETWEEN %s AND %s
         """, (fecha_desde, fecha_hasta))
         retiradas = cursor.fetchone()
 

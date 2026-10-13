@@ -1000,6 +1000,7 @@ function mostrarTooltipVentas(ancla) {
         el.innerHTML = `
             <div class="tooltip-ticker-cuerpo">
                 <div class="tooltip-ticker-titulo">Ventas de hoy — $${UX.esc(data.facturado_hoy)}</div>
+                ${data.conciliacion_hoy ? `${_listaConciliacion(data.conciliacion_hoy.frase)}<div class="tooltip-ticker-sub">Las últimas ventas netas:</div>` : ''}
                 ${lista.length ? `
                     <ul class="tooltip-ticker-lista">
                         ${lista.map(v => `<li>${UX.esc(v.hora)} — ${UX.esc(v.cantidad)}× ${UX.esc(String(v.titulo).slice(0, 38))}${String(v.titulo).length > 38 ? '…' : ''} <strong>$${UX.esc(v.precio_formateado)}</strong></li>`).join('')}
@@ -1010,6 +1011,33 @@ function mostrarTooltipVentas(ancla) {
     }
     _posicionarTooltipTicker(el, ancla);
     el.classList.add('visible');
+}
+
+// La cuenta del día en líneas: «Ventas brutas: … | Canceladas/Devueltas: … | Netas: …» (la frase la arma el servidor, ventas_hoy.frase_conciliacion)
+function _listaConciliacion(frase) {
+    return `<ul class="tooltip-ticker-lista">${String(frase || '').split(' | ').map(t => `<li>${UX.esc(t)}</li>`).join('')}</ul>`;
+}
+
+function mostrarTooltipConciliacion(ancla, frase) {
+    const el = _crearTooltipTicker();
+    el.style.removeProperty('--tooltip-acento');
+    el.innerHTML = `
+        <div class="tooltip-ticker-cuerpo">
+            <div class="tooltip-ticker-titulo">Cómo se arma la cuenta de hoy</div>
+            ${_listaConciliacion(frase)}
+            <div class="tooltip-ticker-sub">Brutas − canceladas/devueltas = netas. Solo las netas suman a tu facturación y a tu ganancia.</div>
+        </div>`;
+    _posicionarTooltipTicker(el, ancla);
+    el.classList.add('visible');
+}
+
+function adjuntarTooltipConciliacion(ancla, frase) {
+    if (!ancla || ancla.dataset.tooltipConciliacion) return;
+    ancla.dataset.tooltipConciliacion = '1';
+    ancla.addEventListener('mouseenter', () => mostrarTooltipConciliacion(ancla, frase));
+    ancla.addEventListener('mouseleave', ocultarTooltipTicker);
+    ancla.addEventListener('focus', () => mostrarTooltipConciliacion(ancla, frase));
+    ancla.addEventListener('blur', ocultarTooltipTicker);
 }
 
 function ocultarTooltipTicker() {

@@ -137,6 +137,45 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
 .btn-lg { padding: 13px 26px; font-size: 1em; font-weight: 800; border-radius: var(--radius-md); }
 
 
+/* ---------- Ventas de hoy: la cuenta de tres etapas y el acordeón por modelo → variante ---------- */
+.vh-cifras-bloque { margin-top: 6px; font-size: 0.82em; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.vh-cifras-bloque b { color: var(--text-primary); }
+.vh-con-canceladas .pl-tile-valor { color: var(--danger); }
+.vh-cuenta { cursor: help; }
+.vh-acordeon { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.vh-acordeon > .btn { align-self: flex-start; }
+#vh-resto:not([hidden]) { display: flex; flex-direction: column; gap: 8px; }
+.vh-modelo { border: 1px solid var(--border-soft); border-radius: var(--radius-md); background: var(--glass-bg); overflow: hidden; }
+.vh-modelo > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 10px 16px; min-height: 44px; user-select: none; }
+.vh-modelo > summary::-webkit-details-marker { display: none; }
+.vh-modelo > summary::after { content: "▾"; color: var(--text-secondary); transition: transform var(--transition-base); }
+.vh-modelo[open] > summary::after { transform: rotate(180deg); }
+.vh-modelo > summary:hover { background: rgba(255,255,255,0.03); }
+.vh-nombre { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vh-cifras { color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 0.9em; }
+.vh-cifras b { color: var(--text-primary); }
+.vh-canc { color: var(--danger); font-weight: 700; font-size: 0.85em; white-space: nowrap; }
+.vh-variantes { border-top: 1px solid var(--border-soft); }
+.vh-fila { display: grid; grid-template-columns: minmax(0, 1fr) 7.5em 6.5em 6em; gap: 12px; align-items: baseline; padding: 8px 16px; font-size: 0.9em; font-variant-numeric: tabular-nums; }
+.vh-fila + .vh-fila { border-top: 1px solid var(--border-soft); }
+.vh-var { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vh-plata { text-align: right; font-weight: 700; }
+@media (max-width: 720px) {
+    /* tres columnas no alcanzan para «10 órdenes · 9 compradores · 10 unidades»: en celular las tres etapas van una debajo de otra, cada una con su resumen */
+    .pl-waterfall.ux-cascada.vh-cuenta { grid-template-columns: minmax(0, 1fr); }
+    .vh-cuenta .pl-tile { padding: 12px 14px; }
+    .vh-cuenta .pl-tile .stat-chip-label { font-size: 0.82em; }
+    .vh-cuenta .pl-tile-valor { font-size: 1.3em; }
+}
+@media (max-width: 640px) {
+    .vh-fila { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
+    .vh-fila .vh-uds { grid-column: 1; }
+    .vh-fila .vh-plata { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+    .vh-modelo > summary { position: relative; flex-wrap: wrap; row-gap: 2px; padding-right: 38px; }
+    .vh-modelo > summary::after { position: absolute; right: 14px; top: 14px; }
+    .vh-nombre { flex-basis: 100%; }
+}
+
 /* ---------- Título de sección con punto de color ---------- */
 .ux-seccion { display: flex; align-items: center; gap: 10px; font-size: 1.08em; font-weight: 800; margin: 30px 0 14px; }
 .ux-seccion::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--ux-c, var(--accent-primary)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ux-c, var(--accent-primary)) 20%, transparent); }

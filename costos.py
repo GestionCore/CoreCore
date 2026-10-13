@@ -47,6 +47,11 @@ def _palabras(texto):
 _PARECE_TALLE = re.compile(r"^(?:\d{1,2}(?:[-/]\d{1,2})?|x{0,3}[sl]|m|[2-5]xl)$", re.I)
 
 
+def parece_talle(etiqueta):
+    """True si lo que distingue a una variante parece un talle (2, 38, 35-41, S, M, XL, 3XL…) y no un color u otra versión."""
+    return bool(_PARECE_TALLE.match(etiqueta or ""))
+
+
 def nombres_de_variantes(claves):
     """
     Dado el título-de-modelo de cada variante de UN mismo modelo (los colores u otras versiones: «Buzo Manta Beige Liso», «Buzo Manta Gris Liso»),
@@ -101,7 +106,7 @@ def agrupar_modelos(productos):
     modelos = []
     for variantes_por_clave in familias.values():
         nombre, etiquetas = nombres_de_variantes(list(variantes_por_clave))
-        if len(variantes_por_clave) > 1 and all(_PARECE_TALLE.match(e) for e in etiquetas.values()):
+        if len(variantes_por_clave) > 1 and all(parece_talle(e) for e in etiquetas.values()):
             # Lo único que distingue a las «variantes» son talles escritos en medio del título («… Azul 2 Denim», «… Azul 3 Denim»): es UNA variante con varios talles
             items = []
             for clave, its in variantes_por_clave.items():
