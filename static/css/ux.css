@@ -9,12 +9,12 @@
    Se carga después de style.css y se apoya en sus tokens (tema oscuro
    y claro incluidos).
    ============================================================ */
-:where(.ux-banner, .ux-hero, .ux-kpi, .ux-pill, .ux-item-accion, .ux-pregunta) { --ux-c: var(--accent-primary); }
+:where(.ux-banner, .ux-hero, .ux-kpi, .ux-pill, .ux-item-accion, .ux-pregunta) { --ux-c: var(--ux-accion, var(--accent-primary)); }
 .ux-ok      { --ux-c: var(--success); }
 .ux-danger  { --ux-c: var(--danger); }
 .ux-warn    { --ux-c: var(--semantic-warning); }
 .ux-info    { --ux-c: var(--semantic-info); }
-.ux-accion  { --ux-c: var(--accent-primary); }
+.ux-accion  { --ux-c: var(--ux-accion, var(--accent-primary)); }
 .ux-gold    { --ux-c: var(--accent-gold); }
 .ux-neutral { --ux-c: var(--text-secondary); }
 
@@ -28,7 +28,7 @@
 }
 .ux-banner-icono {
     flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
-    background: var(--ux-c); color: #0a0a0c; box-shadow: 0 0 0 5px color-mix(in srgb, var(--ux-c) 18%, transparent);
+    background: var(--ux-c); color: var(--texto-sobre-color, #0a0a0c); box-shadow: 0 0 0 5px color-mix(in srgb, var(--ux-c) 18%, transparent);
 }
 .ux-banner-icono .icon { width: 20px; height: 20px; }
 .ux-banner-cuerpo { flex: 1; min-width: 0; }
@@ -74,7 +74,7 @@ html.modo-privacidad .ux-rank-valor:hover, html.modo-privacidad .ux-dist-val:hov
 /* ---------- Pastillas de estado SÓLIDAS (no solo contorno) ---------- */
 .ux-pill {
     display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: var(--radius-pill);
-    font-size: 0.82em; font-weight: 800; background: var(--ux-c); color: #0a0a0c; white-space: nowrap;
+    font-size: 0.82em; font-weight: 800; background: var(--ux-c); color: var(--texto-sobre-color, #0a0a0c); white-space: nowrap;
 }
 .ux-pill.ux-accion, .ux-pill.ux-neutral { color: #fff; }
 .ux-pill-suave { background: color-mix(in srgb, var(--ux-c) 18%, transparent); color: var(--ux-c); }

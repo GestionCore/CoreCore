@@ -18,6 +18,7 @@ from functools import wraps
 
 from flask import Blueprint, Response, g, jsonify, render_template, request
 
+import config
 import db
 from auth.middleware import login_requerido
 from seguridad import ip_del_cliente
@@ -145,29 +146,48 @@ def auditar(accion):
     return decorador
 
 
-def listar(usuario_id, cuenta_id, limite=100):
+def es_administrador(usuario_id):
+    """¿Es quien administra CoreLux (ADMIN_EMAIL)? Solo esa persona ve los datos técnicos del registro."""
+    if not config.ADMIN_EMAILS:
+        return False
+    with db.conexion_usuario(usuario_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT email FROM usuarios WHERE id = %s", (usuario_id,))
+        fila = cursor.fetchone()
+    return bool(fila) and config.es_admin(fila[0])
+
+
+def listar(usuario_id, cuenta_id, limite=100, completo=False):
+    """
+    El registro de actividad de la persona. Por defecto cada evento trae SOLO lo que se le muestra a un usuario común: qué pasó (`etiqueta`) y cuándo. Los datos técnicos
+    (el pedido tal como lo recibió el servidor, la ruta, los ids internos, la IP y la cuenta) son para quien administra el sistema: `completo=True`.
+    """
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute(
             "SELECT accion, detalle, ip, creado_en, cuenta_id FROM auditoria WHERE usuario_id = %s ORDER BY creado_en DESC LIMIT %s",
             (usuario_id, limite),
         )
-        return [
-            {"accion": a, "etiqueta": ETIQUETAS.get(a, a.replace("_", " ").capitalize()), "detalle": d or {}, "ip": ip, "cuando": c.astimezone(ARGENTINA), "cuenta_id": cu}
-            for a, d, ip, c, cu in cursor.fetchall()
-        ]
+        eventos = []
+        for a, d, ip, c, cu in cursor.fetchall():
+            evento = {"accion": a, "etiqueta": ETIQUETAS.get(a, a.replace("_", " ").capitalize()), "cuando": c.astimezone(ARGENTINA)}
+            if completo:
+                evento.update(detalle=d or {}, ip=ip, cuenta_id=cu)
+            eventos.append(evento)
+        return eventos
 
 
 @bp.route("/cuenta/actividad")
 @login_requerido
 def actividad():
-    return render_template("actividad.html", eventos=listar(g.usuario_id, g.cuenta_id), active_nav="cuenta")
+    es_admin = es_administrador(g.usuario_id)
+    return render_template("actividad.html", eventos=listar(g.usuario_id, g.cuenta_id, completo=es_admin), es_admin=es_admin, active_nav="cuenta")
 
 
 @bp.route("/api/cuenta/actividad")
 @login_requerido
 def api_actividad():
-    eventos = listar(g.usuario_id, g.cuenta_id, limite=min(int(request.args.get("limite", 100)), 500))
+    eventos = listar(g.usuario_id, g.cuenta_id, limite=min(int(request.args.get("limite", 100)), 500), completo=es_administrador(g.usuario_id))
     for e in eventos:
         e["cuando"] = e["cuando"].isoformat()
     return jsonify({"ok": True, "eventos": eventos})

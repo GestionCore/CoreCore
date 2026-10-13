@@ -16,24 +16,26 @@
     <div class="panel-title">Últimos {{ eventos|length }} cambios</div>
     <div style="overflow-x:auto;">
         <table class="data-table ux-tabla-cards">
-            <thead><tr><th>Cuándo</th><th>Qué</th><th>Desde</th><th></th></tr></thead>
+            <thead><tr><th>Cuándo</th><th>Qué</th>{% if es_admin %}<th>Desde</th><th>Datos técnicos</th>{% endif %}</tr></thead>
             <tbody>
             {% for e in eventos %}
                 <tr>
                     <td data-label="Cuándo"><b>{{ e.cuando.strftime('%d/%m/%Y') }}</b> <span class="text-muted">{{ e.cuando.strftime('%H:%M') }}</span></td>
                     <td data-label="Qué">{{ e.etiqueta }}</td>
+                    {% if es_admin %}
                     <td data-label="Desde" class="text-muted">{{ e.ip or '—' }}</td>
-                    <td data-label="Detalle">
+                    <td data-label="Datos técnicos">
                         {% if e.detalle.pedido is defined or e.detalle.ids is defined %}
-                        <details class="ux-detalle"><summary>Ver detalle</summary><pre style="white-space:pre-wrap; font-size:0.8em; margin:8px 0 0;">{{ e.detalle|tojson(indent=1) }}</pre></details>
+                        <details class="ux-detalle"><summary>Ver datos técnicos</summary><pre style="white-space:pre-wrap; font-size:0.8em; margin:8px 0 0;">{{ e.detalle|tojson(indent=1) }}</pre></details>
                         {% endif %}
                     </td>
+                    {% endif %}
                 </tr>
             {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
-<div class="text-muted" style="font-size:0.85em; margin-top:10px;">Las horas están en horario de Argentina. Este registro solo se puede leer: no se edita ni se borra.</div>
+<div class="text-muted" style="font-size:0.85em; margin-top:10px;">Las horas están en horario de Argentina. Este registro solo se puede leer: no se edita ni se borra.{% if es_admin %} Vista de administrador: incluye los datos técnicos de cada acción.{% endif %}</div>
 {% endif %}
 {% endblock %}

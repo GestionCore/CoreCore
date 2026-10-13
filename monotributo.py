@@ -1,9 +1,9 @@
 """
 Análisis de categoría de Monotributo — compara la facturación real
 (últimos 12 meses, de la propia base de ventas) contra las escalas
-vigentes de AFIP, y avisa si conviene recategorizarse.
+vigentes de ARCA (Agencia de Recaudación y Control Aduanero), y avisa si conviene recategorizarse.
 
-IMPORTANTE — mantenimiento: estos montos los actualiza AFIP dos veces
+IMPORTANTE — mantenimiento: estos montos los actualiza ARCA dos veces
 por año (típicamente en enero y julio, aunque en 2026 hubo un ajuste
 extra en agosto). ESCALAS_VIGENTES_DESDE queda documentado a propósito
 para que quien lo revise en el futuro sepa que hay que chequear si
@@ -40,7 +40,7 @@ ESCALAS = [
 ]
 PRECIO_UNITARIO_MAXIMO = 716840.77
 
-MESES_VENTANA_RECATEGORIZACION = {1: "enero", 7: "julio"}  # AFIP recategoriza cada enero y julio
+MESES_VENTANA_RECATEGORIZACION = {1: "enero", 7: "julio"}  # ARCA recategoriza cada enero y julio
 
 
 def _categoria_para_facturacion(facturacion_anual):
@@ -113,7 +113,7 @@ def evaluar_categoria(usuario_id, cuenta_id):
         if idx_real > idx_declarada:
             alertas.append({
                 "tipo": "urgente",
-                "texto": f"Tu facturación real de los últimos 12 meses te ubica en Categoría {categoria_real['categoria']}, pero tenés declarada la {categoria_declarada}. Convendría recategorizarte cuanto antes — estar por debajo de tu categoría real tiene consecuencias con AFIP."
+                "texto": f"Tu facturación real de los últimos 12 meses te ubica en Categoría {categoria_real['categoria']}, pero tenés declarada la {categoria_declarada}. Convendría recategorizarte cuanto antes — estar por debajo de tu categoría real tiene consecuencias con ARCA."
             })
         elif idx_real < idx_declarada:
             escala_actual = ESCALAS[idx_declarada]
@@ -139,7 +139,7 @@ def evaluar_categoria(usuario_id, cuenta_id):
         if meses_para_cruzar < meses_hasta_ventana:
             alertas.append({
                 "tipo": "proyeccion",
-                "texto": f"Al ritmo de crecimiento de tus últimas ventas, podrías superar el techo de tu categoría en {'un mes' if meses_para_cruzar == 1 else f'unos {meses_para_cruzar} meses'} — antes de la próxima ventana de recategorización de AFIP ({MESES_VENTANA_RECATEGORIZACION[proxima_ventana.month]} {proxima_ventana.year}). Vale la pena tenerlo en el radar."
+                "texto": f"Al ritmo de crecimiento de tus últimas ventas, podrías superar el techo de tu categoría en {'un mes' if meses_para_cruzar == 1 else f'unos {meses_para_cruzar} meses'} — antes de la próxima ventana de recategorización de ARCA ({MESES_VENTANA_RECATEGORIZACION[proxima_ventana.month]} {proxima_ventana.year}). Vale la pena tenerlo en el radar."
             })
 
     if precio_maximo_vendido > PRECIO_UNITARIO_MAXIMO:

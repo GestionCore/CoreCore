@@ -51,6 +51,8 @@
     --accent-brand-glow: var(--accent-gold-glow);
 
     /* ---------- Semántica financiera — cada color un solo rol ---------- */
+    --texto-sobre-color: #0a0a0c;       /* texto que va SOBRE un fondo de color sólido (pastillas, íconos de banner, avisos): oscuro en el tema oscuro, blanco en el claro */
+    --ux-accion: var(--accent-primary);  /* el color de acción como texto/fondo de los componentes ux-*; en el tema claro se oscurece para llegar a 4,5:1 */
     --success: #22c55e;                 /* ganancia neta, cobros, números positivos */
     --success-bg: rgba(34, 197, 94, 0.12);
     --danger: #f43f5e;                  /* reclamos, quiebre de stock, pérdida */
@@ -115,7 +117,7 @@
 
     --text-primary: #16161f;
     --text-secondary: #55556e;
-    --text-faint: #68688a;
+    --text-faint: #5d5d80;              /* antes #68688a: 4,2:1 sobre un fondo teñido al 18 %; ahora 4,8:1 */
     --accent-texto: #6d28d9;
 
     /* En modo claro los acentos neón se oscurecen para tener contraste
@@ -126,26 +128,30 @@
     --accent-primary-glow: rgba(139, 63, 252, 0.22);
     --accent-cyan: #0891b2;
     --accent-cyan-glow: rgba(8, 145, 178, 0.2);
-    --accent-gold: #b45309;
-    --accent-gold-dim: #92400e;
-    --accent-gold-glow: rgba(180, 83, 9, 0.18);
+    --accent-gold: #92400e;             /* dorado en claro: marrón ámbar oscuro (el #b45309 llegaba a 3,9:1 sobre su fondo teñido) */
+    --accent-gold-dim: #78350f;
+    --accent-gold-glow: rgba(146, 64, 14, 0.18);
 
     --accent-brand: var(--accent-gold);
     --accent-brand-dim: var(--accent-gold-dim);
     --accent-brand-glow: var(--accent-gold-glow);
-    --success: #059669;
-    --success-bg: rgba(5, 150, 105, 0.10);
-    --danger: #dc2626;
-    --danger-bg: rgba(220, 38, 38, 0.10);
-    --warning: #b45309;
-    --warning-bg: rgba(180, 83, 9, 0.10);
-    --semantic-warning: #c2540a;
-    --semantic-warning-bg: rgba(194, 84, 10, 0.12);
-    --semantic-achieve: #7c3aed;
-    --semantic-achieve-bg: rgba(124, 58, 237, 0.12);
-    --semantic-info: #0891b2;
-    --semantic-info-bg: rgba(8, 145, 178, 0.11);
-    --semantic-danger-glow: rgba(220, 38, 38, 0.35);
+    /* Semántica en claro (WCAG AA): cada color de texto llega a ≥ 4,5:1 sobre la tarjeta y sobre su propio fondo teñido (hasta 24 %). Antes el verde daba 3,7:1 sobre la
+       tarjeta y 3,0:1 sobre su fondo, el celeste 3,6:1 y el rojo 3,6:1 sobre un banner. Lo mide tests/test_contraste.py. */
+    --texto-sobre-color: #ffffff;
+    --ux-accion: var(--accent-primary-dim);
+    --success: #065f46;
+    --success-bg: rgba(6, 95, 70, 0.10);
+    --danger: #a61b1b;
+    --danger-bg: rgba(166, 27, 27, 0.10);
+    --warning: #92400e;
+    --warning-bg: rgba(146, 64, 14, 0.10);
+    --semantic-warning: #9a3412;
+    --semantic-warning-bg: rgba(154, 52, 18, 0.12);
+    --semantic-achieve: #6d28d9;
+    --semantic-achieve-bg: rgba(109, 40, 217, 0.12);
+    --semantic-info: #155e75;
+    --semantic-info-bg: rgba(21, 94, 117, 0.11);
+    --semantic-danger-glow: rgba(166, 27, 27, 0.35);
 
     --shadow-card: 0 4px 24px -4px rgba(30, 20, 60, 0.08);
     --shadow-elevated: 0 16px 40px -8px rgba(30, 20, 60, 0.14);
@@ -596,7 +602,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 /* Un ícono de color por tipo (antes eran solo una rayita fina de color: no se distinguía un error de un aviso) */
 .toast-item::before {
     content: "i"; flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; margin-top: 1px;
-    font-size: 0.85em; font-weight: 800; color: #0a0a0c; background: var(--ux-toast, var(--semantic-info));
+    font-size: 0.85em; font-weight: 800; color: var(--texto-sobre-color); background: var(--ux-toast, var(--semantic-info));
 }
 .toast-item.visible { opacity: 1; transform: translateX(0); }
 .toast-success { --ux-toast: var(--success); }
@@ -846,7 +852,7 @@ body.modo-despacho-limpio { padding-top: 20px; }
 a.checklist-item:hover { background: rgba(255,255,255,0.04); }
 .checklist-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--glass-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.82em; }
 .checklist-item.completo { color: var(--text-secondary); }
-.checklist-item.completo .checklist-check { background: var(--success); border-color: var(--success); color: #06201a; }
+.checklist-item.completo .checklist-check { background: var(--success); border-color: var(--success); color: var(--texto-sobre-color); }
 .checklist-item.completo .checklist-texto { text-decoration: line-through; text-decoration-color: var(--text-faint); }
 .checklist-texto { flex: 1; min-width: 0; }
 .checklist-ir { flex-shrink: 0; font-size: 0.82em; font-weight: 700; color: var(--accent-texto); opacity: 0.85; transition: opacity var(--transition-fast), transform var(--transition-fast); }

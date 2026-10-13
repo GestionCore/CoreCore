@@ -17,7 +17,7 @@
 {% endif %}
 <div class="panel" id="condicion-fiscal" style="max-width:640px;">
     <div class="panel-title">Tu condición fiscal</div>
-    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin-bottom:12px;">Mercado Libre nos informa tu CUIT, pero no tu condición ante ARCA. La declarás vos y la podés cambiar cuando quieras en <a href="/cuenta#condicion-fiscal">Mi cuenta</a>.</div>
+    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin-bottom:12px;">Mercado Libre nos informa tu CUIT, pero no tu condición ante ARCA (Agencia de Recaudación y Control Aduanero). La declarás vos y la podés cambiar cuando quieras en <a href="/cuenta#condicion-fiscal">Mi cuenta</a>.</div>
     {% set condicion_actual = condicion %}{% set volver = "/monotributo" %}
     {% include "_condicion_fiscal.html" %}
 </div>
@@ -36,7 +36,7 @@
 
 <!-- ── 1. QUÉ TENÉS QUE SABER ───────────────────────────────────────────── -->
 {% if not declarada %}
-{{ banner("info", "info", "<b>Declará tu categoría</b> para compararla con lo que facturás", "La app no puede saber en qué categoría te inscribiste ante AFIP: elegila abajo y el resto se calcula solo.", "Elegir mi categoría", "#declarar-categoria") }}
+{{ banner("info", "info", "<b>Declará tu categoría</b> para compararla con lo que facturás", "La app no puede saber en qué categoría te inscribiste ante ARCA: elegila abajo y el resto se calcula solo.", "Elegir mi categoría", "#declarar-categoria") }}
 {% endif %}
 {% for a in alertas %}
 {{ banner("danger" if a.tipo == 'urgente' else ("ok" if a.tipo == 'oportunidad' else "warn"), "check" if a.tipo == 'oportunidad' else "alert", a.texto|e) }}
@@ -66,7 +66,7 @@
     {{ kpi("Facturación · 12 meses", facturacion_12m|plata, "accion", "receipt", "ventas de los últimos 365 días") }}
     {{ kpi("Categoría según tu facturación", categoria_real or "Fuera de escala", "gold", "file-text", "la que te corresponde hoy") }}
     {% if declarada %}
-    {{ kpi("Categoría declarada", declarada, "info", "check", "la que informaste ante AFIP") }}
+    {{ kpi("Categoría declarada", declarada, "info", "check", "la que informaste ante ARCA") }}
     {{ kpi("Cuota mensual", cuota_mensual_declarada|plata, "neutral", "wallet", "de tu categoría declarada") }}
     {% endif %}
     {% if variacion_pct_propia is not none %}
@@ -104,7 +104,7 @@
     <div class="panel-title">{% if declarada %}Cambiar mi categoría declarada{% else %}Declarar mi categoría{% endif %}</div>
     <form action="{{ url_for('monotributo_declarar') }}" method="POST" class="filter-row">
         <div class="field-group" style="min-width:280px;">
-            <label class="field-label" for="categoria-monotributo">En qué categoría estás inscripto ante AFIP</label>
+            <label class="field-label" for="categoria-monotributo">En qué categoría estás inscripto ante ARCA</label>
             <select id="categoria-monotributo" name="categoria_monotributo" class="field-input">
                 <option value="">Sin declarar</option>
                 {% for e in escalas %}

@@ -103,8 +103,8 @@ scopeado por cuenta_id antes de confiar en él.
 
 ## Lo más nuevo (última sesión)
 - **Monotributo** (`monotributo.py`, `/monotributo`): compara
-  facturación real de 12 meses contra las escalas de AFIP. Tabla
-  vigente **desde el 1/08/2026** — ATENCIÓN: AFIP ajusta esto ~2 veces
+  facturación real de 12 meses contra las escalas de ARCA (ex AFIP). Tabla
+  vigente **desde el 1/08/2026** — ATENCIÓN: ARCA ajusta esto ~2 veces
   por año, hay que rechequear los montos periódicamente, no son fijos.
   La proyección de si va a cruzar de categoría usa el ritmo de venta
   PROPIO del usuario, no predicción de demanda de mercado externo (eso
@@ -552,7 +552,7 @@ Se ejecuta por tandas, cada una commiteada y verificada. El dueño delegó las d
   (`POST /cuenta/condicion_fiscal`, auditado). `fiscal.capacidad_monotributo` alimenta `capacidades.monotributo`: SOLO un `False` (declaró otra condición) esconde la pestaña y el atajo Ctrl+K;
   sin declarar no esconde nada y la pantalla pregunta en vez de calcular; el panel de Monotributo del Dashboard solo aparece para monotributistas declarados. Cualquier cosa nueva que dependa de la condición
   fiscal tiene que mirar `fiscal.obtener(...)`. Mercado Libre da el CUIT/DNI (`GET /users/me` → `identification`) pero NO la condición ante ARCA (se probó: no hay endpoint). Confirmarla sin preguntar
-  requeriría el padrón de ARCA (constancia de inscripción) con un certificado propio de CoreLux y el CUIT que da MeLi: pendiente, lo tiene que gestionar el dueño. Los textos nuevos dicen ARCA (ex AFIP).
+  requeriría el padrón de ARCA (constancia de inscripción) con un certificado propio de CoreLux y el CUIT que da MeLi: pendiente, lo tiene que gestionar el dueño. Todos los textos de la app dicen ARCA (Agencia de Recaudación y Control Aduanero; antes AFIP).
 - **«Día a día» es UNA pantalla (2026-10-07)**: `/dia` (`dia_vista`) junta Despacho, Preguntas, Pendientes y Reputación una debajo de la otra; las 4 pestañas de la sección tienen `href: /dia` + `ancla` en
   `nav_config` (la sección lleva `una_pantalla: True`: no hay «más usada») y saltan a cada parte, marcándose solas según lo que se mira (script de `dia.html`). Cada parte es una plantilla parcial
   `_dia_<parte>.html` (antes eran las pantallas `despacho.html`, `preguntas.html`, `logros.html`, `reputacion.html`, que ya no existen) con su contexto en `app._contexto_despacho/_contexto_logros/_contexto_reputacion`
@@ -673,6 +673,12 @@ MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
   Migraciones `0045_mercado_global.sql` (tablas globales de solo lectura para la app: `mercado_categorias`, `mercado_categoria_diaria`, `mercado_keywords`, `mercado_tendencias_diaria`, `mercado_keyword_estado`, `mercado_relevamientos`) y `0046_variantes_atributos_y_costo.sql` (aditiva: NO borra `talle`/`color`) aplicadas en producción el 2026-10-13 (también `0047_muestra_alcance.sql`); probadas siempre en una
   transacción revertida contra la base real (`tests/test_mercado_migraciones.py`; `desplegar.py` corre `migrate.py` antes de arrancar la versión nueva). Las tablas de mercado las escribe un solo trabajo del scheduler con `conexion_admin` (scheduler.py ya está permitido), nunca una ruta web.
   Estado y lo que falta, fase por fase: `PENDIENTES.md` §0e.
+
+- **Lote de mejoras de interfaz, Grupo 1 (2026-10-13)**: (a) contraste WCAG AA del tema claro: los colores semánticos de `style.css` (`--success`, `--danger`, `--semantic-*`, `--accent-gold`, `--text-faint`) se oscurecieron hasta llegar a 4,5:1 sobre la tarjeta Y sobre su fondo teñido (4–24 %);
+  el texto sobre un color SÓLIDO (pastillas, ícono de banner, toast) usa `var(--texto-sobre-color)` (oscuro en el tema oscuro, blanco en el claro) y el color de acción como texto es `--ux-accion` (oscurecido en claro; el violeta de botones/identidad NO cambia). Nunca escribir `#0a0a0c` fijo sobre un color: `tests/test_contraste.py` lo mide y lo exige.
+  (b) «Calculadora» es una sección propia del menú lateral (`GRUPOS_NAV['calculadora']`, una sola pantalla: sin pestañas ni «más usada»; en el celular se alcanza desde «Más»). (c) «Actividad» solo muestra a una persona común QUÉ pasó y CUÁNDO: el pedido crudo, la IP y la cuenta interna (`detalle`, `ip`, `cuenta_id`)
+  salen únicamente para el administrador (`auditoria.es_administrador`, email en `ADMIN_EMAIL`) con `auditoria.listar(..., completo=True)`; no devolver esos campos por defecto. (d) AFIP → ARCA en todas las pantallas: la primera mención de cada pantalla fiscal dice «ARCA (Agencia de Recaudación y Control Aduanero)».
+  Trampa repetida: escribir `` en un heredoc de Python/bash lo convierte en un retroceso real; usar Edit o lookarounds (`(?<![A-Za-z])ARCA`).
 
 ## Datos de entorno
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de
