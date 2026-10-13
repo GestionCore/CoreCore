@@ -33,8 +33,8 @@ MAX_LARGO_PREGUNTA = 500
 def _consolidar_por_modelo(filas, limite=8):
     """Top de modelos (los talles se suman en un solo modelo): [(título, unidades, facturado)] de más a menos facturado."""
     modelos = {}
-    for titulo, unidades, facturado in filas:
-        clave = limpiar_titulo_modelo(titulo) or (titulo or "Sin título")
+    for titulo, unidades, facturado, *resto in filas:
+        clave = limpiar_titulo_modelo(titulo, resto[0] if resto else None) or (titulo or "Sin título")
         u, f = modelos.get(clave, (0, 0.0))
         modelos[clave] = (u + int(unidades or 0), f + float(facturado or 0))
     ordenados = sorted(modelos.items(), key=lambda kv: kv[1][1], reverse=True)[:limite]
@@ -76,8 +76,9 @@ def _armar_contexto(usuario_id, cuenta_id=None):
         por_dia = [{"fecha": f.isoformat(), "facturado": round(float(t), 2), "ordenes": o} for f, t, o in cursor.fetchall()]
 
         cursor.execute("""
-            SELECT titulo, SUM(cantidad), SUM(precio_venta*cantidad) FROM ventas
-            WHERE fecha_venta BETWEEN %s AND %s AND origen = 'meli' GROUP BY titulo
+            SELECT v.titulo, SUM(v.cantidad), SUM(v.precio_venta*v.cantidad), MAX(NULLIF(pv.talle, 'Único'))
+            FROM ventas v LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
+            WHERE v.fecha_venta BETWEEN %s AND %s AND v.origen = 'meli' GROUP BY v.titulo
         """, (desde_30d, hoy_str))
         top_modelos = _consolidar_por_modelo(cursor.fetchall())
 

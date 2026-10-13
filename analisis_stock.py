@@ -1,22 +1,21 @@
 """
-Análisis de stock — portado de Santi Mens. La detección en sí (qué está
-en riesgo, dónde se rompió la curva de talles) es idéntica; lo que
-cambia es de dónde sale el cursor (una conexión con RLS activo, ver
-db.conexion_usuario) y el join de variantes, que ahora apunta a
-productos_padre.id (la clave propia) en vez de id_meli.
+Análisis de stock — portado de Santi Mens. La detección de qué está en
+riesgo es idéntica; lo que cambia es de dónde sale el cursor (una conexión
+con RLS activo, ver db.conexion_usuario) y el join de variantes, que ahora
+apunta a productos_padre.id (la clave propia) en vez de id_meli. La «curva de
+talles» (M/L/XL fijos, solo para ropa) se reemplazó por la cobertura de
+variantes clave, que sirve para cualquier rubro (pivot multi-rubro).
 
 Los "..._y_alertar" del original (que mandaban el aviso por WhatsApp)
 todavía no se portaron — CoreLux no tiene el puente de WhatsApp
 conectado por ahora. Lo que sí está acá es la detección pura, que es lo
 que consumen las páginas y APIs del dashboard.
 """
-import re
 from datetime import timedelta
-from utils import extraer_talle, hoy_argentina
+from utils import hoy_argentina, limpiar_titulo_modelo
 
 VENTANA_DIAS = 14
 UMBRAL_DIAS_RESTANTES = 5
-CENTRALES = {"M", "L", "XL"}
 
 
 def obtener_variantes_en_riesgo(cursor, umbral_dias=UMBRAL_DIAS_RESTANTES, ventana_dias=VENTANA_DIAS):
@@ -90,56 +89,51 @@ def presentar_dias_de_stock(dias, stock_total):
     return f"~{redondeado} {'día' if redondeado == 1 else 'días'}", "danger" if redondeado <= UMBRAL_DIAS_RESTANTES else ("warn" if redondeado <= VENTANA_DIAS else "neutral")
 
 
-def _limpiar_titulo_modelo_local(titulo):
-    t = re.sub(r'\b(talle|size)\s*[:#]?\s*(xxxl|xxl|xl|l|m|s|\d+)\b', '', titulo, flags=re.IGNORECASE)
-    t = re.sub(r'\b(xxxl|xxl|xl|l|m|s)\b', '', t, flags=re.IGNORECASE)
-    t = re.sub(r'\s+', ' ', t).strip()
-    return t
+UMBRAL_VARIANTE_CLAVE = 0.30        # una variante es «clave» si aporta más del 30 % de las ventas de su modelo
+MIN_UNIDADES_MODELO = 5             # con menos ventas que esto en la ventana, el reparto entre variantes no dice nada
+VENTANA_COBERTURA_DIAS = 30
 
 
-def evaluar_curva_talles(cursor):
+def variantes_clave_agotadas(filas, umbral=UMBRAL_VARIANTE_CLAVE, minimo_unidades=MIN_UNIDADES_MODELO):
     """
-    Detecta modelos activos donde los talles centrales (M, L, XL) están
-    casi agotados (<=2 u.) mientras los extremos todavía tienen stock —
-    señal de quiebre parcial que puede perjudicar el posicionamiento en
-    Cassini.
-
-    Mejora real respecto al original: la versión de Santi Mens derivaba
-    el talle re-buscando un patrón (M/L/XL/...) DENTRO DEL TÍTULO de la
-    publicación — pero cuando una sola publicación tiene varias
-    variantes de talle debajo (un solo id_meli, varios v.talle), todas
-    esas filas comparten el mismo título, así que la búsqueda por texto
-    siempre daba el mismo resultado para todas y nunca detectaba una
-    curva rota real en ese caso. Ahora usa el talle real de la variante
-    (v.talle), y solo cae al patrón de texto como respaldo si esa
-    columna viene vacía.
+    Las variantes sin stock que son clave de su modelo. `filas` son dicts con: modelo (la familia de Mercado Libre; sin familia, la publicación), id_variante, id_meli, titulo, talle, etiqueta,
+    stock (propio + FULL) y unidades (vendidas en la ventana). Una variante es CLAVE si aporta más de `umbral` de las unidades del modelo; si además se quedó sin stock, avisa. Sirve para un
+    buzo talle M, un disco de 1 TB o un celular de 128 GB: no hay talles fijos. Un modelo con UNA sola variante no cuenta (eso es un producto agotado, que ya avisa «Se agota pronto»),
+    ni uno con menos de `minimo_unidades` vendidas en la ventana. Devuelve las más vendidas primero.
     """
-    cursor.execute("""
-        SELECT p.id_meli, p.titulo, v.talle,
-               COALESCE(v.stock_propio,0)+COALESCE(v.stock_full,0) as stock_total
-        FROM productos_padre p JOIN productos_variantes v ON v.id_padre = p.id
-        WHERE p.estado = 'active'
-    """)
-    filas = cursor.fetchall()
-
-    modelos = {}
-    for id_meli, titulo, talle_variante, stock_total in filas:
-        clave = _limpiar_titulo_modelo_local(titulo)
-        talle = extraer_talle(titulo, talle_variante)
-        if clave not in modelos:
-            modelos[clave] = {"titulo": clave, "talles": {}, "id_referencia": id_meli}
-        modelos[clave]["talles"][talle] = modelos[clave]["talles"].get(talle, 0) + stock_total
-
-    en_riesgo = []
-    for clave, data in modelos.items():
-        talles = data["talles"]
-        centrales = {t: s for t, s in talles.items() if t in CENTRALES}
-        extremos = {t: s for t, s in talles.items() if t not in CENTRALES and t != "Único"}
-        if not centrales or not extremos:
+    por_modelo = {}
+    for f in filas:
+        por_modelo.setdefault(f["modelo"], []).append(f)
+    avisos = []
+    for variantes in por_modelo.values():
+        total = sum(v["unidades"] for v in variantes)
+        if len(variantes) < 2 or total < minimo_unidades:
             continue
-        centrales_bajos = [t for t, s in centrales.items() if s <= 2]
-        extremos_con_stock = any(s > 2 for s in extremos.values())
-        if centrales_bajos and extremos_con_stock:
-            en_riesgo.append({"modelo": clave, "id_referencia": data["id_referencia"], "talles_escasos": centrales_bajos})
+        for v in variantes:
+            aporte = v["unidades"] / total
+            if aporte > umbral and v["stock"] <= 0:
+                avisos.append({
+                    "modelo": limpiar_titulo_modelo(v["titulo"], v["talle"]) or v["titulo"], "id_referencia": v["id_meli"], "id_variante": v["id_variante"],
+                    "variante": v["etiqueta"] or v["talle"] or "Única", "aporta_pct": round(aporte * 100), "unidades": v["unidades"],
+                })
+    avisos.sort(key=lambda a: -a["unidades"])
+    return avisos
 
-    return en_riesgo
+
+def evaluar_cobertura_variantes(cursor):
+    """
+    «Cobertura de variantes clave» (reemplaza a la curva de talles M/L/XL, que solo existía para ropa): avisa cuando se queda sin stock la variante que aporta más del 30 % de las ventas
+    de su modelo en los últimos 30 días. El modelo es la familia de Mercado Libre (`family_id`; sin familia, la publicación con sus variaciones) y la variante, cada publicación o variación
+    con su propio stock. Se cuentan las activas y las pausadas (Mercado Libre pausa sola una publicación que llega a cero).
+    """
+    hasta = hoy_argentina()
+    cursor.execute("""
+        SELECT COALESCE(p.family_id, p.id_meli), v.id_variante, p.id_meli, p.titulo, v.talle, v.etiqueta,
+               COALESCE(v.stock_propio, 0) + COALESCE(v.stock_full, 0), COALESCE(s.unidades, 0)
+        FROM productos_variantes v
+        JOIN productos_padre p ON p.id = v.id_padre
+        LEFT JOIN (SELECT id_variante, SUM(cantidad) AS unidades FROM ventas WHERE fecha_venta BETWEEN %s AND %s AND origen = 'meli' GROUP BY id_variante) s ON s.id_variante = v.id_variante
+        WHERE p.estado IN ('active', 'paused')
+    """, (hasta - timedelta(days=VENTANA_COBERTURA_DIAS), hasta))
+    filas = [dict(zip(("modelo", "id_variante", "id_meli", "titulo", "talle", "etiqueta", "stock", "unidades"), f)) for f in cursor.fetchall()]
+    return variantes_clave_agotadas(filas)

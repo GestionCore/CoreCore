@@ -170,9 +170,31 @@ def test_la_muestra_solo_toma_productos_del_dominio_y_ofertas_de_esa_categoria(m
     monkeypatch.setattr(mercado_categorias, "_get", falso)
     m = rel.tomar_muestra(rel.Cliente("t"), {"category_id": "MLA5232", "dominio_id": "MLA-DRILLS", "es_hoja": True})
     assert m["muestra_productos"] == 2 and m["muestra_ofertas"] == 2 and m["precio_min"] == 100.0 and m["precio_max"] == 300.0
+    assert m["muestra_alcance"] == "categoria"                                    # 2 ofertas en la categoría y solo 3 en el dominio: ninguna alcanza para cambiar de alcance
     busqueda = next(p for r, p in pedidos if r == "/products/search")
     assert busqueda["q"] == "Taladros eléctricos" and busqueda["domain_id"] == "MLA-DRILLS" and busqueda["status"] == "active"
     assert not any(r == "/products/P2/items" for r, _ in pedidos)                    # un producto de otro dominio no se mira
+
+
+def test_si_la_categoria_exacta_trae_pocas_ofertas_la_muestra_usa_las_de_todo_el_dominio_y_lo_dice(monkeypatch):
+    """Caso real (taladros): el mismo tipo de producto se publica en varias categorías hoja y la exacta quedaba vacía."""
+    def falso(ruta, headers, params=None, timeout=12):
+        if ruta == "/catalog_domains/MLA-DRILLS":
+            return 200, {"name": "Taladros eléctricos"}
+        if ruta == "/products/search":
+            return 200, {"results": [{"id": "P1", "domain_id": "MLA-DRILLS"}, {"id": "P2", "domain_id": "MLA-DRILLS"}]}
+        return 200, {"results": [_oferta(1000 * (i + 1), f"V{i}", categoria="MLA777") for i in range(3)] + [_oferta(5000, "VX", categoria="MLA5232")]}
+    monkeypatch.setattr(mercado_categorias, "_get", falso)
+    m = rel.tomar_muestra(rel.Cliente("t"), {"category_id": "MLA5232", "dominio_id": "MLA-DRILLS", "es_hoja": True})
+    assert m["muestra_alcance"] == "dominio" and m["muestra_ofertas"] == 8 and m["precio_min"] == 1000.0 and m["precio_max"] == 5000.0       # 2 productos × (3 + 1) ofertas
+    # y si la categoría exacta SÍ tiene suficientes, manda ella
+    def con_suficientes(ruta, headers, params=None, timeout=12):
+        if ruta.startswith("/products/P"):
+            return 200, {"results": [_oferta(100, f"V{i}", categoria="MLA5232") for i in range(3)] + [_oferta(9000, "Z", categoria="MLA777")]}
+        return falso(ruta, headers, params, timeout)
+    monkeypatch.setattr(mercado_categorias, "_get", con_suficientes)
+    m = rel.tomar_muestra(rel.Cliente("t"), {"category_id": "MLA5232", "dominio_id": "MLA-DRILLS", "es_hoja": True})
+    assert m["muestra_alcance"] == "categoria" and m["muestra_ofertas"] == 6 and m["precio_max"] == 100.0
 
 
 def test_no_hay_muestra_sin_dominio_ni_en_categorias_que_no_son_hoja():
@@ -302,23 +324,32 @@ def test_una_corrida_completa_guarda_la_historia_dia_a_dia_y_es_repetible(monkey
     listas = {"defecto": ["zzz prueba uno", "ZZZ prueba dos", "zzz prueba uno"], "MLA": ["zzz prueba dos", "zzz prueba uno"]}
     monkeypatch.setattr(mercado_categorias, "_get", _mercado_falso(listas))
     monkeypatch.setattr(rel, "obtener_token_aplicacion", lambda: "token-de-prueba")
+
+    def solo_las_de_la_prueba(cursor, fecha):
+        """Sin tocar la base real (todo se revierte): se siguen únicamente la lista general y una hoja inventada. `actualizar_interes` se prueba aparte, con su SQL real."""
+        cursor.execute("UPDATE mercado_categorias SET seguida = false")
+        cursor.execute("INSERT INTO mercado_categorias (category_id, nombre) VALUES ('MLA_PRUEBA_HOJA', 'x') ON CONFLICT DO NOTHING")
+        cursor.execute("UPDATE mercado_categorias SET seguida = true, ultimo_interes = %s WHERE category_id IN ('MLA', 'MLA_PRUEBA_HOJA')", (fecha,))
+        return ["MLA", "MLA_PRUEBA_HOJA"]
+    monkeypatch.setattr(rel, "actualizar_interes", solo_las_de_la_prueba)
+    monkeypatch.setattr(rel, "cargar_raices", lambda cliente, cursor, fecha: 0)
     d1 = date(2030, 1, 10)
     resultado = {}
     con = psycopg.connect(config.DATABASE_URL_ADMIN)
     try:
         cur = con.cursor()
         cur.execute("SET LOCAL lock_timeout = '5s'")
-        cur.execute("SELECT id FROM cuentas_meli ORDER BY id LIMIT 1")
-        cuenta = cur.fetchone()[0]
-        cur.execute("INSERT INTO productos_padre (cuenta_id, id_meli, titulo, estado, category_id) VALUES (%s, 'MLA_PRUEBA_RELEVADOR', 'x', 'active', 'MLA_PRUEBA_HOJA')", (cuenta,))
+        cur.execute(open(os.path.join(RAIZ, "migrations", "0047_muestra_alcance.sql"), encoding="utf-8").read())      # la columna nueva (idempotente: si ya está aplicada no cambia nada)
+        # En producción ya hay palabras reales sin interpretar: se marcan como hechas (dentro de la transacción de la prueba) para que la corrida solo interprete las de la prueba
+        cur.execute("UPDATE mercado_keywords SET interpretada_en = now() WHERE interpretada_en IS NULL")
         with _admin_sin_commit(con) as falsa:
             monkeypatch.setattr(db, "conexion_admin", falsa)
             r1 = rel.relevar(d1)
-            cur.execute("SELECT count(*) FROM mercado_categoria_diaria WHERE fecha = %s", (d1,))
-            filas_dia_1 = cur.fetchone()[0]
+            cur.execute("SELECT category_id, publicaciones FROM mercado_categoria_diaria WHERE fecha = %s", (d1,))
+            filas_dia_1 = sorted(cur.fetchall())
             r1_repetida = rel.relevar(d1)
-            cur.execute("SELECT count(*) FROM mercado_categoria_diaria WHERE fecha = %s", (d1,))
-            filas_tras_repetir = cur.fetchone()[0]
+            cur.execute("SELECT category_id, publicaciones FROM mercado_categoria_diaria WHERE fecha = %s", (d1,))
+            filas_tras_repetir = sorted(cur.fetchall())
             cur.execute("SELECT racha_dias, dias_en_lista, mejor_posicion, posicion_actual FROM mercado_keyword_estado e JOIN mercado_keywords k ON k.id = e.keyword_id WHERE e.category_id = 'MLA_PRUEBA_HOJA' AND k.texto = 'zzz prueba uno'")
             resultado["dia1"] = cur.fetchone()
             r2 = rel.relevar(d1 + timedelta(days=1))
@@ -338,8 +369,8 @@ def test_una_corrida_completa_guarda_la_historia_dia_a_dia_y_es_repetible(monkey
         resultado["hoja"] = cur.fetchone()
         cur.execute("SELECT muestra_productos, muestra_ofertas, precio_min, precio_p50, precio_max, publicaciones FROM mercado_categoria_diaria WHERE category_id = 'MLA_PRUEBA_HOJA' AND fecha = %s", (d1,))
         resultado["muestra"] = cur.fetchone()
-        cur.execute("SELECT count(*) FROM mercado_categorias WHERE cardinality(camino) = 1 AND seguida")
-        resultado["raices_seguidas"] = cur.fetchone()[0]
+        cur.execute("SELECT muestra_alcance FROM mercado_categoria_diaria WHERE category_id = 'MLA_PRUEBA_HOJA' AND fecha = %s", (d1,))
+        resultado["alcance"] = cur.fetchone()[0]
         cur.execute("SELECT count(*), count(*) FILTER (WHERE fin IS NOT NULL), max(llamadas) FROM mercado_relevamientos WHERE tipo = 'diario' AND fecha = %s", (d1,))
         resultado["registro"] = cur.fetchone()
         resultado["r"] = (r1, r1_repetida, r2, filas_dia_1, filas_tras_repetir)
@@ -350,9 +381,9 @@ def test_una_corrida_completa_guarda_la_historia_dia_a_dia_y_es_repetible(monkey
         con.rollback()
         con.close()
     r1, r1_repetida, r2, filas_dia_1, filas_tras_repetir = resultado["r"]
-    assert r1["categorias"] >= 14 and r1["con_tendencias"] == r1["categorias"] and r1["errores"] == 0, r1       # 12 raíces + la lista general + la hoja de prueba (+ las reales de la base)
-    assert r1["palabras_nuevas"] == 2 and r1["interpretadas"] == 2 and r1["atributos"] >= 1 and r1["muestras"] >= 1
-    assert filas_tras_repetir == filas_dia_1                                                                       # repetir el día no duplica filas
+    assert r1["categorias"] == 2 and r1["con_tendencias"] == 2 and r1["errores"] == 0, r1                          # la lista general y la hoja de prueba
+    assert r1["palabras_nuevas"] == 2 and r1["interpretadas"] == 2 and r1["atributos"] == 1 and r1["muestras"] == 1
+    assert filas_dia_1 == [("MLA_PRUEBA_HOJA", 5015)] and filas_tras_repetir == filas_dia_1                      # la lista general no trae «publicaciones»; repetir el día no agrega ni duplica filas
     assert r1_repetida["palabras_nuevas"] == 0 and r2["palabras_nuevas"] == 0
     assert resultado["lista_dia1"] == 2                                                                            # sin repetidas ni vacías
     assert resultado["dia1"] == (1, 1, 1, 1)                                                                       # «uno»: puesto 1, primer día (la repetición del día no sumó)
@@ -364,8 +395,8 @@ def test_una_corrida_completa_guarda_la_historia_dia_a_dia_y_es_repetible(monkey
     seguida, variacion, ocultos, dominio, hoja, publicaciones = resultado["hoja"]
     assert seguida and variacion == ["COLOR"] and ocultos == ["GTIN"] and dominio == "MLA-PRUEBA" and hoja and publicaciones == 5000 + len("MLA_PRUEBA_HOJA")
     assert resultado["muestra"][:5] == (2, 4, 1000, 2000, 3000)                                                    # 2 productos × 2 ofertas de 1000 y 3000
-    assert resultado["raices_seguidas"] >= 12
-    assert resultado["registro"][0] == 2 and resultado["registro"][1] == 2 and resultado["registro"][2] > 14
+    assert resultado["alcance"] == "categoria"
+    assert resultado["registro"][0] == 2 and resultado["registro"][1] == 2 and resultado["registro"][2] > 5
 
 
 @CON_BASE
@@ -394,3 +425,58 @@ def test_si_hoy_ya_hubo_un_relevamiento_completo_no_se_repite(monkeypatch):
         con.rollback()
         con.close()
     assert corridas == [d, d + timedelta(days=1), d + timedelta(days=5)]
+
+
+@CON_BASE
+def test_se_siguen_las_categorias_que_alguna_cuenta_vende_y_se_sueltan_las_olvidadas():
+    import psycopg
+
+    import config
+    d = date(2030, 6, 1)
+    resultado = {}
+    con = psycopg.connect(config.DATABASE_URL_ADMIN)
+    try:
+        cur = con.cursor()
+        cur.execute("SET LOCAL lock_timeout = '5s'")
+        cur.execute("SELECT id FROM cuentas_meli ORDER BY id LIMIT 1")
+        cuenta = cur.fetchone()[0]
+        cur.execute("INSERT INTO productos_padre (cuenta_id, id_meli, titulo, estado, category_id) VALUES (%s, 'MLA_PRUEBA_SEGUIR', 'x', 'active', 'MLA_PRUEBA_VENDIDA')", (cuenta,))
+        cur.execute("INSERT INTO productos_padre (cuenta_id, id_meli, titulo, estado, category_id) VALUES (%s, 'MLA_PRUEBA_PAUSADA', 'x', 'paused', 'MLA_PRUEBA_PAUSADA_CAT')", (cuenta,))
+        cur.execute("""INSERT INTO mercado_categorias (category_id, nombre, camino, camino_nombres, seguida, ultimo_interes)
+                       VALUES ('MLA_PRUEBA_VIEJA', 'x', ARRAY['A', 'MLA_PRUEBA_VIEJA'], ARRAY['A', 'x'], true, %s)""", (d - timedelta(days=rel.DIAS_SIN_INTERES + 1),))
+        cur.execute("""INSERT INTO mercado_categorias (category_id, nombre, camino, camino_nombres, seguida, ultimo_interes)
+                       VALUES ('MLA_PRUEBA_RECIENTE', 'x', ARRAY['A', 'MLA_PRUEBA_RECIENTE'], ARRAY['A', 'x'], true, %s)""", (d - timedelta(days=rel.DIAS_SIN_INTERES - 1),))
+        resultado["seguidas"] = rel.actualizar_interes(cur, d)
+        cur.execute("SELECT category_id, seguida, ultimo_interes FROM mercado_categorias WHERE category_id LIKE 'MLA_PRUEBA%' ORDER BY 1")
+        resultado["filas"] = {f[0]: (f[1], f[2]) for f in cur.fetchall()}
+        cur.execute("SELECT seguida FROM mercado_categorias WHERE category_id = 'MLA'")
+        resultado["sitio"] = cur.fetchone()[0]
+        raise _Revertir()
+    except _Revertir:
+        pass
+    finally:
+        con.rollback()
+        con.close()
+    assert "MLA_PRUEBA_VENDIDA" in resultado["seguidas"] and "MLA" in resultado["seguidas"]
+    assert "MLA_PRUEBA_VIEJA" not in resultado["seguidas"] and "MLA_PRUEBA_PAUSADA_CAT" not in resultado["seguidas"]      # una pausada no cuenta como «vende»
+    assert "MLA_PRUEBA_RECIENTE" in resultado["seguidas"]                                                                 # con interés dentro de los 90 días sigue
+    assert resultado["filas"]["MLA_PRUEBA_VENDIDA"] == (True, d) and resultado["filas"]["MLA_PRUEBA_VIEJA"][0] is False and resultado["sitio"] is True
+
+
+def test_las_raices_se_cargan_solo_si_todavia_no_estan(monkeypatch):
+    class Cursor:
+        def __init__(self, raices):
+            self.raices, self.altas, self._ultima = raices, [], ""
+
+        def execute(self, sql, params=None):
+            self._ultima = " ".join(sql.split())
+            if self._ultima.startswith("INSERT INTO mercado_categorias"):
+                self.altas.append(params)
+
+        def fetchone(self):
+            return (self.raices,)
+    monkeypatch.setattr(mercado_categorias, "_get", lambda ruta, headers, params=None, timeout=12: (200, [{"id": "MLA1", "name": "Uno"}, {"id": "MLA2", "name": "Dos"}, {"name": "sin id"}]))
+    ya_estan, faltan = Cursor(32), Cursor(3)
+    assert rel.cargar_raices(rel.Cliente("t"), ya_estan, date(2030, 1, 1)) == 0 and ya_estan.altas == []
+    assert rel.cargar_raices(rel.Cliente("t"), faltan, date(2030, 1, 1)) == 3
+    assert [a[0] for a in faltan.altas] == ["MLA1", "MLA2"]

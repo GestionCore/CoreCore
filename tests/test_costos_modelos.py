@@ -16,12 +16,12 @@ import costos
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def _pub(id_, titulo, familia, costo=0.0, estado="active", talle=None, precio=30000.0, comision=2000.0, envio=1500.0, thumbnail=None):
-    from utils import extraer_talle, limpiar_titulo_modelo
+def _pub(id_, titulo, familia, costo=0.0, estado="active", talle=None, precio=30000.0, comision=2000.0, envio=1500.0, thumbnail=None, etiqueta=None):
+    from utils import limpiar_titulo_modelo, normalizar_talle
     ganancia = precio - comision - envio - costo
     return {"id": id_, "titulo": titulo, "precio_costo": costo, "precio_costo_formateado": "0", "estado": estado, "thumbnail": thumbnail, "precio": precio, "comision": comision, "envio": envio,
-            "precio_formateado": "10.000", "ganancia_negativa": costo > 0 and ganancia < 0, "modelo": limpiar_titulo_modelo(titulo) or titulo,
-            "talle": talle or extraer_talle(titulo), "familia": familia}
+            "precio_formateado": "10.000", "ganancia_negativa": costo > 0 and ganancia < 0, "modelo": limpiar_titulo_modelo(titulo, talle) or titulo,
+            "talle": normalizar_talle(talle), "etiqueta": etiqueta, "familia": familia}
 
 
 def _buzo(color, talles, **kw):
@@ -106,7 +106,7 @@ def test_el_orden_pone_primero_lo_que_falta_cargar_y_al_final_lo_pausado():
 
 
 def _pub_modelo(nombre, costo, n, estado="active"):
-    return [_pub(f"{nombre}{i}", f"{nombre} {i + 36}", f"fam-{nombre}", costo=costo, estado=estado) for i in range(n)]
+    return [_pub(f"{nombre}{i}", f"{nombre} {i + 36}", f"fam-{nombre}", costo=costo, estado=estado, talle=str(i + 36)) for i in range(n)]
 
 
 def test_una_que_pierde_plata_se_marca_para_atender_aunque_todas_tengan_costo():

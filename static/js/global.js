@@ -1016,17 +1016,19 @@ function ocultarTooltipTicker() {
     if (_tooltipTickerEl) _tooltipTickerEl.classList.remove('visible');
 }
 
-async function marcarCurvaRota() {
+async function marcarVariantesClaveAgotadas() {
     try {
-        const resp = await fetch('/api/curva_talles');
+        const resp = await fetch('/api/cobertura_variantes');
         const lista = await resp.json();
         if (!lista.length) return;
-        const modelos = new Set(lista.map(r => r.modelo));
+        const porModelo = new Map(lista.map(r => [r.modelo, r]));
         document.querySelectorAll('[data-modelo-titulo]').forEach(el => {
-            if (modelos.has(el.dataset.modeloTitulo) && !el.querySelector('.badge-curva-rota')) {
+            const aviso = porModelo.get(el.dataset.modeloTitulo);
+            if (aviso && !el.querySelector('.badge-variante-agotada')) {
                 const badge = document.createElement('span');
-                badge.className = 'badge badge-curva-rota';
-                badge.textContent = 'Curva Rota';
+                badge.className = 'badge badge-variante-agotada';
+                badge.textContent = 'Variante clave agotada';
+                badge.title = `«${aviso.variante}» aporta el ${aviso.aporta_pct} % de las ventas de este modelo y no tiene stock`;
                 (el.querySelector('strong') || el).after(badge);
             }
         });
@@ -1557,7 +1559,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logueado = !!document.body.dataset.logueado;
     if (logueado) actualizarTicker();
     revisarMensajeEnURL();
-    if (logueado) marcarCurvaRota();
+    if (logueado) marcarVariantesClaveAgotadas();
     if (logueado) cargarOportunidadesSeo();
     inicializarSidebar();
     inicializarProtectorInactividad();

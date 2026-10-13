@@ -12,7 +12,7 @@ Postgres multi-tenant. Los cambios reales son mínimos gracias a RLS:
 from datetime import datetime, timedelta
 import analisis_stock
 import db
-from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle, ARGENTINA
+from utils import formatear_moneda, limpiar_titulo_modelo, normalizar_talle, ARGENTINA
 
 
 def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
@@ -61,8 +61,8 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
         (id_meli, titulo, precio, estado, thumbnail, precio_original,
          recibis_estimado, cuotas_cantidad, cuotas_monto, stock_propio, stock_full, talle_real) = item
 
-        talle_detectado = extraer_talle(titulo, talle_real)
-        modelo_clave = limpiar_titulo_modelo(titulo)
+        talle_detectado = normalizar_talle(talle_real)
+        modelo_clave = limpiar_titulo_modelo(titulo, talle_real)
 
         if modelo_clave not in modelos_agrupados:
             descuento_pct = round((1 - precio / precio_original) * 100) if (precio_original and precio_original > precio) else None

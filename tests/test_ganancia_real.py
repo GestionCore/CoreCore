@@ -210,8 +210,8 @@ def test_el_consolidado_por_modelo_es_total_sobre_unidades_y_cierra_con_las_vent
 
 def test_dos_talles_con_distinto_precio_dan_el_promedio_ponderado_y_no_el_simple():
     filas = metricas.consolidar_por_modelo({
-        "MLA10": {"titulo": "Campera Jean Talle M", "thumbnail": None, "unidades": 1, "facturado": 10000.0, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": 0.0},
-        "MLA11": {"titulo": "Campera Jean Talle L", "thumbnail": None, "unidades": 9, "facturado": 90000.0 * 0.5, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": 0.0},
+        "MLA10": {"titulo": "Campera Jean Talle M", "talle": "M", "thumbnail": None, "unidades": 1, "facturado": 10000.0, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": 0.0},
+        "MLA11": {"titulo": "Campera Jean Talle L", "talle": "L", "thumbnail": None, "unidades": 9, "facturado": 90000.0 * 0.5, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": 0.0},
     })
     assert len(filas) == 1                                                       # los talles son publicaciones de un mismo modelo
     assert filas[0]["unidades"] == 10 and filas[0]["raw"]["precio_promedio"] == 5500.0      # (10.000 + 45.000) ÷ 10; el promedio simple (10.000 + 5.000) ÷ 2 daría 7.500

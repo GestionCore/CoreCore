@@ -23,7 +23,8 @@ def _tono(promedio):
 def obtener_datos(cursor, cuenta_id):
     cursor.execute("""
         SELECT p.id_meli, p.titulo, p.thumbnail, p.permalink, p.estado, p.family_id, p.opiniones_promedio, p.opiniones_total,
-               p.opiniones_niveles, p.opiniones_atributos, p.opiniones_criticas, COALESCE(v.unidades, 0)
+               p.opiniones_niveles, p.opiniones_atributos, p.opiniones_criticas, COALESCE(v.unidades, 0),
+               (SELECT CASE WHEN COUNT(DISTINCT NULLIF(x.talle, 'Único')) = 1 THEN MAX(NULLIF(x.talle, 'Único')) END FROM productos_variantes x WHERE x.id_padre = p.id)
         FROM productos_padre p
         LEFT JOIN (SELECT id_meli, SUM(cantidad) AS unidades FROM ventas
                    WHERE cuenta_id = %(c)s AND origen = 'meli' AND fecha_venta >= current_date - %(d)s GROUP BY id_meli) v ON v.id_meli = p.id_meli
@@ -31,9 +32,9 @@ def obtener_datos(cursor, cuenta_id):
     """, {"c": cuenta_id, "d": DIAS_VENTAS})
 
     familias = {}
-    for id_meli, titulo, thumbnail, permalink, estado, family_id, promedio, total, niveles, atributos, criticas, unidades in cursor.fetchall():
+    for id_meli, titulo, thumbnail, permalink, estado, family_id, promedio, total, niveles, atributos, criticas, unidades, talle in cursor.fetchall():
         f = familias.setdefault(family_id or id_meli, {
-            "titulo": limpiar_titulo_modelo(titulo) or id_meli, "thumbnail": thumbnail, "permalink": permalink, "activa": estado == "active",
+            "titulo": limpiar_titulo_modelo(titulo, talle) or id_meli, "thumbnail": thumbnail, "permalink": permalink, "activa": estado == "active",
             "promedio": float(promedio) if promedio is not None else None, "total": int(total or 0),
             "niveles": niveles or {}, "atributos": atributos or [], "criticas": criticas or [], "unidades": 0,
         })
@@ -42,7 +43,7 @@ def obtener_datos(cursor, cuenta_id):
             f.update(promedio=float(promedio) if promedio is not None else None, total=int(total), niveles=niveles or {},
                      atributos=atributos or [], criticas=criticas or [])
         if estado == "active" and not f["activa"]:     # el representante es una publicación activa, si hay
-            f.update(titulo=limpiar_titulo_modelo(titulo) or id_meli, thumbnail=thumbnail or f["thumbnail"], permalink=permalink, activa=True)
+            f.update(titulo=limpiar_titulo_modelo(titulo, talle) or id_meli, thumbnail=thumbnail or f["thumbnail"], permalink=permalink, activa=True)
 
     con_opiniones = [f for f in familias.values() if f["total"] > 0]
     total_opiniones = sum(f["total"] for f in con_opiniones)

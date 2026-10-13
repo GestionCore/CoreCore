@@ -1045,18 +1045,25 @@ def calcular_seo_score_titulo(titulo, palabras_tendencia_actuales):
     return {"score": score, "razones": razones}
 
 
+# Las publicaciones activas con su talle (el atributo de Mercado Libre guardado en la variante; nunca se deduce del título): la clave de modelo lo necesita para juntar los talles de uno
+_SQL_ACTIVAS_CON_TALLE = """
+    SELECT p.id_meli, p.titulo,
+           (SELECT CASE WHEN COUNT(DISTINCT NULLIF(x.talle, 'Único')) = 1 THEN MAX(NULLIF(x.talle, 'Único')) END FROM productos_variantes x WHERE x.id_padre = p.id)
+    FROM productos_padre p WHERE p.estado = 'active'"""
+
+
 def calcular_seo_scores_catalogo(cursor, tendencias_relevantes):
     palabras_tendencia = set()
     for t in tendencias_relevantes:
         palabras_tendencia.update(p.lower() for p in t.get("keyword", "").split())
 
-    cursor.execute("SELECT id_meli, titulo FROM productos_padre WHERE estado = 'active'")
+    cursor.execute(_SQL_ACTIVAS_CON_TALLE)
     resultados = []
     vistos = set()
-    for id_meli, titulo in cursor.fetchall():
+    for id_meli, titulo, talle in cursor.fetchall():
         if not titulo:
             continue
-        clave_modelo = limpiar_titulo_modelo(titulo)
+        clave_modelo = limpiar_titulo_modelo(titulo, talle)
         if clave_modelo in vistos:
             continue
         vistos.add(clave_modelo)
@@ -1067,14 +1074,14 @@ def calcular_seo_scores_catalogo(cursor, tendencias_relevantes):
 
 
 def detectar_canibalismo(cursor):
-    cursor.execute("SELECT id_meli, titulo FROM productos_padre WHERE estado = 'active'")
+    cursor.execute(_SQL_ACTIVAS_CON_TALLE)
     filas = cursor.fetchall()
     if len(filas) < 2:
         return []
 
     modelos = {}
-    for id_meli, titulo in filas:
-        clave = limpiar_titulo_modelo(titulo)
+    for id_meli, titulo, talle in filas:
+        clave = limpiar_titulo_modelo(titulo, talle)
         if clave not in modelos:
             modelos[clave] = {"id_referencia": id_meli, "palabras": {p for p in clave.lower().split() if len(p) > 2 and p not in PALABRAS_GENERICAS}}
     # Una palabra que está en la mayoría de los modelos de la cuenta ("termo", "campera") es el rubro, no un parecido entre dos modelos

@@ -13,18 +13,20 @@ Cambios reales (no cosméticos):
    ese id recién obtenido para las variantes.
 3. Los avisos por WhatsApp quedan comentados (sin puente todavía).
 """
+import json
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 import cache_db
 import meli_http
+import mercado_categorias
 import monitoreo
 import validacion_meli
+import variantes
 import db
 import ventas_sync
 import capacidades
 import enriquecimiento
-from utils import extraer_talle
 
 LOTE_MULTIGET_MELI = 20
 
@@ -51,29 +53,35 @@ def _obtener_candado(cuenta_id):
         return _candados_por_cuenta[cuenta_id]
 
 
-def _extraer_talle_color(variante_data, titulo="", atributos_item=None):
+def _contexto_de_variantes(cursor, items, headers):
     """
-    Talle y color de una variante. Para el talle, de más a menos confiable: el atributo de la variación, el atributo SIZE del ítem
-    (lo que Mercado Libre trae para ropa, calzado, etc.) y por último lo que parece un talle en el título (utils.extraer_talle).
-    Un ítem de un rubro sin talles queda en "Único".
+    Lo que hace falta para decidir la variante de cada publicación de una tanda sin leer el título (variantes.py): los atributos de variación de cada categoría
+    (la primera vez que se ve una se piden a Mercado Libre y quedan en la tabla global) y, por familia (`family_id`), los atributos de todas sus publicaciones, para saber
+    cuáles cambian entre ellas. `items` son los de esta sincronización: la barredora trae TODAS las publicaciones de la cuenta, así que las familias salen completas.
     """
-    talle = "Único"
-    color = "Único"
-    for attr in variante_data.get("attribute_combinations", []):
-        nombre_attr = attr.get("name", "")
-        valor_attr = attr.get("value_name")
-        if not valor_attr:
-            continue
-        if nombre_attr in ("Talle", "Size"):
-            talle = valor_attr
-        elif nombre_attr == "Color":
-            color = valor_attr
+    categorias = {i["detalle"].get("category_id") for i in items if i["detalle"].get("category_id")}
+    try:
+        dimensiones = mercado_categorias.asegurar_dimensiones(cursor, categorias, headers)
+    except Exception as e:
+        print(f"[Sincronizador] ⚠️ No se pudieron leer los atributos de variación de las categorías: {e}")
+        dimensiones = {}
+    familias = {}
+    for i in items:
+        p = i["detalle"]
+        if p.get("family_id"):
+            ocultos = dimensiones.get(p.get("category_id"), {}).get("ocultos", [])
+            familias.setdefault(str(p["family_id"]), []).append(variantes.mapa_clave(p.get("attributes"), ocultos))
+    return {"dimensiones": dimensiones, "familias": familias}
 
-    if talle == "Único":
-        talle_item = next((a.get("value_name") for a in (atributos_item or []) if a.get("id") == "SIZE" and a.get("value_name")), None)
-        talle = extraer_talle(titulo, talle_item)
 
-    return talle, color
+def _contexto_de_un_item(cursor, cuenta_id, p, headers):
+    """Lo mismo para UNA publicación (la notificación de Mercado Libre): las hermanas de su familia salen de lo que ya se guardó en la base."""
+    contexto = _contexto_de_variantes(cursor, [{"detalle": p}], headers)
+    if p.get("family_id"):
+        cursor.execute("SELECT atributos_clave FROM productos_padre WHERE cuenta_id = %s AND family_id = %s AND id_meli <> %s", (cuenta_id, str(p["family_id"]), p.get("id")))
+        hermanas = [fila[0] for fila in cursor.fetchall() if fila[0]]
+        contexto["familias"][str(p["family_id"])] = hermanas + contexto["familias"].get(str(p["family_id"]), [])
+    return contexto
 
 
 def _consultar_precio_original(id_item, headers):
@@ -159,10 +167,18 @@ def _consultar_stock_convivencia(user_product_id, headers):
         return None, None
 
 
-def _escribir_item_en_db(cuenta_id, datos, cursor):
+def _escribir_item_en_db(cuenta_id, datos, cursor, contexto=None):
     id_item = datos["id_item"]
     p = datos["detalle"]
     titulo = p.get("title")
+
+    # Variante por atributos (variantes.py), nunca por el título. Sin contexto (una llamada vieja o sin datos de la categoría) igual funciona: usa solo los atributos de la propia publicación.
+    contexto = contexto or {}
+    dimensiones_cat = (contexto.get("dimensiones") or {}).get(p.get("category_id")) or {}
+    ocultos = dimensiones_cat.get("ocultos", [])
+    mapas_familia = (contexto.get("familias") or {}).get(str(p["family_id"]), []) if p.get("family_id") else []
+    distintivos = variantes.atributos_distintivos(mapas_familia, dimensiones_cat.get("variacion", [])) if len(mapas_familia) >= 2 else []
+    atributos_clave = variantes.mapa_clave(p.get("attributes"), ocultos)
     nuevo_estado = p.get("status")
     thumbnail = p.get("secure_thumbnail") or p.get("thumbnail")
     precio_actual = p.get("price")
@@ -187,8 +203,9 @@ def _escribir_item_en_db(cuenta_id, datos, cursor):
 
     cursor.execute("""
         INSERT INTO productos_padre (cuenta_id, id_meli, titulo, precio, estado, tipo_logistica, thumbnail, precio_original, recibis_estimado, cuotas_cantidad, cuotas_monto,
-                                     catalog_product_id, inventory_id, permalink, category_id, listing_type_id, user_product_id, family_id, sub_estado)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                     catalog_product_id, inventory_id, permalink, category_id, listing_type_id, user_product_id, family_id, sub_estado,
+                                     domain_id, atributos_clave)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
         ON CONFLICT (cuenta_id, id_meli) DO UPDATE SET
             titulo = excluded.titulo, precio = excluded.precio,
             estado = excluded.estado, tipo_logistica = excluded.tipo_logistica,
@@ -197,27 +214,32 @@ def _escribir_item_en_db(cuenta_id, datos, cursor):
             cuotas_cantidad = excluded.cuotas_cantidad, cuotas_monto = excluded.cuotas_monto,
             catalog_product_id = excluded.catalog_product_id, inventory_id = excluded.inventory_id, permalink = excluded.permalink,
             category_id = excluded.category_id, listing_type_id = excluded.listing_type_id,
-            user_product_id = excluded.user_product_id, family_id = excluded.family_id, sub_estado = excluded.sub_estado
+            user_product_id = excluded.user_product_id, family_id = excluded.family_id, sub_estado = excluded.sub_estado,
+            domain_id = excluded.domain_id, atributos_clave = excluded.atributos_clave
         RETURNING id
     """, (cuenta_id, id_item, titulo, precio_actual, nuevo_estado, p.get("shipping", {}).get("logistic_type"),
           thumbnail, datos["precio_original"], datos["recibis_estimado"], cuotas_cantidad, cuotas_monto,
           p.get("catalog_product_id"), p.get("inventory_id"), p.get("permalink"), p.get("category_id"), p.get("listing_type_id"),
-          p.get("user_product_id"), str(p["family_id"]) if p.get("family_id") else None, ",".join(p.get("sub_status") or [])))
+          p.get("user_product_id"), str(p["family_id"]) if p.get("family_id") else None, ",".join(p.get("sub_status") or []),
+          p.get("domain_id"), json.dumps(atributos_clave, ensure_ascii=False)))
     id_padre_interno = cursor.fetchone()[0]
 
-    variantes = p.get("variations", [])
+    variaciones = p.get("variations", [])
     tipo_logistica = validacion_meli.campo_seguro(p, "shipping.logistic_type", default=None, tipo_esperado=str, contexto=f"item {id_item}")
     es_full = (tipo_logistica == "fulfillment")
     stock_convivencia = datos.get("stock_convivencia")
     es_convivencia = stock_convivencia is not None
     stock_convivencia_propio, stock_convivencia_full = stock_convivencia if stock_convivencia else (None, None)
 
-    lista_vars = variantes if len(variantes) > 0 else [{"id": id_item + "_unica", "available_quantity": p.get("available_quantity", 0)}]
+    lista_vars = variaciones if len(variaciones) > 0 else [{"id": id_item + "_unica", "available_quantity": p.get("available_quantity", 0)}]
 
     for v in lista_vars:
         id_var = str(v.get("id"))
         qty_meli = int(v.get("available_quantity", 0))
-        talle_var, color_var = _extraer_talle_color(v, titulo=titulo, atributos_item=p.get("attributes"))
+        combinaciones = v.get("attribute_combinations")
+        atributos_variante = variantes.atributos_de_variante(p.get("attributes"), combinaciones, dimensiones_cat.get("variacion", []), distintivos, ocultos)
+        etiqueta = variantes.etiqueta_de(atributos_variante)
+        talle_var, color_var = variantes.talle_y_color(p.get("attributes"), combinaciones)       # columnas viejas, mientras las pantallas pasan a la etiqueta: desde los atributos, no del título
 
         cursor.execute("SELECT stock_propio, stock_full FROM productos_variantes WHERE cuenta_id = %s AND id_variante = %s", (cuenta_id, id_var))
         stock_anterior = cursor.fetchone()
@@ -240,15 +262,15 @@ def _escribir_item_en_db(cuenta_id, datos, cursor):
         stock_total_previo = stock_propio_previo + stock_full_previo
 
         if stock_anterior and stock_total_previo > 0 and stock_total == 0:
-            print(f"[Sincronizador] 📦 '{titulo}' (Talle {talle_var}) se quedó sin stock (aviso por WhatsApp pendiente).")
+            print(f"[Sincronizador] 📦 '{titulo}' ({etiqueta}) se quedó sin stock (aviso por WhatsApp pendiente).")
 
         cursor.execute("""
-            INSERT INTO productos_variantes (cuenta_id, id_variante, id_padre, talle, color, stock_propio, stock_full)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO productos_variantes (cuenta_id, id_variante, id_padre, talle, color, atributos, etiqueta, stock_propio, stock_full)
+            VALUES (%s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s)
             ON CONFLICT (cuenta_id, id_variante) DO UPDATE SET
-                id_padre = excluded.id_padre, talle = excluded.talle, color = excluded.color,
+                id_padre = excluded.id_padre, talle = excluded.talle, color = excluded.color, atributos = excluded.atributos, etiqueta = excluded.etiqueta,
                 stock_propio = excluded.stock_propio, stock_full = excluded.stock_full
-        """, (cuenta_id, id_var, id_padre_interno, talle_var, color_var, stock_propio, stock_full))
+        """, (cuenta_id, id_var, id_padre_interno, talle_var, color_var, json.dumps(atributos_variante, ensure_ascii=False), etiqueta, stock_propio, stock_full))
 
 
 def sincronizar_item_individual(cuenta_id, id_item, headers, cursor):
@@ -256,7 +278,7 @@ def sincronizar_item_individual(cuenta_id, id_item, headers, cursor):
     datos = _obtener_datos_item(id_item, headers)
     if datos is None:
         return
-    _escribir_item_en_db(cuenta_id, datos, cursor)
+    _escribir_item_en_db(cuenta_id, datos, cursor, _contexto_de_un_item(cursor, cuenta_id, datos["detalle"], headers))
 
 
 def procesar_notificacion_webhook(topic, resource, meli_user_id):
@@ -452,8 +474,9 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
 
         with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
+            contexto = _contexto_de_variantes(cursor, items_procesados, headers)
             for datos in items_procesados:
-                _escribir_item_en_db(cuenta_id, datos, cursor)
+                _escribir_item_en_db(cuenta_id, datos, cursor, contexto)
             cache_db.guardar(cursor, cuenta_id, CLAVE_CONVIVENCIA, nuevo_estado_convivencia, "v1")
 
         print(f"[Sincronizador] ✨ Cuenta {cuenta_id}: {len(items_procesados)}/{len(lista_ids)} ítems sincronizados"

@@ -51,8 +51,9 @@ def _gasto(id_, concepto, categoria, monto, fecha, recurrente=False, fecha_fin=N
     return {"id": id_, "concepto": concepto, "categoria": categoria, "monto": monto, "fecha": fecha, "recurrente": recurrente, "fecha_fin": fecha_fin}
 
 
-def _producto(id_meli, titulo, costo, precio, recibis, estado="active"):
-    return {"id_meli": id_meli, "titulo": titulo, "precio_costo": costo, "estado": estado, "thumbnail": None, "precio": precio, "recibis_estimado": recibis}
+def _producto(id_meli, titulo, costo, precio, recibis, estado="active", talle_real=None, etiqueta=None):
+    return {"id_meli": id_meli, "titulo": titulo, "precio_costo": costo, "estado": estado, "thumbnail": None, "precio": precio, "recibis_estimado": recibis,
+            "talle_real": talle_real, "etiqueta": etiqueta}
 
 
 def _datos(monkeypatch, gastos, productos, envios, desde="2026-09-01", hasta="2026-09-14"):
@@ -103,7 +104,7 @@ def test_sin_gastos_los_totales_son_cero(monkeypatch):
 def test_la_ganancia_estimada_resta_comision_envio_y_costo(monkeypatch):
     # precio 10.000, MeLi deposita 8.200 → comisión 1.800; envío promedio 1.500; costo de fabricación 4.000
     # ganancia = 10.000 − 1.800 − 1.500 − 4.000 = 2.700
-    productos = [_producto("MLA1", "Campera Negra Talle M", 4000, 10000, 8200)]
+    productos = [_producto("MLA1", "Campera Negra Talle M", 4000, 10000, 8200, talle_real="M")]
     (_, _, lista), _c = _datos(monkeypatch, [], productos, [{"id_meli": "MLA1", "envio_promedio": 1500}])
     p = lista[0]
     assert p["comision"] == 1800.0 and p["envio"] == 1500.0 and p["ganancia_neta_formateada"] == "2.700" and p["ganancia_negativa"] is False

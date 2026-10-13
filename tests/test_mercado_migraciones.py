@@ -73,6 +73,7 @@ def _aplicar_dos_veces(cur):
     for _ in range(2):
         cur.execute(_leer("0045_mercado_global.sql"))
         cur.execute(_leer("0046_variantes_atributos_y_costo.sql"))
+        cur.execute(_leer("0047_muestra_alcance.sql"))
 
 
 def _rechaza(cur, sql, params=None):
@@ -150,16 +151,18 @@ def test_las_restricciones_de_las_tablas_nuevas_rechazan_lo_invalido():
                 aceptados["dolar_manual_vacio"] = not _rechaza(cur, "UPDATE cuentas_meli SET dolar_manual = NULL WHERE id = %s", (cuenta,))
             aceptados["atributos_de_categoria"] = not _rechaza(
                 cur, "INSERT INTO mercado_categorias (category_id, nombre, atributos_variacion, atributos_ocultos) VALUES ('MLA_PRUEBA', 'x', ARRAY['COLOR'], ARRAY['GTIN', 'SELLER_SKU'])")
+            rechazos["alcance_invalido"] = _rechaza(cur, "INSERT INTO mercado_categoria_diaria (category_id, fecha, muestra_alcance) VALUES ('MLA', DATE '2031-01-02', 'pais')")
+            aceptados["alcance_dominio"] = not _rechaza(cur, "INSERT INTO mercado_categoria_diaria (category_id, fecha, muestra_alcance) VALUES ('MLA', DATE '2031-01-03', 'dominio')")
             rechazos["palabra_con_mayusculas"] = _rechaza(cur, "INSERT INTO mercado_keywords (texto) VALUES ('iPhone 15')")
             rechazos["palabra_vacia"] = _rechaza(cur, "INSERT INTO mercado_keywords (texto) VALUES ('')")
             aceptados["palabra"] = not _rechaza(cur, "INSERT INTO mercado_keywords (texto) VALUES ('iphone 15')")
-            rechazos["dolar_cero"] = _rechaza(cur, "INSERT INTO cotizaciones_dolar (fecha, casa, venta, fuente) VALUES (current_date, 'blue', 0, 'x')")
-            rechazos["dolar_casa_invalida"] = _rechaza(cur, "INSERT INTO cotizaciones_dolar (fecha, casa, venta, fuente) VALUES (current_date, 'paralelo', 1500, 'x')")
-            aceptados["dolar"] = not _rechaza(cur, "INSERT INTO cotizaciones_dolar (fecha, casa, venta, fuente) VALUES (current_date, 'bolsa', 1538.4, 'prueba')")
-            rechazos["categoria_inexistente"] = _rechaza(cur, "INSERT INTO mercado_tendencias_diaria (category_id, fecha, keywords) VALUES ('MLA_NO_EXISTE', current_date, ARRAY[1])")
-            rechazos["demasiadas_palabras"] = _rechaza(cur, "INSERT INTO mercado_tendencias_diaria (category_id, fecha, keywords) SELECT 'MLA', current_date, array_agg(g) FROM generate_series(1, 101) g")
-            aceptados["tendencias"] = not _rechaza(cur, "INSERT INTO mercado_tendencias_diaria (category_id, fecha, keywords) VALUES ('MLA', current_date, ARRAY[1, 2, 3])")
-            rechazos["tipo_relevamiento"] = _rechaza(cur, "INSERT INTO mercado_relevamientos (tipo, fecha) VALUES ('otro', current_date)")
+            rechazos["dolar_cero"] = _rechaza(cur, "INSERT INTO cotizaciones_dolar (fecha, casa, venta, fuente) VALUES (DATE '2031-01-01', 'blue', 0, 'x')")
+            rechazos["dolar_casa_invalida"] = _rechaza(cur, "INSERT INTO cotizaciones_dolar (fecha, casa, venta, fuente) VALUES (DATE '2031-01-01', 'paralelo', 1500, 'x')")
+            aceptados["dolar"] = not _rechaza(cur, "INSERT INTO cotizaciones_dolar (fecha, casa, venta, fuente) VALUES (DATE '2031-01-01', 'bolsa', 1538.4, 'prueba')")
+            rechazos["categoria_inexistente"] = _rechaza(cur, "INSERT INTO mercado_tendencias_diaria (category_id, fecha, keywords) VALUES ('MLA_NO_EXISTE', DATE '2031-01-01', ARRAY[1])")
+            rechazos["demasiadas_palabras"] = _rechaza(cur, "INSERT INTO mercado_tendencias_diaria (category_id, fecha, keywords) SELECT 'MLA', DATE '2031-01-01', array_agg(g) FROM generate_series(1, 101) g")
+            aceptados["tendencias"] = not _rechaza(cur, "INSERT INTO mercado_tendencias_diaria (category_id, fecha, keywords) VALUES ('MLA', DATE '2031-01-01', ARRAY[1, 2, 3])")
+            rechazos["tipo_relevamiento"] = _rechaza(cur, "INSERT INTO mercado_relevamientos (tipo, fecha) VALUES ('otro', DATE '2031-01-01')")
             raise _Revertir()
     except _Revertir:
         pass

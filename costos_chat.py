@@ -100,6 +100,13 @@ def _costo_valido(valor):
     return costo if 0 < costo < COSTO_MAXIMO else None
 
 
+# Publicaciones con su talle (el atributo de Mercado Libre guardado en la variante: nunca se deduce del título); una publicación con varios talles adentro no tiene uno solo
+_SQL_PUBLICACIONES_CON_TALLE = """
+    SELECT p.id_meli, p.titulo, p.precio_costo,
+           (SELECT CASE WHEN COUNT(DISTINCT NULLIF(x.talle, 'Único')) = 1 THEN MAX(NULLIF(x.talle, 'Único')) END FROM productos_variantes x WHERE x.id_padre = p.id) AS talle
+    FROM productos_padre p"""
+
+
 def resolver_grupos_de_productos(cursor, costos_productos):
     """
     Empareja cada grupo que dijo el usuario ("camperas de jean") con sus publicaciones reales: una publicación
@@ -108,12 +115,12 @@ def resolver_grupos_de_productos(cursor, costos_productos):
     jean") se la queda el más específico (el de más palabras).
     Devuelve una lista con un item por grupo: {grupo, costo, total, modelos: [{modelo, cantidad, ids, costo_actual_min, costo_actual_max}]}.
     """
-    cursor.execute("SELECT id_meli, titulo, precio_costo FROM productos_padre")
-    publicaciones = [(r[0], r[1], float(r[2] or 0.0), set(_palabras(r[1]))) for r in cursor.fetchall()]
+    cursor.execute(_SQL_PUBLICACIONES_CON_TALLE)
+    publicaciones = [(r[0], r[1], float(r[2] or 0.0), set(_palabras(r[1])), r[3]) for r in cursor.fetchall()]
 
     grupos = [{"grupo": cp["grupo"], "costo": cp["costo"], "palabras": set(_palabras(cp["grupo"]))} for cp in costos_productos]
     asignadas = {}   # id_meli → índice del grupo dueño
-    for id_meli, _titulo, _costo, palabras_titulo in publicaciones:
+    for id_meli, _titulo, _costo, palabras_titulo, _talle in publicaciones:
         mejor = None
         for idx, gr in enumerate(grupos):
             if gr["palabras"] and gr["palabras"] <= palabras_titulo and (mejor is None or len(gr["palabras"]) > len(grupos[mejor]["palabras"])):
@@ -124,10 +131,10 @@ def resolver_grupos_de_productos(cursor, costos_productos):
     salida = []
     for idx, gr in enumerate(grupos):
         por_modelo = {}
-        for id_meli, titulo, costo_actual, _p in publicaciones:
+        for id_meli, titulo, costo_actual, _p, talle in publicaciones:
             if asignadas.get(id_meli) != idx:
                 continue
-            modelo = limpiar_titulo_modelo(titulo) or titulo or "Sin nombre"
+            modelo = limpiar_titulo_modelo(titulo, talle) or titulo or "Sin nombre"
             m = por_modelo.setdefault(modelo, {"modelo": modelo, "ids": [], "costos": []})
             m["ids"].append(id_meli)
             m["costos"].append(costo_actual)
@@ -139,10 +146,10 @@ def resolver_grupos_de_productos(cursor, costos_productos):
 
 
 def _nombres_de_modelos(cursor, limite=8):
-    cursor.execute("SELECT titulo FROM productos_padre ORDER BY titulo")
+    cursor.execute(_SQL_PUBLICACIONES_CON_TALLE + " ORDER BY titulo")
     modelos = []
-    for (titulo,) in cursor.fetchall():
-        m = limpiar_titulo_modelo(titulo) or titulo
+    for _id, titulo, _costo, talle in cursor.fetchall():
+        m = limpiar_titulo_modelo(titulo, talle) or titulo
         m = (m[:45].rsplit(' ', 1)[0] + '…') if m and len(m) > 45 else m
         if m and m not in modelos:
             modelos.append(m)

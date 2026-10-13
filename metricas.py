@@ -10,7 +10,7 @@ from psycopg.rows import dict_row
 import db
 import ads
 import facturacion
-from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina, sql_momento_argentina, limpiar_titulo_modelo, extraer_talle, nombre_tipo_publicacion
+from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina, sql_momento_argentina, limpiar_titulo_modelo, normalizar_talle, nombre_tipo_publicacion
 
 _NOMBRES_MES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
@@ -233,14 +233,14 @@ def consolidar_por_modelo(por_publicacion):
     """
     modelos = {}
     for id_meli, p in por_publicacion.items():
-        nombre = limpiar_titulo_modelo(p["titulo"]) or p["titulo"] or "Sin nombre"
+        nombre = limpiar_titulo_modelo(p["titulo"], p.get("talle")) or p["titulo"] or "Sin nombre"
         m = modelos.setdefault(nombre.lower(), {"titulo": nombre, "thumbnail": None, "mejor": -1.0, "unidades": 0, "facturado": 0.0, "costo_fab": 0.0,
                                                 "cargos_meli": 0.0, "envios": 0.0, "ads": 0.0, "variantes": []})
         for campo in ("unidades", "facturado", "costo_fab", "cargos_meli", "envios", "ads"):
             m[campo] += p[campo]
         if p["facturado"] > m["mejor"]:                       # la foto es la de la publicación del modelo que más facturó
             m["mejor"], m["thumbnail"] = p["facturado"], p["thumbnail"]
-        talle = extraer_talle(p["titulo"])
+        talle = normalizar_talle(p.get("talle"))
         fila = _fila_consolidada(p)
         fila.update({"id_meli": id_meli, "talle": None if talle == "Único" else talle, "tipo": nombre_tipo_publicacion(p.get("tipo"))})
         m["variantes"].append(fila)
@@ -266,12 +266,12 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         """, (fecha_desde, fecha_hasta))
         ventas_db = cursor.fetchall()
 
-        cursor.execute("SELECT id_variante, talle, color FROM productos_variantes")
+        cursor.execute("SELECT id_variante, talle, color, etiqueta FROM productos_variantes")
         # El cursor usa row_factory=dict_row (filas como {"id_variante": ...},
         # no tuplas) — indexar con r[0]/r[1] tira KeyError apenas hay alguna
         # fila. Antes nunca se notaba porque productos_variantes estaba
         # vacía (bloqueada por el bug de RLS sin política).
-        info_variantes = {r["id_variante"]: (r["talle"], r["color"]) for r in cursor.fetchall()}
+        info_variantes = {r["id_variante"]: (r["talle"], r["color"], r.get("etiqueta")) for r in cursor.fetchall()}
 
         cursor.execute("SELECT id_meli, precio_costo, thumbnail, listing_type_id FROM productos_padre")
         # dict(cursor.fetchall()) tampoco sirve con dict_row: cada fila ya es
@@ -366,8 +366,11 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
             conc_depositado += float(v["neto_recibido"])
             conc_esperado += ingreso_bruto_operacion - cargo_venta - (costo_envio - float(v["costo_flex"])) - retenciones_fila
 
-        talle_real, color_real = info_variantes.get(id_var, ("Único", "Único"))
-        talle_str = talle_real if (not color_real or color_real == "Único") else f"{talle_real} / {color_real}"
+        talle_real, color_real, etiqueta_real = info_variantes.get(id_var, ("Único", "Único", None))
+        if etiqueta_real and etiqueta_real != "Única":
+            talle_str = etiqueta_real                                   # la variante por atributos: «128 GB / Azul», «M / Negro»
+        else:
+            talle_str = talle_real if (not color_real or color_real == "Único") else f"{talle_real} / {color_real}"
 
         ventas_procesadas.append({
             "id_orden": id_orden, "id_meli": id_meli, "titulo": titulo, "talle": talle_str, "cantidad": cantidad,
@@ -386,7 +389,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         })
 
         if id_meli not in consolidado_dict:
-            consolidado_dict[id_meli] = {"titulo": titulo, "thumbnail": thumbnails_por_item.get(id_meli), "tipo": tipos_por_item.get(id_meli), "unidades": 0, "facturado": 0.0, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": costo_ads_total_item}
+            consolidado_dict[id_meli] = {"titulo": titulo, "talle": talle_real, "thumbnail": thumbnails_por_item.get(id_meli), "tipo": tipos_por_item.get(id_meli), "unidades": 0, "facturado": 0.0, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": costo_ads_total_item}
         consolidado_dict[id_meli]["unidades"] += cantidad
         consolidado_dict[id_meli]["facturado"] += ingreso_bruto_operacion
         consolidado_dict[id_meli]["costo_fab"] += costo_fabricacion_total

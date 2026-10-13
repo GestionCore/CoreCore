@@ -325,7 +325,7 @@ def _render_stock():
     try:
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             riesgo = analisis_stock.obtener_variantes_en_riesgo(conexion.cursor())
-        modelos_en_riesgo = {utils.limpiar_titulo_modelo(r["titulo"]) for r in riesgo}
+        modelos_en_riesgo = {utils.limpiar_titulo_modelo(r["titulo"], r.get("talle")) for r in riesgo}
     except Exception as e:
         print(f"[Stock] ⚠️ No se pudo calcular qué se agota pronto: {e}")
     return render_template("index.html", productos=productos, stats=stats, full_no_disponible=full_no_disponible, reactivables=reactivables,
@@ -1050,9 +1050,11 @@ def api_dashboard_top_productos():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
-            SELECT COALESCE(v.titulo, ''), v.id_meli, SUM(v.cantidad), SUM(v.precio_venta * v.cantidad), MAX(p.thumbnail), BOOL_OR(p.id_meli IS NOT NULL)
+            SELECT COALESCE(v.titulo, ''), v.id_meli, SUM(v.cantidad), SUM(v.precio_venta * v.cantidad), MAX(p.thumbnail), BOOL_OR(p.id_meli IS NOT NULL),
+                   MAX(NULLIF(pv.talle, 'Único'))
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
             WHERE v.cuenta_id = %s AND DATE(v.fecha_venta) >= %s AND v.eliminado_en IS NULL
             GROUP BY v.titulo, v.id_meli
         """, (g.cuenta_id, desde))
@@ -1076,9 +1078,11 @@ def api_dashboard_ultimas_ventas():
                 v.precio_venta,
                 {utils.sql_momento_argentina("v")} AS momento,
                 v.hora_venta IS NOT NULL AS con_hora,
-                p.id_meli
+                p.id_meli,
+                pv.talle
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
             WHERE v.cuenta_id = %s
               AND v.eliminado_en IS NULL
             ORDER BY momento DESC
@@ -1086,8 +1090,8 @@ def api_dashboard_ultimas_ventas():
         """, (g.cuenta_id,))
         filas = cursor.fetchall()
     return jsonify([{
-        "nombre": utils.limpiar_titulo_modelo(f[0]) or f[0],
-        "talle": (lambda talle: None if talle == "Único" else talle)(utils.extraer_talle(f[0])),       # lo que distingue una fila de otra; nada si no tiene talle
+        "nombre": utils.limpiar_titulo_modelo(f[0], f[6]) or f[0],
+        "talle": (lambda talle: None if talle == "Único" else talle)(utils.normalizar_talle(f[6])),       # lo que distingue una fila de otra; nada si no tiene talle
         "cantidad": int(f[1]),
         "precio_f": utils.plata(f[2]),
         "fecha": utils.cuando_corto(f[3], con_hora=f[4]),
@@ -1814,13 +1818,14 @@ def sincronizar_manual():
     return jsonify({"status": "iniciado"})
 
 
-@app.route("/api/curva_talles")
+@app.route("/api/cobertura_variantes")
 @login_requerido
-def api_curva_talles():
+def api_cobertura_variantes():
+    """Las variantes que aportan más del 30 % de las ventas de su modelo y se quedaron sin stock (reemplaza a la curva de talles, que solo servía para ropa)."""
     import db
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        resultado = analisis_stock.evaluar_curva_talles(cursor)
+        resultado = analisis_stock.evaluar_cobertura_variantes(cursor)
     return jsonify(resultado)
 
 

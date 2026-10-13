@@ -36,8 +36,7 @@ def generar_resumen_periodo(cursor, dias=7):
     fila_top = cursor.fetchone()
     modelo_top = fila_top[0] if fila_top else None
 
-    cursor.execute("SELECT COUNT(*) FROM alertas_curva_talles")
-    curva_rota_abiertas = cursor.fetchone()[0] or 0
+    variantes_clave_agotadas = len(analisis_stock.evaluar_cobertura_variantes(cursor))
 
     en_riesgo_stock = len(analisis_stock.obtener_variantes_en_riesgo(cursor))
 
@@ -51,7 +50,7 @@ def generar_resumen_periodo(cursor, dias=7):
     return {
         "facturado_semana": fact_periodo, "ordenes_semana": ordenes_periodo, "unidades_semana": unidades_periodo,
         "variacion_pct": variacion_pct, "modelo_top": modelo_top,
-        "curva_rota_abiertas": curva_rota_abiertas, "en_riesgo_stock": en_riesgo_stock,
+        "variantes_clave_agotadas": variantes_clave_agotadas, "en_riesgo_stock": en_riesgo_stock,
         "incidencias_abiertas": incidencias_abiertas,
     }
 
@@ -61,6 +60,6 @@ def obtener_datos_resumen_diario(cursor):
     return {
         "facturado_formateado": formatear_moneda(datos["facturado_semana"]),
         "ordenes": datos["ordenes_semana"], "unidades": datos["unidades_semana"], "modelo_top": datos["modelo_top"],
-        "variacion_pct": datos["variacion_pct"], "curva_rota_abiertas": datos["curva_rota_abiertas"],
+        "variacion_pct": datos["variacion_pct"], "variantes_clave_agotadas": datos["variantes_clave_agotadas"],
         "en_riesgo_stock": datos["en_riesgo_stock"], "incidencias_abiertas": datos["incidencias_abiertas"],
     }

@@ -2,10 +2,7 @@
 from datetime import datetime, timedelta
 import db
 import ads
-import re
-from utils import formatear_moneda, limpiar_titulo_modelo
-
-_RE_TALLE = re.compile(r'\b(XXXL|XXL|XL|L|M|S)\b', re.IGNORECASE)
+from utils import formatear_moneda, limpiar_titulo_modelo, normalizar_talle
 
 
 def _comparar_con_periodo_anterior(access_token, advertiser_id, fecha_desde, fecha_hasta, costo, ventas, roas):
@@ -65,8 +62,16 @@ def calcular_datos_publicidad(usuario_id, cuenta_id, access_token, fecha_desde, 
 
         cursor.execute("SELECT DISTINCT id_meli, titulo FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (fecha_desde, fecha_hasta))
         items_con_ventas = cursor.fetchall()
-        cursor.execute("SELECT id_meli, titulo, thumbnail FROM productos_padre")
-        catalogo = {r[0]: (r[1], r[2]) for r in cursor.fetchall()}
+        # El talle sale del atributo de Mercado Libre guardado en la variante (nunca del título); una publicación con varios talles adentro no tiene uno solo
+        cursor.execute("""
+            SELECT p.id_meli, p.titulo, p.thumbnail,
+                   CASE WHEN COUNT(DISTINCT NULLIF(v.talle, 'Único')) = 1 THEN MAX(NULLIF(v.talle, 'Único')) END
+            FROM productos_padre p LEFT JOIN productos_variantes v ON v.id_padre = p.id
+            GROUP BY p.id_meli, p.titulo, p.thumbnail
+        """)
+        filas_catalogo = cursor.fetchall()
+        catalogo = {r[0]: (r[1], r[2]) for r in filas_catalogo}
+        talles_por_item = {r[0]: r[3] for r in filas_catalogo}
 
     tacos = round((costo_total / facturacion_total_negocio) * 100, 1) if facturacion_total_negocio > 0 else None
 
@@ -122,10 +127,10 @@ def calcular_datos_publicidad(usuario_id, cuenta_id, access_token, fecha_desde, 
         titulo_db, thumb_db = catalogo.get(id_meli, (None, None))
         roas_item = round(m["ventas"] / m["costo"], 2) if m["costo"] > 0 else None
         titulo_item = titulo_db or m["titulo"] or id_meli
-        talle = _RE_TALLE.search(titulo_item)
+        talle = normalizar_talle(talles_por_item.get(id_meli))
         items_ads.append({
-            "id_meli": id_meli, "titulo": titulo_item, "modelo": limpiar_titulo_modelo(titulo_item) or titulo_item,
-            "talle": talle.group(0).upper() if talle else None, "thumbnail": thumb_db or m["thumbnail"],
+            "id_meli": id_meli, "titulo": titulo_item, "modelo": limpiar_titulo_modelo(titulo_item, talles_por_item.get(id_meli)) or titulo_item,
+            "talle": None if talle == "Único" else talle, "thumbnail": thumb_db or m["thumbnail"],
             "costo": m["costo"], "costo_formateado": formatear_moneda(m["costo"]),
             "ventas": m["ventas"], "ventas_formateado": formatear_moneda(m["ventas"]),
             "unidades": m["unidades"], "clicks": m["clicks"], "roas": roas_item,

@@ -6,7 +6,7 @@ Sirve a cualquier rubro: las acciones y sus textos las define Mercado Libre para
 """
 from collections import Counter
 
-from utils import extraer_talle, formatear_moneda, limpiar_titulo_modelo, nombre_tipo_publicacion
+from utils import formatear_moneda, limpiar_titulo_modelo, normalizar_talle, nombre_tipo_publicacion
 
 UMBRAL_BIEN = 90
 UMBRAL_JUSTO = 70
@@ -44,7 +44,7 @@ def obtener_datos(cursor, cuenta_id):
             "sin_dato": score is None,
             "tipo": nombre_tipo_publicacion(tipo_id), "precio": float(precio) if precio is not None else None,
             # clave de "mismo modelo, mismo talle": una publicación con varios talles adentro no tiene un talle propio
-            "_clave": (limpiar_titulo_modelo(titulo or id_meli), extraer_talle(titulo or id_meli, talles if talles and "," not in talles else None)),
+            "_clave": (limpiar_titulo_modelo(titulo or id_meli, talles if talles and "," not in talles else None), normalizar_talle(talles if talles and "," not in talles else None)),
         })
 
     # El mismo modelo y talle puede estar publicado varias veces (tipo Clásica y Premium, a precios distintos): se juntan en una fila con el detalle de cada una

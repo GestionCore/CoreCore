@@ -32,9 +32,9 @@ class _Cursor:
 
 @pytest.fixture
 def curva(monkeypatch):
-    """Cuántos modelos con la curva de talles rota devuelve el análisis de stock (por defecto, ninguno)."""
+    """Cuántas variantes clave sin stock devuelve el análisis de stock (por defecto, ninguna)."""
     def fijar(modelos):
-        monkeypatch.setattr(salud_cuenta.analisis_stock, "evaluar_curva_talles", lambda cursor: [object()] * modelos)
+        monkeypatch.setattr(salud_cuenta.analisis_stock, "evaluar_cobertura_variantes", lambda cursor: [object()] * modelos)
     fijar(0)
     return fijar
 
@@ -82,15 +82,17 @@ def test_los_textos_van_en_singular_y_plural_y_sin_parentesis(curva):
 
 
 @pytest.mark.parametrize("modelos, resta", [(1, 10), (2, 20), (5, 20)])
-def test_cada_modelo_con_curva_de_talles_rota_resta_10_con_tope_de_20(curva, modelos, resta):
+def test_cada_variante_clave_sin_stock_resta_10_con_tope_de_20(curva, modelos, resta):
     curva(modelos)
-    assert _score()["score"] == 100 - resta
+    r = _score()
+    assert r["score"] == 100 - resta
+    assert "variante" in r["detalle"][0] and "30 %" in r["detalle"][0] and "talles" not in r["detalle"][0]      # ya no habla de curva de talles: sirve para cualquier rubro
 
 
-def test_si_la_curva_de_talles_falla_el_score_se_calcula_igual(monkeypatch):
+def test_si_la_cobertura_de_variantes_falla_el_score_se_calcula_igual(monkeypatch):
     def roto(cursor):
         raise RuntimeError("no se pudo evaluar")
-    monkeypatch.setattr(salud_cuenta.analisis_stock, "evaluar_curva_talles", roto)
+    monkeypatch.setattr(salud_cuenta.analisis_stock, "evaluar_cobertura_variantes", roto)
     assert salud_cuenta.calcular_score_salud(_Cursor())["score"] == 100
 
 

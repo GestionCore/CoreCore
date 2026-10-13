@@ -658,8 +658,8 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-.badge-curva-rota { background: var(--semantic-warning-bg); color: var(--semantic-warning); margin-left: 6px; display:inline-block; }
-@keyframes pulseCurva { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+.badge-variante-agotada { background: var(--semantic-warning-bg); color: var(--semantic-warning); margin-left: 6px; display:inline-block; }
+@keyframes pulseVarianteAgotada { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 
 /* ---------- Hero de Ganancia Neta Real del día (Dashboard) ---------- */
 

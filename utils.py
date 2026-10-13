@@ -92,46 +92,48 @@ def formatear_moneda_entera(valor):
         return "0"
 
 
-# Talle: la fuente confiable es el atributo SIZE que Mercado Libre trae en cada ítem (el sincronizador lo guarda en
-# productos_variantes.talle). El título es solo el respaldo, y como CoreLux lo usan vendedores de cualquier rubro, ahí solo se
-# acepta lo que parece un talle: letras (S, M, L, XL, XXL, XXXL), "talle N" explícito o un número de 1-2 dígitos AL FINAL del título
-# ("... Inflable 7"). Un número en el medio ("Combo 2 Termos", "Perfume 50 ml") no es un talle.
-_RE_TALLE_EXPLICITO = re.compile(r'\b(?:talle|size)\s*[:#]?\s*(XXXL|XXL|XL|L|M|S|\d+)\b', re.IGNORECASE)
-_RE_TALLE_LETRAS = re.compile(r'\b(XXXL|XXL|XL|L|M|S)\b', re.IGNORECASE)
-_RE_TALLE_AL_FINAL = re.compile(r'\s(\d{1,2})\s*$')
-
-
+# Talle: el único dato es el atributo SIZE que Mercado Libre trae en cada publicación (el sincronizador lo guarda en productos_variantes.talle y, más completo, en `atributos`; ver
+# variantes.py). El título YA NO se mira: un patrón sobre el texto confundía «Apple iPhone 15» con un talle «15» y unía el 14 y el 15 en el mismo modelo.
 def _es_talle_unico(valor):
     """«Único» escrito como lo manda cada vendedor ('Único', 'UNICO', 'ÚNICO', 'unica'…): no es un talle, es la falta de uno."""
     sin_acentos = unicodedata.normalize("NFKD", str(valor)).encode("ascii", "ignore").decode().strip().lower()
     return sin_acentos in ("unico", "unica", "talle unico")
 
 
-def extraer_talle(titulo, talle_real=None):
-    """El talle de una publicación: el real (atributo de MeLi) si se conoce; si no, el que se deduce del título; si no, "Único"."""
-    # Mercado Libre trae SIZE tal como lo escribió el vendedor: «Único» (buzos), «UNICO» (otras categorías): ninguno es un dato, y no tienen que quedar guardados como dos talles distintos.
+def normalizar_talle(talle_real):
+    """
+    El talle tal como lo informa Mercado Libre, en mayúsculas; «Único» si no hay dato. Mercado Libre trae SIZE como lo escribió el vendedor («Único» en buzos, «UNICO» en otras
+    categorías): ninguno es un dato, y no tienen que quedar guardados como dos talles distintos.
+    """
     if talle_real and str(talle_real).strip() and not _es_talle_unico(talle_real):
         return str(talle_real).strip().upper()
-    if not titulo:
-        return "Único"
-    m = _RE_TALLE_EXPLICITO.search(titulo) or _RE_TALLE_LETRAS.search(titulo) or _RE_TALLE_AL_FINAL.search(titulo)
-    return m.group(1).upper() if m else "Único"
+    return "Único"
 
 
-def limpiar_titulo_modelo(titulo):
-    # titulo puede llegar None (venta sincronizada antes de tener el título
-    # cacheado, publicación borrada del lado de MeLi, etc.) — re.sub explota
-    # con NoneType en vez de string, y esta función se llama desde Despacho,
-    # Stock, Stock Masivo, Catálogo, Dashboard, Tendencias y Análisis de
-    # Stock, así que un solo título nulo tiraba 500/502 en cualquiera de esas
-    # páginas y, en listados, cortaba el resto de las filas de golpe.
+def limpiar_titulo_modelo(titulo, talle=None):
+    """
+    La clave de «modelo» de un título: el título sin el talle de ESA publicación, para que todos los talles de un modelo caigan en la misma clave. El talle se saca solo si se CONOCE
+    (el atributo SIZE, que se pasa en `talle`): se quita su última aparición, con la palabra «talle»/«size» si la lleva; un talle numérico solo si está al final o lleva esa palabra
+    («Combo 2 Termos» no pierde el 2). Sin talle conocido el título queda como está: nada se adivina. (Si la publicación está en una familia de Mercado Libre, la clave más firme es su
+    `family_id`; este título limpio es el respaldo.)
+    """
+    # titulo puede llegar None (venta sincronizada antes de tener el título cacheado, publicación borrada del lado de MeLi, etc.): un solo título nulo tiraba 500/502 en las páginas
+    # que arman listados y cortaba el resto de las filas de golpe.
     if not titulo:
         return ""
-    t = re.sub(r'\b(talle|size)\s*[:#]?\s*(xxxl|xxl|xl|l|m|s|\d+)\b', '', titulo, flags=re.IGNORECASE)
-    t = re.sub(r'\b(xxxl|xxl|xl|l|m|s)\b', '', t, flags=re.IGNORECASE)
-    t = re.sub(r'\s+\d{1,2}\s*$', '', t)
-    t = re.sub(r'\s+', ' ', t).strip()
-    return t
+    texto = " ".join(str(titulo).split())
+    talle = normalizar_talle(talle)
+    if talle != "Único":
+        valor = re.escape(talle)
+        etiqueta = r"(?:\b(?:talle|size)\s*[:#]?\s*)"
+        solo_letras = not any(c.isdigit() for c in talle)
+        patron = re.compile(etiqueta + r"?(?<![\w])" + valor + r"(?![\w])" if solo_letras else etiqueta + r"(?<![\w])" + valor + r"(?![\w])|(?<=\s)" + valor + r"\s*$", re.IGNORECASE)
+        ultima = None
+        for coincidencia in patron.finditer(texto):
+            ultima = coincidencia
+        if ultima:
+            texto = " ".join((texto[:ultima.start()] + " " + texto[ultima.end():]).split()).rstrip(" -–—,:/").strip()
+    return texto
 
 
 def prorratear_mensual(monto_mensual, inicio, fin, desde, hasta):

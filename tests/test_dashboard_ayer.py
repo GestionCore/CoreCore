@@ -34,15 +34,15 @@ def test_sin_ventas_o_sin_momento_da_cero():
 
 # ── Top de modelos: siempre por modelo, nunca por talle ───────────────────────────────────────────────────────────────────────
 
-def _fila(titulo, id_meli, unidades, facturado, miniatura="foto.jpg", existe=True):
-    return (titulo, id_meli, unidades, facturado, miniatura, existe)
+def _fila(titulo, id_meli, unidades, facturado, miniatura="foto.jpg", existe=True, talle=None):
+    return (titulo, id_meli, unidades, facturado, miniatura, existe, talle)
 
 
 def test_los_talles_de_un_modelo_se_suman_en_un_solo_puesto():
     filas = [
-        _fila("Campera De Jean Hombre Negra Talle L", "MLA1", 59, 3000000),
-        _fila("Campera De Jean Hombre Negra Talle XL", "MLA2", 49, 2600000),
-        _fila("Campera De Jean Hombre Negra Talle M", "MLA3", 44, 2400000),
+        _fila("Campera De Jean Hombre Negra Talle L", "MLA1", 59, 3000000, talle="L"),
+        _fila("Campera De Jean Hombre Negra Talle XL", "MLA2", 49, 2600000, talle="XL"),
+        _fila("Campera De Jean Hombre Negra Talle M", "MLA3", 44, 2400000, talle="M"),
         _fila("Medias Corta Hombre Pack", "MLA9", 2, 15000),
     ]
     top = d.top_modelos(filas)

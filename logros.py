@@ -65,16 +65,16 @@ def _detectar_misiones_base(cursor, cuenta_id):
         _rollback_seguro(cursor)
 
     try:
-        curva_rota = analisis_stock.evaluar_curva_talles(cursor) if usa_talles else []      # la curva de talles solo existe donde hay talles
-        if curva_rota:
+        clave_agotada = analisis_stock.evaluar_cobertura_variantes(cursor)                   # vale para cualquier rubro: un talle M, un disco de 1 TB, un celular de 128 GB
+        if clave_agotada:
             misiones.append({
-                "id": "curva_rota", "categoria": "stock", "icono": "⚖️", "prioridad": "importante",
-                "titulo": f"{plural(len(curva_rota), 'modelo')} con la curva de talles rota",
-                "descripcion": "Se están quedando sin los talles centrales (M/L/XL) mientras sobran los extremos — frena la venta del modelo entero.",
+                "id": "variante_clave_agotada", "categoria": "stock", "icono": "⚖️", "prioridad": "importante",
+                "titulo": f"{plural(len(clave_agotada), 'variante clave', 'variantes clave')} sin stock",
+                "descripcion": "Cada una aporta más del 30 % de las ventas de su modelo y se quedó sin stock: reponerlas primero es lo que más recupera.",
                 "link": "/stock", "link_texto": "Ver modelos"
             })
     except Exception as e:
-        print(f"[Logros] ⚠️ Error detectando curva rota: {e}")
+        print(f"[Logros] ⚠️ Error detectando variantes clave agotadas: {e}")
         _rollback_seguro(cursor)
 
     try:

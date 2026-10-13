@@ -34,6 +34,7 @@ MAX_ATRIBUTOS_POR_DIA = 40
 MAX_PALABRAS_POR_DIA = 300
 PAUSA_ENTRE_PEDIDOS = 0.1               # segundos: es un relevamiento, no una carrera (Mercado Libre no informa su límite, ver meli_http.py)
 MINIMO_PARA_CONCENTRACION = 15          # con menos ofertas que esto el % del top 3 no dice nada
+MIN_OFERTAS_EN_LA_CATEGORIA = 5         # con menos ofertas que esto en la categoría exacta, la muestra usa las de todo el dominio del producto
 
 
 # ── Pedidos a Mercado Libre ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -157,7 +158,8 @@ def tomar_muestra(cliente, categoria):
     """
     Muestra de precios de una categoría HOJA: los productos de catálogo de su dominio (`/products/search` con el nombre del dominio como texto —la búsqueda exige un texto— y `domain_id`
     como filtro: verificado que solo devuelve productos de ese dominio) y las ofertas de los primeros MAX_PRODUCTOS_POR_MUESTRA que cuelgan EXACTAMENTE de esa categoría.
-    None si no se puede (sin dominio, no es hoja, o Mercado Libre no respondió); un dict con `muestra_ofertas` en 0 si respondió pero no había ofertas.
+    None si no se puede (sin dominio, no es hoja, o Mercado Libre no respondió); un dict con `muestra_ofertas` en 0 si respondió pero no había ofertas. `muestra_alcance` dice si los precios
+    son de la categoría exacta ('categoria') o, cuando esa traía menos de MIN_OFERTAS_EN_LA_CATEGORIA, de todo el dominio ('dominio').
     """
     dominio = categoria.get("dominio_id")
     if not dominio or not categoria.get("es_hoja"):
@@ -179,8 +181,12 @@ def tomar_muestra(cliente, categoria):
 
     with ThreadPoolExecutor(max_workers=3) as pool:
         listas = list(pool.map(_ofertas, productos))
-    ofertas = [o for lista in listas for o in lista if o.get("category_id") == categoria["category_id"]]
-    return estadisticas_de_ofertas(ofertas, len(productos))
+    del_dominio = [o for lista in listas for o in lista]
+    en_la_categoria = [o for o in del_dominio if o.get("category_id") == categoria["category_id"]]
+    # Un mismo tipo de producto se publica en varias categorías hoja: si la exacta trae muy pocas ofertas se usan las de todo el dominio y se deja dicho (muestra_alcance)
+    if len(en_la_categoria) < MIN_OFERTAS_EN_LA_CATEGORIA <= len(del_dominio):
+        return {**estadisticas_de_ofertas(del_dominio, len(productos)), "muestra_alcance": "dominio"}
+    return {**estadisticas_de_ofertas(en_la_categoria, len(productos)), "muestra_alcance": "categoria"}
 
 
 # ── Estado de las palabras en alza ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -259,7 +265,7 @@ def guardar_publicaciones(cursor, category_id, fecha, publicaciones):
 
 def guardar_muestra(cursor, category_id, fecha, m):
     columnas = ("muestra_productos", "muestra_ofertas", "muestra_vendedores", "precio_min", "precio_p25", "precio_p50", "precio_p75", "precio_max", "pct_full", "pct_envio_gratis",
-                "pct_tienda_oficial", "pct_con_descuento", "descuento_promedio", "concentracion_top3", "hhi")
+                "pct_tienda_oficial", "pct_con_descuento", "descuento_promedio", "concentracion_top3", "hhi", "muestra_alcance")
     cursor.execute(
         f"""INSERT INTO mercado_categoria_diaria (category_id, fecha, {', '.join(columnas)}) VALUES (%s, %s, {', '.join(['%s'] * len(columnas))})
             ON CONFLICT (category_id, fecha) DO UPDATE SET {', '.join(f'{c} = EXCLUDED.{c}' for c in columnas)}, tomada_en = now()""",

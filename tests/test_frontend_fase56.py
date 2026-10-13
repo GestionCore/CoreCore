@@ -164,7 +164,7 @@ def test_solo_late_el_primer_aviso_urgente_y_los_contadores_del_menu_no_laten():
     assert ".ux-item-accion.ux-danger ~ .ux-item-accion.ux-danger { animation: none; }" in ux
     insignia = estilo[estilo.index(".nav-badge {"):estilo.index("}", estilo.index(".nav-badge {"))]
     assert "animation" not in insignia
-    assert "pulseCurva 1.8s infinite" not in estilo.split("@keyframes pulseCurva")[0].split(".badge-curva-rota")[1]
+    assert "pulseVarianteAgotada 1.8s infinite" not in estilo.split("@keyframes pulseVarianteAgotada")[0].split(".badge-variante-agotada")[1]
 
 
 # ── 51. Capas: el aviso (toast) por encima de los menús y modales ──────────────────────────────────────────────────────────────────────────

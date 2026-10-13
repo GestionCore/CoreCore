@@ -4,10 +4,10 @@ from utils import hoy_argentina
 
 def test_los_talles_se_suman_en_un_solo_modelo_y_se_ordena_por_facturado():
     filas = [
-        ("Campera De Jean Hombre Negra XL", 3, 30000),
-        ("Campera De Jean Hombre Negra L", 2, 20000),
-        ("Remera Lisa Blanca M", 10, 25000),
-        (None, 1, 500),
+        ("Campera De Jean Hombre Negra XL", 3, 30000, "XL"),         # el talle sale del atributo de Mercado Libre de la variante vendida
+        ("Campera De Jean Hombre Negra L", 2, 20000, "L"),
+        ("Remera Lisa Blanca M", 10, 25000, "M"),
+        (None, 1, 500, None),
     ]
     top = chat_ia._consolidar_por_modelo(filas)
     assert top[0] == {"modelo": "Campera De Jean Hombre Negra", "unidades": 5, "facturado": 50000.0}

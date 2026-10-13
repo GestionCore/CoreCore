@@ -12,7 +12,7 @@ import re
 from datetime import datetime
 from psycopg.rows import dict_row
 import db
-from utils import formatear_moneda, limpiar_titulo_modelo, extraer_talle, prorratear_mensual
+from utils import formatear_moneda, limpiar_titulo_modelo, normalizar_talle, prorratear_mensual
 
 
 UMBRAL_AVISO_SIN_COSTO = 5       # % de lo facturado sin costo de fabricación a partir del cual se avisa que la ganancia puede estar inflada
@@ -37,10 +37,6 @@ def cobertura_de_costos(cursor, desde, hasta):
     pct = round(sin_costo / facturado * 100, 1) if facturado > 0 else 0.0
     return {"facturado": facturado, "sin_costo": sin_costo, "pct_sin_costo": pct, "publicaciones": int(publicaciones or 0),
             "avisar": facturado > 0 and pct >= UMBRAL_AVISO_SIN_COSTO}
-
-
-def _talle_de_titulo(titulo):
-    return extraer_talle(titulo)
 
 
 def _palabras(texto):
@@ -97,7 +93,9 @@ def agrupar_modelos(productos):
     """
     familias = {}
     for p in productos:
-        p = {**p, "rotulo": p["talle"]}                 # lo que dice la fila: el talle (o, si el talle está escrito en el título, lo que lo distingue)
+        # lo que dice la fila: el talle; sin talle (un celular, una pintura), lo que la distingue por sus atributos («128 GB / Rosa», «4 L»)
+        etiqueta = p.get("etiqueta")
+        p = {**p, "rotulo": p["talle"] if p["talle"] not in (None, "", "Único") or etiqueta in (None, "", "Única") else etiqueta}
         clave = ("familia", p["familia"]) if p.get("familia") else ("titulo", p["modelo"])
         familias.setdefault(clave, {}).setdefault(p["modelo"], []).append(p)
     modelos = []
@@ -159,7 +157,9 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
             })
 
         cursor.execute("""
-            SELECT p.id_meli, p.titulo, p.precio_costo, p.estado, p.thumbnail, p.precio, p.recibis_estimado, p.family_id
+            SELECT p.id_meli, p.titulo, p.precio_costo, p.estado, p.thumbnail, p.precio, p.recibis_estimado, p.family_id,
+                   (SELECT CASE WHEN COUNT(DISTINCT NULLIF(x.talle, 'Único')) = 1 THEN MAX(NULLIF(x.talle, 'Único')) END FROM productos_variantes x WHERE x.id_padre = p.id) AS talle_real,
+                   (SELECT CASE WHEN COUNT(DISTINCT x.etiqueta) = 1 THEN MAX(x.etiqueta) END FROM productos_variantes x WHERE x.id_padre = p.id) AS etiqueta
             FROM productos_padre p
             ORDER BY CASE WHEN p.estado = 'active' THEN 0 ELSE 1 END, p.titulo
         """)
@@ -203,8 +203,9 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
             # Crudos + agrupación por modelo: la pantalla recalcula la ganancia en vivo al tipear un costo
             # y deja cargar el mismo costo a todos los talles de un modelo de una vez.
             "precio": precio_p, "comision": comision_est, "envio": envio_prom,
-            "modelo": limpiar_titulo_modelo(fila["titulo"]) or (fila["titulo"] or "Sin nombre"),
-            "talle": _talle_de_titulo(fila["titulo"]),
+            "modelo": limpiar_titulo_modelo(fila["titulo"], fila.get("talle_real")) or (fila["titulo"] or "Sin nombre"),
+            "talle": normalizar_talle(fila.get("talle_real")),
+            "etiqueta": fila.get("etiqueta"),
             "familia": fila.get("family_id") or None,
         })
 

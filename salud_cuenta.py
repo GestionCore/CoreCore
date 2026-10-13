@@ -36,13 +36,13 @@ def calcular_score_salud(cursor):
         detalle.append(f"-{resta} por {plural(talles_stock_bajo, 'talle')} con stock muy bajo (1-2 u.)")
 
     try:
-        modelos_con_curva_rota = len(analisis_stock.evaluar_curva_talles(cursor))
-        if modelos_con_curva_rota > 0:
-            resta = min(modelos_con_curva_rota * 10, 20)
+        variantes_clave = len(analisis_stock.evaluar_cobertura_variantes(cursor))
+        if variantes_clave > 0:
+            resta = min(variantes_clave * 10, 20)
             score -= resta
-            detalle.append(f"-{resta} por {plural(modelos_con_curva_rota, 'modelo')} con curva de talles rota")
+            detalle.append(f"-{resta} por {plural(variantes_clave, 'variante clave', 'variantes clave')} sin stock (aportan más del 30 % de las ventas de su modelo)")
     except Exception as e:
-        print(f"[Salud] ⚠️ No se pudo evaluar la curva de talles: {e}")
+        print(f"[Salud] ⚠️ No se pudo evaluar la cobertura de variantes clave: {e}")
 
     hoy = hoy_argentina().strftime("%Y-%m-%d")
     hace_7 = (hoy_argentina() - timedelta(days=7)).strftime("%Y-%m-%d")

@@ -1,43 +1,53 @@
 import pytest
-from utils import extraer_talle, limpiar_titulo_modelo
+from utils import limpiar_titulo_modelo, normalizar_talle
 
 
-@pytest.mark.parametrize("titulo, esperado", [
-    ("Campera Jean Negro XL", "XL"),
-    ("Campera Jean Negro Talle L", "L"),
-    ("Remera Algodon Talle 3", "3"),
-    ("Chaleco Inflable Lisa 7", "7"),              # número suelto AL FINAL: es talle
-    ("Combo 2 Termos Acero Inoxidable 1l", "Único"),  # número en el medio: no es talle
-    ("Perfume 50 ml", "Único"),
-    ("Pack 12 Medias", "Único"),
-    ("Termo Acero 1 Litro", "Único"),
-    ("", "Único"),
-    (None, "Único"),
-])
-def test_extraer_talle_del_titulo(titulo, esperado):
-    assert extraer_talle(titulo) == esperado
-
-
-def test_el_talle_real_de_mercado_libre_gana_sobre_el_titulo():
-    assert extraer_talle("Medias Pack Docena", "38-43") == "38-43"
-    assert extraer_talle("Campera Negro XL", "m") == "M"
-    assert extraer_talle("Campera Negro XL", "Único") == "XL"      # "Único" no es un dato: se mira el título
+def test_el_talle_es_el_atributo_de_mercado_libre_y_nunca_se_deduce_del_titulo():
+    assert normalizar_talle("38-43") == "38-43"
+    assert normalizar_talle("m") == "M"
+    assert normalizar_talle(" xl ") == "XL"
+    assert normalizar_talle(None) == "Único" and normalizar_talle("") == "Único" and normalizar_talle("   ") == "Único"
 
 
 def test_unico_escrito_de_cualquier_forma_no_es_un_talle_y_no_queda_como_otro_talle():
     # Datos reales de Mercado Libre: SIZE llega «Único» en buzos y «UNICO» en otras categorías; antes «UNICO» se guardaba como un talle aparte.
-    for escrito in ("Único", "UNICO", "ÚNICO", "único", "Unica", " unico "):
-        assert extraer_talle("Termo Acero Inoxidable", escrito) == "Único", escrito
-        assert extraer_talle("Campera Negro XL", escrito) == "XL", escrito
-    assert extraer_talle("Pantalón", "UNICO ELASTIZADO") == "UNICO ELASTIZADO"      # un valor distinto sigue siendo un dato
-    assert extraer_talle("Pantalón", "L-XL") == "L-XL"
+    for escrito in ("Único", "UNICO", "ÚNICO", "único", "Unica", " unico ", "Talle único"):
+        assert normalizar_talle(escrito) == "Único", escrito
+    assert normalizar_talle("UNICO ELASTIZADO") == "UNICO ELASTIZADO"      # un valor distinto sigue siendo un dato
+    assert normalizar_talle("L-XL") == "L-XL"
 
 
-def test_clave_de_modelo_agrupa_los_talles():
+@pytest.mark.parametrize("titulo, talle, esperado", [
+    ("Campera De Jean Hombre Negro XL", "XL", "Campera De Jean Hombre Negro"),
+    ("Campera De Jean Hombre Negro L", "L", "Campera De Jean Hombre Negro"),
+    ("Campera De Jean Hombre Negro Talle 3", "3", "Campera De Jean Hombre Negro"),      # «Talle 3» con la palabra, aunque no esté al final
+    ("Talle 3 Campera De Jean Hombre Negro", "3", "Campera De Jean Hombre Negro"),
+    ("Chaleco Inflable Lisa 7", "7", "Chaleco Inflable Lisa"),                             # un talle numérico al final
+    ("Chaleco Inflable Lisa - M", "M", "Chaleco Inflable Lisa"),                          # y no deja un guion colgado
+    ("Medias Pack Docena 38-43", "38-43", "Medias Pack Docena"),
+    ("Remera M Estampada", "M", "Remera Estampada"),                                       # una letra en el medio también, si ese es el talle
+    ("Combo 2 Termos Acero Inoxidable", "2", "Combo 2 Termos Acero Inoxidable"),           # un número en el medio NO es el talle: no se toca
+    ("Buzo Manta Mujer Gris Liso 2", "2", "Buzo Manta Mujer Gris Liso"),
+    ("  Remera   Lisa  ", None, "Remera Lisa"),                                             # sin talle conocido: solo se ordenan los espacios
+])
+def test_la_clave_de_modelo_saca_solo_el_talle_que_se_conoce(titulo, talle, esperado):
+    assert limpiar_titulo_modelo(titulo, talle) == esperado
+
+
+def test_la_clave_de_modelo_agrupa_los_talles_de_un_modelo():
     base = "Campera De Jean Hombre Negro"
-    assert limpiar_titulo_modelo(base + " XL") == limpiar_titulo_modelo(base + " L") == base
-    assert limpiar_titulo_modelo(base + " Talle 3") == base
-    assert limpiar_titulo_modelo(None) == ""
+    assert limpiar_titulo_modelo(base + " XL", "XL") == limpiar_titulo_modelo(base + " L", "L") == base
+    assert limpiar_titulo_modelo(None) == "" and limpiar_titulo_modelo("", "M") == ""
+
+
+def test_el_bug_del_iphone_14_y_15_ya_no_los_junta_ni_inventa_un_talle():
+    """Antes un número al final del título era un talle: «Apple iPhone 14» y «Apple iPhone 15» eran el mismo modelo («Apple iPhone») con talle 14 y 15. Sin SIZE no se adivina nada."""
+    assert limpiar_titulo_modelo("Apple iPhone 14") == "Apple iPhone 14"
+    assert limpiar_titulo_modelo("Apple iPhone 15") == "Apple iPhone 15"
+    assert limpiar_titulo_modelo("Apple iPhone 14") != limpiar_titulo_modelo("Apple iPhone 15")
+    assert limpiar_titulo_modelo("Apple iPhone 15", "Único") == "Apple iPhone 15" and normalizar_talle(None) == "Único"
+    assert limpiar_titulo_modelo("Pintura Látex Interior Blanco 4 L") != limpiar_titulo_modelo("Pintura Látex Interior Blanco 20 L")      # la «L» de litros no es un talle
+    assert limpiar_titulo_modelo("Taladro Percutor Bosch 13 Mm 650w") == "Taladro Percutor Bosch 13 Mm 650w"
 
 
 def test_dos_productos_distintos_no_se_agrupan():

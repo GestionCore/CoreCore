@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from psycopg.rows import dict_row
 import db
 import meli_http
-from utils import limpiar_titulo_modelo, extraer_talle, sql_momento_argentina
+from utils import limpiar_titulo_modelo, normalizar_talle, sql_momento_argentina
 
 
 def _tipo_envio_legible(tipo_logistica):
@@ -45,9 +45,11 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("""
             SELECT v.id_orden, v.id_meli, v.id_variante, v.titulo, v.cantidad, v.despachado,
-                   v.comprador_nickname, v.comprador_nombre, p.thumbnail, v.shipment_id, v.tipo_logistica, v.flex_zona, v.flex_zona_meli
+                   v.comprador_nickname, v.comprador_nombre, p.thumbnail, v.shipment_id, v.tipo_logistica, v.flex_zona, v.flex_zona_meli,
+                   pv.talle AS talle_real, pv.etiqueta AS etiqueta_variante
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
             WHERE ({momento} + (%s || ' hours')::interval)::date = %s
               AND COALESCE(v.tipo_logistica, p.tipo_logistica, '') != 'fulfillment'
               AND v.origen = 'meli'
@@ -64,12 +66,12 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
                 fila["id_orden"], fila["id_meli"], fila["id_variante"], fila["titulo"], fila["cantidad"], fila["despachado"],
                 fila["comprador_nickname"], fila["comprador_nombre"], fila["thumbnail"], fila["shipment_id"], fila["tipo_logistica"]
             )
-            talle = extraer_talle(titulo)
-            modelo = limpiar_titulo_modelo(titulo)
+            talle = normalizar_talle(fila["talle_real"])
+            modelo = limpiar_titulo_modelo(titulo, fila["talle_real"])
             clave = f"{id_orden}-{id_meli}-{id_variante}"
             paquetes.append({
                 "clave": clave, "id_orden": id_orden, "id_meli": id_meli, "id_variante": id_variante,
-                "modelo": modelo, "talle": talle, "cantidad": cantidad, "despachado": bool(despachado),
+                "modelo": modelo, "talle": talle, "variante": fila["etiqueta_variante"], "cantidad": cantidad, "despachado": bool(despachado),
                 "comprador_nickname": comprador_nickname, "comprador_nombre": comprador_nombre,
                 "thumbnail": thumbnail, "etiqueta_impresa": False, "tipo_envio": _tipo_envio_legible(tipo_logistica),
                 "flex_zona": fila["flex_zona"], "flex_zona_meli": fila["flex_zona_meli"]

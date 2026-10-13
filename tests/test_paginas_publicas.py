@@ -21,7 +21,7 @@ def test_el_arranque_solo_consulta_las_apis_con_sesion():
     arranque = src[src.index("// ---------- Arranque global ----------"):]
     assert "const logueado = !!document.body.dataset.logueado;" in arranque
     # cada consulta periódica o inicial a la API va protegida
-    for llamada in ("actualizarTicker();", "marcarCurvaRota();", "cargarOportunidadesSeo();"):
+    for llamada in ("actualizarTicker();", "marcarVariantesClaveAgotadas();", "cargarOportunidadesSeo();"):
         assert re.search(rf"if \(logueado\) {re.escape(llamada)}", arranque), llamada
     bloque = arranque[arranque.index("if (logueado) {"):]
     assert "cargarAlertasPendientes();" in bloque and "setInterval" in bloque

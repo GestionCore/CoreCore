@@ -10,24 +10,25 @@ import db
 import analisis_stock
 import salud_cuenta
 import resumen_semanal
-from utils import ARGENTINA, formatear_moneda, hoy_argentina, limpiar_titulo_modelo, extraer_talle, SQL_RECLAMO_AFECTA, sql_momento_argentina
+from utils import ARGENTINA, formatear_moneda, hoy_argentina, limpiar_titulo_modelo, normalizar_talle, SQL_RECLAMO_AFECTA, sql_momento_argentina
 
 
-def _detalle_venta(titulo):
-    modelo = limpiar_titulo_modelo(titulo)
-    talle = extraer_talle(titulo)
+def _detalle_venta(titulo, talle=None):
+    """El título de la venta sin su talle y, si lo tiene, el talle entre paréntesis. `talle` es el atributo de Mercado Libre de la variante vendida (nunca se deduce del título)."""
+    modelo = limpiar_titulo_modelo(titulo, talle)
+    talle = normalizar_talle(talle)
     return modelo if talle == "Único" else f"{modelo} ({talle})"
 
 
 def top_modelos(filas, maximo=5):
     """
-    Los modelos que más facturaron, con todos sus talles/variantes JUNTOS (la clave de modelo es utils.limpiar_titulo_modelo). Cada fila:
-    (titulo, id_meli, unidades, facturado, miniatura, existe_en_la_base). La foto y la publicación que abre el panel son las de la publicación del
+    Los modelos que más facturaron, con todos sus talles/variantes JUNTOS (la clave de modelo es utils.limpiar_titulo_modelo, que saca el talle conocido del título). Cada fila:
+    (titulo, id_meli, unidades, facturado, miniatura, existe_en_la_base[, talle]). La foto y la publicación que abre el panel son las de la publicación del
     modelo que más facturó; `pct` es la parte del total facturado (de TODOS los modelos, no solo de los que se muestran).
     """
     modelos = {}
-    for titulo, id_meli, unidades, facturado, miniatura, existe in filas:
-        nombre = limpiar_titulo_modelo(titulo) or "Sin nombre"
+    for titulo, id_meli, unidades, facturado, miniatura, existe, *resto in filas:
+        nombre = limpiar_titulo_modelo(titulo, resto[0] if resto else None) or "Sin nombre"
         m = modelos.setdefault(nombre.lower(), {"nombre": nombre, "unidades": 0, "facturado": 0.0, "publicaciones": 0, "mejor": -1.0, "id_meli": None, "miniatura": None})
         facturado = float(facturado or 0)
         m["unidades"] += int(unidades or 0)
@@ -65,8 +66,9 @@ def obtener_ventas_hoy(usuario_id, cuenta_id=None):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
-            SELECT titulo, id_variante, cantidad, precio_venta, hora_venta, id_orden, id_meli
-            FROM ventas WHERE fecha_venta = %s ORDER BY id DESC
+            SELECT v.titulo, v.id_variante, v.cantidad, v.precio_venta, v.hora_venta, v.id_orden, v.id_meli, pv.talle
+            FROM ventas v LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
+            WHERE v.fecha_venta = %s ORDER BY v.id DESC
         """, (hoy_local,))
         ventas_hoy = cursor.fetchall()
 
@@ -77,10 +79,10 @@ def obtener_ventas_hoy(usuario_id, cuenta_id=None):
         facturado_hoy, unidades_hoy, ordenes_hoy = cursor.fetchone()
 
     lista_ventas = []
-    for titulo, id_variante, cant, precio_unitario, hora_venta, id_orden, id_meli in ventas_hoy:
+    for titulo, id_variante, cant, precio_unitario, hora_venta, id_orden, id_meli, talle in ventas_hoy:
         hora_str = hora_venta.strftime("%H:%M") if hasattr(hora_venta, "strftime") else (hora_venta or arg_now.strftime("%H:%M"))
         lista_ventas.append({
-            "id_venta": f"{id_orden}_{id_variante}", "id_orden": id_orden, "titulo": _detalle_venta(titulo),
+            "id_venta": f"{id_orden}_{id_variante}", "id_orden": id_orden, "titulo": _detalle_venta(titulo, talle),
             "cantidad": cant, "precio": formatear_moneda(cant * float(precio_unitario)), "hora": hora_str,
             "link_meli": f"https://myaccount.mercadolibre.com.ar/sales/{id_orden}/detail"
         })
