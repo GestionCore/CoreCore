@@ -26,6 +26,13 @@ GRUPOS_NAV = {
             {"nav_key": "reputacion", "label": "Reputación", "href": "/dia", "ancla": "reputacion", "endpoint": "dia_vista"},
         ],
     },
+    # Lo de hoy en una sola pantalla (ventas por hora, visitas, conversión y publicidad, todo en neto): una sección de una pantalla, igual que la Calculadora
+    "monitor_en_vivo": {
+        "label": "Monitor en vivo", "icono": "pulse",
+        "paginas": [
+            {"nav_key": "monitor_en_vivo", "label": "Monitor en vivo", "href": "/monitor_en_vivo", "endpoint": "monitor_en_vivo_vista"},
+        ],
+    },
     "ventas": {
         "label": "Ventas y ganancia", "icono": "coin",
         "paginas": [

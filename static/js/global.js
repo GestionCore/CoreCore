@@ -1074,6 +1074,7 @@ const ATAJOS_COMANDO = [
     { alias: ['masivo', 'stockm'], texto: 'Ir a Stock Masivo', url: '/stock_masivo' },
     { alias: ['desp', 'despacho'], texto: 'Ir a Despacho', url: '/dia#despacho' },
     { alias: ['dash', 'dashboard', 'resumen'], texto: 'Ir a Dashboard', url: '/dashboard' },
+    { alias: ['vivo', 'monitor', 'envivo', 'hoy', 'cpa', 'visitas', 'conversion'], texto: 'Ir a Monitor en vivo (ventas, visitas y publicidad de hoy)', url: '/monitor_en_vivo' },
     { alias: ['gan', 'ganancia', 'metricas'], texto: 'Ir a Ganancia Real', url: '/metricas' },
     { alias: ['fac', 'facturacion'], texto: 'Ir a Facturación', url: '/facturacion' },
     { alias: ['cobros', 'cobrar', 'acreditacion', 'liquidez', 'retenido'], texto: 'Ir a Cobros (cuándo te acreditan)', url: '/cobros' },

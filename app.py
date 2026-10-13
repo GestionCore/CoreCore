@@ -69,6 +69,8 @@ import timeline_publicacion
 import exportador_redes
 import scheduler
 import ventas_manuales
+import ventas_hoy
+import monitor_en_vivo
 import pagos
 import correos
 import admin_usuarios
@@ -774,6 +776,65 @@ def cambiar_cuenta(cuenta_id):
 @login_requerido
 def api_hoy():
     return jsonify(dashboard_mod.obtener_ventas_hoy(g.usuario_id, g.cuenta_id))
+
+
+@app.route("/monitor_en_vivo")
+@login_requerido
+def monitor_en_vivo_vista():
+    """Lo de HOY en una sola pantalla: ventas e ingresos por hora, visitas, conversión y publicidad, todo en neto (sin lo cancelado o devuelto)."""
+    try:
+        token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return redirect(url_for("reconectar"))
+    return render_template("monitor_en_vivo.html", active_nav="monitor_en_vivo")
+
+
+@app.route("/api/monitor/ventas")
+@login_requerido
+def api_monitor_ventas():
+    """Las tres etapas de hoy (brutas, canceladas/devueltas, netas) y las ventas por hora. Solo la base: es rápido y la pantalla lo pide a cada rato."""
+    hoy = hoy_argentina().isoformat()
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        resumen = ventas_hoy.totales_del_dia(cursor, hoy)
+        por_hora = monitor_en_vivo.ventas_por_hora(cursor, hoy)
+    return jsonify({"fecha": hoy, **resumen, "por_hora": por_hora})
+
+
+@app.route("/api/monitor/medicion")
+@login_requerido
+def api_monitor_medicion():
+    """Publicidad y visitas de hoy (lo que informa Mercado Libre, guardado 60 s) con sus curvas por hora y la conversión."""
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return jsonify({"desconectada": True, "publicidad": None, "visitas": None, "con_publicidad": False})
+    return jsonify(monitor_en_vivo.datos_de_medicion(g.usuario_id, g.cuenta_id, access_token))
+
+
+@app.route("/api/monitor/ganancia")
+@login_requerido
+def api_monitor_ganancia():
+    """La ganancia neta real de cada hora de hoy (la misma fórmula del Dashboard, sin lo cancelado)."""
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        access_token = None
+    return jsonify(monitor_en_vivo.ganancia_de_hoy_por_hora(g.usuario_id, g.cuenta_id, access_token))
+
+
+@app.route("/api/monitor/cpa")
+@login_requerido
+def api_monitor_cpa():
+    """Costo de publicidad por unidad vendida neta, a nivel cuenta y por campaña: ?dias=1 (hoy), 7, 14 o 30."""
+    dias = request.args.get("dias", 1, type=int)
+    if dias not in metricas_mod.PERIODOS_CPA:
+        dias = 1
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        access_token = None
+    return jsonify(metricas_mod.calcular_cpa_real(g.usuario_id, g.cuenta_id, access_token, dias))
 
 
 @app.route("/api/ticker")

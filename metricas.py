@@ -519,6 +519,97 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
     }
 
 
+PERIODOS_CPA = (1, 7, 14, 30)       # «Hoy», 7, 14 y 30 días (siempre hasta hoy, incluido)
+
+
+def costo_por_unidad(gasto, unidades):
+    """
+    Costo de publicidad por cada unidad vendida, en pesos: gasto ÷ unidades. Con 0 unidades no hay un costo por unidad (dividir por cero no es un costo): devuelve
+    None, y quien lo muestra dice «gastaste $X sin vender nada» en vez de inventar un número.
+    """
+    unidades = int(unidades or 0)
+    return round(float(gasto or 0) / unidades, 2) if unidades > 0 else None
+
+
+def rango_de_dias(dias, hoy=None):
+    """(desde, hasta) como 'YYYY-MM-DD' para los últimos `dias` días incluido hoy (1 = solo hoy)."""
+    hoy = hoy or hoy_argentina()
+    return (hoy - timedelta(days=int(dias) - 1)).strftime("%Y-%m-%d"), hoy.strftime("%Y-%m-%d")
+
+
+def unidades_netas_por_publicacion(cursor, desde, hasta):
+    """{id_meli: unidades} vendidas en el período. Son NETAS: `ventas` ya no contiene lo que se canceló o reembolsó (ver ventas_sync.retirar_ventas_canceladas)."""
+    cursor.execute("SELECT id_meli, COALESCE(SUM(cantidad), 0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s GROUP BY id_meli", (desde, hasta))
+    return {id_meli: int(u) for id_meli, u in cursor.fetchall()}
+
+
+def armar_cpa(dias, desde, hasta, gasto_total, campanas, unidades_por_publicacion, campana_de_publicacion):
+    """
+    Costo de publicidad por unidad vendida NETA («Gasto total de Ads ÷ unidades netas»), a nivel cuenta y por campaña.
+      · Cuenta: todo lo gastado en Product Ads ÷ TODAS las unidades netas vendidas en el período (con y sin publicidad).
+      · Campaña: lo que gastó la campaña ÷ las unidades netas vendidas de las publicaciones que anuncia (`campana_de_publicacion` = {id_meli: id de campaña}).
+    `campanas` = [{"id", "nombre", "estado", "costo", "unidades" (las que Mercado Libre atribuye a la publicidad)}]. Las campañas sin gasto ni ventas no se listan.
+    """
+    unidades_totales = sum(unidades_por_publicacion.values())
+    filas = []
+    for c in campanas:
+        gasto = float(c.get("costo") or 0)
+        unidades = sum(u for id_meli, u in unidades_por_publicacion.items() if campana_de_publicacion.get(id_meli) == str(c["id"]))
+        if gasto <= 0 and unidades <= 0:
+            continue
+        filas.append({"id": str(c["id"]), "nombre": c.get("nombre") or "Sin nombre", "estado": c.get("estado"), "gasto": round(gasto, 2), "unidades_netas": unidades,
+                      "cpa": costo_por_unidad(gasto, unidades), "unidades_meli": int(c.get("unidades") or 0)})
+    filas.sort(key=lambda f: -f["gasto"])
+    return {"dias": int(dias), "desde": desde, "hasta": hasta, "disponible": True, "gasto": round(float(gasto_total or 0), 2), "unidades_netas": unidades_totales,
+            "cpa": costo_por_unidad(gasto_total, unidades_totales), "campanas": filas}
+
+
+def calcular_cpa_real(usuario_id, cuenta_id, access_token, dias):
+    """
+    CPA real de los últimos `dias` días (1, 7, 14 o 30). {"disponible": False, ...} si no hay Publicidad conectada o Mercado Libre no contestó: nunca un 0 inventado.
+    El resultado se guarda 2 minutos en la caché compartida (cache_db): el Monitor lo pide a cada rato.
+    """
+    import cache_db
+    desde, hasta = rango_de_dias(dias)
+    vacio = {"dias": int(dias), "desde": desde, "hasta": hasta, "disponible": False, "gasto": None, "unidades_netas": None, "cpa": None, "campanas": []}
+    clave = f"monitor_cpa:{int(dias)}"
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        hit, guardado = cache_db.leer(cursor, cuenta_id, clave, firma=f"{desde}|{hasta}", ttl_segundos=120, ttl_fallido=30)
+        if hit and guardado is not None:
+            return guardado
+        unidades = unidades_netas_por_publicacion(cursor, desde, hasta)
+    advertiser_id = ads.obtener_advertiser_id(access_token, cuenta_id) if access_token else None
+    if not advertiser_id:
+        return vacio
+    campanas = ads.obtener_campanas_con_metricas(access_token, advertiser_id, desde, hasta, estricto=True)
+    gasto = ads.obtener_gasto_ads_total_periodo(access_token, advertiser_id, desde, hasta)
+    anuncios = ads.obtener_anuncios_con_metricas(access_token, advertiser_id, desde, hasta)
+    if campanas is None or gasto is None or anuncios is None:
+        return vacio
+    resultado = armar_cpa(dias, desde, hasta, gasto, campanas, unidades, {i: a.get("campana_id") for i, a in anuncios.items()})
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        cache_db.guardar(conexion.cursor(), cuenta_id, clave, resultado, firma=f"{desde}|{hasta}")
+    return resultado
+
+
+def cpa_por_publicacion(usuario_id, cuenta_id, access_token, dias=30):
+    """
+    {id_meli: {"gasto", "unidades", "cpa"}} de cada publicación que gastó en publicidad en los últimos `dias` días: su gasto (Product Ads) ÷ sus unidades netas vendidas.
+    Alimenta el «costo unitario de Ads» sugerido de la calculadora. None si Mercado Libre no contestó (no es lo mismo que «no gastó»).
+    """
+    desde, hasta = rango_de_dias(dias)
+    advertiser_id = ads.obtener_advertiser_id(access_token, cuenta_id) if access_token else None
+    if not advertiser_id:
+        return None
+    anuncios = ads.obtener_anuncios_con_metricas(access_token, advertiser_id, desde, hasta)
+    if anuncios is None:
+        return None
+    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+        unidades = unidades_netas_por_publicacion(conexion.cursor(), desde, hasta)
+    return {i: {"gasto": round(a["costo"], 2), "unidades": unidades.get(i, 0), "cpa": costo_por_unidad(a["costo"], unidades.get(i, 0))} for i, a in anuncios.items() if a["costo"] > 0}
+
+
 def generar_excel_balance(datos, fecha_desde, fecha_hasta):
     """
     Balance de rentabilidad del período como .xlsx — item pendiente #3

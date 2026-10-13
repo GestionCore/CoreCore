@@ -65,7 +65,11 @@ def obtener_advertiser_id(access_token, cuenta_id, site_id="MLA"):
     return advertiser_id
 
 
-def obtener_campanas_con_metricas(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id="MLA"):
+def obtener_campanas_con_metricas(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id="MLA", estricto=False):
+    """
+    Las campañas del anunciante con sus métricas del período. Por defecto un error de Mercado Libre da [] (las pantallas viejas siguen sin romperse);
+    con `estricto=True` da None: quien calcula un costo por unidad no puede confundir «no pude preguntar» con «no gastó nada».
+    """
     headers = {"Authorization": f"Bearer {access_token}", "api-version": "2"}
     url = (
         f"https://api.mercadolibre.com/advertising/{site_id}/advertisers/{advertiser_id}/product_ads/campaigns/search"
@@ -75,7 +79,7 @@ def obtener_campanas_con_metricas(access_token, advertiser_id, fecha_desde, fech
         resp = meli_http.get(url, headers=headers, timeout=15)
         if resp.status_code != 200:
             print(f"[Ads] ⚠️ Error trayendo campañas: {resp.status_code} - {resp.text[:300]}")
-            return []
+            return None if estricto else []
         data = resp.json()
         campanas = []
         for c in data.get("results", []):
@@ -108,7 +112,7 @@ def obtener_campanas_con_metricas(access_token, advertiser_id, fecha_desde, fech
         return campanas
     except Exception as e:
         print(f"[Ads] ❌ Error de conexión trayendo campañas: {e}")
-        return []
+        return None if estricto else []
 
 
 def obtener_serie_diaria_ads(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id="MLA"):
@@ -188,7 +192,7 @@ TOPE_PAGINAS_ANUNCIOS = 40          # 2.000 anuncios: mucho más que cualquier c
 
 def obtener_anuncios_con_metricas(access_token, advertiser_id, fecha_desde, fecha_hasta, site_id="MLA"):
     """
-    {item_id: {costo, ventas, unidades, clicks, prints, titulo, thumbnail}} de TODOS los anuncios de Product Ads del anunciante en el período, con el listado
+    {item_id: {costo, ventas, unidades, clicks, prints, titulo, thumbnail, campana_id}} de TODOS los anuncios de Product Ads del anunciante en el período, con el listado
     paginado `/product_ads/ads/search` (50 por página). Antes se hacía una consulta por publicación: medido con datos reales en 2 cuentas, 4 llamadas en 0,9 s
     contra 192 en 5,5 s, con los mismos números (0 diferencias en 86 + 117 + 20 + 33 anuncios con datos, en períodos de 14 y 60 días).
     Devuelve None si no se pudo leer completo (una página falló o se cortó la conexión): quien llama vuelve a la consulta por publicación, porque un listado
@@ -222,6 +226,7 @@ def obtener_anuncios_con_metricas(access_token, advertiser_id, fecha_desde, fech
                     "costo": float(m.get("cost") or 0.0), "ventas": float(m.get("total_amount") or 0.0), "unidades": int(m.get("units_quantity") or 0),
                     "clicks": int(m.get("clicks") or 0), "prints": int(m.get("prints") or 0),
                     "titulo": a.get("title"), "thumbnail": (a.get("thumbnail") or "").replace("http://", "https://") or None,
+                    "campana_id": str(a["campaign_id"]) if a.get("campaign_id") is not None else None,      # cada anuncio dice a qué campaña pertenece (verificado con la API real)
                 }
             offset += ANUNCIOS_POR_PAGINA
             total = (datos.get("paging") or {}).get("total")

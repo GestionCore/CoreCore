@@ -6,6 +6,8 @@ dueño) las tareas se delegaban a Celery y el sistema se portaba distinto que en
   · cada 30 minutos (SYNC_INTERVALO_MINUTOS): barredora de seguridad de todas las cuentas activas. El motor principal es el webhook de Mercado Libre
     (/notificaciones_meli: items, órdenes, envíos, preguntas, reclamos), que en producción llega varias veces por minuto
   · cada 4 minutos: SOLO las cuentas cuya primera sincronización todavía no terminó (reintento rápido de las recién conectadas; normalmente ninguna)
+  · cada 30 minutos: anota el acumulado de HOY de publicidad y visitas de cada cuenta (monitor_en_vivo.py): Mercado Libre los da por día, no por hora, y la curva por hora del
+    Monitor en vivo es la diferencia entre dos anotaciones seguidas (2 consultas por cuenta)
   · cada hora: verificación de los permisos de Mercado Libre (salud_tokens) y limpieza de vinculaciones de OAuth abandonadas
   · cada madrugada (03:30 de Argentina): borrado físico de lo «eliminado» hace más de un día (soft deletes)
   · cada día a las 09:00 de Argentina: renovaciones de Mercado Pago, solo de quienes ya les llegó su fecha de cobro (renovaciones_mp.py)
@@ -22,6 +24,8 @@ import salud_tokens
 import sincronizador
 import espia_competencia
 import mercado_relevador
+import monitor_en_vivo
+import monitoreo
 import tendencias as tendencias_mod
 from auth import token_manager
 
@@ -163,6 +167,20 @@ def _tarea_relevar_mercado():
         print(f"[Scheduler] 📈 Mercado relevado: {resumen}")
 
 
+def _tarea_anotar_monitor():
+    """Anota el acumulado de hoy de publicidad y visitas de cada cuenta activa. Un fallo en una cuenta no corta a las demás (y va a Sentry, por fase, si está configurado)."""
+    for cuenta_id, usuario_id in _obtener_cuentas_activas():
+        try:
+            access_token = token_manager.asegurar_token_valido(cuenta_id)
+        except token_manager.CuentaDesconectada:
+            continue
+        try:
+            monitor_en_vivo.tomar_anotacion(usuario_id, cuenta_id, access_token)
+        except Exception as e:
+            print(f"[Scheduler APScheduler] ❌ Error anotando el monitor de la cuenta {cuenta_id}: {e}")
+            monitoreo.reportar("monitor:anotacion", e, cuenta_id)
+
+
 def _tarea_verificar_tokens():
     salud_tokens.verificar_tokens()
 
@@ -274,6 +292,7 @@ def _arrancar_apscheduler():
     from datetime import datetime, timedelta, timezone
     _scheduler_apscheduler.add_job(_tarea_relevar_mercado, "interval", hours=1, id="relevar_mercado", max_instances=1, coalesce=True,
                                    next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2))
+    _scheduler_apscheduler.add_job(_tarea_anotar_monitor, "interval", minutes=30, id="anotar_monitor", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_verificar_tokens, "interval", hours=1, id="verificar_tokens", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_limpiar_vinculaciones_oauth, "interval", hours=1, id="limpiar_oauth", max_instances=1, coalesce=True)
     # De madrugada: 06:30 UTC = 03:30 en Argentina (sin horario de verano). En UTC a propósito: no depende de que el sistema tenga la base de zonas horarias

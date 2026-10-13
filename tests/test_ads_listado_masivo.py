@@ -17,8 +17,8 @@ class _Resp:
         return self._cuerpo
 
 
-def _anuncio(item_id, costo=0.0, ventas=0.0, unidades=0, clicks=0, prints=0, thumbnail="http://img/x.jpg"):
-    return {"item_id": item_id, "title": f"Título {item_id}", "thumbnail": thumbnail,
+def _anuncio(item_id, costo=0.0, ventas=0.0, unidades=0, clicks=0, prints=0, thumbnail="http://img/x.jpg", campania=356405329):
+    return {"item_id": item_id, "title": f"Título {item_id}", "thumbnail": thumbnail, "campaign_id": campania,
             "metrics": {"cost": costo, "total_amount": ventas, "units_quantity": unidades, "clicks": clicks, "prints": prints}}
 
 
@@ -57,7 +57,8 @@ def test_el_listado_masivo_alcanza_para_las_metricas_de_cada_publicacion(monkeyp
     r = ads.obtener_metricas_ads_por_item("tok", "A1", "2026-09-01", "2026-09-30", ["MLA1", "MLA2", "MLA3"])
     assert llamadas["individuales"] == [] and llamadas["paginas"] == [0]                      # una sola página, ni una consulta por publicación
     assert set(r) == {"MLA1", "MLA3"}                                                          # MLA2 no gastó ni tuvo impresiones; MLA4 no es de las que se pidieron
-    assert r["MLA1"] == {"costo": 967.62, "ventas": 5000.0, "unidades": 2, "clicks": 11, "prints": 394, "titulo": "Título MLA1", "thumbnail": "https://img/x.jpg"}
+    assert r["MLA1"] == {"costo": 967.62, "ventas": 5000.0, "unidades": 2, "clicks": 11, "prints": 394, "titulo": "Título MLA1", "thumbnail": "https://img/x.jpg",
+                     "campana_id": "356405329"}                 # cada anuncio dice a qué campaña pertenece (lo usa el costo por unidad de cada campaña)
 
 
 def test_el_costo_por_publicacion_sale_del_mismo_listado_y_no_queda_incompleto(monkeypatch):

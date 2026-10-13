@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% block title %}Monitor en vivo · CoreLux{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-pulse"/></svg>Monitor en vivo <span class="badge-en-vivo">En vivo</span></h1>
+        <div class="page-subtitle">Lo de hoy en una sola pantalla — <strong>siempre en neto</strong>: sin lo que se canceló o se devolvió</div>
+    </div>
+    <div class="text-muted" style="font-size:0.82em;" id="mon-actualizado" aria-live="polite">Actualizando…</div>
+</div>
+
+<!-- ── 1. CÓMO VA HOY: los números que importan, en neto ─────────────────────────── -->
+<div class="ux-kpis mon-kpis" id="mon-kpis">
+    <div class="ux-kpi ux-ok" id="mon-k-ganancia"><div class="ux-kpi-etiqueta"><svg class="icon" aria-hidden="true"><use href="#icon-coin"/></svg>Ganancia neta real · hoy</div><div class="ux-kpi-valor"><span class="skeleton">$0</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
+    <div class="ux-kpi ux-info" id="mon-k-netas"><div class="ux-kpi-etiqueta"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg>Ventas netas</div><div class="ux-kpi-valor"><span class="skeleton">$0</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
+    <div class="ux-kpi ux-neutral" id="mon-k-visitas"><div class="ux-kpi-etiqueta"><svg class="icon" aria-hidden="true"><use href="#icon-eye"/></svg>Visitas hoy</div><div class="ux-kpi-valor"><span class="skeleton">0</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
+    <div class="ux-kpi ux-neutral" id="mon-k-conversion"><div class="ux-kpi-etiqueta"><svg class="icon" aria-hidden="true"><use href="#icon-trend"/></svg>Conversión</div><div class="ux-kpi-valor"><span class="skeleton">0%</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
+    <div class="ux-kpi ux-neutral mon-solo-ads" id="mon-k-ads"><div class="ux-kpi-etiqueta"><svg class="icon" aria-hidden="true"><use href="#icon-percent"/></svg>Publicidad · hoy</div><div class="ux-kpi-valor"><span class="skeleton">$0</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
+    <div class="ux-kpi ux-neutral mon-solo-ads" id="mon-k-cpa"><div class="ux-kpi-etiqueta"><svg class="icon" aria-hidden="true"><use href="#icon-tag"/></svg>Publicidad por unidad · hoy</div><div class="ux-kpi-valor"><span class="skeleton">$0</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
+</div>
+
+<!-- ── 2. LA CUENTA DEL DÍA: brutas − canceladas/devueltas = netas ───────────────── -->
+<div class="panel" id="mon-cuenta">
+    <div class="ux-panel-cab">
+        <div class="panel-title" style="margin:0;">La cuenta de hoy</div>
+        <span class="text-muted" style="font-size:0.82em;">Solo las netas suman a tu ganancia</span>
+    </div>
+    <div class="pl-waterfall ux-cascada vh-cuenta" id="mon-conciliacion" tabindex="0" role="group" aria-label="Cómo se arma la cuenta de ventas de hoy">
+        <div class="pl-tile" id="mon-c-brutas"><div class="stat-chip-label">Ventas brutas</div><div class="pl-tile-valor skeleton">$0</div><div class="vh-cifras-bloque">&nbsp;</div></div>
+        <div class="pl-operador">−</div>
+        <div class="pl-tile" id="mon-c-canceladas"><div class="stat-chip-label">Canceladas / devueltas</div><div class="pl-tile-valor skeleton">$0</div><div class="vh-cifras-bloque">&nbsp;</div></div>
+        <div class="pl-operador">=</div>
+        <div class="pl-tile pl-tile-resultado" id="mon-c-netas"><div class="stat-chip-label">Ventas netas</div><div class="pl-tile-valor skeleton">$0</div><div class="vh-cifras-bloque">&nbsp;</div></div>
+    </div>
+</div>
+
+<!-- ── 3. INGRESOS Y GANANCIA, HORA POR HORA ─────────────────────────────────────── -->
+<div class="ux-seccion ux-ok">Ingresos y ganancia por hora</div>
+<div class="panel">
+    <div class="ux-panel-cab">
+        <div class="ux-chips-series" id="mon-chips-ingresos" role="group" aria-label="Series del gráfico">
+            <button type="button" class="ux-chip-serie activa" data-serie="0" style="--c: var(--accent-primary);">Ventas netas ($)</button>
+            <button type="button" class="ux-chip-serie activa" data-serie="1" style="--c: var(--danger);">Canceladas / devueltas ($)</button>
+            <button type="button" class="ux-chip-serie activa" data-serie="2" style="--c: var(--success);">Ganancia neta real ($)</button>
+        </div>
+    </div>
+    <div class="mon-grafico"><canvas id="mon-g-ingresos" role="img" aria-label="Ventas netas, canceladas y ganancia neta real de hoy, hora por hora"></canvas></div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">Hora de Argentina. Las ventas netas ya no incluyen lo cancelado o devuelto; lo cancelado se muestra hacia abajo para que se vea cuándo pasó.</div>
+</div>
+
+<!-- ── 4. VISITAS Y CONVERSIÓN ───────────────────────────────────────────────────── -->
+<div class="ux-seccion ux-info">Visitas y conversión</div>
+<div class="panel" id="mon-p-visitas">
+    <div class="mon-grafico"><canvas id="mon-g-visitas" role="img" aria-label="Visitas por hora y conversión acumulada de hoy"></canvas></div>
+    <div class="text-muted" style="font-size:0.82em; margin-top:8px;" id="mon-nota-visitas">Conversión = órdenes netas ÷ visitas a todas tus publicaciones.</div>
+</div>
+
+<!-- ── 5. PUBLICIDAD EN VIVO ─────────────────────────────────────────────────────── -->
+<div class="mon-solo-ads">
+    <div class="ux-seccion ux-accion">Publicidad en vivo <span class="text-muted" style="font-weight:600; font-size:0.8em;">Product Ads · hoy</span></div>
+    <div class="panel" id="mon-p-ads">
+        <div class="ux-panel-cab">
+            <div class="ux-chips-series" id="mon-chips-campanas" role="group" aria-label="Elegí qué ver: toda la cuenta o una campaña"></div>
+        </div>
+        <div class="ux-panel-cab" style="margin-top:4px;">
+            <div class="ux-chips-series" id="mon-chips-ads" role="group" aria-label="Series del gráfico">
+                <button type="button" class="ux-chip-serie activa" data-serie="0" style="--c: var(--accent-primary);">Impresiones</button>
+                <button type="button" class="ux-chip-serie activa" data-serie="1" style="--c: var(--semantic-info);">Clics</button>
+                <button type="button" class="ux-chip-serie activa" data-serie="2" style="--c: var(--success);">Ventas por anuncios (unidades)</button>
+            </div>
+        </div>
+        <div class="mon-grafico"><canvas id="mon-g-ads" role="img" aria-label="Impresiones, clics y ventas de publicidad por hora"></canvas></div>
+        <div class="text-muted" style="font-size:0.82em; margin-top:8px;" id="mon-nota-ads"></div>
+        <div id="mon-tabla-campanas" style="margin-top:14px;"></div>
+    </div>
+</div>
+
+<!-- ── 6. COSTO DE PUBLICIDAD POR UNIDAD VENDIDA ─────────────────────────────────── -->
+<div class="mon-solo-ads">
+    <div class="ux-seccion ux-warn">Cuánto te cuesta la publicidad por cada unidad vendida</div>
+    <div class="panel" id="mon-p-cpa">
+        <div class="ux-chips-series" id="mon-chips-cpa" role="group" aria-label="Período">
+            <button type="button" class="ux-chip-serie activa" data-dias="1" style="--c: var(--accent-primary);">Hoy</button>
+            <button type="button" class="ux-chip-serie" data-dias="7" style="--c: var(--accent-primary);">7 días</button>
+            <button type="button" class="ux-chip-serie" data-dias="14" style="--c: var(--accent-primary);">14 días</button>
+            <button type="button" class="ux-chip-serie" data-dias="30" style="--c: var(--accent-primary);">30 días</button>
+        </div>
+        <div id="mon-cpa-cuerpo" style="margin-top:14px;"><div class="skeleton" style="height:90px; border-radius:12px;"></div></div>
+        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Gasto en publicidad ÷ unidades netas vendidas en el período (con y sin publicidad, sin cancelaciones ni devoluciones). Por campaña: lo que gastó la campaña ÷ las unidades netas de los productos que anuncia.</div>
+    </div>
+</div>
+
+<script src="/static/js/vendor/chart.umd.min.js?v=4.4.4"></script>
+<script nonce="{{ csp_nonce }}">
+(() => {
+    const HORAS = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0'));
+    const graficos = {};
+    const estado = { campana: '*', medicion: null, cpaDias: 1 };
+    const estilo = () => getComputedStyle(document.documentElement);
+    const tok = (n, f) => estilo().getPropertyValue(n).trim() || f;
+    const colores = () => ({ violeta: tok('--accent-primary', '#8b5cf6'), ok: tok('--success', '#22c55e'), mal: tok('--danger', '#f43f5e'), info: tok('--semantic-info', '#38bdf8'),
+                             texto: tok('--text-secondary', '#94a3b8'), grilla: tok('--border-soft', 'rgba(255,255,255,0.08)') });
+    const conAlfa = (color, alfa) => `color-mix(in srgb, ${color} ${Math.round(alfa * 100)}%, transparent)`;
+    const el = (id) => document.getElementById(id);
+    const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+    const horaActual = () => Number(new Date().toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' }));
+
+    function kpi(id, { tono, valor, sub }) {
+        const caja = el(id);
+        if (!caja) return;
+        caja.className = 'ux-kpi ux-' + tono + (caja.classList.contains('mon-solo-ads') ? ' mon-solo-ads' : '');
+        caja.querySelector('.ux-kpi-valor').textContent = valor;
+        caja.querySelector('.ux-kpi-sub').innerHTML = sub || '';
+    }
+    function destruir(clave) { if (graficos[clave]) { graficos[clave].destroy(); delete graficos[clave]; } }
+    function sinDato(idKpi, texto) { kpi(idKpi, { tono: 'neutral', valor: '—', sub: texto }); }
+
+    // ── Cuenta del día (tres etapas) ─────────────────────────────────────────────
+    function pintarBloque(id, b) {
+        const caja = el(id);
+        const valor = caja.querySelector('.pl-tile-valor');
+        valor.classList.remove('skeleton');
+        valor.textContent = UX.plata(b.facturado);
+        caja.querySelector('.vh-cifras-bloque').innerHTML = `<b>${b.ordenes}</b> ${b.ordenes === 1 ? 'orden' : 'órdenes'} · <b>${b.compradores}</b> ${b.compradores === 1 ? 'comprador' : 'compradores'} · <b>${b.unidades}</b> ${b.unidades === 1 ? 'unidad' : 'unidades'}`;
+    }
+
+    // ── 1+2+3. Ventas por hora (la base: rápido) ─────────────────────────────────
+    async function cargarVentas() {
+        const d = await (await fetch('/api/monitor/ventas')).json();
+        pintarBloque('mon-c-brutas', d.brutas); pintarBloque('mon-c-canceladas', d.canceladas); pintarBloque('mon-c-netas', d.netas);
+        el('mon-c-canceladas').classList.toggle('vh-con-canceladas', d.canceladas.ordenes > 0);
+        el('mon-conciliacion').setAttribute('aria-label', d.frase);
+        if (typeof adjuntarTooltipConciliacion === 'function') adjuntarTooltipConciliacion(el('mon-conciliacion'), d.frase);
+        kpi('mon-k-netas', { tono: 'info', valor: UX.plata(d.netas.facturado), sub: `<b>${plural(d.netas.ordenes, 'orden', 'órdenes')}</b> · ${plural(d.netas.unidades, 'unidad', 'unidades')}` + (d.canceladas.ordenes ? ` · <span class="text-danger">${plural(d.canceladas.ordenes, 'cancelada', 'canceladas')}</span>` : '') });
+        estado.ventas = d;
+        pintarIngresos();
+    }
+
+    function pintarIngresos() {
+        const d = estado.ventas; if (!d || !window.Chart) return;
+        const c = colores(), g = estado.ganancia;
+        const visibles = graficos.ingresos ? [0, 1, 2].map(i => graficos.ingresos.isDatasetVisible(i)) : [true, true, true];
+        destruir('ingresos');
+        graficos.ingresos = new Chart(el('mon-g-ingresos'), {
+            data: {
+                labels: HORAS,
+                datasets: [
+                    { type: 'bar', label: 'Ventas netas', data: d.por_hora.map(h => h.netas.facturado), backgroundColor: c.violeta, borderRadius: 4, stack: 'v', order: 2 },
+                    { type: 'bar', label: 'Canceladas / devueltas', data: d.por_hora.map(h => -h.canceladas.facturado), backgroundColor: c.mal, borderRadius: 4, stack: 'v', order: 2 },
+                    { type: 'line', label: 'Ganancia neta real', data: g ? g.por_hora.map(h => h.ganancia) : HORAS.map(() => null), borderColor: c.ok, backgroundColor: c.ok, borderWidth: 3, pointRadius: 3, tension: 0.25, order: 1 },
+                ],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { display: false }, tooltip: { padding: 12, cornerRadius: 8, callbacks: {
+                    title: (it) => it[0].label + ':00 a ' + it[0].label + ':59',
+                    label: (x) => ` ${x.dataset.label}: ${UX.plata(Math.abs(x.parsed.y))}`,
+                    afterBody: (it) => { const h = d.por_hora[it[0].dataIndex]; return [`${plural(h.netas.ordenes, 'orden neta', 'órdenes netas')} · ${plural(h.netas.unidades, 'unidad', 'unidades')}`].concat(h.canceladas.ordenes ? [`${plural(h.canceladas.ordenes, 'cancelada', 'canceladas')}`] : []); } } } },
+                scales: { x: { stacked: true, ticks: { color: c.texto, maxTicksLimit: 12 }, grid: { display: false } }, y: { stacked: true, ticks: { color: c.texto, callback: (v) => UX.plataEje(v) }, grid: { color: c.grilla } } },
+            },
+        });
+        visibles.forEach((v, i) => graficos.ingresos.setDatasetVisibility(i, v));
+        graficos.ingresos.update();
+    }
+
+    async function cargarGanancia() {
+        const g = await (await fetch('/api/monitor/ganancia')).json();
+        estado.ganancia = g;
+        kpi('mon-k-ganancia', { tono: g.total < 0 ? 'danger' : (g.total > 0 ? 'ok' : 'neutral'), valor: UX.plata(g.total), sub: 'después de comisiones, envíos, publicidad y costo de fabricación' });
+        pintarIngresos();
+    }
+
+    // ── 4+5. Publicidad y visitas (lo que informa Mercado Libre, con curvas por hora) ─
+    const serie = (curva, campo) => (curva && curva[campo]) ? curva[campo] : HORAS.map((_, h) => ({ hora: h, valor: 0, cubierta: 0 }));
+    const valores = (filas) => filas.map(f => f.cubierta > 0 ? f.valor : null);
+    const barrasMedidas = (filas, color) => filas.map(f => conAlfa(color, f.cubierta >= 1 ? 1 : (f.cubierta > 0 ? 0.55 : 0.12)));
+
+    function notaMedicion(m) {
+        if (!m.tabla) return 'La curva por hora todavía no está disponible en tu cuenta: por ahora ves los totales de hoy.';
+        if (m.anotaciones < 2) return 'Mercado Libre informa esto por día, no por hora. CoreLux anota el acumulado cada 30 minutos y calcula cuánto sumó cada hora: la curva se empieza a armar ahora.';
+        return `Mercado Libre informa esto por día, no por hora. CoreLux anota el acumulado cada 30 minutos y calcula cuánto sumó cada hora${m.medido_desde ? `; empezó a medir hoy a las ${UX.esc(m.medido_desde)}, antes de esa hora no hay curva` : ''}. Las barras más claras son horas medidas a medias.`;
+    }
+
+    function pintarVisitas(m) {
+        const v = m.visitas, c = colores();
+        destruir('visitas');
+        if (!v) { el('mon-p-visitas').style.display = 'none'; sinDato('mon-k-visitas', 'Mercado Libre no respondió'); sinDato('mon-k-conversion', 'sin visitas todavía'); return; }
+        el('mon-p-visitas').style.display = '';
+        const hoy = v.hoy, ayer = v.ayer;
+        kpi('mon-k-visitas', { tono: 'neutral', valor: hoy === null || hoy === undefined ? '—' : UX.num(hoy), sub: ayer !== null && ayer !== undefined ? `ayer en total: <b>${UX.num(ayer)}</b>` : '' });
+        kpi('mon-k-conversion', v.conversion_actual === null || v.conversion_actual === undefined ? { tono: 'neutral', valor: '—', sub: 'sin visitas todavía' }
+            : { tono: 'info', valor: UX.pct(v.conversion_actual, 2), sub: `<b>${plural(v.ordenes_netas, 'orden neta', 'órdenes netas')}</b> ÷ ${UX.num(hoy)} visitas` });
+        const curva = serie({ v: v.curva }, 'v'), conv = new Array(24).fill(null);
+        v.conversion.forEach(p => { conv[Number(p.hora.slice(0, 2))] = p.conversion; });
+        const hayCurva = !!v.curva, hayConv = v.conversion.length > 0;
+        if (!window.Chart) return;
+        graficos.visitas = new Chart(el('mon-g-visitas'), {
+            data: { labels: HORAS, datasets: [
+                { type: 'bar', label: 'Visitas por hora', data: valores(curva), backgroundColor: barrasMedidas(curva, c.info), borderRadius: 4, yAxisID: 'y', order: 2 },
+                { type: 'line', label: 'Conversión acumulada (%)', data: conv, borderColor: c.violeta, backgroundColor: c.violeta, borderWidth: 3, pointRadius: 3, spanGaps: true, tension: 0.25, yAxisID: 'y1', order: 1 },
+            ] },
+            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { labels: { color: c.texto, usePointStyle: true, boxWidth: 8 } }, tooltip: { padding: 12, cornerRadius: 8, callbacks: {
+                    title: (it) => it[0].label + ':00 a ' + it[0].label + ':59',
+                    label: (x) => x.dataset.yAxisID === 'y1' ? ` Conversión del día hasta esa hora: ${UX.pct(x.parsed.y, 2)}` : ` Visitas esa hora: ${UX.num(x.parsed.y)}` + (curva[x.dataIndex].cubierta < 1 && curva[x.dataIndex].cubierta > 0 ? ' (hora medida a medias)' : '') } } },
+                scales: { x: { ticks: { color: c.texto, maxTicksLimit: 12 }, grid: { display: false } },
+                          y: { beginAtZero: true, position: 'left', ticks: { color: c.texto, precision: 0 }, grid: { color: c.grilla }, title: { display: true, text: 'visitas', color: c.texto } },
+                          y1: { beginAtZero: true, position: 'right', ticks: { color: c.texto, callback: (x) => x + '%' }, grid: { display: false } } } },
+        });
+        el('mon-nota-visitas').innerHTML = 'Conversión = órdenes netas ÷ visitas a todas tus publicaciones. ' + (hayCurva || hayConv ? notaMedicion(m) : 'Mercado Libre informa las visitas por día, no por hora: la curva por hora se arma anotando el acumulado cada 30 minutos.');
+    }
+
+    function chipsCampanas(p) {
+        const caja = el('mon-chips-campanas');
+        const curvas = p.curvas || {};
+        const campanas = p.campanas.filter(c => curvas[c.id]);
+        if (!curvas['*']) { caja.innerHTML = ''; return; }
+        if (estado.campana !== '*' && !curvas[estado.campana]) estado.campana = '*';
+        caja.innerHTML = [{ id: '*', nombre: 'Toda la cuenta' }, ...campanas].map(c =>
+            `<button type="button" class="ux-chip-serie ${c.id === estado.campana ? 'activa' : ''}" data-campana="${UX.esc(c.id)}" style="--c: var(--accent-primary);">${UX.esc(c.nombre)}</button>`).join('');
+    }
+
+    function pintarAds(m) {
+        const p = m.publicidad, c = colores();
+        document.querySelectorAll('.mon-solo-ads').forEach(n => { n.style.display = m.con_publicidad ? '' : 'none'; });      // sin Publicidad conectada no hay nada que mostrar de publicidad
+        if (!m.con_publicidad) return;
+        destruir('ads');
+        if (!p) { sinDato('mon-k-ads', 'Mercado Libre no respondió'); el('mon-nota-ads').textContent = 'No pudimos consultar la publicidad ahora. Probá de nuevo en un rato.'; return; }
+        kpi('mon-k-ads', { tono: 'neutral', valor: UX.plata(p.gasto), sub: `${UX.num(p.impresiones)} impresiones · ${UX.num(p.clics)} clics (${UX.pct(p.ctr, 2)})` });
+        chipsCampanas(p);
+        const curvas = p.curvas || {};
+        const hay = curvas[estado.campana];
+        el('mon-nota-ads').innerHTML = notaMedicion(m);
+        if (hay && window.Chart) {
+            const imp = serie(hay, 'impresiones'), cli = serie(hay, 'clics'), uni = serie(hay, 'unidades');
+            const visibles = graficos.ads ? [0, 1, 2].map(i => graficos.ads.isDatasetVisible(i)) : [true, true, true];
+            graficos.ads = new Chart(el('mon-g-ads'), {
+                data: { labels: HORAS, datasets: [
+                    { type: 'line', label: 'Impresiones', data: valores(imp), borderColor: c.violeta, backgroundColor: conAlfa(c.violeta, 0.18), fill: true, borderWidth: 3, pointRadius: 2, tension: 0.3, yAxisID: 'y', order: 3 },
+                    { type: 'bar', label: 'Clics', data: valores(cli), backgroundColor: barrasMedidas(cli, c.info), borderRadius: 4, yAxisID: 'y1', order: 2 },
+                    { type: 'bar', label: 'Ventas por anuncios (unidades)', data: valores(uni), backgroundColor: barrasMedidas(uni, c.ok), borderRadius: 4, yAxisID: 'y1', order: 1 },
+                ] },
+                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: false }, tooltip: { padding: 12, cornerRadius: 8, callbacks: {
+                        title: (it) => it[0].label + ':00 a ' + it[0].label + ':59',
+                        label: (x) => ` ${x.dataset.label}: ${UX.num(x.parsed.y)}`,
+                        afterBody: (it) => { const f = imp[it[0].dataIndex]; return f.cubierta < 1 ? [f.cubierta > 0 ? 'Hora medida a medias' : 'Hora sin medir'] : []; } } } },
+                    scales: { x: { ticks: { color: c.texto, maxTicksLimit: 12 }, grid: { display: false } },
+                              y: { beginAtZero: true, position: 'left', ticks: { color: c.texto, precision: 0 }, grid: { color: c.grilla }, title: { display: true, text: 'impresiones', color: c.texto } },
+                              y1: { beginAtZero: true, position: 'right', ticks: { color: c.texto, precision: 0 }, grid: { display: false }, title: { display: true, text: 'clics y ventas', color: c.texto } } } },
+            });
+            visibles.forEach((v, i) => graficos.ads.setDatasetVisibility(i, v));
+            graficos.ads.update();
+        }
+        el('mon-g-ads').parentElement.style.display = hay ? '' : 'none';
+        el('mon-tabla-campanas').innerHTML = p.campanas.length ? `
+            <div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Campaña</th><th class="num">Gasto hoy</th><th class="num solo-escritorio">Impresiones</th><th class="num solo-escritorio">Clics</th><th class="num">Ventas</th></tr></thead><tbody>
+            ${p.campanas.map(x => `<tr><td><span class="titulo-1l" title="${UX.esc(x.nombre)}">${UX.esc(x.nombre)}</span></td><td class="num">${UX.plata(x.gasto)}</td><td class="num solo-escritorio">${UX.num(x.impresiones)}</td><td class="num solo-escritorio">${UX.num(x.clics)}</td><td class="num">${UX.num(x.unidades)}</td></tr>`).join('')}
+            </tbody></table></div>` : '<div class="text-muted">Ninguna campaña tuvo actividad hoy todavía.</div>';
+    }
+
+    async function cargarMedicion() {
+        const m = await (await fetch('/api/monitor/medicion')).json();
+        estado.medicion = m;
+        if (m.desconectada) { el('mon-actualizado').textContent = 'Tu cuenta de Mercado Libre está desconectada: reconectala para ver publicidad y visitas.'; return; }
+        pintarVisitas(m);
+        pintarAds(m);
+        el('mon-actualizado').textContent = 'Actualizado ' + m.actualizado + ' · se renueva solo';
+    }
+
+    // ── 6. CPA real ──────────────────────────────────────────────────────────────
+    function pintarKpiCpa(r) {
+        if (!r.disponible) return sinDato('mon-k-cpa', 'sin datos de publicidad');
+        kpi('mon-k-cpa', { tono: r.cpa === null ? (r.gasto > 0 ? 'danger' : 'neutral') : 'warn', valor: r.cpa === null ? '—' : UX.plata(r.cpa), sub: r.cpa === null ? (r.gasto > 0 ? `gastaste <b>${UX.plata(r.gasto)}</b> sin vender nada` : 'sin gasto ni ventas') : `sobre <b>${plural(r.unidades_netas, 'unidad neta', 'unidades netas')}</b>` });
+    }
+    function pintarCpa(r) {
+        const caja = el('mon-cpa-cuerpo');
+        if (!r.disponible) { caja.innerHTML = '<div class="text-muted">No pudimos calcularlo ahora: Mercado Libre no respondió o esta cuenta no tiene publicidad. Probá de nuevo en un rato.</div>'; return; }
+        const principal = r.cpa === null
+            ? (r.gasto > 0 ? `<div class="mon-cpa-num text-danger">Sin ventas</div><div>Gastaste <b>${UX.plata(r.gasto)}</b> en publicidad y todavía no vendiste ninguna unidad en este período.</div>` : '<div class="mon-cpa-num">—</div><div>No hubo gasto en publicidad ni ventas en este período.</div>')
+            : `<div class="mon-cpa-num">${UX.plata(r.cpa)} <span class="text-muted" style="font-size:0.4em; font-weight:600;">por unidad vendida</span></div><div>Gastaste <b>${UX.plata(r.gasto)}</b> en publicidad y vendiste <b>${plural(r.unidades_netas, 'unidad neta', 'unidades netas')}</b>.</div>`;
+        const filas = r.campanas.map(c => `<tr><td><span class="titulo-1l" title="${UX.esc(c.nombre)}">${UX.esc(c.nombre)}</span></td><td class="num">${UX.plata(c.gasto)}</td><td class="num">${UX.num(c.unidades_netas)}</td>
+            <td class="num">${c.cpa === null ? (c.gasto > 0 ? '<span class="ux-pill ux-danger">Gastó sin vender</span>' : '—') : `<b>${UX.plata(c.cpa)}</b>`}</td></tr>`).join('');
+        caja.innerHTML = `<div class="mon-cpa-principal">${principal}</div>` + (r.campanas.length
+            ? `<div style="overflow-x:auto; margin-top:14px;"><table class="data-table"><thead><tr><th>Campaña</th><th class="num">Gasto</th><th class="num">Unidades netas</th><th class="num">Por unidad</th></tr></thead><tbody>${filas}</tbody></table></div>`
+            : '<div class="text-muted" style="margin-top:10px;">Ninguna campaña gastó ni vendió en este período.</div>');
+    }
+    async function cargarCpa(dias) {
+        estado.cpaDias = dias;
+        const r = await (await fetch('/api/monitor/cpa?dias=' + dias)).json();
+        if (dias !== estado.cpaDias) return;                        // la persona ya cambió de período mientras tanto
+        pintarCpa(r);
+        if (dias === 1) pintarKpiCpa(r);                            // el KPI de arriba es siempre el de hoy
+    }
+
+    // ── Eventos y ciclo de actualización ─────────────────────────────────────────
+    el('mon-chips-ingresos').addEventListener('click', (ev) => {
+        const b = ev.target.closest('.ux-chip-serie'); if (!b || !graficos.ingresos) return;
+        const visible = !b.classList.contains('activa');
+        b.classList.toggle('activa', visible); graficos.ingresos.setDatasetVisibility(Number(b.dataset.serie), visible); graficos.ingresos.update();
+    });
+    el('mon-chips-ads').addEventListener('click', (ev) => {
+        const b = ev.target.closest('.ux-chip-serie'); if (!b || !graficos.ads) return;
+        const visible = !b.classList.contains('activa');
+        b.classList.toggle('activa', visible); graficos.ads.setDatasetVisibility(Number(b.dataset.serie), visible); graficos.ads.update();
+    });
+    el('mon-chips-campanas').addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-campana]'); if (!b || !estado.medicion) return;
+        estado.campana = b.dataset.campana; destruir('ads'); pintarAds(estado.medicion);
+    });
+    el('mon-chips-cpa').addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-dias]'); if (!b) return;
+        document.querySelectorAll('#mon-chips-cpa .ux-chip-serie').forEach(x => x.classList.toggle('activa', x === b));
+        el('mon-cpa-cuerpo').innerHTML = '<div class="skeleton" style="height:90px; border-radius:12px;"></div>';
+        cargarCpa(Number(b.dataset.dias)).catch(() => { el('mon-cpa-cuerpo').innerHTML = '<div class="text-muted">No se pudo cargar ahora. Probá de nuevo.</div>'; });
+    });
+
+    const seguro = (f) => () => { if (document.hidden) return Promise.resolve(); return f().catch(e => console.error('[Monitor]', e)); };
+    const refrescarVentas = seguro(cargarVentas), refrescarMedicion = seguro(cargarMedicion), refrescarGanancia = seguro(cargarGanancia), refrescarCpa = seguro(() => cargarCpa(estado.cpaDias));
+    document.addEventListener('DOMContentLoaded', () => {
+        refrescarVentas(); refrescarMedicion(); refrescarGanancia(); refrescarCpa();
+        setInterval(refrescarVentas, 30000);
+        setInterval(refrescarMedicion, 60000);
+        setInterval(refrescarGanancia, 120000);
+        setInterval(refrescarCpa, 300000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) { refrescarVentas(); refrescarMedicion(); } });
+    });
+})();
+</script>
+{% endblock %}

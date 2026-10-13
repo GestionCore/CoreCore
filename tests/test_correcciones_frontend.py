@@ -255,8 +255,9 @@ def test_ganancia_real_tiene_un_solo_boton_primario_y_es_la_descarga_debajo_del_
 def test_el_dashboard_da_una_salida_desde_el_numero_segun_el_estado():
     t = _leer("templates", "dashboard_personalizable.html")
     assert 'id="hero-acciones"' in t
-    # sin costo → /costos primario; en pérdida → /metricas primario; bien → /metricas secundario
-    assert "{ href: '/costos', clase: 'btn-primary'" in t and "negativo ? { href: '/metricas', clase: 'btn-primary'" in t and "{ href: '/metricas', clase: 'btn-secondary'" in t
+    # sin costo → /costos primario; en pérdida → /metricas primario; y SIEMPRE «Ver detalle» (secundario) hacia el Monitor en vivo: ventas, visitas y publicidad de hoy en una pantalla
+    assert "{ href: '/costos', clase: 'btn-primary'" in t and "negativo ? { href: '/metricas', clase: 'btn-primary'" in t
+    assert '<a class="btn btn-secondary" href="/monitor_en_vivo">Ver detalle</a>' in t and "texto: 'Ver el detalle'" not in t
     assert t.index("sinCosto ?") < t.index("(negativo ? {")                            # arreglar el dato que falsea el número va antes que mirar la pérdida
 
 

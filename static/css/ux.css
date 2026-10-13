@@ -176,6 +176,13 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
     .vh-nombre { flex-basis: 100%; }
 }
 
+/* ---------- Monitor en vivo ---------- */
+.ux-kpis.mon-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }          /* seis tarjetas: 3 × 2 (en celular, de a dos, ver movil.css) */
+@media (max-width: 900px) { .ux-kpis.mon-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.mon-grafico { position: relative; height: 280px; }
+.mon-cpa-num { font-size: 2.1em; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; margin-bottom: 4px; }
+@media (max-width: 720px) { .mon-grafico { height: 240px; } .mon-cpa-num { font-size: 1.7em; } }
+
 /* ---------- Título de sección con punto de color ---------- */
 .ux-seccion { display: flex; align-items: center; gap: 10px; font-size: 1.08em; font-weight: 800; margin: 30px 0 14px; }
 .ux-seccion::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--ux-c, var(--accent-primary)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ux-c, var(--accent-primary)) 20%, transparent); }

@@ -794,9 +794,10 @@
             const periodo14 = d.periodo_14d;
             const sinCosto = periodo14.facturado > 0 && periodo14.costo_fabricacion === 0;
             const salida = sinCosto ? { href: '/costos', clase: 'btn-primary', texto: 'Cargar los costos' }
-                : (negativo ? { href: '/metricas', clase: 'btn-primary', texto: 'Revisar ventas' } : { href: '/metricas', clase: 'btn-secondary', texto: 'Ver el detalle' });
+                : (negativo ? { href: '/metricas', clase: 'btn-primary', texto: 'Revisar ventas' } : null);
             const cajaSalida = document.getElementById('hero-acciones');
-            cajaSalida.innerHTML = `<a class="btn ${salida.clase}" href="${salida.href}">${salida.texto}</a>`;
+            // «Ver detalle» lleva siempre al Monitor en vivo: ventas, visitas y publicidad de hoy en una sola pantalla (la salida de arriba, si hay una, es la urgente)
+            cajaSalida.innerHTML = (salida ? `<a class="btn ${salida.clase}" href="${salida.href}">${salida.texto}</a>` : '') + '<a class="btn btn-secondary" href="/monitor_en_vivo">Ver detalle</a>';
             cajaSalida.style.display = '';
 
             const heroNumero = document.getElementById('hero-ganancia-valor');
