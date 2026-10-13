@@ -24,6 +24,8 @@ Falta de la ola 2: 11 (Costos en acordeón, 18.181 px), 12 (Stock en tarjetas co
 HECHO el mismo día: 4, 11 y 111 (ver `PLAN_UX_200.md`). El monitor de caídas sobre `/healthz` ya lo puso el dueño; el resto de sus tareas (Mercado Pago de producción, mails, respaldos, revisión legal, Sentry, CSP estricta) las hace «mañana» (13/10).
 Costos hoy: UNA publicación = UN costo (`productos_padre.precio_costo`); la variante dentro de UNA misma publicación (los 6 colores de un termo) comparten costo: si algún día difieren hace falta un costo por variación (`productos_variantes`), que toca ~7 módulos de plata (Ganancia Real, serie mensual, reporte fiscal, cobertura, precios, promociones…): pendiente de decidir con números reales (hoy 1 publicación de 275 y sin ventas).
 
+**Ola 2 (celular), tercera tanda — HECHA 2026-10-13** (ítems 12 y 15; 21 parcial): Stock en fichas compactas (6.600 px, antes 13.560), sin botón de menú duplicado, píldora «Hoy $…» legible. Falta: 20, 22, 24-27, 30-32 (ver `PLAN_UX_200.md`).
+
 ## 0b. Evaluación objetiva y plan del día (2026-10-08)
 **Medido hoy**: 852 pruebas (60 % de cobertura de líneas), 19,9 k líneas de Python, 9,5 k de plantillas, 138 rutas, 43 migraciones, `pip-audit` sin vulnerabilidades, producción sana (`/healthz/db` 0,17 s). **Puntaje (juicio mío, con la evidencia de abajo)**:
 plata 85 · confiabilidad 78 · seguridad 85 · experiencia 70 · listo para cobrar 45 · generalidad 70 · capacidad 55 · mantenibilidad 65 · operación/soporte 60.

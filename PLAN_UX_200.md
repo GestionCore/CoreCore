@@ -39,16 +39,16 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 ## 2. Celular (22)
 
 11. [A·M] ★ **HECHO (2026-10-12: modelo → variante → talle; el dueño pidió cargar por modelo o por variante, no por talle; mide 9.400 px y no 18.181) · Costos mide 18.181 px en celular.** Un acordeón por modelo con UN campo de costo («para todos los talles») y el detalle por talle detrás de «Ajustar por talle»; la lista de 70 publicaciones se agrupa por modelo y se pagina de a 10.
-12. [A·M] ★ **Stock mide 13.055 px:** tarjetas compactas de una línea (foto, modelo, unidades, estado) que se expanden; las 22 «pausadas con stock» en una sola tarjeta plegada con la acción «Reactivar».
+12. [A·M] ★ **HECHO (2026-10-13: cada modelo es una ficha de ~215 px y no de 476; las pausadas con stock, una tarjeta plegada; la pantalla mide 6.600 px y no 13.560) · Stock mide 13.055 px:** tarjetas compactas de una línea (foto, modelo, unidades, estado) que se expanden; las 22 «pausadas con stock» en una sola tarjeta plegada con la acción «Reactivar».
 13. [A·S] **HECHO (2026-10-12) · En Inicio lo primero es «Completá tu perfil 3/7»** y el número que importa (ganancia de hoy) queda a más de una pantalla de scroll → el hero arriba, y el checklist como una barra de una línea («Perfil 3/7 · Seguir»).
 14. [A·S] **HECHO (2026-10-12) · Los KPI se apilan a una columna** (en Stock, cinco tarjetas de ~135 px una sobre otra antes de ver nada útil) → grilla de 2 columnas con mini-KPI de ~80 px; los de menor valor, plegados.
-15. [A·S] **Barra superior con 6 controles** (menú, buscar, resumen del día cortado, campana, actualizar, avatar) → sin el botón de menú (ya existe la barra inferior), el resumen del día en su propia fila deslizable o dentro de Inicio, y «actualizar» como ícono secundario.
+15. [A·S] **HECHO (2026-10-13: se sacó el botón de menú, que repetía a «Más» de la barra inferior; la píldora de hoy muestra «Hoy $63.336» en vez de cortarse) · Barra superior con 6 controles** (menú, buscar, resumen del día cortado, campana, actualizar, avatar) → sin el botón de menú (ya existe la barra inferior), el resumen del día en su propia fila deslizable o dentro de Inicio, y «actualizar» como ícono secundario.
 16. [A·S] ★ **HECHO (2026-10-12) · Letra de menos de 12 px en el 44 % del Dashboard y el 48 % de Costos** (mínimo 9 px) → piso de 12 px y 14 px para texto de lectura; las etiquetas en mayúscula de 11,6 px suben a 12.
 17. [A·S] ★ **HECHO (2026-10-12) · Áreas táctiles de menos de 40 px:** «Ver cuáles», los links «Hacerlo →», los chips de filtro, las casillas → mínimo 44×44 px (con relleno invisible si hace falta), separados 8 px entre sí.
 18. [M·S] **HECHO (2026-10-12) · Los ejes de los gráficos ocupan un cuarto del ancho** («$10.000.000») → «$10 M», «$500 k» en celular, y menos marcas en el eje.
 19. [M·S] **HECHO (2026-10-12) · Título + subtítulo en una fila que se parte mal** («Evolución mensual» en dos líneas y «costos vs. resultado neto · últimos 6 meses» al costado) → el subtítulo debajo, siempre, en celular.
 20. [M·S] **La acción principal de cada fila queda a la derecha** (lejos del pulgar) → botón de ancho completo al pie de la tarjeta, o deslizar para actuar.
-21. [M·M] **Selectores de escritorio en celular** (período, filtros, cuenta) → hoja inferior (bottom sheet) con opciones grandes.
+21. [M·M] **PARCIAL (2026-10-13: los botones de período y los filtros van en una fila que se desliza; el calendario ya se ve bien en celular y no hizo falta la hoja inferior) · Selectores de escritorio en celular** (período, filtros, cuenta) → hoja inferior (bottom sheet) con opciones grandes.
 22. [M·M] **Tablas que siguen siendo tablas en celular** (Facturación, Cobros, Reporte fiscal) → versión en tarjetas, como Stock y Ganancia Real.
 23. [M·S] **PARCIAL (2026-10-12: la pestaña activa se centra; el degradé del borde ya existía) · La barra de pestañas de cada sección se corta** («Repu…») sin una pista clara → degradé en el borde, y que la pestaña activa se centre al abrir.
 24. [M·S] **«Más» en la barra inferior** → una hoja con las secciones restantes, íconos grandes y un buscador arriba.
@@ -307,6 +307,9 @@ Siguen en la ola 2: 11 (Costos en acordeón), 12 (Stock en tarjetas compactas), 
 
 **Decisiones del dueño (2026-10-12) y lo que se hizo:** 120 → después de terminar el celular; 111 → «MÁS USADO» por uso real de cada persona (solo aparece con ≥ 10 visitas en la sección y una favorita con ≥ 60 %); 4 → botón del chat más chico (44 px) que se esconde al deslizar, en escritorio queda flotante como siempre;
 11 → Costos por modelo y por variante (ver `CLAUDE.md`, «Costos: modelo → variante → talle»).
+
+**Ola 2, tercera tanda (2026-10-13):** Stock en fichas compactas de 4 columnas (el botón «Gestionar» es un engranaje en el celular, con su nombre para lectores de pantalla), «Pausadas con stock» plegada, filtros y períodos en una sola fila deslizable, sin botón de menú duplicado y píldora de ventas de hoy legible.
+Falta de la ola 2: 20 (acción principal al pie de la tarjeta), 22 (Facturación, Cobros y Reporte fiscal como tarjetas), 24-27, 30-32.
 
 ## Dos decisiones que necesito de vos
 

@@ -52,7 +52,6 @@
     border-bottom: 1px solid var(--border-soft);
 }
 .topbar-espacio { flex: 1; min-width: 0; }
-.btn-icono-barra.btn-sidebar-toggle { display: none; }
 .buscador-central {
     display: flex; align-items: center; gap: 10px; flex: 0 1 280px; min-width: 0; padding: 8px 14px; border-radius: var(--radius-pill);
     background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: var(--text-secondary); font-size: 0.85em; cursor: pointer; white-space: nowrap;
@@ -160,7 +159,6 @@ a.aviso-fila:hover { background: rgba(255,255,255,0.05); }
     body.sidebar-abierto .sidebar-overlay { display: block; }
     body.sidebar-abierto { overflow: hidden; }
     .topbar { padding: 0 14px; gap: 8px; }
-    .btn-icono-barra.btn-sidebar-toggle { display: grid; }
     .buscador-central { flex: 0 0 auto; padding: 8px 12px; }
     .buscador-central span, .buscador-central kbd { display: none; }
     .topbar-estado .ticker-pill-secundario, .cuenta-nombre { display: none; }

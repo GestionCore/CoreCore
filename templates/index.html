@@ -72,8 +72,10 @@
 
 <!-- ── 2c. PAUSADAS CON STOCK: plata que no se está cobrando ───────────────────────────────────── -->
 {% if reactivables %}
-<div class="ux-seccion ux-warn">Pausadas con stock <span class="ux-pill ux-warn">{{ reactivables|length }}</span></div>
-<div class="panel" id="panel-reactivar" data-mostrar-mas-scope>
+<details class="ux-detalle" id="det-reactivar" open>
+<summary>Pausadas con stock <span class="ux-pill ux-warn">{{ reactivables|length }}</span> <span class="ux-detalle-nota">plata que no se está cobrando</span></summary>
+<div class="ux-detalle-cuerpo">
+<div id="panel-reactivar" data-mostrar-mas-scope>
     <div class="text-muted" style="font-size:0.88em; margin-bottom:10px; line-height:1.5;"><b>Estas publicaciones están pausadas pero tienen unidades:</b> no se están vendiendo. Elegí cuáles reactivar; solo se tocan las que marques. Las bloqueadas por Mercado Libre no aparecen acá.</div>
     <div class="flex-gap" style="margin-bottom:8px;">
         <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="reactivar-todas" data-change="reactivarMarcarTodas" data-change-args='["$checked"]'> Marcar todas</label>
@@ -93,7 +95,11 @@
     {% if reactivables|length > 4 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:10px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>{{ ver_mas(reactivables|length - 4, "publicación", "publicaciones", "las") }}</button>{% endif %}
     <div style="margin-top:14px;"><button type="button" class="btn btn-primary" id="btn-reactivar" data-click="reactivarAplicar" disabled>Reactivar publicaciones</button></div>
 </div>
+</div>
+</details>
 <script nonce="{{ csp_nonce }}">
+// En el celular la lista arranca plegada (abierta ocupaba más de una pantalla); la persona la abre con un toque
+if (window.innerWidth <= 720) document.getElementById('det-reactivar').open = false;
 function reactivarMarcadas() { return [...document.querySelectorAll('.reactivar-check:checked')].map(c => c.value); }
 function reactivarActualizarBoton() {
     const n = reactivarMarcadas().length, b = document.getElementById('btn-reactivar');
@@ -178,7 +184,7 @@ async function reactivarAplicar() {
     {% if not productos %}
     <div style="padding:20px;">{{ vacio("Todavía no hay publicaciones", "Sincronizá para traer tu catálogo de Mercado Libre.", "refresh", "accion") }}</div>
     {% else %}
-    <table class="data-table ux-tabla-cards" id="tabla-productos" data-ordenable>
+    <table class="data-table ux-tabla-cards ux-stock-cards" id="tabla-productos" data-ordenable>
         <thead>
             <tr>
                 <th data-orden="texto">Modelo y {{ vocab.vN }}</th>
@@ -225,11 +231,11 @@ async function reactivarAplicar() {
                     {% else %}
                     <div><b>${{ p.precio_rango }}</b></div>
                     {% endif %}
-                    {% if p.recibis_formateado %}<div class="text-muted" style="font-size:0.8em;">Recibís ~${{ p.recibis_formateado }}</div>{% endif %}
+                    {% if p.recibis_formateado %}<div class="text-muted ux-recibis" style="font-size:0.8em;">Recibís ~${{ p.recibis_formateado }}</div>{% endif %}
                 </td>
                 <td class="num" data-label="Propio"><strong>{{ p.stock_propio }} u.</strong></td>
                 {% if capacidades.get('full') is not false %}<td class="num" data-label="FULL"><strong>{{ p.stock_full }} u.</strong></td>{% endif %}
-                <td data-label="Ventas 7 días" data-orden="{{ p.sparkline_total_7d }}">
+                <td class="col-ventas" data-label="Ventas 7 días" data-orden="{{ p.sparkline_total_7d }}">
                     {% if p.sparkline_total_7d > 0 %}
                     <span class="row-flex" style="gap:8px;">
                         <svg viewBox="0 0 70 24" class="sparkline" role="img" aria-label="{{ p.sparkline_total_7d }} unidades vendidas en 7 días">
@@ -241,14 +247,14 @@ async function reactivarAplicar() {
                     <span class="text-faint" style="font-size:0.8em;">Sin ventas</span>
                     {% endif %}
                 </td>
-                <td data-label="Alcanza para" data-orden="{{ p.dias_stock if p.dias_stock is not none else '' }}">
+                <td class="col-alcanza" data-label="Alcanza" data-orden="{{ p.dias_stock if p.dias_stock is not none else '' }}">
                     {% if p.estado == 'active' %}
                     {% set pista = ('Al ritmo de las últimas 2 semanas (' ~ p.unidades_ritmo ~ ' u. vendidas)') if p.dias_stock is not none else ('Sin ventas en las últimas 2 semanas: no hay ritmo para estimar' if p.stock_propio + p.stock_full > 0 else '') %}
                     {% if p.dias_stock is none and p.dias_stock_tono == 'neutral' %}<span class="text-faint" {% if pista %}title="{{ pista }}"{% endif %}>—</span>
                     {% else %}<span class="ux-pill ux-{{ p.dias_stock_tono }}{{ ' ux-pill-suave' if p.dias_stock_tono == 'neutral' }}" {% if pista %}title="{{ pista }}"{% endif %}>{{ p.dias_stock_texto }}</span>{% endif %}
                     {% else %}<span class="text-faint">—</span>{% endif %}
                 </td>
-                <td><button type="button" class="btn btn-secondary" data-click="abrirDrawer" data-click-args='{{ [p.id|string]|tojson }}'>Gestionar</button></td>
+                <td class="col-gestionar"><button type="button" class="btn btn-secondary" data-click="abrirDrawer" data-click-args='{{ [p.id|string]|tojson }}' aria-label="Gestionar {{ p.titulo }}"><span class="solo-escritorio">Gestionar</span><svg class="icon solo-celular" aria-hidden="true"><use href="#icon-settings"/></svg></button></td>
             </tr>
             {% endfor %}
         </tbody>

@@ -912,7 +912,11 @@ async function actualizarTicker() {
         const elLiberacion = document.getElementById('ticker-liberacion');
         elVentas.classList.remove('skeleton');
         elLiberacion.classList.remove('skeleton');
-        elVentas.textContent = `Hoy: ${data.ventas_hoy} ${Number(data.ventas_hoy) === 1 ? 'venta' : 'ventas'} · $${String(data.facturado_hoy).split(',')[0]}`;
+        // En el celular la píldora se queda con lo esencial («Hoy $197.202»): el texto entero se cortaba («Hoy: 1…») y no decía nada; el completo queda para lectores de pantalla
+        const textoVentas = `Hoy: ${data.ventas_hoy} ${Number(data.ventas_hoy) === 1 ? 'venta' : 'ventas'} · $${String(data.facturado_hoy).split(',')[0]}`;
+        const enCelular = !!window.matchMedia && window.matchMedia('(max-width: 560px)').matches;
+        elVentas.textContent = enCelular ? `Hoy $${String(data.facturado_hoy).split(',')[0]}` : textoVentas;
+        elVentas.setAttribute('aria-label', textoVentas);
         // Lo que MeLi va a acreditar: mañana si hay algo, y si no el próximo depósito (las acreditaciones caen en pocos días sueltos)
         const sinCentavos = (s) => String(s).split(',')[0];
         if (data.hay_liberaciones && data.liberacion_manana && sinCentavos(data.liberacion_manana) !== '0') elLiberacion.textContent = `Mañana te acreditan: $${sinCentavos(data.liberacion_manana)}`;

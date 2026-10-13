@@ -98,6 +98,48 @@ console.log(JSON.stringify([a.scrollLeft, b.scrollLeft, c.scrollLeft]));
     assert r == [462.5, 0, 0]
 
 
+# ── Stock en fichas compactas ───────────────────────────────────────────────────────────────────────────────────────────────
+
+def test_cada_modelo_de_stock_es_una_ficha_compacta_en_el_celular():
+    html = _leer("templates", "index.html")
+    assert 'class="data-table ux-tabla-cards ux-stock-cards" id="tabla-productos"' in html
+    for clase in ("col-ventas", "col-alcanza", "col-gestionar"):
+        assert f'<td class="{clase}"' in html
+    assert 'aria-label="Gestionar {{ p.titulo }}"' in html and "solo-escritorio" in html and "solo-celular" in html          # el botón es un engranaje en el celular, con su nombre para lectores de pantalla
+    movil = _leer("static", "css", "movil.css")
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in movil and ".solo-celular { display: none; }" in movil
+    assert "-webkit-line-clamp: 2" in movil                                           # el título en 2 líneas
+    assert "ux-recibis" in html                                                       # «Recibís ~$X» se esconde solo en el celular (en escritorio se sigue viendo)
+
+
+def test_las_pausadas_con_stock_son_una_tarjeta_plegable_que_en_el_celular_arranca_cerrada():
+    html = _leer("templates", "index.html")
+    assert '<details class="ux-detalle" id="det-reactivar" open>' in html
+    assert "if (window.innerWidth <= 720) document.getElementById('det-reactivar').open = false;" in html
+    assert 'id="panel-reactivar"' in html and "reactivarAplicar" in html               # la lista y su botón siguen ahí
+
+
+# ── Barra superior del celular ──────────────────────────────────────────────────────────────────────────────────────────────
+
+def test_la_barra_superior_no_repite_el_menu_que_ya_abre_el_boton_mas_de_la_barra_inferior():
+    base = _leer("templates", "base.html")
+    assert "btn-sidebar-toggle" not in base and "btn-sidebar-toggle" not in _leer("static", "css", "shell.css")
+    assert 'class="bottombar-item" data-click="abrirSidebar"' in base                             # «Más» abre el mismo menú de secciones
+
+
+def test_en_el_celular_la_pildora_de_ventas_de_hoy_muestra_solo_el_monto_y_guarda_el_texto_completo_para_lectores_de_pantalla():
+    js = _leer("static", "js", "global.js")
+    assert "window.matchMedia('(max-width: 560px)').matches" in js
+    assert "enCelular ? `Hoy $${String(data.facturado_hoy).split(',')[0]}` : textoVentas" in js
+    assert "elVentas.setAttribute('aria-label', textoVentas)" in js
+
+
+def test_los_botones_de_periodo_y_los_filtros_van_en_una_sola_fila_que_se_desliza():
+    movil = _leer("static", "css", "movil.css")
+    assert ".ux-periodo-botones { flex-wrap: nowrap !important; overflow-x: auto;" in movil
+    assert ".ux-periodo-botones .btn { flex: none; white-space: nowrap; }" in movil
+
+
 # ── Botón flotante del chat ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 def _chat(codigo, tmp_path, celular=True, chat_abierto=False):

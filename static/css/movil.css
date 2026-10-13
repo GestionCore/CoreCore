@@ -35,6 +35,28 @@
     .ux-seccion > .text-muted { flex: 1 0 100%; padding-left: 20px; }
 }
 
+/* Lo que se ve solo en el celular o solo en pantalla ancha (p. ej. el botón «Gestionar» es un ícono de engranaje en el celular) */
+.solo-celular { display: none; }
+
+/* Stock: cada modelo es una ficha compacta — el título en 2 líneas, el precio y las unidades en una fila, y las ventas, cuánto alcanza y «Gestionar» en otra.
+   Antes cada modelo ocupaba ~480 px (una fila por dato) y la pantalla medía más de 13.000 px. */
+@media (max-width: 720px) {
+    .data-table.ux-stock-cards tr { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 8px; padding: 12px 14px; }
+    .data-table.ux-stock-cards td { padding: 4px 0; border: 0; text-align: left; align-items: flex-start; }
+    .data-table.ux-stock-cards td.col-titulo { grid-column: 1 / -1; padding: 0 0 8px; }
+    .data-table.ux-stock-cards td.col-titulo .titulo-1l { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; line-height: 1.3; }
+    .data-table.ux-stock-cards td.col-precio, .data-table.ux-stock-cards td.col-ventas { grid-column: span 2; }
+    .data-table.ux-stock-cards td.col-gestionar { grid-column: auto; align-self: end; padding-top: 4px; }
+    .data-table.ux-stock-cards td.col-gestionar .btn { width: 100%; padding-inline: 0; }
+    .ux-stock-cards .ux-recibis { display: none; }
+    /* Los botones de período y los filtros (7 días, Este mes…, Activas, Pausadas, Solo sin stock…) van en UNA fila que se desliza, con cada texto en una línea: antes se partían en dos y los de Stock ocupaban tres filas */
+    .ux-periodo-botones { flex-wrap: nowrap !important; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; max-width: 100%; }
+    .ux-periodo-botones::-webkit-scrollbar { display: none; }
+    .ux-periodo-botones .btn { flex: none; white-space: nowrap; }
+    .solo-celular { display: inline-block; }
+    .solo-escritorio { display: none; }
+}
+
 /* Tarjetas de números: de a dos en cada fila. Si queda una suelta, ocupa el ancho entero (nunca una tarjeta sola con un hueco al lado) */
 @media (max-width: 560px) {
     .ux-kpis.ux-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }          /* (doble clase: le gana a las reglas con :has() de ux.css, que tienen su misma fuerza) */

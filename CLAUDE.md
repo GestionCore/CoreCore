@@ -639,6 +639,9 @@ MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - **Celular, segunda tanda (2026-10-12)**: el botón del chat (`.chat-fab`) mide 44 px en ≤ 900 px y se esconde mientras se desliza (`UX.botonChatAlDeslizar`); en escritorio no cambia. «MÁS USADO» (`nav_config.calcular_mas_usado`) pide ≥ 10 visitas en la sección y una favorita con ≥ 60 % (por persona, `navegacion_visitas`).
   Ítem 120 del plan (sacar los `style="…"` de las plantillas): el dueño dijo que se hace DESPUÉS de terminar el celular.
 
+- **Celular, tercera tanda (2026-10-13)**: la tabla de Stock (`#tabla-productos`, clase `ux-stock-cards`) es una ficha de 4 columnas en ≤ 720 px (`movil.css`); lo que solo se ve en celular o solo en escritorio usa `.solo-celular` / `.solo-escritorio` (el botón «Gestionar» es un engranaje en el celular, con `aria-label`).
+  Los selectores de celda de esa tabla llevan `.data-table.ux-stock-cards td` para ganarle a las reglas de `style.css`. La barra superior ya NO tiene botón de menú (lo abre «Más» de la barra inferior). La píldora de hoy muestra solo el monto en ≤ 560 px (el texto completo va en `aria-label`).
+
 ## Datos de entorno
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de
   transacción — el puerto importa para que RLS sea confiable),
