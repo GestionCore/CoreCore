@@ -16,6 +16,14 @@ const UX = (() => {
         const signo = n < 0 ? '-' : '';
         return signo + '$' + Math.abs(n).toLocaleString('es-AR', { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
     };
+    // Para los ejes de los gráficos: en pantalla ancha el monto completo ("$1.250.000"); en celular abreviado ("$1,3 M", "$850 mil") para que el eje no se coma el gráfico
+    const plataEje = (n) => {
+        if (n === null || n === undefined || isNaN(n)) return '—';
+        if (window.innerWidth > 720 || Math.abs(n) < 1000) return plata(n);
+        const abs = Math.abs(n), signo = n < 0 ? '-' : '';
+        const [valor, unidad] = abs >= 1e6 ? [abs / 1e6, ' M'] : [abs / 1e3, ' mil'];
+        return signo + '$' + valor.toLocaleString('es-AR', { maximumFractionDigits: valor < 10 ? 1 : 0 }) + unidad;
+    };
     const pct = (n, decimales = 1) => (n === null || n === undefined || isNaN(n)) ? '—' : n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: decimales }) + '%';
     const num = n => (n === null || n === undefined || isNaN(n)) ? '—' : Math.round(n).toLocaleString('es-AR');
 
@@ -65,7 +73,7 @@ const UX = (() => {
             ${link ? `<a class="btn ${CLASE_BOTON_PRIORIDAD[prioridad] || 'btn-primary'}" href="${esc(link)}">${esc(linkTexto || 'Ver')}</a>` : ''}
         </div>`;
 
-    return { esc, plata, pct, num, icono, delta, banner, kpi, accion };
+    return { esc, plata, plataEje, pct, num, icono, delta, banner, kpi, accion };
 })();
 
 /**
@@ -221,7 +229,13 @@ UX.bordesDeslizables = (el) => {
     if (window.ResizeObserver) new ResizeObserver(actualizar).observe(el);
     actualizar();
 };
-window.addEventListener('DOMContentLoaded', () => document.querySelectorAll('.subnav-tabs-inner').forEach(UX.bordesDeslizables));
+// La pestaña de la pantalla actual queda en el centro de la barra (en el celular la barra se desliza y la activa podía quedar escondida a un costado)
+UX.centrarActiva = (barra) => {
+    const activa = barra && barra.querySelector('.subnav-tab.active');
+    if (!activa || barra.scrollWidth <= barra.clientWidth) return;
+    barra.scrollLeft = activa.offsetLeft - (barra.clientWidth - activa.offsetWidth) / 2;
+};
+window.addEventListener('DOMContentLoaded', () => document.querySelectorAll('.subnav-tabs-inner').forEach((barra) => { UX.centrarActiva(barra); UX.bordesDeslizables(barra); }));
 
 // ── Colores de los gráficos y cambio de tema ─────────────────────────────────────────────────────────────────────────────────
 // Chart.js lee los colores UNA vez, al crear el gráfico: al cambiar el tema en vivo (data-theme) un gráfico ya dibujado conservaba los del tema anterior hasta recargar la página.

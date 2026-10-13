@@ -628,6 +628,10 @@ motivo real de reclamos (HECHO: el texto sale de
 ver Reclamos arriba), los períodos de Facturación (HECHO: el 9 al 8 es el ciclo real de
 MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
 
+- **Celular (2026-10-12, `PLAN_UX_200.md` ola 2)**: `static/css/movil.css` se carga ÚLTIMO y solo actúa en ≤ 720 px (letra base 15,5 px, nada < 12 px, botones y filas de 44 px, campos de 16 px, `.ux-kpis` de a dos con doble clase para ganarle a las reglas `:has()` de `ux.css`).
+  Las reglas que pisan un `style="font-size:…"` escrito en la etiqueta necesitan `!important`. Los ejes de dinero de los gráficos usan `UX.plataEje` (abrevia solo en pantalla angosta); `UX.centrarActiva` centra la pestaña activa del subnav. NO se agregó `viewport-fit=cover`
+  (la app es PWA `standalone`: habría que compensar el borde superior de la barra y todo lo que usa `--topbar-h`, y no se puede probar un iPhone desde la PC). Para medir en el navegador local: el servidor de verificación cachea las plantillas, hay que reiniciarlo tras editar un `.html`; y hay que PARARLO antes de correr `pytest` (el pool de 15 conexiones de Supabase se agota: `EMAXCONNSESSION`).
+
 ## Datos de entorno
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de
   transacción — el puerto importa para que RLS sea confiable),

@@ -45,7 +45,7 @@ def test_el_componente_de_pestañas_tiene_roles_teclado_hash_y_aviso_de_visibili
 
 def test_la_barra_de_pestañas_y_el_menu_de_secciones_avisan_que_se_deslizan():
     js, css = _leer("static", "js", "ux.js"), _leer("static", "css", "ux.css")
-    assert "UX.bordesDeslizables = " in js and "querySelectorAll('.subnav-tabs-inner').forEach(UX.bordesDeslizables)" in js and "UX.bordesDeslizables(barra)" in js
+    assert "UX.bordesDeslizables = " in js and "querySelectorAll('.subnav-tabs-inner').forEach((barra) => { UX.centrarActiva(barra); UX.bordesDeslizables(barra); })" in js and "UX.bordesDeslizables(barra)" in js
     assert '[data-sombra~="der"]' in css and '[data-sombra~="izq"]' in css and "mask-image" in css
 
 

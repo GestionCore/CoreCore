@@ -1,0 +1,42 @@
+/* ── Celular (ola 2 del plan de UX, PLAN_UX_200.md) ───────────────────────────────────────────────────────────────────────────
+   Se carga ÚLTIMO (después de style, ux y shell) y solo toca lo que pasa en pantallas angostas: letra legible, botones que se aciertan con el dedo,
+   campos que no hacen zoom en iPhone y tarjetas de números de a dos. En escritorio no cambia nada. */
+
+@media (max-width: 720px) {
+    /* Letra: el cuerpo pasa de 14,5 a 15,5 px. Todo lo escrito en em (casi todo) crece parejo y lo más chico deja de bajar de 12 px */
+    body { font-size: 15.5px; }
+    .ux-kpi-etiqueta, .ux-kpi-sub, .stat-chip-label, .mini-list-qty, .checklist-ir { font-size: max(12px, 0.8em); }
+    /* Estos llevan el tamaño escrito en la propia etiqueta (style="font-size:…"): solo un !important lo pisa */
+    .ux-kpi-sub span, .pl-detalle-valor span, .checklist-texto .text-muted, .badge-en-vivo, .ux-pill b, .ux-pill span, .flex-ver .text-muted, td > .text-faint { font-size: max(12px, 0.8em) !important; }
+    .ux-pill, .ux-toggle-variantes, .badge { font-size: max(12px, 0.8em); }
+    .ux-reparto-item em, .ux-tab-badge { font-size: max(12px, 0.8em) !important; }
+
+    /* Botones y filas tocables: 44 px de alto, el mínimo que piden Apple y Google para acertar con el dedo */
+    .btn, .sidebar-item, .sidebar-cuenta-lista button, button.mini-list-row, button.top-prod-fila, .ux-zona, .ux-toggle-variantes, .cuenta-btn, summary, .tendencias-tab, .ux-tab, .subnav-tab { min-height: 44px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; }
+    .btn-icono-barra, .buscador-central, .cuenta-btn, .btn-sync-todo { min-width: 44px; min-height: 44px; }
+    .buscador-central { justify-content: center; }
+    /* Una pastilla que es un enlace (variantes, FULL…) mide ~27 px: la zona de toque se extiende hacia arriba y abajo sin mover nada */
+    a:has(> .ux-pill) { position: relative; }
+    a:has(> .ux-pill)::after { content: ""; position: absolute; inset: -9px -3px; }
+    /* Los enlaces chicos de la cabecera de un panel («Ver todas →») ganan zona de toque hacia arriba y abajo sin mover nada */
+    .ux-panel-cab a { padding: 12px 6px; margin: -12px -6px; }
+    .ux-periodo-botones .btn { padding: 10px 14px; }
+
+    /* Casillas y selectores: más grandes para tocarlas, y 16 px de letra en los campos (con menos, iPhone hace zoom al enfocarlos) */
+    input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; flex: 0 0 22px; }
+    .rango-fechas-boton { min-height: 44px; }
+    input[type="text"], input[type="search"], input[type="number"], input[type="email"], input[type="tel"], input[type="date"], input[type="password"], select, textarea { font-size: 16px; min-height: 44px; }
+
+    /* Títulos de panel con nota o botón a la derecha: se acomodan en dos líneas en vez de apretarse */
+    .panel-title { flex-wrap: wrap; row-gap: 6px; }
+    /* El título de una sección lleva su aclaración debajo (alineada con el texto, pasando el punto de color) y no a un costado, donde partía el título en dos */
+    .ux-seccion { flex-wrap: wrap; row-gap: 2px; }
+    .ux-seccion > .text-muted { flex: 1 0 100%; padding-left: 20px; }
+}
+
+/* Tarjetas de números: de a dos en cada fila. Si queda una suelta, ocupa el ancho entero (nunca una tarjeta sola con un hueco al lado) */
+@media (max-width: 560px) {
+    .ux-kpis.ux-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }          /* (doble clase: le gana a las reglas con :has() de ux.css, que tienen su misma fuerza) */
+    .ux-kpis.ux-kpis > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}

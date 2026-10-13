@@ -17,6 +17,9 @@ Proceso acordado por Diego: **fase por fase**; respetar gevent, Postgres con RLS
 ## 0c. Plan de UI/UX de 200 puntos (2026-10-12)
 `PLAN_UX_200.md`: 200 ítems armados recorriendo 14 pantallas en escritorio y 5 en celular con la cuenta real y midiendo el DOM (★ = medido). Lo más urgente: los montos que se partían en dos líneas en Facturación (HECHO 2026-10-12, junto con los ítems 2, 3, 5 y 9: delta de 9,5 px, héroe de Precios que celebraba con 30 de 70 analizadas, fechas de Publicidad, nombre de la calculadora), el botón de chat que tapa contenido en celular, y el celular en general (Costos mide 18.181 px, Stock 13.055 px, 83-88 % de las áreas táctiles por debajo de 40 px). Ordenado en 4 olas. Pendiente de decisión del dueño: ítem 120 (sacar los estilos escritos a mano de las plantillas) e ítem 111 (rótulos «MÁS USADO»).
 
+**Ola 2 (celular), primera tanda — HECHA 2026-10-12** (ítems 13, 14, 16, 17, 18, 19, 28; 23 parcial; 29 revisado sin cambio): `static/css/movil.css` + `UX.plataEje` + `UX.centrarActiva` + checklist plegado en celular; `tests/test_movil.py`. Detalle en `PLAN_UX_200.md`.
+Falta de la ola 2: 11 (Costos en acordeón, 18.181 px), 12 (Stock en tarjetas compactas, 13.055 px), 20-22, 24-27, 30-32. **Esperan decisión del dueño:** 4 (el botón flotante del chat tapa contenido en celular), 111 (insignias «MÁS USADO»: fijas / por persona / sacarlas) y 120 (sacar los estilos escritos a mano: antes o después de la ola 2).
+
 ## 0b. Evaluación objetiva y plan del día (2026-10-08)
 **Medido hoy**: 852 pruebas (60 % de cobertura de líneas), 19,9 k líneas de Python, 9,5 k de plantillas, 138 rutas, 43 migraciones, `pip-audit` sin vulnerabilidades, producción sana (`/healthz/db` 0,17 s). **Puntaje (juicio mío, con la evidencia de abajo)**:
 plata 85 · confiabilidad 78 · seguridad 85 · experiencia 70 · listo para cobrar 45 · generalidad 70 · capacidad 55 · mantenibilidad 65 · operación/soporte 60.

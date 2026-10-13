@@ -294,8 +294,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 tooltip: { padding: 12, cornerRadius: 8, callbacks: { label: (c) => c.dataset.yAxisID === 'y2' ? ` ${c.dataset.label}: ${c.parsed.y}` : ` ${c.dataset.label}: ${UX.plata(c.parsed.y)}` } } },
             scales: {
                 x: { ticks: { color: cTexto }, grid: { color: cGrilla } },
-                y: { position: 'left', ticks: { color: cGasto, callback: (v) => UX.plata(v) }, grid: { color: cGrilla } },
-                y1: { position: 'right', ticks: { color: cVentas, callback: (v) => UX.plata(v) }, grid: { display: false } },
+                y: { position: 'left', ticks: { color: cGasto, callback: (v) => UX.plataEje(v) }, grid: { color: cGrilla } },
+                y1: { position: 'right', ticks: { color: cVentas, callback: (v) => UX.plataEje(v) }, grid: { display: false } },
                 y2: { position: 'right', display: false, ticks: { color: cUnid, precision: 0 }, grid: { display: false } }
             }
         }

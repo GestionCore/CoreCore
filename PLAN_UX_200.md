@@ -40,23 +40,23 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 11. [A·M] ★ **Costos mide 18.181 px en celular.** Un acordeón por modelo con UN campo de costo («para todos los talles») y el detalle por talle detrás de «Ajustar por talle»; la lista de 70 publicaciones se agrupa por modelo y se pagina de a 10.
 12. [A·M] ★ **Stock mide 13.055 px:** tarjetas compactas de una línea (foto, modelo, unidades, estado) que se expanden; las 22 «pausadas con stock» en una sola tarjeta plegada con la acción «Reactivar».
-13. [A·S] **En Inicio lo primero es «Completá tu perfil 3/7»** y el número que importa (ganancia de hoy) queda a más de una pantalla de scroll → el hero arriba, y el checklist como una barra de una línea («Perfil 3/7 · Seguir»).
-14. [A·S] **Los KPI se apilan a una columna** (en Stock, cinco tarjetas de ~135 px una sobre otra antes de ver nada útil) → grilla de 2 columnas con mini-KPI de ~80 px; los de menor valor, plegados.
+13. [A·S] **HECHO (2026-10-12) · En Inicio lo primero es «Completá tu perfil 3/7»** y el número que importa (ganancia de hoy) queda a más de una pantalla de scroll → el hero arriba, y el checklist como una barra de una línea («Perfil 3/7 · Seguir»).
+14. [A·S] **HECHO (2026-10-12) · Los KPI se apilan a una columna** (en Stock, cinco tarjetas de ~135 px una sobre otra antes de ver nada útil) → grilla de 2 columnas con mini-KPI de ~80 px; los de menor valor, plegados.
 15. [A·S] **Barra superior con 6 controles** (menú, buscar, resumen del día cortado, campana, actualizar, avatar) → sin el botón de menú (ya existe la barra inferior), el resumen del día en su propia fila deslizable o dentro de Inicio, y «actualizar» como ícono secundario.
-16. [A·S] ★ **Letra de menos de 12 px en el 44 % del Dashboard y el 48 % de Costos** (mínimo 9 px) → piso de 12 px y 14 px para texto de lectura; las etiquetas en mayúscula de 11,6 px suben a 12.
-17. [A·S] ★ **Áreas táctiles de menos de 40 px:** «Ver cuáles», los links «Hacerlo →», los chips de filtro, las casillas → mínimo 44×44 px (con relleno invisible si hace falta), separados 8 px entre sí.
-18. [M·S] **Los ejes de los gráficos ocupan un cuarto del ancho** («$10.000.000») → «$10 M», «$500 k» en celular, y menos marcas en el eje.
-19. [M·S] **Título + subtítulo en una fila que se parte mal** («Evolución mensual» en dos líneas y «costos vs. resultado neto · últimos 6 meses» al costado) → el subtítulo debajo, siempre, en celular.
+16. [A·S] ★ **HECHO (2026-10-12) · Letra de menos de 12 px en el 44 % del Dashboard y el 48 % de Costos** (mínimo 9 px) → piso de 12 px y 14 px para texto de lectura; las etiquetas en mayúscula de 11,6 px suben a 12.
+17. [A·S] ★ **HECHO (2026-10-12) · Áreas táctiles de menos de 40 px:** «Ver cuáles», los links «Hacerlo →», los chips de filtro, las casillas → mínimo 44×44 px (con relleno invisible si hace falta), separados 8 px entre sí.
+18. [M·S] **HECHO (2026-10-12) · Los ejes de los gráficos ocupan un cuarto del ancho** («$10.000.000») → «$10 M», «$500 k» en celular, y menos marcas en el eje.
+19. [M·S] **HECHO (2026-10-12) · Título + subtítulo en una fila que se parte mal** («Evolución mensual» en dos líneas y «costos vs. resultado neto · últimos 6 meses» al costado) → el subtítulo debajo, siempre, en celular.
 20. [M·S] **La acción principal de cada fila queda a la derecha** (lejos del pulgar) → botón de ancho completo al pie de la tarjeta, o deslizar para actuar.
 21. [M·M] **Selectores de escritorio en celular** (período, filtros, cuenta) → hoja inferior (bottom sheet) con opciones grandes.
 22. [M·M] **Tablas que siguen siendo tablas en celular** (Facturación, Cobros, Reporte fiscal) → versión en tarjetas, como Stock y Ganancia Real.
-23. [M·S] **La barra de pestañas de cada sección se corta** («Repu…») sin una pista clara → degradé en el borde, y que la pestaña activa se centre al abrir.
+23. [M·S] **PARCIAL (2026-10-12: la pestaña activa se centra; el degradé del borde ya existía) · La barra de pestañas de cada sección se corta** («Repu…») sin una pista clara → degradé en el borde, y que la pestaña activa se centre al abrir.
 24. [M·S] **«Más» en la barra inferior** → una hoja con las secciones restantes, íconos grandes y un buscador arriba.
 25. [M·M] **Gestos:** deslizar entre pestañas de una sección y tirar para actualizar en Día a día.
 26. [M·M] **Barra de acción fija sobre la barra inferior** para lo principal de cada pantalla («Descargar etiquetas», «Guardar 3 cambios»), alcanzable con el pulgar.
 27. [M·S] **Teclado correcto en cada campo** (`inputmode="decimal"`, `enterkeyhint`) y números con coma decimal; hoy los precios se tipean en un campo de número con flechitas.
-28. [M·S] **iOS amplía la página al tocar un campo** si la letra es menor de 16 px (los campos de Costos y Stock masivo son de 12-13 px) → 16 px en celular, sin deformar el diseño.
-29. [M·S] **Zonas seguras del teléfono** (`safe-area-inset`) en la barra inferior y en cualquier barra fija, para el iPhone con barra de gestos.
+28. [M·S] **HECHO (2026-10-12) · iOS amplía la página al tocar un campo** si la letra es menor de 16 px (los campos de Costos y Stock masivo son de 12-13 px) → 16 px en celular, sin deformar el diseño.
+29. [M·S] **REVISADO (2026-10-12: sin cambio) · Zonas seguras del teléfono** (`safe-area-inset`) en la barra inferior y en cualquier barra fija, para el iPhone con barra de gestos.
 30. [B·M] **App instalable de verdad:** ícono y colores actuales, pantalla completa, arranque rápido con la «última foto» de los datos (`PM#118`).
 31. [B·S] **Celular en horizontal (667×375):** revisar que gráficos y tablas aprovechen el ancho y la barra inferior no tape.
 32. [B·S] **Respuesta táctil** al marcar un paquete como despachado (vibración corta si el navegador lo permite).
@@ -297,6 +297,13 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 **Ola 2 · celular de verdad (la parte más grande y la que más impacta).** 11, 12, 18-29, 33, 42, 46, 79, 80, 86, 120, 141, 194.
 **Ola 3 · claridad y confianza en los números.** 35, 40, 41, 65, 66, 67, 71, 74, 83, 87, 92, 94, 157, 164, 171, 172, 179, 191.
 **Ola 4 · el resto, según lo que muestre la medición** (197-200 primero: sin datos de uso se prioriza a ciegas).
+
+**Ola 2, primera tanda (2026-10-12) — qué quedó:** `static/css/movil.css` (se carga último; solo actúa en ≤ 720 px): letra base 15,5 px y piso de 12 px en etiquetas, pastillas y leyendas (la insignia «MÁS USADO» de 10 px queda a la espera de la decisión del ítem 111),
+alto mínimo de 44 px en botones, filas tocables, chips de zona y selector de fechas (las pastillas que son enlaces ganan zona de toque con un `::after`; los enlaces dentro de un párrafo no cuentan, como pide WCAG), campos de 16 px (iPhone no hace zoom),
+KPIs de a dos columnas (con una tarjeta suelta a ancho entero), aclaración de cada sección debajo del título. `UX.plataEje` abrevia los ejes de los gráficos en celular («$1,3 M», «$850 mil»), `UX.centrarActiva` centra la pestaña de la pantalla actual y el checklist
+«Completá tu perfil» arranca plegado. Medido en 375 px: Dashboard sin textos < 12 px ni áreas < 43 px, sin desborde horizontal en Dashboard, Stock, Costos, Día a día, Ganancia Real, Publicidad, Precios y Facturación; escritorio idéntico.
+**Ítem 29 revisado, no tocado:** no se agregó `viewport-fit=cover`. La app se instala como PWA (`display: standalone`) y con `cover` el contenido pasa por debajo de la hora y la muesca: habría que sumar el borde superior a la barra y a todo lo que cuelga de `--topbar-h`, y no se puede probar en un iPhone desde acá. Sin `cover` el navegador ya respeta las zonas seguras.
+Siguen en la ola 2: 11 (Costos en acordeón), 12 (Stock en tarjetas compactas), 20-22, 24-27, 30-32 y las decisiones 4 y 111.
 
 ## Dos decisiones que necesito de vos
 

@@ -124,7 +124,7 @@
                 responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
                 plugins: { legend: { labels: { color: cTexto, usePointStyle: true, boxWidth: 8 } },
                            tooltip: { padding: 12, cornerRadius: 8, callbacks: { title: (it) => 'Día ' + it[0].label, label: (c) => ' ' + c.dataset.label + ': ' + UX.plata(c.parsed.y) } } },
-                scales: { x: { ticks: { color: cTexto, maxTicksLimit: 10 }, grid: { display: false } }, y: { beginAtZero: true, ticks: { color: cTexto, callback: (v) => UX.plata(v) }, grid: { color: cGrilla } } }
+                scales: { x: { ticks: { color: cTexto, maxTicksLimit: 10 }, grid: { display: false } }, y: { beginAtZero: true, ticks: { color: cTexto, callback: (v) => UX.plataEje(v) }, grid: { color: cGrilla } } }
             }
         });
     });
@@ -514,8 +514,8 @@
             if (!d.pasos || !d.pasos.length || d.porcentaje >= 100) return; // ya está completo — no ocupa lugar
             const panelPrimerosPasos = document.getElementById('panel-checklist-perfil');
             panelPrimerosPasos.style.display = '';
-            // Con la cuenta ya por la mitad la lista no tiene por qué empujar la ganancia de hoy fuera de la pantalla: queda plegada (una línea).
-            if (d.completos / d.total >= 0.5) { panelPrimerosPasos.classList.remove('abierto'); panelPrimerosPasos.setAttribute('aria-expanded', 'false'); }
+            // Con la cuenta ya por la mitad —o en el celular, donde la lista abierta ocupa toda la primera pantalla— no tiene por qué empujar la ganancia de hoy fuera de la vista: queda plegada (una línea).
+            if (d.completos / d.total >= 0.5 || window.innerWidth <= 720) { panelPrimerosPasos.classList.remove('abierto'); panelPrimerosPasos.setAttribute('aria-expanded', 'false'); }
             document.getElementById('checklist-contador').textContent = `${d.completos}/${d.total}`;
             document.getElementById('checklist-fill').style.width = d.porcentaje + '%';
             document.getElementById('checklist-items').innerHTML = d.pasos.map(p => {
@@ -654,7 +654,7 @@
                     title: (items) => items[0].dataIndex === ultimo ? 'Hoy (' + serie[ultimo].etiqueta + ')' : serie[items[0].dataIndex].etiqueta,
                     label: (c) => c.dataset.type === 'line' ? ` Promedio: ${UX.plata(c.parsed.y)}` : ` Ganancia: ${UX.plata(c.parsed.y)}`,
                     afterLabel: (c) => c.dataset.type === 'line' ? '' : ` ${serie[c.dataIndex].ventas} venta${serie[c.dataIndex].ventas === 1 ? '' : 's'} · facturó ${UX.plata(serie[c.dataIndex].facturado)}` } } },
-                scales: { x: { ticks: { color: cTexto }, grid: { display: false } }, y: { ticks: { color: cTexto, callback: (v) => UX.plata(v) }, grid: { color: cGrilla } } }
+                scales: { x: { ticks: { color: cTexto }, grid: { display: false } }, y: { ticks: { color: cTexto, callback: (v) => UX.plataEje(v) }, grid: { color: cGrilla } } }
             }
         });
         document.querySelector('#caja-grafico-14d .skeleton')?.remove();
