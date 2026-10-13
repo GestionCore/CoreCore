@@ -1,4 +1,4 @@
-# PENDIENTES — leer primero al retomar (actualizado 2026-10-07)
+# PENDIENTES — leer primero al retomar (actualizado 2026-10-13)
 
 Este archivo es la lista viva de lo que falta. CLAUDE.md lo referencia arriba de todo. Regla de oro (ver `memory/feedback_auditorias_externas.md`): **las auditorías externas traen ~25 % de puntos falsos o parciales**:
 verificar cada uno contra el código, la base real (EXPLAIN, `pg_constraint`, conteos) o un navegador ANTES de tocar nada; arreglar lo real con un test que falle sin el arreglo; informar «corregido / endurecido / rechazado con evidencia».
@@ -13,6 +13,55 @@ Proceso acordado por Diego: **fase por fase**; respetar gevent, Postgres con RLS
 - Prueba en vivo del refresco de tokens NO se pudo hacer desde la PC: el `.env` local da `invalid_client` en MeLi (no gasta el refresh_token ni desconecta). Mirar los logs de Fly: un refresco por cuenta cada ~6 h, sin `invalid_grant`. La cuenta 7 quedó como estaba (se restauró su `expira_en`).
 
 **Prorrateo de gastos recurrentes corregido (2026-10-12)**: `costos.py` y `reporte_fiscal.py` dividían siempre por 30 (un alquiler de $150.000 figuraba como $155.000 en octubre, $140.000 en febrero y el reporte fiscal anual sumaba 12,17 meses). Ahora `utils.prorratear_mensual` reparte cada día según los días de SU mes: un mes completo = el monto exacto (`tests/test_prorrateo.py`, incluye el reporte anual). Afecta a la pantalla Costos, al punto de equilibrio y al Reporte fiscal; NO a la ganancia neta real (que no resta gastos operativos).
+
+## 0d. LISTA ÚNICA DE LO QUE FALTA (2026-10-13, producción corre `38049ee`)
+Todo lo de abajo está sin hacer. Lo hecho está en las secciones 0c/0b y en `PLAN_UX_200.md` (los ítems marcados «HECHO»). Orden sugerido: A → B → C.
+
+### A. Del dueño (no se pueden hacer desde el código)
+1. **Mercado Pago de producción** (hoy corre con credenciales de PRUEBA): poner las de producción, regenerar token y clave secreta (se pegaron en un chat) y probar un cobro real chico. Antes de abrir al público.
+2. **Mails**: elegir proveedor (recomendado Resend), verificar el dominio `corelux.app` y cargar `CORREO_PROVEEDOR`, `CORREO_API_KEY`, `CORREO_REMITENTE` (`docs/RUNBOOK.md` §9b-2). Sin eso nadie recibe avisos de cobro ni de prueba por vencer.
+3. **Respaldos**: `RESPALDO_CLAVE` y una tarea semanal de `respaldo.py` (`docs/RUNBOOK.md`). (El monitor de caídas sobre `/healthz` YA lo puso el dueño.)
+4. **Revisión legal** de `/terminos` y `/privacidad` por un abogado.
+5. **Seguridad de scripts**: usar la app ~10 minutos y avisar; los logs de Fly guardan ~20 min (`fly logs -a corecore | grep "\[CSP\]"`) y, si no hay nada raro, pasar `CSP_MODO=estricta`.
+6. **Sentry**: crear el proyecto y pasar el `SENTRY_DSN` (sin eso los fallos de sincronización no se reportan).
+7. **Mercado Libre Developers**: confirmar los temas de notificaciones (items, orders, shipments, questions, claims) y la URL `https://corelux.app/notificaciones_meli` (ya llegan avisos de envíos).
+8. **Flex**: MargenFull da $378.250 para 09/09–01/10 y la lógica da $326.110 (39 envíos): pasar el listado de envíos de MargenFull para compararlos uno por uno; falta modelar el caso de productos < $33.000 (paga el comprador).
+9. **Multi-cuenta Elite**: probar `/conectar_otra_cuenta` de punta a punta con una segunda cuenta real (se armó leyendo el código, nunca corrió en vivo).
+10. **Monotributo**: revisar las escalas de ARCA (cambian ~2 veces por año; vigentes desde el 01/08/2026). **Condición fiscal**: cargarla en «Mi cuenta» de cada cuenta. **Certificado de ARCA** (opcional) para consultarla sin preguntar.
+11. **Ícono nuevo de la app** (una «C» dorada con un punto sobre grafito): mirarlo instalado en el celular; si prefiere otro, se cambia `generar_iconos.py`.
+12. **Decisión abierta**: costo distinto POR VARIACIÓN dentro de una misma publicación (los 6 colores de un termo): hoy comparten un costo; hacerlo toca ~7 módulos de plata. Decidir con números reales (hoy 1 publicación de 275, sin ventas).
+
+### B. Del plan de UI/UX (`PLAN_UX_200.md`), con su número
+**Ola 1 que quedó a medias**
+- **6** nombre del negocio editable (`PM#102`) y el mismo rótulo («Mi cuenta» / el nombre) en todas las pantallas.
+- **99** Promociones: agrupar por modelo y un botón principal «Armar promoción para las N» (hoy los botones ya no son idénticos ni de color, pero siguen siendo uno por talle).
+- **91** Calidad: ordenar las filas por visitas que se pierden y mostrar el puntaje con meta («91 / 100: te faltan 9»).
+- **163** glosario de la plata: aplicar el nombre elegido en las pantallas donde falta (el glosario ya está en `CLAUDE.md`).
+
+**Ola 2 (celular y formularios)**
+- **79 / 141** Costos con autoguardado al salir del campo y «Guardando… ✓ Guardado» (botón «Guardar» solo en lo que escribe en Mercado Libre).
+- **80** importar costos desde Excel, visible arriba de la lista (hoy está escondido).
+- **86** Precios: barra de avance «30 de 70 con datos» y botón para completar costos.
+- **33** el hero primero para todos y «Más tarde» del checklist recordado por persona. **42** Dashboard con pestañas «Hoy | Este mes | 14 días» en celular.
+- **46** marcar un paquete como listo con un interruptor grande a la izquierda (o deslizar) y «Deshacer».
+- **194** renderizar solo lo visible en las listas largas (Costos, Stock).
+- **20** acción principal al pie de cada tarjeta (sin defecto medido) y **25** gestos de deslizar entre pestañas (hay que probarlos en un teléfono real). **30** «arranque con la última foto de los datos» (la parte del ícono ya está).
+- **120** sacar los estilos escritos a mano de las plantillas (hoy 749 en Costos, 500 en Stock, 231 en Ganancia Real, 195 en Dashboard): decidido por el dueño DESPUÉS del celular; es el paso que falta para la política de seguridad estricta de estilos.
+
+**Ola 3 · claridad y confianza en los números**
+35 cada pendiente con su plata en juego («tu ganancia puede estar inflada en ~$X») · 40 «Salud de la cuenta» que explica qué sumó y qué restó · 41 un solo término y una sola fórmula para el resultado en el Dashboard · 65 Ganancia Real con como máximo dos niveles de pestañas y Reclamos y devoluciones en su propia pantalla «Posventa» ·
+66 la fórmula en una sola imagen (de «Facturado» a «Te queda») · 67 selector de período con «Este mes», «Mes pasado», «Este año» y comparar con el anterior · 71 nombres sin jerga en Facturación · 74 Monotributo con el medidor primero · 83 Calculadora con «Te queda» enorme y «Usar este precio en la publicación» ·
+87 Precios: «Aplicar el recomendado» por fila y en lote con vista previa · 92 ficha única de publicación (`PM#219`) · 94 Embudo con impacto estimado · 157 títulos con jerarquía real (`h1` / `h2` / `h3`) · 164 jerga explicada la primera vez (ROAS, ACOS, FULL, Flex…) ·
+171 checklist con el paso de más valor primero · 172 tour de 3 pasos que termina en la primera tarea real · 179 Planes con tabla comparativa Base vs Elite · 191 cargar primero lo de la base y después lo de Mercado Libre.
+
+**Ola 4 · el resto, según la medición** — empezar por **197–200**: eventos mínimos y anónimos de uso, prueba de 5 segundos con 5 personas, clics sin respuesta y errores de JavaScript en `/admin/salud`, y una pregunta de una línea después de las tareas clave. Sin datos de uso se prioriza a ciegas.
+
+### C. Técnicos (de mi lado), sin urgencia
+- Mirar los logs de Fly tras cada deploy buscando `invalid_grant` o `EMAXCONNSESSION`.
+- Más pruebas de cobertura: logros, despacho, costos por chat, capacidades, enriquecimiento, promociones, reputación.
+- Tablas ordenables que faltan: Promociones (4), Costos (gastos), Competencia (historial) y la factura.
+- Del `PLAN_MEJORAS.md` (243 ítems): revisar cuáles quedan; la ficha única de publicación (ítem 219) coincide con el 92 de arriba.
+- En el celular, probar en un teléfono real lo que solo se midió en el navegador de escritorio (vibración, ícono instalado, gestos).
 
 ## 0c. Plan de UI/UX de 200 puntos (2026-10-12)
 `PLAN_UX_200.md`: 200 ítems armados recorriendo 14 pantallas en escritorio y 5 en celular con la cuenta real y midiendo el DOM (★ = medido). Lo más urgente: los montos que se partían en dos líneas en Facturación (HECHO 2026-10-12, junto con los ítems 2, 3, 5 y 9: delta de 9,5 px, héroe de Precios que celebraba con 30 de 70 analizadas, fechas de Publicidad, nombre de la calculadora), el botón de chat que tapa contenido en celular, y el celular en general (Costos mide 18.181 px, Stock 13.055 px, 83-88 % de las áreas táctiles por debajo de 40 px). Ordenado en 4 olas. Pendiente de decisión del dueño: ítem 120 (sacar los estilos escritos a mano de las plantillas) e ítem 111 (rótulos «MÁS USADO»).
