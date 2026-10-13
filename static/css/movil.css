@@ -57,6 +57,57 @@
     .solo-escritorio { display: none; }
 }
 
+/* La barra «N cambios sin guardar» (Costos, Stock masivo) se apoya SOBRE la barra inferior y no debajo: antes quedaba tapada y el botón «Guardar» no se podía tocar.
+   El texto va arriba y los dos botones debajo, ocupando todo el ancho (con el pulgar se alcanzan). Es hasta 900 px porque ahí aparece la barra inferior. */
+@media (max-width: 900px) {
+    .ux-barra-accion { bottom: calc(var(--bottombar-h) + env(safe-area-inset-bottom, 0px) + 10px); padding: 10px 14px; gap: 8px; flex-wrap: wrap; }
+    .ux-barra-accion-texto { flex: 1 1 100%; }
+    .ux-barra-accion > .flex-gap { flex: 1 1 100%; flex-wrap: nowrap; gap: 8px; }
+    .ux-barra-accion .btn-primary { flex: 1; }
+}
+
+/* Stock masivo: cada talle es una ficha — el talle y su estado arriba y, debajo, el campo para cambiar las unidades (− 12 +) y lo que hay en FULL.
+   Antes era una tabla de 488 px dentro de una caja de 301 px: el campo para editar quedaba escondido a la derecha y había que deslizar de costado para llegar. */
+@media (max-width: 720px) {
+    .data-table.ux-masivo-cards tr { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 8px; padding: 10px 0; }
+    .data-table.ux-masivo-cards td { padding: 4px 0; border: 0; text-align: left; align-items: flex-start; }
+    .data-table.ux-masivo-cards td.c-talle, .data-table.ux-masivo-cards td.c-estado { grid-column: span 3; }
+    .data-table.ux-masivo-cards td.c-propio { grid-column: span 4; }
+    .data-table.ux-masivo-cards td.c-full { grid-column: span 2; }
+    .acordeon-header strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
+}
+
+/* Reporte fiscal: cada mes (y el total) es una tarjeta — el mes y su botón «Detalle» arriba, después la facturación y la ganancia, y el resto en filas de a tres.
+   Un cuadro de 11 columnas obligaba a deslizar de costado para leer un solo mes. (El orden de las celdas en escritorio no cambia: solo se reordenan acá.) */
+@media (max-width: 720px) {
+    .data-table.ux-fiscal-cards tr { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 8px; padding: 12px 14px; }
+    .data-table.ux-fiscal-cards td { padding: 4px 0; border: 0; text-align: left; align-items: flex-start; min-width: 0 !important; }
+    .data-table.ux-fiscal-cards td.c-mes { order: 0; grid-column: span 4; align-self: center; }
+    .data-table.ux-fiscal-cards td.c-det { order: 1; grid-column: span 2; }
+    .data-table.ux-fiscal-cards td.c-det .btn { width: 100%; }
+    .data-table.ux-fiscal-cards td.c-fact { order: 2; grid-column: span 3; }
+    .data-table.ux-fiscal-cards td.c-gan { order: 3; grid-column: span 3; }
+    .data-table.ux-fiscal-cards td.c-com { order: 4; grid-column: span 2; }
+    .data-table.ux-fiscal-cards td.c-env { order: 5; grid-column: span 2; }
+    .data-table.ux-fiscal-cards td.c-gas { order: 6; grid-column: span 2; }
+    .data-table.ux-fiscal-cards td.c-cfab { order: 7; grid-column: span 2; }
+    .data-table.ux-fiscal-cards td.c-ret { order: 8; grid-column: span 2; }
+    .data-table.ux-fiscal-cards td.c-ord { order: 9; grid-column: span 1; }
+    .data-table.ux-fiscal-cards td.c-uds { order: 10; grid-column: span 1; }
+    .data-table.ux-fiscal-cards tfoot tr { background: var(--glass-bg); }
+}
+
+/* Historial de precios: el cambio y la fecha en una fila, y lo que pasó con las ventas (antes, después, resultado) en otra */
+@media (max-width: 720px) {
+    .data-table.ux-hist-cards tr { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 8px; padding: 12px 14px; }
+    .data-table.ux-hist-cards td { padding: 4px 0; border: 0; text-align: left; align-items: flex-start; }
+    .data-table.ux-hist-cards td.col-titulo { grid-column: 1 / -1; padding: 0 0 8px; }
+    .data-table.ux-hist-cards td.col-precio { grid-column: span 3; white-space: normal !important; }
+    .data-table.ux-hist-cards td.c-fecha { grid-column: span 1; }
+    .data-table.ux-hist-cards td.c-antes, .data-table.ux-hist-cards td.c-despues { grid-column: span 1; }
+    .data-table.ux-hist-cards td.c-res { grid-column: span 2; white-space: normal; }
+}
+
 /* Tarjetas de números: de a dos en cada fila. Si queda una suelta, ocupa el ancho entero (nunca una tarjeta sola con un hueco al lado) */
 @media (max-width: 560px) {
     .ux-kpis.ux-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }          /* (doble clase: le gana a las reglas con :has() de ux.css, que tienen su misma fuerza) */

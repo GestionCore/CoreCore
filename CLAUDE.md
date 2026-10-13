@@ -642,6 +642,10 @@ MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - **Celular, tercera tanda (2026-10-13)**: la tabla de Stock (`#tabla-productos`, clase `ux-stock-cards`) es una ficha de 4 columnas en ≤ 720 px (`movil.css`); lo que solo se ve en celular o solo en escritorio usa `.solo-celular` / `.solo-escritorio` (el botón «Gestionar» es un engranaje en el celular, con `aria-label`).
   Los selectores de celda de esa tabla llevan `.data-table.ux-stock-cards td` para ganarle a las reglas de `style.css`. La barra superior ya NO tiene botón de menú (lo abre «Más» de la barra inferior). La píldora de hoy muestra solo el monto en ≤ 560 px (el texto completo va en `aria-label`).
 
+- **Celular, cuarta tanda (2026-10-13)**: las tablas anchas pasan a tarjetas con `ux-tabla-cards` + una clase propia (`ux-fiscal-cards`, `ux-hist-cards`, `ux-masivo-cards`, `ux-stock-cards`) y una grilla en `movil.css`; cada celda lleva `data-label` (la etiqueta que se ve en la tarjeta) y una clase `c-…` para ubicarla; el orden del HTML no se toca (en escritorio sigue siendo la tabla) y las celdas se reordenan con `order`.
+  Etiquetas cortas: una etiqueta más larga que su columna se pisa con la vecina («Costo fab. (est.)» → «Costo fab.»). `.ux-barra-accion` (cambios sin guardar) tiene `bottom` = alto de la barra inferior + 10 px hasta 900 px. Toda `<input type="number">` lleva `inputmode="decimal"` (una prueba lo exige).
+  Para verificar un cambio de celular hay que MEDIR (alto de la página, desborde horizontal, la caja de lo que se toca contra la barra inferior): así aparecieron dos defectos que a ojo no se veían.
+
 ## Datos de entorno
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de
   transacción — el puerto importa para que RLS sea confiable),

@@ -1245,12 +1245,12 @@ async function cargarTabInfo(idMeli) {
                 <button type="button" class="btn btn-secondary" style="margin-top:6px;" data-click="optimizarTitulo"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-bolt"/></svg>Optimizar Título con IA</button>
             </div>
             <div class="filter-row" style="margin-bottom:14px;">
-                <div class="field-group" style="flex:1;"><label class="field-label">Precio ($)</label><input type="number" step="0.01" min="0" id="drawer-precio" value="${Number(d.precio) || ''}"></div>
+                <div class="field-group" style="flex:1;"><label class="field-label">Precio ($)</label><input type="number" step="0.01" min="0" inputmode="decimal" id="drawer-precio" value="${Number(d.precio) || ''}"></div>
                 <div class="field-group" style="flex:1;"><label class="field-label">Estado</label>
                     <select id="drawer-estado" ${d.estado_editable ? '' : 'disabled'}>${opcionesEstado}</select>
                 </div>
             </div>
-            <div class="field-group" style="margin-bottom:14px;"><label class="field-label">Costo de fabricación ($) <span class="text-muted" style="font-weight:400;">solo en CoreLux</span></label><input type="number" step="0.01" min="0" id="drawer-costo" value="${Number(d.precio_costo) || 0}"></div>
+            <div class="field-group" style="margin-bottom:14px;"><label class="field-label">Costo de fabricación ($) <span class="text-muted" style="font-weight:400;">solo en CoreLux</span></label><input type="number" step="0.01" min="0" inputmode="decimal" id="drawer-costo" value="${Number(d.precio_costo) || 0}"></div>
             <button type="button" class="btn btn-primary btn-block" data-click="guardarDrawerInfo">Guardar cambios</button>
             <a href="/publicacion/${encodeURIComponent(idMeli)}/timeline" class="btn btn-secondary btn-block" style="margin-top:8px; text-align:center; text-decoration:none;"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-info"/></svg>Ver línea de tiempo completa</a>
         `;

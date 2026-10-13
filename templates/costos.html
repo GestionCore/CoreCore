@@ -269,7 +269,7 @@
             <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
             <div class="field-group" style="flex:2; min-width:200px;"><label class="field-label">Concepto</label><input type="text" name="concepto" placeholder="Ej: Bolsas de envío" required></div>
             <div class="field-group"><label class="field-label">Tipo</label><select name="categoria"><option value="variable">Variable (cambia mes a mes)</option><option value="fijo">Fijo (siempre igual)</option></select></div>
-            <div class="field-group" style="max-width:150px;"><label class="field-label">Monto ($)</label><input type="number" step="0.01" name="monto" min="0.01" required></div>
+            <div class="field-group" style="max-width:150px;"><label class="field-label">Monto ($)</label><input type="number" step="0.01" name="monto" min="0.01" inputmode="decimal" required></div>
             <div class="field-group"><label class="field-label">Fecha</label><input type="date" name="fecha" value="{{ fecha_hasta }}" required></div>
             <button type="submit" class="btn btn-primary">Agregar gasto</button>
         </form>

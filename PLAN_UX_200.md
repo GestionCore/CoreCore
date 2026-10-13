@@ -49,12 +49,12 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 19. [M·S] **HECHO (2026-10-12) · Título + subtítulo en una fila que se parte mal** («Evolución mensual» en dos líneas y «costos vs. resultado neto · últimos 6 meses» al costado) → el subtítulo debajo, siempre, en celular.
 20. [M·S] **La acción principal de cada fila queda a la derecha** (lejos del pulgar) → botón de ancho completo al pie de la tarjeta, o deslizar para actuar.
 21. [M·M] **PARCIAL (2026-10-13: los botones de período y los filtros van en una fila que se desliza; el calendario ya se ve bien en celular y no hizo falta la hoja inferior) · Selectores de escritorio en celular** (período, filtros, cuenta) → hoja inferior (bottom sheet) con opciones grandes.
-22. [M·M] **Tablas que siguen siendo tablas en celular** (Facturación, Cobros, Reporte fiscal) → versión en tarjetas, como Stock y Ganancia Real.
+22. [M·M] **HECHO (2026-10-13: Reporte fiscal e Historial de precios son una tarjeta por fila; Facturación ya era una tabla de 2 columnas que entra y Cobros no tiene tablas; además Stock masivo, cuya tabla de talles escondía el campo para editar) · Tablas que siguen siendo tablas en celular** (Facturación, Cobros, Reporte fiscal) → versión en tarjetas, como Stock y Ganancia Real.
 23. [M·S] **PARCIAL (2026-10-12: la pestaña activa se centra; el degradé del borde ya existía) · La barra de pestañas de cada sección se corta** («Repu…») sin una pista clara → degradé en el borde, y que la pestaña activa se centre al abrir.
 24. [M·S] **«Más» en la barra inferior** → una hoja con las secciones restantes, íconos grandes y un buscador arriba.
 25. [M·M] **Gestos:** deslizar entre pestañas de una sección y tirar para actualizar en Día a día.
-26. [M·M] **Barra de acción fija sobre la barra inferior** para lo principal de cada pantalla («Descargar etiquetas», «Guardar 3 cambios»), alcanzable con el pulgar.
-27. [M·S] **Teclado correcto en cada campo** (`inputmode="decimal"`, `enterkeyhint`) y números con coma decimal; hoy los precios se tipean en un campo de número con flechitas.
+26. [M·M] **HECHO (2026-10-13: medido, la barra «N cambios sin guardar» quedaba TAPADA por la barra inferior y «Guardar» no se podía tocar; ahora se apoya encima) · Barra de acción fija sobre la barra inferior** para lo principal de cada pantalla («Descargar etiquetas», «Guardar 3 cambios»), alcanzable con el pulgar.
+27. [M·S] **HECHO (2026-10-13: los 5 campos numéricos que faltaban llevan inputmode="decimal"; una prueba exige que ninguno quede sin) · Teclado correcto en cada campo** (`inputmode="decimal"`, `enterkeyhint`) y números con coma decimal; hoy los precios se tipean en un campo de número con flechitas.
 28. [M·S] **HECHO (2026-10-12) · iOS amplía la página al tocar un campo** si la letra es menor de 16 px (los campos de Costos y Stock masivo son de 12-13 px) → 16 px en celular, sin deformar el diseño.
 29. [M·S] **REVISADO (2026-10-12: sin cambio) · Zonas seguras del teléfono** (`safe-area-inset`) en la barra inferior y en cualquier barra fija, para el iPhone con barra de gestos.
 30. [B·M] **App instalable de verdad:** ícono y colores actuales, pantalla completa, arranque rápido con la «última foto» de los datos (`PM#118`).
@@ -310,6 +310,10 @@ Siguen en la ola 2: 11 (Costos en acordeón), 12 (Stock en tarjetas compactas), 
 
 **Ola 2, tercera tanda (2026-10-13):** Stock en fichas compactas de 4 columnas (el botón «Gestionar» es un engranaje en el celular, con su nombre para lectores de pantalla), «Pausadas con stock» plegada, filtros y períodos en una sola fila deslizable, sin botón de menú duplicado y píldora de ventas de hoy legible.
 Falta de la ola 2: 20 (acción principal al pie de la tarjeta), 22 (Facturación, Cobros y Reporte fiscal como tarjetas), 24-27, 30-32.
+
+**Ola 2, cuarta tanda (2026-10-13):** dos defectos reales encontrados midiendo en 375 px — la barra de cambios sin guardar quedaba debajo de la barra inferior (el botón «Guardar» de Costos y de Stock masivo no se podía tocar) y la tabla de talles de Stock masivo escondía el campo para editar —;
+Reporte fiscal (una tarjeta por mes) e Historial de precios (una por cambio) como tarjetas; teclado numérico en todos los campos de plata.
+Falta de la ola 2: 20, 24, 25, 30-32.
 
 ## Dos decisiones que necesito de vos
 

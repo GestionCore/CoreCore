@@ -19,7 +19,7 @@ def renderizar():
 
 
 def _tabla(html):
-    return re.search(r"<table class=\"data-table\" data-ordenable>.*?</table>", html, re.S).group(0)
+    return re.search(r"<table class=\"data-table[^\"]*\" data-ordenable>.*?</table>", html, re.S).group(0)         # (en el celular es una tabla de tarjetas: lleva más clases)
 
 
 def test_el_historial_de_precios_se_ordena_y_muestra_la_fecha_legible(renderizar):

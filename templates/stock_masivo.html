@@ -60,19 +60,19 @@
             </div>
             <div class="acordeon-body" style="display:none; padding:0 20px 16px;">
                 <div style="overflow-x:auto;">
-                <table class="data-table">
+                <table class="data-table ux-tabla-cards ux-masivo-cards">
                     <thead><tr><th>{{ vocab.V1 }}</th><th>Estado</th><th class="num">Depósito propio</th><th class="num">FULL</th></tr></thead>
                     <tbody>
                         {% for v in m.variantes %}
                         <tr>
-                            <td><b>{{ v.talle }}</b> <span class="text-muted" style="font-size:0.82em;">· {{ v.id_meli }}</span></td>
-                            <td>
+                            <td class="c-talle"><b>{{ v.talle }}</b> <span class="text-muted" style="font-size:0.82em;">· {{ v.id_meli }}</span></td>
+                            <td class="c-estado" data-label="Estado">
                                 {% if v.pausada_por_stock %}<span class="ux-pill ux-neutral ux-pill-suave">Pausada por stock (0 u.)</span>
                                 {% elif v.estado == 'active' %}<span class="ux-pill ux-ok">Activa</span>
                                 {% elif v.estado == 'paused' %}<span class="ux-pill ux-warn">Pausada</span>
                                 {% else %}<span class="ux-pill ux-neutral ux-pill-suave">Inactiva</span>{% endif %}
                             </td>
-                            <td class="num">
+                            <td class="num c-propio" data-label="Depósito propio">
                                 {% if v.full > 0 %}
                                 <span class="ux-pill ux-info ux-pill-suave" title="Esta publicación sale por FULL: el stock lo gestiona Mercado Libre, no se puede editar acá">Gestionado por FULL</span>
                                 {% else %}
@@ -84,7 +84,7 @@
                                 <input type="hidden" name="orig_{{ v.id_meli }}" value="{{ v.propio }}">
                                 {% endif %}
                             </td>
-                            <td class="num"><b>{{ v.full }} u.</b></td>
+                            <td class="num c-full" data-label="FULL"><b>{{ v.full }} u.</b></td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -119,6 +119,59 @@ def test_las_pausadas_con_stock_son_una_tarjeta_plegable_que_en_el_celular_arran
     assert 'id="panel-reactivar"' in html and "reactivarAplicar" in html               # la lista y su botón siguen ahí
 
 
+# ── Tablas anchas como tarjetas ─────────────────────────────────────────────────────────────────────────────────────────────
+
+def test_el_reporte_fiscal_es_una_tarjeta_por_mes_y_otra_para_el_total_en_el_celular():
+    html = _leer("templates", "reporte_fiscal.html")
+    assert 'class="data-table ux-tabla-cards ux-fiscal-cards"' in html
+    for clase in ("c-mes", "c-det", "c-fact", "c-gan", "c-com", "c-env", "c-gas", "c-cfab", "c-ret", "c-ord", "c-uds"):
+        assert len(re.findall(rf'class="[^"]*\b{clase}\b', html)) == 2, clase                 # una vez en la fila de cada mes y otra en la de totales
+    assert html.count('data-label="Facturación"') == 2 and html.count('data-label="Ganancia neta (est.)"') == 2
+    movil = _leer("static", "css", "movil.css")
+    assert "grid-template-columns: repeat(6, minmax(0, 1fr))" in movil and ".data-table.ux-fiscal-cards td.c-det { order: 1; grid-column: span 2; }" in movil
+
+
+def test_cada_talle_de_stock_masivo_es_una_ficha_con_su_campo_para_editar_a_la_vista():
+    """Medido el 2026-10-13 en 375 px: la tabla de talles medía 488 px dentro de una caja de 301 px y el campo «− 12 +» quedaba escondido a la derecha."""
+    html = _leer("templates", "stock_masivo.html")
+    assert 'class="data-table ux-tabla-cards ux-masivo-cards"' in html
+    for clase in ("c-talle", "c-estado", "c-propio", "c-full"):
+        assert f'class="{clase}"' in html or f' {clase}"' in html, clase
+    assert html.count('data-label="Depósito propio"') == 1 and 'data-label="FULL"' in html
+    assert 'name="stock_{{ v.id_meli }}"' in html and 'data-original="{{ v.propio }}"' in html          # el campo y lo que usa la barra de cambios siguen igual
+    movil = _leer("static", "css", "movil.css")
+    assert ".data-table.ux-masivo-cards td.c-propio { grid-column: span 4; }" in movil and ".acordeon-header strong { display: -webkit-box; -webkit-line-clamp: 2;" in movil
+
+
+def test_el_historial_de_precios_es_una_tarjeta_por_cambio_en_el_celular():
+    html = _leer("templates", "historial_precios.html")
+    assert 'class="data-table ux-tabla-cards ux-hist-cards" data-ordenable' in html
+    assert 'data-label="Resultado (7 d)"' in html and 'class="ux-col-titulo col-titulo"' in html
+    assert "td.col-precio { grid-column: span 3; white-space: normal !important; }" in _leer("static", "css", "movil.css")
+
+
+def test_todo_campo_numerico_pide_el_teclado_de_numeros_del_celular():
+    """type="number" sin inputmode muestra flechitas y, en algunos teléfonos, un teclado con letras: con inputmode="decimal" sale el teclado numérico."""
+    import glob
+    faltan = []
+    for ruta in glob.glob(os.path.join(RAIZ, "templates", "*.html")) + glob.glob(os.path.join(RAIZ, "static", "js", "*.js")):
+        texto = open(ruta, encoding="utf-8").read()
+        for m in re.finditer(r"<input\b[^>]*>", texto):
+            if re.search(r"""type=["']number["']""", m.group(0)) and "inputmode" not in m.group(0):
+                faltan.append(f"{os.path.relpath(ruta, RAIZ)}:{texto.count(chr(10), 0, m.start()) + 1}")
+    assert not faltan, f"Campos type=number sin inputmode: {faltan}"
+
+
+def test_la_barra_de_cambios_sin_guardar_se_apoya_sobre_la_barra_inferior_del_celular():
+    """Medido el 2026-10-13 en 375 px: con 27 costos sin guardar la barra quedaba 48 px por debajo del borde de la barra inferior y «Guardar» no se podía tocar."""
+    movil = _leer("static", "css", "movil.css")
+    bloque = movil[movil.index("La barra «N cambios sin guardar»"):]
+    bloque = bloque[:bloque.index("}\n}") + 3]
+    assert "@media (max-width: 900px)" in bloque                                            # donde aparece la barra inferior
+    assert ".ux-barra-accion { bottom: calc(var(--bottombar-h) + env(safe-area-inset-bottom, 0px) + 10px);" in bloque
+    assert ".ux-barra-accion .btn-primary { flex: 1; }" in bloque
+
+
 # ── Barra superior del celular ──────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_la_barra_superior_no_repite_el_menu_que_ya_abre_el_boton_mas_de_la_barra_inferior():

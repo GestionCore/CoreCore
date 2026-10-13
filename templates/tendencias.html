@@ -609,11 +609,11 @@ function abrirEstimadorMargen(categoryId, precioSugerido) {
             <div class="filter-row" style="align-items:flex-end;">
                 <div class="field-group" style="max-width:160px;">
                     <label class="field-label" for="margen-precio">Precio de venta</label>
-                    <input type="number" id="margen-precio" value="${precioSugerido ? Math.round(precioSugerido) : ''}" min="1">
+                    <input type="number" inputmode="decimal" id="margen-precio" value="${precioSugerido ? Math.round(precioSugerido) : ''}" min="1">
                 </div>
                 <div class="field-group" style="max-width:160px;">
                     <label class="field-label" for="margen-costo">Tu costo de fabricación</label>
-                    <input type="number" id="margen-costo" placeholder="opcional">
+                    <input type="number" inputmode="decimal" id="margen-costo" placeholder="opcional">
                 </div>
                 <button type="button" class="btn btn-primary" id="btn-calcular-margen">Calcular</button>
             </div>
