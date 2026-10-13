@@ -18,6 +18,7 @@ Qué contesta (ver los títulos «== T… ==» de la salida):
   T6  cotización del dólar e inflación (fuentes externas)
   T7  variantes reales (selectores de los productos de catálogo), atributos que MeLi extrae de una búsqueda, multiget ajeno, publicaciones propias en lote, fichas de dominio
       (`python sondeo_meli.py <cuenta_id> T7` corre solo esta)
+  T8  muestra de catálogo filtrada por dominio y atributos que trae por defecto el multiget `/items?ids=` (`... T8` corre solo esta)
 """
 import json
 import re
@@ -376,6 +377,41 @@ class Sondeo:
         grupos = ((e["json"] or {}).get("input") or {}).get("groups") or []
         print(f"    /domains/MLA-CELLPHONES/technical_specs → {e['estado']}  grupos de entrada={len(grupos)}  forma de un grupo={forma(grupos[0], 3) if grupos else None}")
 
+    # ── T8 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    def t8_muestra_y_atributos(self):
+        print("\n== T8 · muestra de catálogo por dominio y atributos por defecto del multiget ==")
+        for nombre, consulta in RUBROS:
+            hallazgo, _ = self.descubrir(consulta)
+            categoria = hallazgo.get("category_id")
+            ajustes = (self.con_usuario(f"/categories/{categoria}")["json"] or {}).get("settings") or {}
+            dominio = ajustes.get("catalog_domain")
+            print(f"\n  [{nombre}] categoría={categoria}  settings.catalog_domain={dominio}  (domain_discovery dice {hallazgo.get('domain_id')})")
+            for etiqueta, params in (("domain_id", {"domain_id": dominio}), ("category", {"category": categoria}), ("domain_id+offset 50", {"domain_id": dominio, "offset": 50})):
+                if not dominio and "domain_id" in params:
+                    continue
+                r = self.con_usuario("/products/search", params={"site_id": "MLA", "status": "active", "limit": 5, **params})
+                j = r["json"] or {}
+                resultados = j.get("results") or []
+                dominios = sorted({x.get("domain_id") for x in resultados})
+                print(f"    /products/search {etiqueta:20} → {r['estado']}  paging={j.get('paging')}  dominios de los resultados={dominios}  nombres={[x.get('name', '')[:34] for x in resultados[:3]]}")
+                if r["estado"] != 200:
+                    print(f"      cuerpo: {corto(j, 200) or r.get('texto')}")
+        print("\n  Multiget /items?ids= de mis publicaciones: atributos por defecto frente a include_attributes=all")
+        ids = (self.con_usuario(f"/users/{self.mi_id}/items/search", params={"limit": 20})["json"] or {}).get("results") or []
+        por_defecto = self.con_usuario("/items", params={"ids": ",".join(ids)})
+        completos = self.con_usuario("/items", params={"ids": ",".join(ids), "include_attributes": "all"})
+        def _por_item(r):
+            return {x["body"]["id"]: {a.get("id") for a in x["body"].get("attributes") or []} for x in (r["json"] or []) if x.get("code") == 200}
+        a, b = _por_item(por_defecto), _por_item(completos)
+        faltan = sorted({atr for i in a for atr in (b.get(i, set()) - a[i])})
+        print(f"    por defecto: {len(a)} ítems, {sum(len(v) for v in a.values()) // max(len(a), 1)} atributos en promedio · completos: {sum(len(v) for v in b.values()) // max(len(b), 1)}")
+        print(f"    atributos que el multiget por defecto NO trae: {faltan}")
+        ejemplo = next(iter(a), None)
+        if ejemplo:
+            print(f"    ids por defecto de {ejemplo}: {sorted(a[ejemplo])}")
+            cuerpo = next(x["body"] for x in por_defecto["json"] if x.get("code") == 200 and x["body"]["id"] == ejemplo)
+            print(f"    forma de un atributo por defecto: {forma((cuerpo.get('attributes') or [{}])[0], 2)}")
+
     # ── T6 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     def t6_externas(self):
         print("\n== T6 · fuentes externas (cotización del dólar, inflación) ==")
@@ -403,7 +439,9 @@ def main():
         print(__doc__)
         sys.exit(1)
     cuenta_id = int(sys.argv[1])
-    solo_t7 = sys.argv[2:] == ["T7"]                          # `python sondeo_meli.py <cuenta> T7`: solo el detalle de variantes
+    solo = sys.argv[2:]                                       # `python sondeo_meli.py <cuenta> T7` o `T8`: solo esa sección
+    solo_t7 = solo == ["T7"]
+    solo_t8 = solo == ["T8"]
     try:
         token = token_manager.asegurar_token_valido(cuenta_id)
     except token_manager.CuentaDesconectada as e:
@@ -412,8 +450,8 @@ def main():
 
     sondeo = Sondeo(token)
     sondeo.t0_credenciales()
-    if solo_t7:
-        sondeo.t7_detalle()
+    if solo_t7 or solo_t8:
+        (sondeo.t7_detalle if solo_t7 else sondeo.t8_muestra_y_atributos)()
         print(f"\n  pedidos a Mercado Libre: {sondeo.pedidos}")
         return
     resultados = [sondeo.t2_rubro(nombre, consulta) for nombre, consulta in RUBROS]
@@ -424,6 +462,7 @@ def main():
     sondeo.t5_rutas_candidatas(resultados)
     sondeo.t6_externas()
     sondeo.t7_detalle()
+    sondeo.t8_muestra_y_atributos()
 
     print("\n== RESUMEN ==")
     print(f"  pedidos a Mercado Libre: {sondeo.pedidos}")

@@ -11,6 +11,8 @@ dueño) las tareas se delegaban a Celery y el sistema se portaba distinto que en
   · cada día a las 09:00 de Argentina: renovaciones de Mercado Pago, solo de quienes ya les llegó su fecha de cobro (renovaciones_mp.py)
   · cada día a las 10:00 de Argentina: mails de la prueba gratuita (solo con cobro habilitado y mails configurados; ver correos.py)
   · cada 24 horas: relevamiento de competencia y de tendencias
+  · cada hora, a partir de las 04:00 de Argentina: relevamiento GLOBAL del mercado (mercado_relevador.py: tamaño de la oferta, búsquedas en alza, precios; con el token de la aplicación). Corre
+    una sola vez por día —si ya terminó el de hoy no hace nada— y también un par de minutos después de arrancar, así un reinicio o un deploy no hacen perder un día de historia
 """
 import os
 
@@ -19,6 +21,7 @@ import db
 import salud_tokens
 import sincronizador
 import espia_competencia
+import mercado_relevador
 import tendencias as tendencias_mod
 from auth import token_manager
 
@@ -144,6 +147,22 @@ def _tarea_relevar_tendencias():
             print(f"[Scheduler APScheduler] ❌ Error tendencias cuenta {cuenta_id}: {e}")
 
 
+HORA_UTC_RELEVAMIENTO_MERCADO = 7          # 07:00 UTC = 04:00 en Argentina: antes de esa hora no se arranca el relevamiento de mercado del día
+
+
+def _tarea_relevar_mercado():
+    """
+    Relevamiento global del mercado (mercado_relevador.py), UNA vez por día: si ya terminó el de hoy no hace nada, así que puede correr cada hora sin repetir el trabajo y
+    recupera solo un día en que el proceso estaba caído. Es el mismo para todas las cuentas: no usa el token de ninguna.
+    """
+    from datetime import datetime, timezone
+    if datetime.now(timezone.utc).hour < HORA_UTC_RELEVAMIENTO_MERCADO:
+        return
+    resumen = mercado_relevador.relevar_si_falta()
+    if resumen is not None:
+        print(f"[Scheduler] 📈 Mercado relevado: {resumen}")
+
+
 def _tarea_verificar_tokens():
     salud_tokens.verificar_tokens()
 
@@ -252,6 +271,9 @@ def _arrancar_apscheduler():
     _scheduler_apscheduler.add_job(_tarea_sincronizar_cuentas_nuevas, "interval", minutes=INTERVALO_CUENTAS_NUEVAS_MINUTOS, id="sync_cuentas_nuevas", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_relevar_competencia, "interval", hours=24, id="relevar")
     _scheduler_apscheduler.add_job(_tarea_relevar_tendencias, "interval", hours=24, id="relevar_tendencias")
+    from datetime import datetime, timedelta, timezone
+    _scheduler_apscheduler.add_job(_tarea_relevar_mercado, "interval", hours=1, id="relevar_mercado", max_instances=1, coalesce=True,
+                                   next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2))
     _scheduler_apscheduler.add_job(_tarea_verificar_tokens, "interval", hours=1, id="verificar_tokens", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_limpiar_vinculaciones_oauth, "interval", hours=1, id="limpiar_oauth", max_instances=1, coalesce=True)
     # De madrugada: 06:30 UTC = 03:30 en Argentina (sin horario de verano). En UTC a propósito: no depende de que el sistema tenga la base de zonas horarias
