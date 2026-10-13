@@ -51,15 +51,15 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 21. [M·M] **PARCIAL (2026-10-13: los botones de período y los filtros van en una fila que se desliza; el calendario ya se ve bien en celular y no hizo falta la hoja inferior) · Selectores de escritorio en celular** (período, filtros, cuenta) → hoja inferior (bottom sheet) con opciones grandes.
 22. [M·M] **HECHO (2026-10-13: Reporte fiscal e Historial de precios son una tarjeta por fila; Facturación ya era una tabla de 2 columnas que entra y Cobros no tiene tablas; además Stock masivo, cuya tabla de talles escondía el campo para editar) · Tablas que siguen siendo tablas en celular** (Facturación, Cobros, Reporte fiscal) → versión en tarjetas, como Stock y Ganancia Real.
 23. [M·S] **PARCIAL (2026-10-12: la pestaña activa se centra; el degradé del borde ya existía) · La barra de pestañas de cada sección se corta** («Repu…») sin una pista clara → degradé en el borde, y que la pestaña activa se centre al abrir.
-24. [M·S] **«Más» en la barra inferior** → una hoja con las secciones restantes, íconos grandes y un buscador arriba.
+24. [M·S] **NO HIZO FALTA (2026-10-13: el menú que abre «Más» ya lista las 7 secciones y la búsqueda está en la barra superior; una hoja nueva repetiría los dos) · «Más» en la barra inferior** → una hoja con las secciones restantes, íconos grandes y un buscador arriba.
 25. [M·M] **Gestos:** deslizar entre pestañas de una sección y tirar para actualizar en Día a día.
 26. [M·M] **HECHO (2026-10-13: medido, la barra «N cambios sin guardar» quedaba TAPADA por la barra inferior y «Guardar» no se podía tocar; ahora se apoya encima) · Barra de acción fija sobre la barra inferior** para lo principal de cada pantalla («Descargar etiquetas», «Guardar 3 cambios»), alcanzable con el pulgar.
 27. [M·S] **HECHO (2026-10-13: los 5 campos numéricos que faltaban llevan inputmode="decimal"; una prueba exige que ninguno quede sin) · Teclado correcto en cada campo** (`inputmode="decimal"`, `enterkeyhint`) y números con coma decimal; hoy los precios se tipean en un campo de número con flechitas.
 28. [M·S] **HECHO (2026-10-12) · iOS amplía la página al tocar un campo** si la letra es menor de 16 px (los campos de Costos y Stock masivo son de 12-13 px) → 16 px en celular, sin deformar el diseño.
 29. [M·S] **REVISADO (2026-10-12: sin cambio) · Zonas seguras del teléfono** (`safe-area-inset`) en la barra inferior y en cualquier barra fija, para el iPhone con barra de gestos.
-30. [B·M] **App instalable de verdad:** ícono y colores actuales, pantalla completa, arranque rápido con la «última foto» de los datos (`PM#118`).
-31. [B·S] **Celular en horizontal (667×375):** revisar que gráficos y tablas aprovechen el ancho y la barra inferior no tape.
-32. [B·S] **Respuesta táctil** al marcar un paquete como despachado (vibración corta si el navegador lo permite).
+30. [B·M] **HECHO (2026-10-13: el ícono de la app era una «S» naranja de la app original, no la marca; ahora es la «C» dorada sobre grafito, con versión «maskable» aparte y colores del manifiesto al día; «arranque con la última foto de los datos» queda sin hacer) · App instalable de verdad:** ícono y colores actuales, pantalla completa, arranque rápido con la «última foto» de los datos (`PM#118`).
+31. [B·S] **HECHO (2026-10-13: en 667×375 las barras de arriba y abajo se achican y el contenido gana 40 px; sin desborde horizontal en Dashboard, Stock, Costos, Ganancia Real y Día a día) · Celular en horizontal (667×375):** revisar que gráficos y tablas aprovechen el ancho y la barra inferior no tape.
+32. [B·S] **HECHO (2026-10-13: vibración corta al marcar un paquete; distinta si no se pudo guardar; en iPhone el navegador no la ofrece) · Respuesta táctil** al marcar un paquete como despachado (vibración corta si el navegador lo permite).
 
 ## 3. Dashboard / Inicio (12)
 
@@ -314,6 +314,8 @@ Falta de la ola 2: 20 (acción principal al pie de la tarjeta), 22 (Facturación
 **Ola 2, cuarta tanda (2026-10-13):** dos defectos reales encontrados midiendo en 375 px — la barra de cambios sin guardar quedaba debajo de la barra inferior (el botón «Guardar» de Costos y de Stock masivo no se podía tocar) y la tabla de talles de Stock masivo escondía el campo para editar —;
 Reporte fiscal (una tarjeta por mes) e Historial de precios (una por cambio) como tarjetas; teclado numérico en todos los campos de plata.
 Falta de la ola 2: 20, 24, 25, 30-32.
+
+**Ola 2, quinta tanda (2026-10-13):** ícono de la app con la marca (`generar_iconos.py` lo regenera), celular acostado, vibración al despachar. **Quedan 2 de la ola 2:** 20 (acción principal al pie de cada tarjeta: no hay un defecto medido) y 25 (gestos de deslizar entre pestañas: hay que probarlos en un teléfono real).
 
 ## Dos decisiones que necesito de vos
 

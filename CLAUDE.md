@@ -646,6 +646,9 @@ MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
   Etiquetas cortas: una etiqueta más larga que su columna se pisa con la vecina («Costo fab. (est.)» → «Costo fab.»). `.ux-barra-accion` (cambios sin guardar) tiene `bottom` = alto de la barra inferior + 10 px hasta 900 px. Toda `<input type="number">` lleva `inputmode="decimal"` (una prueba lo exige).
   Para verificar un cambio de celular hay que MEDIR (alto de la página, desborde horizontal, la caja de lo que se toca contra la barra inferior): así aparecieron dos defectos que a ojo no se veían.
 
+- **Íconos y celular acostado (2026-10-13)**: los íconos de la app (`static/icons/*`, `favicon.ico`) los genera `generar_iconos.py` (la «C» dorada con un punto sobre el grafito `#0a0a0c`; `icon-maskable-512.png` ocupa todo el cuadrado con la marca en el 60 % central); el manifiesto tiene el ícono normal y el «maskable» por separado.
+  Antes eran una «S» naranja de Santi Mens. Con el celular acostado (`max-height: 500px`) las barras bajan de alto por las variables `--topbar-h` / `--bottombar-h`: no escribir alturas fijas para lo que cuelga de ellas.
+
 ## Datos de entorno
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de
   transacción — el puerto importa para que RLS sea confiable),

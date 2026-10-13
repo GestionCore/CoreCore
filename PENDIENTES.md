@@ -28,6 +28,9 @@ Costos hoy: UNA publicación = UN costo (`productos_padre.precio_costo`); la var
 
 **Ola 2 (celular), cuarta tanda — HECHA 2026-10-13** (ítems 22, 26, 27): la barra «N cambios sin guardar» se apoya sobre la barra inferior (estaba tapada), Stock masivo muestra el campo para editar (la tabla lo escondía), Reporte fiscal e Historial de precios como tarjetas, `inputmode` en todos los campos numéricos. Falta: 20, 24, 25, 30-32.
 
+**Ola 2 (celular), quinta tanda — HECHA 2026-10-13** (ítems 30, 31, 32; el 24 no hizo falta): ícono de la app nuevo (antes una «S» naranja de Santi Mens; `generar_iconos.py`), celular acostado, vibración al despachar. Quedan el 20 y el 25 (gestos: probar en un teléfono real).
+⚠️ El dueño debe mirar el ícono nuevo (una «C» dorada con un punto sobre grafito): lo elegí yo porque el anterior era de otra app. Si prefiere otro, se cambia `generar_iconos.py`.
+
 ## 0b. Evaluación objetiva y plan del día (2026-10-08)
 **Medido hoy**: 852 pruebas (60 % de cobertura de líneas), 19,9 k líneas de Python, 9,5 k de plantillas, 138 rutas, 43 migraciones, `pip-audit` sin vulnerabilidades, producción sana (`/healthz/db` 0,17 s). **Puntaje (juicio mío, con la evidencia de abajo)**:
 plata 85 · confiabilidad 78 · seguridad 85 · experiencia 70 · listo para cobrar 45 · generalidad 70 · capacidad 55 · mantenibilidad 65 · operación/soporte 60.

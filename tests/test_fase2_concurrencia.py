@@ -142,9 +142,11 @@ def test_el_reintento_rapido_solo_toma_las_cuentas_con_la_primera_sincronizacion
 # ── 15. Doble toque en Despacho ────────────────────────────────────────────────────────────────────────────────────────────────────────────
 def _correr_toggle(escenario, tmp_path):
     t = _leer("templates", "_dia_despacho.html")
-    funcion = t[t.index("function toggleDespacho"):t.rindex("</script>")]
+    funcion = t[t.index("function vibrar"):t.rindex("</script>")]                  # vibrar() va justo antes de toggleDespacho()
     guion = tmp_path / "toggle.js"
     guion.write_text(f"""
+const vibraciones = [];
+Object.defineProperty(globalThis, 'navigator', {{ value: {{ vibrate: (p) => vibraciones.push(p) }}, configurable: true }});         // (en Node reciente `navigator` ya existe y no se puede asignar)
 {funcion}
 const llamadas = [], toasts = [];
 function refrescarProgreso() {{}}
@@ -161,6 +163,7 @@ const espera = () => new Promise(r => setTimeout(r, 5));
   toggleDespacho(elemento, '1', 'MLA1', '');            // el segundo toque, con el primero todavía guardándose
   salida.durante = {{ posts: llamadas.length, bloqueada: elemento.style.pointerEvents === 'none', despachado: clases.has('despachado') }};
   {escenario}
+  salida.vibraciones = vibraciones;
   console.log(JSON.stringify(salida));
 }})();
 """, encoding="utf-8")
@@ -174,12 +177,14 @@ def test_un_segundo_toque_mientras_se_guarda_no_manda_otro_post_y_al_terminar_se
     r = _correr_toggle("pendiente.res({ ok: true }); await espera(); salida.despues = { bloqueada: elemento.style.pointerEvents === 'none', guardando: elemento.dataset.guardando || null, despachado: clases.has('despachado') };", tmp_path)
     assert r["durante"] == {"posts": 1, "bloqueada": True, "despachado": True}
     assert r["despues"] == {"bloqueada": False, "guardando": None, "despachado": True}
+    assert r["vibraciones"] == [18]                                                    # un solo toque de vibración (el segundo toque no hizo nada)
 
 
 @CON_NODE
 def test_si_el_guardado_falla_se_revierte_se_avisa_y_la_tarjeta_vuelve_a_responder(tmp_path):
     r = _correr_toggle("pendiente.res({ ok: false }); await espera(); salida.despues = { bloqueada: elemento.style.pointerEvents === 'none', guardando: elemento.dataset.guardando || null, despachado: clases.has('despachado'), toasts: toasts.length };", tmp_path)
     assert r["despues"] == {"bloqueada": False, "guardando": None, "despachado": False, "toasts": 1}
+    assert r["vibraciones"] == [18, [40, 60, 40]]                                       # un toque al marcar y dos toques cortos cuando no se pudo guardar
     r = _correr_toggle("pendiente.rej(new Error('red')); await espera(); salida.despues = { bloqueada: elemento.style.pointerEvents === 'none', despachado: clases.has('despachado'), toasts: toasts.length };", tmp_path)
     assert r["despues"] == {"bloqueada": False, "despachado": False, "toasts": 1}
 

@@ -35,6 +35,22 @@
     .ux-seccion > .text-muted { flex: 1 0 100%; padding-left: 20px; }
 }
 
+/* Celular acostado (≈ 667 × 375): sobra ancho y falta alto, y entre la barra de arriba, las pestañas y la de abajo quedaba menos de la mitad de la pantalla para el contenido.
+   Las dos barras se achican (los alturas salen de las variables, así todo lo que cuelga de ellas acompaña), el ícono y el nombre de la barra inferior van en una línea y el título de la página ocupa menos. */
+@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+    :root { --topbar-h: 46px; --bottombar-h: 44px; }
+    .bottombar-item { flex-direction: row; gap: 6px; }
+    .bottombar-item .icon { width: 20px; height: 20px; }
+    .bottombar-item .nav-badge { top: 4px; }
+    .btn-icono-barra, .buscador-central, .cuenta-btn, .btn-sync-todo { min-height: 38px; }
+    .page-container { padding-top: 14px; }
+    .page-header { margin-bottom: 12px; }
+    .page-title { font-size: 1.5em; }
+    .page-title-icono { width: 34px; height: 34px; padding: 7px; }
+    .page-subtitle { font-size: 0.85em; }
+    .chat-fab { width: 40px; height: 40px; bottom: calc(var(--bottombar-h) + 8px); }
+}
+
 /* Lo que se ve solo en el celular o solo en pantalla ancha (p. ej. el botón «Gestionar» es un ícono de engranaje en el celular) */
 .solo-celular { display: none; }
 

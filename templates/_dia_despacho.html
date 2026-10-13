@@ -173,6 +173,9 @@
         mostrarToast(umbral === 0 ? 'Sin costo de entrega para este envío' : 'Listo — el costo de entrega ya está en tu ganancia', 'success');
     }
 
+    // Un toque de vibración al marcar un paquete (si el teléfono lo permite; en iPhone el navegador no la ofrece y no pasa nada)
+    function vibrar(patron) { try { if (navigator.vibrate) navigator.vibrate(patron); } catch (e) { /* sin vibración: no es grave */ } }
+
     function toggleDespacho(elemento, idOrden, idMeli, idVariante) {
         // Mientras se guarda, la tarjeta no recibe más toques (una tablet con el dedo grueso mandaba el POST dos veces y lo dejaba como estaba)
         if (elemento.dataset.guardando === '1') return;
@@ -181,6 +184,7 @@
         const nuevoEstado = !elemento.classList.contains('despachado');
         elemento.classList.toggle('despachado', nuevoEstado);
         elemento.querySelector('.despacho-check').textContent = nuevoEstado ? '✓' : '';
+        vibrar(nuevoEstado ? 18 : 8);
         refrescarProgreso();
 
         fetch('/despacho/marcar', {
@@ -192,6 +196,7 @@
             elemento.classList.toggle('despachado', !nuevoEstado);
             elemento.querySelector('.despacho-check').textContent = !nuevoEstado ? '✓' : '';
             refrescarProgreso();
+            vibrar([40, 60, 40]);                                          // dos toques cortos: no quedó guardado
             mostrarToast('No se pudo guardar — revisá la conexión y probá de nuevo', 'error');
         }).finally(() => {
             elemento.style.pointerEvents = '';

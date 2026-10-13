@@ -172,6 +172,44 @@ def test_la_barra_de_cambios_sin_guardar_se_apoya_sobre_la_barra_inferior_del_ce
     assert ".ux-barra-accion .btn-primary { flex: 1; }" in bloque
 
 
+# ── App instalable, celular acostado y vibración ────────────────────────────────────────────────────────────────────────────
+
+def test_el_manifiesto_de_la_app_usa_la_identidad_vigente_y_sus_iconos_existen():
+    manifiesto = json.loads(_leer("static", "manifest.json"))
+    assert manifiesto["display"] == "standalone" and manifiesto["background_color"] == "#0a0a0c" and manifiesto["theme_color"] == "#0a0a0c"       # el grafito de la app (no el azul de la versión anterior)
+    assert '<meta name="theme-color" content="#0a0a0c">' in _leer("templates", "base.html")
+    propositos = {(i["sizes"], i["purpose"]) for i in manifiesto["icons"]}
+    assert ("192x192", "any") in propositos and ("512x512", "any") in propositos and ("512x512", "maskable") in propositos          # «any maskable» junto está desaconsejado: cada uno por su lado
+    for icono in manifiesto["icons"]:
+        assert os.path.exists(os.path.join(RAIZ, icono["src"].lstrip("/").replace("/", os.sep))), icono["src"]
+
+
+def test_los_iconos_son_de_la_marca_y_no_el_de_la_app_original():
+    """El ícono viejo era una «S» naranja de Santi Mens. Los nuevos son graphite con la marca dorada: el centro del ícono normal es oscuro (el punto dorado ocupa solo el medio) y su esquina está redondeada (transparente)."""
+    from PIL import Image
+    normal = Image.open(os.path.join(RAIZ, "static", "icons", "icon-512.png")).convert("RGBA")
+    assert normal.size == (512, 512) and normal.getpixel((0, 0))[3] == 0                          # esquina redondeada: transparente
+    assert normal.getpixel((256, 40))[:3] == (10, 10, 12)                                         # el fondo es el grafito de la app
+    assert normal.getpixel((256, 256))[0] > 200 and normal.getpixel((256, 256))[2] < 120           # el punto del centro es dorado
+    mascarable = Image.open(os.path.join(RAIZ, "static", "icons", "icon-maskable-512.png")).convert("RGBA")
+    assert mascarable.getpixel((0, 0)) == (10, 10, 12, 255) and mascarable.getpixel((511, 511)) == (10, 10, 12, 255)           # ocupa todo el cuadrado
+    assert mascarable.getpixel((256, 256))[0] > 200 and mascarable.getpixel((256, 20))[:3] == (10, 10, 12)       # y la marca queda lejos del borde (zona segura)
+
+
+def test_en_el_celular_acostado_las_barras_se_achican_y_el_contenido_gana_alto():
+    movil = _leer("static", "css", "movil.css")
+    bloque = movil[movil.index("@media (max-width: 900px) and (max-height: 500px) and (orientation: landscape)"):]
+    bloque = bloque[:bloque.index("\n}") + 2]
+    assert ":root { --topbar-h: 46px; --bottombar-h: 44px; }" in bloque                           # las alturas salen de variables: todo lo que cuelga de ellas acompaña
+    assert ".bottombar-item { flex-direction: row;" in bloque and ".chat-fab { width: 40px; height: 40px;" in bloque
+
+
+def test_marcar_un_paquete_como_despachado_da_un_toque_de_vibracion_si_el_telefono_lo_permite():
+    html = _leer("templates", "_dia_despacho.html")
+    assert "function vibrar(patron) { try { if (navigator.vibrate) navigator.vibrate(patron); }" in html
+    assert "vibrar(nuevoEstado ? 18 : 8);" in html and "vibrar([40, 60, 40]);" in html             # al marcar, y distinto cuando no se pudo guardar
+
+
 # ── Barra superior del celular ──────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_la_barra_superior_no_repite_el_menu_que_ya_abre_el_boton_mas_de_la_barra_inferior():
