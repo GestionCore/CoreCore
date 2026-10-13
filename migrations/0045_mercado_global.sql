@@ -23,6 +23,12 @@ CREATE TABLE IF NOT EXISTS mercado_categorias (
     es_hoja          BOOLEAN,
     max_titulo       SMALLINT,                               -- settings.max_title_length (60 en casi todas, 200 en repuestos)
     max_variaciones  SMALLINT,                               -- settings.max_variations_allowed (100; 250 en ropa)
+    -- Qué atributos definen una variante en esta categoría (GET /categories/{id}/attributes). `atributos_variacion` = los que MeLi marca `allow_variations` (celulares: COLOR; ropa:
+    -- COLOR, SIZE, FABRIC_DESIGN); `atributos_ocultos` = los `hidden` o `read_only` (PACKAGE_*, GTIN, SKU…: datos técnicos que NUNCA son una variante). Con esto el sincronizador de
+    -- cada cuenta decide la variante de una publicación sin leer el título. Lo escribe el relevador (y el sincronizador, la primera vez que ve una categoría).
+    atributos_variacion TEXT[] NOT NULL DEFAULT '{}',
+    atributos_ocultos   TEXT[] NOT NULL DEFAULT '{}',
+    atributos_en        TIMESTAMPTZ,
     publicaciones    INTEGER,                                -- último total conocido; la serie está en mercado_categoria_diaria
     seguida          BOOLEAN NOT NULL DEFAULT false,         -- entra al relevamiento diario cuando alguna cuenta vende ahí o la sigue
     ultimo_interes   DATE,                                   -- la última vez que una cuenta la vendió, la siguió o la miró; a los 90 días sin interés deja de seguirse

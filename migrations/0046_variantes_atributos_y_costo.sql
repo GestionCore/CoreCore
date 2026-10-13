@@ -33,6 +33,12 @@ ALTER TABLE productos_variantes ADD CONSTRAINT productos_variantes_moneda_costo_
 ALTER TABLE productos_variantes DROP CONSTRAINT IF EXISTS productos_variantes_precio_costo_no_negativo;
 ALTER TABLE productos_variantes ADD CONSTRAINT productos_variantes_precio_costo_no_negativo CHECK (precio_costo IS NULL OR precio_costo >= 0);
 
+-- ── A cuánto paga el dólar cada cuenta ───────────────────────────────────────────────────────────────────────────────────────────────────
+-- dolar_manual: la cotización que la persona indica («yo repongo a $1.480»). NULL = usa el dólar MEP automático (`cotizaciones_dolar`, casa 'bolsa'). Se cambia desde Mi cuenta.
+ALTER TABLE cuentas_meli ADD COLUMN IF NOT EXISTS dolar_manual NUMERIC(12,2);
+ALTER TABLE cuentas_meli DROP CONSTRAINT IF EXISTS cuentas_meli_dolar_manual_positivo;
+ALTER TABLE cuentas_meli ADD CONSTRAINT cuentas_meli_dolar_manual_positivo CHECK (dolar_manual IS NULL OR dolar_manual > 0);
+
 -- ── Qué es cada publicación, sin mirar el título ─────────────────────────────────────────────────────────────────────────────────────────
 -- domain_id: 'MLA-CELLPHONES', 'MLA-JACKETS_AND_COATS'… (viene en el ítem). atributos_clave: marca, modelo y GTIN ({"BRAND": "Apple", "MODEL": "iPhone 15", "GTIN": "…"}).
 ALTER TABLE productos_padre ADD COLUMN IF NOT EXISTS domain_id TEXT;

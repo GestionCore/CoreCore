@@ -143,6 +143,13 @@ def test_las_restricciones_de_las_tablas_nuevas_rechazan_lo_invalido():
                 rechazos["moneda_variante"] = _rechaza(cur, "UPDATE productos_variantes SET moneda_costo = 'EUR' WHERE id_variante = 'PRUEBA_0046_B'")
                 rechazos["costo_negativo"] = _rechaza(cur, "UPDATE productos_variantes SET precio_costo = -1 WHERE id_variante = 'PRUEBA_0046_B'")
                 aceptados["costo_usd"] = not _rechaza(cur, "UPDATE productos_variantes SET precio_costo = 150, moneda_costo = 'USD' WHERE id_variante = 'PRUEBA_0046_B'")
+            if cuenta:
+                rechazos["dolar_manual_cero"] = _rechaza(cur, "UPDATE cuentas_meli SET dolar_manual = 0 WHERE id = %s", (cuenta,))
+                rechazos["dolar_manual_negativo"] = _rechaza(cur, "UPDATE cuentas_meli SET dolar_manual = -5 WHERE id = %s", (cuenta,))
+                aceptados["dolar_manual"] = not _rechaza(cur, "UPDATE cuentas_meli SET dolar_manual = 1480.50 WHERE id = %s", (cuenta,))
+                aceptados["dolar_manual_vacio"] = not _rechaza(cur, "UPDATE cuentas_meli SET dolar_manual = NULL WHERE id = %s", (cuenta,))
+            aceptados["atributos_de_categoria"] = not _rechaza(
+                cur, "INSERT INTO mercado_categorias (category_id, nombre, atributos_variacion, atributos_ocultos) VALUES ('MLA_PRUEBA', 'x', ARRAY['COLOR'], ARRAY['GTIN', 'SELLER_SKU'])")
             rechazos["palabra_con_mayusculas"] = _rechaza(cur, "INSERT INTO mercado_keywords (texto) VALUES ('iPhone 15')")
             rechazos["palabra_vacia"] = _rechaza(cur, "INSERT INTO mercado_keywords (texto) VALUES ('')")
             aceptados["palabra"] = not _rechaza(cur, "INSERT INTO mercado_keywords (texto) VALUES ('iphone 15')")
