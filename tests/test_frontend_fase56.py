@@ -97,9 +97,10 @@ def test_los_filtros_y_las_busquedas_son_secundarios():
         assert f'class="btn btn-secondary">{texto}</button>' in _leer("templates", plantilla), plantilla
 
 
-def test_las_acciones_opcionales_de_una_lista_no_son_primarias():
-    assert "opcional: 'btn-secondary'" in _leer("static", "js", "ux.js")
-    assert "else 'btn-secondary'" in _leer("templates", "_dia_pendientes.html") or "'btn-secondary')" in _leer("templates", "_dia_pendientes.html")
+def test_las_acciones_de_una_lista_no_son_primarias_salvo_la_primera():
+    # (el detalle y la prueba con node están en tests/test_botones.py)
+    assert "principal ? 'btn-primary' : 'btn-secondary'" in _leer("static", "js", "ux.js")
+    assert "'btn-primary' if loop.first else 'btn-secondary'" in _leer("templates", "_dia_pendientes.html")
 
 
 def test_el_dashboard_manda_a_revisar_ventas_cuando_hay_perdida():

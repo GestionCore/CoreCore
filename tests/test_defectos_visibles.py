@@ -114,9 +114,11 @@ def test_costos_sin_gastos_no_muestra_tres_tarjetas_en_cero_y_enlaza_a_donde_car
     assert 'id="aviso-sin-gastos"' in costos and 'href="#gastos-negocio"' in costos and 'id="gastos-negocio"' in costos
 
 
-def test_dia_a_dia_no_explica_lo_obvio_en_tres_lineas():
+def test_dia_a_dia_muestra_el_resumen_de_hoy_con_numeros_y_no_una_frase_que_explica_lo_obvio():
     dia = _leer("templates", "dia.html")
-    assert "todo en una sola pantalla" not in dia and "Despacho, preguntas, pendientes y reputación de hoy." in dia
+    assert "todo en una sola pantalla" not in dia and "Despacho, preguntas, pendientes y reputación de hoy." not in dia          # la frase se fue
+    assert 'class="dia-resumen"' in dia and 'href="#despacho"' in dia and 'href="#preguntas"' in dia and 'href="#pendientes"' in dia    # y en su lugar, cada número lleva a su parte
+    assert "por despachar" in dia and "pendiente{{ '' if misiones|length == 1 else 's' }}" in dia
 
 
 def test_el_nombre_de_la_cuenta_no_se_muestra_en_mayusculas_si_no_hay_nombre_de_negocio():

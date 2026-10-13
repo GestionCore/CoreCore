@@ -32,7 +32,7 @@
             <div class="ux-item-accion-titulo">{{ e.titulo }}</div>
             <div class="ux-item-accion-detalle"><b>{{ e.visitas }} visitas</b> y {{ 'ninguna venta' if e.vendidas == 0 else ('solo 1 venta' if e.vendidas == 1 else 'solo ' ~ e.vendidas ~ ' ventas') }} ({{ e.tasa_conversion|pct(2) }}, tu promedio es {{ conversion_global|pct(2) }}) — la ven pero no compran. Suele ser <b>fotos, precio o confianza</b>.</div>
         </div>
-        <button type="button" class="btn btn-urgente" data-drawer="{{ e.id_meli }}">Revisar ficha</button>
+        <button type="button" class="btn {{ 'btn-primary' if loop.first else 'btn-secondary' }}" data-drawer="{{ e.id_meli }}">Revisar ficha</button>
     </div>
     {% endfor %}
     {% for e in (poca_visibilidad|sort(attribute='vendidas', reverse=True))[:3] %}
@@ -42,7 +42,7 @@
             <div class="ux-item-accion-titulo">{{ e.titulo }}</div>
             <div class="ux-item-accion-detalle">Vende bien lo poco que se ve ({{ e.vendidas }} ventas con {{ e.visitas }} visitas): <b>le faltan visitas</b>. Ayuda mejorar el título para búsquedas o sumar publicidad.</div>
         </div>
-        <button type="button" class="btn btn-alerta" data-drawer="{{ e.id_meli }}">Mejorar</button>
+        <button type="button" class="btn {{ 'btn-primary' if loop.first and not a_revisar else 'btn-secondary' }}" data-drawer="{{ e.id_meli }}">Mejorar</button>
     </div>
     {% endfor %}
 </div>

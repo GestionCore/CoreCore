@@ -61,16 +61,16 @@ const UX = (() => {
     // Ícono por categoría de misión/acción (las categorías vienen de logros.py)
     const ICONO_CATEGORIA = { stock: 'box', reclamos: 'alert', atencion: 'chat', seo: 'edit', financiero: 'coin', tendencias: 'trend' };
     const TONO_PRIORIDAD = { urgente: 'danger', importante: 'warn', opcional: 'accion' };
-    const CLASE_BOTON_PRIORIDAD = { urgente: 'btn-urgente', importante: 'btn-alerta', opcional: 'btn-secondary' };
 
-    const accion = ({ prioridad = 'opcional', categoria = '', titulo = '', detalle = '', link = null, linkTexto = 'Ver' }) => `
+    // `principal`: solo la acción de más valor (la primera de la cola) lleva el botón violeta; las demás, secundario. La urgencia se ve en el color de la tarjeta, no en el del botón.
+    const accion = ({ prioridad = 'opcional', categoria = '', titulo = '', detalle = '', link = null, linkTexto = 'Ver', principal = false }) => `
         <div class="ux-item-accion ux-${TONO_PRIORIDAD[prioridad] || 'accion'}">
             <div class="ux-item-accion-icono">${icono(ICONO_CATEGORIA[categoria] || 'bolt')}</div>
             <div class="ux-item-accion-cuerpo">
                 <div class="ux-item-accion-titulo">${esc(titulo)}</div>
                 ${detalle ? `<div class="ux-item-accion-detalle">${esc(detalle)}</div>` : ''}
             </div>
-            ${link ? `<a class="btn ${CLASE_BOTON_PRIORIDAD[prioridad] || 'btn-primary'}" href="${esc(link)}">${esc(linkTexto || 'Ver')}</a>` : ''}
+            ${link ? `<a class="btn ${principal ? 'btn-primary' : 'btn-secondary'}" href="${esc(link)}">${esc(linkTexto || 'Ver')}</a>` : ''}
         </div>`;
 
     return { esc, plata, plataEje, pct, num, icono, delta, banner, kpi, accion };

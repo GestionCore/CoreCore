@@ -99,6 +99,22 @@ a.ux-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated)
 .ux-kpi-sub { font-size: 0.8em; color: var(--text-secondary); min-height: 1.2em; }
 .ux-kpi-sub b, .ux-kpi-sub strong { color: var(--text-primary); }
 
+/* Sello del hero de Ganancia Real: lo que más confianza da (el cálculo coincide con lo que Mercado Libre depositó) va arriba, junto al número */
+.ux-hero-sello { display: inline-flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 5px 14px 5px 10px; border-radius: var(--radius-pill); text-decoration: none; font-size: 0.85em;
+    color: var(--text-primary); background: color-mix(in srgb, var(--ux-c) 16%, transparent); border: 1px solid color-mix(in srgb, var(--ux-c) 40%, transparent); }
+.ux-hero-sello .icon { width: 16px; height: 16px; color: var(--ux-c); flex-shrink: 0; }
+.ux-hero-sello b { color: var(--ux-c); }
+a.ux-hero-sello:hover { background: color-mix(in srgb, var(--ux-c) 24%, transparent); }
+
+/* «Día a día»: el resumen de hoy (cada número lleva a su parte) y los títulos de las partes, un escalón por debajo del de la página */
+.dia-resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.dia-resumen-item { display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px 6px 10px; border-radius: var(--radius-pill); text-decoration: none; font-size: 0.88em; font-weight: 600; color: var(--text-primary);
+    background: color-mix(in srgb, var(--ux-c) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ux-c) 36%, transparent); }
+.dia-resumen-item .icon { width: 15px; height: 15px; color: var(--ux-c); flex-shrink: 0; }
+.dia-resumen-item b { color: var(--ux-c); font-size: 1.05em; }
+a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, transparent); }
+.dia-seccion h2.page-title { font-size: 1.5em; }
+
 /* ---------- Lo que tenés que hacer: cola de acciones ---------- */
 .ux-acciones-titulo { display: flex; align-items: center; gap: 10px; font-size: 1.12em; font-weight: 800; margin: 4px 0 12px; }
 .ux-acciones-titulo .ux-contador { background: var(--accent-primary); color: #fff; border-radius: var(--radius-pill); font-size: 0.8em; padding: 2px 10px; font-weight: 800; }
@@ -117,12 +133,9 @@ a.ux-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated)
 .ux-item-accion.ux-danger { animation: uxLatido 2.6s ease-in-out infinite; }
 @keyframes uxLatido { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 16%, transparent); } }
 
-/* ---------- Botones: tamaño de acción principal + variantes de estado ---------- */
+/* ---------- Botones: tamaño de acción principal. Colores: violeta = principal (uno por pantalla o lista), gris = secundario, rojo = destructivo. Naranja y verde son ESTADOS, no botones. ---------- */
 .btn-lg { padding: 13px 26px; font-size: 1em; font-weight: 800; border-radius: var(--radius-md); }
 
-.btn-alerta { background: var(--semantic-warning); color: #1a1000; box-shadow: 0 2px 14px -2px color-mix(in srgb, var(--semantic-warning) 50%, transparent); }
-.btn-urgente { background: var(--danger); color: #fff; box-shadow: 0 2px 14px -2px color-mix(in srgb, var(--danger) 55%, transparent); }
-.btn-alerta:hover, .btn-urgente:hover { transform: translateY(-1px); }
 
 /* ---------- Título de sección con punto de color ---------- */
 .ux-seccion { display: flex; align-items: center; gap: 10px; font-size: 1.08em; font-weight: 800; margin: 30px 0 14px; }
@@ -673,7 +686,6 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
     #kpis-dia { grid-template-columns: 1fr 1fr !important; gap: 10px; }
     #kpis-dia .ux-kpi { padding: 14px 14px 12px; }
     #kpis-dia .ux-kpi-valor { font-size: 1.45em; }
-    #kpis-dia .ux-kpi:first-child { grid-column: 1 / -1; }
 }
 
 /* Tabla de márgenes de Ganancia Real: detalle por publicación de cada modelo */

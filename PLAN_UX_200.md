@@ -31,7 +31,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 4. [A·S] **HECHO (2026-10-12, el dueño eligió «más chico y se esconde al deslizar»; en escritorio no cambia) · El botón flotante de chat tapa contenido en celular** (pisa el «Hacerlo →» del checklist y el borde derecho de las tarjetas) → que viva en la barra inferior o dentro de «Más», y si queda flotante, que se pueda minimizar y que el contenido tenga un margen inferior que lo respete.
 5. [M·S] **HECHO (2026-10-12) · Publicidad: «Contra el período anterior (—):»** era un bug: pasaba las fechas en dd/mm a una función que espera ISO; ahora dice «(15 – 28 sep)».
 6. [M·S] **HECHO en parte (2026-10-12) · El nombre de la cuenta sale en mayúsculas** («DIEGOARIELSANTIAGO», «NOENOEINDUMENTARIA») porque es el nickname de Mercado Libre; y en Planes el menú dice «Mi Cuenta» mientras en el resto dice el nombre → un nombre del negocio editable (`PM#102`) y el mismo rótulo en todas las pantallas.
-7. [M·S] **Dashboard repite lo mismo tres veces:** «Facturado hoy» está en el hero y en la fila de KPIs, y «Resultado de los últimos 14 días» vuelve a explicar «facturado − costos = margen» → una sola vez cada cosa.
+7. [M·S] **HECHO (2026-10-13: «Facturado hoy» solo en el hero; «Ventas hoy» suma el modelo que más vendió y la comparación con ayer; los 14 días dicen «Te queda» y no vuelven a explicar la cuenta) · Dashboard repite lo mismo tres veces:** «Facturado hoy» está en el hero y en la fila de KPIs, y «Resultado de los últimos 14 días» vuelve a explicar «facturado − costos = margen» → una sola vez cada cosa.
 8. [M·S] **HECHO (2026-10-12) · Costos muestra tres tarjetas en $0** (gastos fijos, variables, del período) cuando no hay gastos → un solo estado vacío con el botón «Cargar un gasto» (alquiler, sueldos, packaging).
 9. [M·S] **HECHO (2026-10-12) · Dos nombres para la misma pantalla:** pestaña «Calculadora MeLi», título «Calculadora de comisiones» → uno solo, sin la sigla.
 10. [M·S] **HECHO en parte (2026-10-12: se quitó la frase; falta bajar el peso del segundo título) · Día a día tiene dos títulos seguidos con el mismo peso** («Día a día» y «Despacho»), más una frase de tres líneas que explica lo obvio → el segundo pasa a título de sección (`h2`), la frase se va.
@@ -64,7 +64,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 ## 3. Dashboard / Inicio (12)
 
 33. [A·S] **El hero primero, para todos;** el checklist «Completá tu perfil» se pliega solo cuando lo que falta es opcional, y tiene «Más tarde» que se recuerda por persona.
-34. [A·S] **«Lo que tenés que hacer hoy» pinta botones de tres colores** (naranja, gris, violeta) sin criterio → un solo botón principal (el de más valor); el resto secundarios. El color de urgencia va en el borde de la tarjeta, no en el botón.
+34. [A·S] **HECHO (2026-10-13: solo la primera acción de la cola lleva el botón violeta; las demás, secundario; la urgencia está en la tarjeta) · «Lo que tenés que hacer hoy» pinta botones de tres colores** (naranja, gris, violeta) sin criterio → un solo botón principal (el de más valor); el resto secundarios. El color de urgencia va en el borde de la tarjeta, no en el botón.
 35. [A·M] **Cada pendiente con su plata en juego:** «68,7 % sin costo» → «tu ganancia puede estar inflada en ~$X»; ordenar por esa cifra.
 36. [M·M] **Reordenar los paneles** (arrastrar) y guardar el orden por cuenta; hoy «Personalizar» solo muestra u oculta.
 37. [M·M] **El hero cuenta solo el total del día** → una minilínea por hora comparando hoy contra ayer (y contra el promedio), para ver si el ritmo es bueno.
@@ -78,7 +78,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 ## 4. Día a día: Despacho, Preguntas, Pendientes, Reputación (10)
 
-45. [A·S] **Una barra pegada arriba con el resumen** («1 por despachar · 2 preguntas · 3 pendientes»), tocable para saltar a cada parte, en lugar del párrafo explicativo.
+45. [A·S] **HECHO (2026-10-13: en vez de la frase, «1 por despachar · 1 pregunta sin responder · 4 pendientes», cada uno lleva a su parte; no es una barra fija porque las pestañas de la sección ya lo son) · Una barra pegada arriba con el resumen** («1 por despachar · 2 preguntas · 3 pendientes»), tocable para saltar a cada parte, en lugar del párrafo explicativo.
 46. [A·M] **Marcar un paquete como listo:** hoy es un círculo naranja chico a la derecha → interruptor grande a la izquierda de la tarjeta, o deslizar para completar, con «Deshacer».
 47. [M·S] **«Corte Flex: No configurado (Ajustar)»** es un link de 12 px dentro de una frase → un aviso accionable la primera vez («Contanos a qué hora cortás Flex») y, ya cargado, una cuenta regresiva «faltan 3 h 20 min».
 48. [M·S] **Los dos botones del bloque de despacho** («Descargar 1 etiqueta en PDF» y «Traer ventas nuevas») compiten → el primero es el principal con el verbo «Imprimir etiquetas»; traer ventas es un ícono con «Actualizado hace X».
@@ -91,7 +91,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 ## 5. Stock y Stock masivo (10)
 
-55. [A·S] **«Pausadas con stock 22»**: la lista larga con casillas necesita una **barra de acción fija** que aparezca al marcar («Reactivar 3»), y que «Marcar todas» diga cuántas son.
+55. [A·S] **HECHO (2026-10-13: al marcar aparece una barra fija «N seleccionadas · Reactivar N publicaciones» y «Marcar las 21» dice cuántas son) · «Pausadas con stock 22»**: la lista larga con casillas necesita una **barra de acción fija** que aparezca al marcar («Reactivar 3»), y que «Marcar todas» diga cuántas son.
 56. [M·S] **Cinco KPI arriba, de los cuales tres casi nunca cambian** → Capital, Sin stock / por agotarse y FULL no disponible; el resto, plegado.
 57. [M·M] **Vista por modelo** con los talles como una mini-curva (barras de stock por talle) en vez de una tabla plana: se ve de un vistazo qué talle falta.
 58. [M·M] **Fecha estimada de quiebre** («se agota el 24 oct») junto a «Alcanza para N días», con color: 0 rojo, 1-2 naranja, 3-5 amarillo, más de 5 neutro, y una leyenda.
@@ -116,7 +116,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 74. [M·S] **Monotributo:** la condición fiscal ocupa media pantalla aun después de declararla → ya declarada, el medidor primero (cuánto del techo usaste, cuánto falta en $ y en meses) y «cambiar condición» como un link chico.
 75. [M·S] **Ventas fuera de MeLi:** carga de mostrador en 3 toques (producto, cantidad, precio) con teclado numérico.
 76. [B·S] **«Cuándo vendés»:** mapa de calor con leyenda y la mejor franja destacada en una frase.
-77. [A·S] **El sello de conciliación** («coincide al 99,7 % con lo que Mercado Libre depositó») sube al hero: es lo que más confianza da.
+77. [A·S] **HECHO (2026-10-13: «99,5 % de coincidencia con lo que Mercado Libre te depositó» sube al hero y lleva a la explicación) · El sello de conciliación** («coincide al 99,7 % con lo que Mercado Libre depositó») sube al hero: es lo que más confianza da.
 78. [B·M] **Comparar con el mismo período del año anterior** (`PM#209`) y un resumen en lenguaje natural («este mes ganaste 12 % más que el mes pasado, sobre todo por…»).
 
 ## 7. Precios y costos (12)
@@ -136,7 +136,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 ## 8. Publicaciones (8)
 
-91. [A·S] **Calidad:** cinco filas con el mismo botón naranja «Ver cuáles» → un solo estilo, ordenadas por visitas que pierden, y el puntaje con meta («91 / 100: te faltan 9»).
+91. [A·S] **HECHO (2026-10-13: las cinco filas ya no llevan el mismo botón naranja: la primera es violeta y las demás secundarias; falta la meta del puntaje «te faltan 9») · Calidad:** cinco filas con el mismo botón naranja «Ver cuáles» → un solo estilo, ordenadas por visitas que pierden, y el puntaje con meta («91 / 100: te faltan 9»).
 92. [A·L] **Ficha única de publicación** con pestañas (Resumen, Ventas, Precio, Stock, Calidad, Opiniones, Preguntas, Historial) a la que lleve cualquier tabla (`PM#219`).
 93. [M·M] **Opiniones:** resumen de lo que se repite en las quejas (tela, talle, color) y filtro por atributo (`PM#199`).
 94. [M·S] **Embudo:** cada diagnóstico con una frase y su impacto estimado («~$X/mes si convierte como el promedio»).
@@ -147,7 +147,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 ## 9. Crecimiento: Promociones, Publicidad, Tendencias, Competencia (10)
 
-99. [A·S] **Promociones: ocho botones «Promocionar» idénticos** (y el mismo modelo repetido por talle) → agrupar por modelo (`PM#188`) y un botón principal «Armar promoción para las 8», los demás secundarios.
+99. [A·S] **PARCIAL (2026-10-13: los ocho «Promocionar» ya no son idénticos y de color; falta agrupar por modelo y «Armar promoción para las 8») · Promociones: ocho botones «Promocionar» idénticos** (y el mismo modelo repetido por talle) → agrupar por modelo (`PM#188`) y un botón principal «Armar promoción para las 8», los demás secundarios.
 100. [M·S] **Mostrar el margen que queda con el descuento** antes de promocionar (`PM#191`).
 101. [M·S] **Publicidad:** el selector de período con «Ver período» violeta (un segundo botón principal) → que se aplique al elegir, sin botón.
 102. [M·M] **Publicidad:** mini-tabla «los 5 que más gastan sin vender» con «Pausar» (con confirmación) y recomendación por campaña con impacto estimado (`PM#88`).
@@ -173,7 +173,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 ## 11. Sistema visual (10)
 
-119. [A·S] **Reglas de botones, en el sistema y en una prueba:** primario violeta, secundario gris, destructivo rojo; naranja y verde son ESTADOS, no botones.
+119. [A·S] **HECHO (2026-10-13: la regla está en el sistema —se borraron btn-urgente y btn-alerta— y en una prueba que falla si reaparecen) · Reglas de botones, en el sistema y en una prueba:** primario violeta, secundario gris, destructivo rojo; naranja y verde son ESTADOS, no botones.
 120. [A·L] ★ **Estilos escritos a mano en el HTML** (749 en Costos, 500 en Stock, 231 en Ganancia Real) → clases del sistema: da consistencia, achica las páginas y es el paso que falta para la política de seguridad estricta (`PM#110`).
 121. [M·S] **Una escala de letra** (12 / 14 / 16 / 20 / 28 / 40) en variables y usarla en todo; hoy se pisan tamaños sueltos en cada pantalla.
 122. [M·S] **Escala de espacio de 4 px** (4 / 8 / 12 / 16 / 24 / 32) y radios y sombras en tres niveles.
@@ -235,7 +235,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 ## 17. Microcopy y contenido (8)
 
-163. [A·S] **Un solo nombre para la ganancia:** «Te queda», «Ganancia neta real», «Margen neto», «Ganancia bruta real» y «Resultado neto» conviven → un glosario corto y usarlo en todas partes.
+163. [A·S] **PARCIAL (2026-10-13: glosario en CLAUDE.md y «Te queda» unificado en el Dashboard; las demás pantallas dicen «Ganancia neta real» y no se tocaron donde el número es otro) · Un solo nombre para la ganancia:** «Te queda», «Ganancia neta real», «Margen neto», «Ganancia bruta real» y «Resultado neto» conviven → un glosario corto y usarlo en todas partes.
 164. [A·M] **Jerga explicada la primera vez:** ROAS, ACOS, TACOS, FULL, Flex, «cargos de MeLi», «percepciones» → un «?» con una línea de definición (`PM#124`) y, donde se pueda, la palabra común.
 165. [M·S] **Botones con verbo y objeto:** «Ver cuáles» → «Ver las 23 publicaciones», «Hacerlo →» → «Cargar el costo».
 166. [M·S] **Sacar los subtítulos que repiten el título** («Qué tenés, dónde está y qué hay que reponer — se actualiza solo cada 4 minutos») o convertirlos en una ayuda corta.
@@ -316,6 +316,9 @@ Reporte fiscal (una tarjeta por mes) e Historial de precios (una por cambio) com
 Falta de la ola 2: 20, 24, 25, 30-32.
 
 **Ola 2, quinta tanda (2026-10-13):** ícono de la app con la marca (`generar_iconos.py` lo regenera), celular acostado, vibración al despachar. **Quedan 2 de la ola 2:** 20 (acción principal al pie de cada tarjeta: no hay un defecto medido) y 25 (gestos de deslizar entre pestañas: hay que probarlos en un teléfono real).
+
+**Ola 1, lo que faltaba (2026-10-13):** jerarquía de botones (violeta = principal, gris = secundario, rojo = destructivo; naranja y verde son estados, no botones), Dashboard sin repetir, resumen de Día a día, barra «Reactivar N» y el sello de conciliación en el hero de Ganancia Real.
+Quedan de la ola 1: 6 (nombre del negocio editable) y 10 en parte (hecho el escalón de título). De las otras olas: 33, 42, 46, 79, 80, 86, 141, 194 (ola 2) y toda la ola 3 y 4.
 
 ## Dos decisiones que necesito de vos
 

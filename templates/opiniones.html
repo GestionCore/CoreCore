@@ -43,7 +43,7 @@
             <div class="ux-item-accion-titulo">{{ p.titulo }}</div>
             <div class="ux-item-accion-detalle"><b>{{ p.promedio|string|replace('.', ',') }} ★</b> sobre {{ p.total }} opiniones · <b>{{ p.pct_criticas|string|replace('.', ',') }}%</b> de 1 y 2 estrellas{% if p.unidades %} · {{ p.unidades }} ventas en {{ 90 }} días{% endif %}</div>
         </div>
-        <a class="btn btn-alerta" href="#producto-{{ loop.index0 }}">Ver opiniones</a>
+        <a class="btn {{ 'btn-primary' if loop.first else 'btn-secondary' }}" href="#producto-{{ loop.index0 }}">Ver opiniones</a>
     </div>
     {% endfor %}
 </div>

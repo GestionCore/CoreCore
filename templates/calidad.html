@@ -36,7 +36,7 @@
             <div class="ux-item-accion-titulo">{{ a.texto }}</div>
             <div class="ux-item-accion-detalle">Pendiente en <b>{{ a.cantidad }} {{ 'publicación' if a.cantidad == 1 else 'publicaciones' }}</b></div>
         </div>
-        <a class="btn btn-alerta" href="#mejoras">Ver cuáles</a>
+        <a class="btn {{ 'btn-primary' if loop.first else 'btn-secondary' }}" href="#mejoras">Ver cuáles</a>
     </div>
     {% endfor %}
 </div>

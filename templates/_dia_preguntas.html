@@ -155,9 +155,19 @@ function renderEstado() {
     });
 }
 
+// El resumen de arriba de «Día a día» cuenta las preguntas sin responder (solo cuando se está mirando esa lista)
+function resumenDelDia() {
+    const texto = document.getElementById('resumen-preguntas-texto'), chip = document.getElementById('resumen-preguntas');
+    if (!texto || _estado !== 'pendiente') return;
+    const n = _preguntas.length;
+    texto.innerHTML = n ? `<b>${n}</b> ${n === 1 ? 'pregunta sin responder' : 'preguntas sin responder'}` : 'Preguntas al día';
+    chip.className = 'dia-resumen-item ux-' + (n ? 'warn' : 'ok');
+}
+
 function renderLista() {
     const cont = $('lista-preguntas');
     $('conteo-label').textContent = `${_preguntas.length} ${_preguntas.length === 1 ? 'pregunta' : 'preguntas'}`;
+    resumenDelDia();
     renderEstado();
     if (!_preguntas.length) {
         cont.innerHTML = _estado === 'pendiente' ? '' : `<div class="ux-vacio"><div class="ux-vacio-icono">${UX.icono('chat')}</div><div class="ux-vacio-titulo">No hay preguntas en esta vista</div></div>`;

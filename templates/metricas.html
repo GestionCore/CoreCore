@@ -57,6 +57,12 @@
         De <b>{{ rs.facturado|plata }}</b> facturados, <b>te quedaron {{ rs.ganancia_neta|plata }}</b> — el <b>{{ margen_pct|pct }}</b> de lo que vendiste.
         {% endif %}
     </div>
+    {% set cc_hero = rs.conciliacion %}
+    {% if cc_hero and cc_hero.ventas and cc_hero.coincide_pct is not none %}
+    <a class="ux-hero-sello ux-{{ 'ok' if cc_hero.coincide_pct >= 98 else 'warn' }}" href="#conciliacion" title="Comparamos nuestro cálculo con lo que Mercado Libre te depositó de verdad">
+        <svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg><span><b>{{ cc_hero.coincide_pct|string|replace('.', ',') }}%</b> de coincidencia con lo que Mercado Libre te depositó</span>
+    </a>
+    {% endif %}
 
     <!-- A dónde se fue cada peso: barra 100% + leyenda con montos -->
     {% set base = [rs.facturado, total_costos]|max %}
@@ -92,9 +98,9 @@
 
 <!-- ── 2. QUÉ REVISAR: avisos que cambian cómo leer el número ──────────────── -->
 {% if falta_costo %}
-{{ banner("warn", "alert", "<b>Falta cargar el costo de fabricación</b> — la ganancia real es menor a la que ves", "Sin ese dato, cada venta parece tener el 100% de margen sobre el producto.", "Cargar costos", "/costos", "btn-alerta") }}
+{{ banner("warn", "alert", "<b>Falta cargar el costo de fabricación</b> — la ganancia real es menor a la que ves", "Sin ese dato, cada venta parece tener el 100% de margen sobre el producto.", "Cargar costos", "/costos", "btn-secondary") }}
 {% elif cobertura_costos and cobertura_costos.avisar %}
-{{ banner("warn", "alert", "<b>Al " ~ (cobertura_costos.pct_sin_costo|string|replace('.0', '')|replace('.', ',')) ~ "% de lo que facturaste</b> le falta el costo de fabricación — la ganancia real es menor a la que ves", (cobertura_costos.publicaciones|string) ~ " publicación" ~ ("es" if cobertura_costos.publicaciones != 1) ~ " sin costo cargado. Esas ventas cuentan como si fabricarlas fuera gratis.", "Cargar costos", "/costos", "btn-alerta") }}
+{{ banner("warn", "alert", "<b>Al " ~ (cobertura_costos.pct_sin_costo|string|replace('.0', '')|replace('.', ',')) ~ "% de lo que facturaste</b> le falta el costo de fabricación — la ganancia real es menor a la que ves", (cobertura_costos.publicaciones|string) ~ " publicación" ~ ("es" if cobertura_costos.publicaciones != 1) ~ " sin costo cargado. Esas ventas cuentan como si fabricarlas fuera gratis.", "Cargar costos", "/costos", "btn-secondary") }}
 {% endif %}
 {% if not ads_disponible %}
 {{ banner("info", "percent", "<b>No vemos gasto de publicidad</b> en este período", "Revisá que hayas dado acceso a tus campañas de Ads, o que tengas campañas activas.") }}
@@ -105,12 +111,12 @@
 {% set hay_retenido = posventa.dinero_retenido not in ('0,00', '0', 0) %}
 {% set por_gestionar = posventa.devoluciones + posventa.reclamos_sin_impacto %}
 {% if posventa.reclamos > 0 %}
-{{ banner("danger", "alert", ("<b>" ~ posventa.reclamos|plural("reclamo") ~ "</b> en este período") ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Revisá los que siguen abiertos: un reclamo sin resolver puede sumar a tu reputación negativa.", "Ver detalle", "#seccion-reclamos", "btn-urgente") }}
+{{ banner("danger", "alert", ("<b>" ~ posventa.reclamos|plural("reclamo") ~ "</b> en este período") ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Revisá los que siguen abiertos: un reclamo sin resolver puede sumar a tu reputación negativa.", "Ver detalle", "#seccion-reclamos", "btn-secondary") }}
 {% elif por_gestionar > 0 %}
 {{ banner("info", "refresh", ("<b>" ~ (("1 devolución o reclamo" if por_gestionar == 1 else por_gestionar ~ " devoluciones o reclamos")) ~ " por gestionar</b> en este período") ~ ((" — <b>$" ~ posventa.dinero_retenido ~ " retenidos</b>") if hay_retenido else ""), "Mercado Libre indica que no afectan tu reputación: conviene gestionarlos a tiempo para que no se compliquen.", "Ver detalle", "#seccion-reclamos", "btn-secondary") }}
 {% endif %}
 {% if flex_resumen and flex_resumen.sin_zona %}
-{{ banner("warn", "truck", "<b>" ~ flex_resumen.sin_zona ~ " envío" ~ ("s" if flex_resumen.sin_zona != 1) ~ " Flex sin costo de entrega</b> en este período — todavía no está en tu ganancia", "Cargá lo que te cobra tu logística por zona para que la ganancia sea la real.", "Cargar costo de entrega", "/costos#entrega-flex", "btn-alerta") }}
+{{ banner("warn", "truck", "<b>" ~ flex_resumen.sin_zona ~ " envío" ~ ("s" if flex_resumen.sin_zona != 1) ~ " Flex sin costo de entrega</b> en este período — todavía no está en tu ganancia", "Cargá lo que te cobra tu logística por zona para que la ganancia sea la real.", "Cargar costo de entrega", "/costos#entrega-flex", "btn-secondary") }}
 {% endif %}
 {% if punto_equilibrio %}
 {% if punto_equilibrio.superado %}
@@ -133,7 +139,7 @@
 <!-- ── 3b. LO QUE MERCADO LIBRE DEPOSITÓ DE VERDAD: la prueba de que los números cierran ─────── -->
 {% set cc = rs.conciliacion %}
 {% if cc and cc.ventas %}
-<div class="ux-seccion ux-ok">Lo que Mercado Libre te depositó</div>
+<div class="ux-seccion ux-ok" id="conciliacion">Lo que Mercado Libre te depositó</div>
 <div class="panel ux-conc">
     <div class="ux-conc-fila">
         <div>
@@ -287,7 +293,7 @@
         {% else %}
         <div class="text-muted" style="font-size:0.9em; line-height:1.5;">Hiciste <b>{{ flex_resumen.ordenes }} envío{{ 's' if flex_resumen.ordenes != 1 }} Flex</b> en el período, pero todavía no cargaste lo que te cobra tu logística: <b>su costo de entrega no está en tu ganancia</b>.</div>
         {% endif %}
-        <div style="margin-top:12px;"><a class="btn {{ 'btn-alerta' if flex_resumen.sin_zona else 'btn-secondary' }}" href="/costos#entrega-flex">{{ 'Cargar costo de entrega' if flex_resumen.sin_zona else 'Ajustar mis umbrales' }}</a></div>
+        <div style="margin-top:12px;"><a class="btn btn-secondary" href="/costos#entrega-flex">{{ 'Cargar costo de entrega' if flex_resumen.sin_zona else 'Ajustar mis umbrales' }}</a></div>
     </div>
     {% endif %}
 </div>

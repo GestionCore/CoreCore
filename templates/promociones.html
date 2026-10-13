@@ -32,7 +32,7 @@
             <div class="ux-item-accion-titulo">{{ s.titulo }}</div>
             <div class="ux-item-accion-detalle"><b>{{ s.capital_inmovilizado|plata }}</b> inmovilizados · {{ s.stock_total }} u. en stock · {{ 'ninguna venta' if s.unidades_14d == 0 else ('solo 1 venta' if s.unidades_14d == 1 else 'solo ' ~ s.unidades_14d ~ ' ventas') }} en 14 días</div>
         </div>
-        <button type="button" class="btn btn-alerta" data-promocionar="{{ s.id_meli }}">Promocionar</button>
+        <button type="button" class="btn {{ 'btn-primary' if loop.first else 'btn-secondary' }}" data-promocionar="{{ s.id_meli }}">Promocionar</button>
     </div>
     {% endfor %}
     {% if sugerencias_promocion|length > 4 %}

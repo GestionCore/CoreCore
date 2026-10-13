@@ -80,8 +80,7 @@
 
 <!-- ── 3. NÚMEROS DEL DÍA ───────────────────────────────────────────────── -->
 <div class="ux-kpis" id="kpis-dia" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));">
-    <a href="/metricas" class="ux-kpi ux-accion" id="kpi-facturado"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-coin"/></svg>Facturado hoy</div><div class="ux-kpi-valor"><span class="skeleton">$0</span></div><div class="ux-kpi-sub">&nbsp;</div></a>
-    <div class="ux-kpi ux-info" id="kpi-ventas"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-box"/></svg>Ventas hoy</div><div class="ux-kpi-valor"><span class="skeleton">0</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
+    <a href="/metricas" class="ux-kpi ux-info" id="kpi-ventas"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-box"/></svg>Ventas hoy</div><div class="ux-kpi-valor"><span class="skeleton">0</span></div><div class="ux-kpi-sub">&nbsp;</div></a>
     <a href="/metricas" class="ux-kpi ux-ok" id="kpi-14d"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-chart"/></svg>Facturado · 14 días</div><div class="ux-kpi-valor"><span class="skeleton">$0</span></div><div class="ux-kpi-sub">&nbsp;</div></a>
     <a href="/metricas" class="ux-kpi ux-ok" id="kpi-reclamos"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-alert"/></svg>Reclamos activos</div><div class="ux-kpi-valor"><span class="skeleton">0</span></div><div class="ux-kpi-sub">&nbsp;</div></a>
     <div class="ux-kpi ux-ok" id="kpi-salud"><div class="ux-kpi-etiqueta"><svg class="icon"><use href="#icon-star"/></svg>Salud de la cuenta</div><div class="ux-kpi-valor"><span class="skeleton">00</span></div><div class="ux-kpi-sub">&nbsp;</div></div>
@@ -151,7 +150,7 @@
 
 <!-- ── 6. DETALLE: resultado de 14 días, gráficos, rankings ─────────────── -->
 <details class="ux-detalle" id="panel-pl-14d" open>
-    <summary>Resultado de los últimos 14 días <span class="ux-detalle-nota">facturado − costos = margen</span></summary>
+    <summary>Resultado de los últimos 14 días</summary>
     <div class="ux-detalle-cuerpo">
         <div class="pl-waterfall ux-cascada" id="pl-waterfall">
             <div class="pl-tile">
@@ -165,7 +164,7 @@
             </div>
             <div class="pl-operador">=</div>
             <div class="pl-tile pl-tile-resultado" id="pl-tile-margen">
-                <div class="stat-chip-label">Margen neto</div>
+                <div class="stat-chip-label">Te queda</div>
                 <div class="pl-tile-valor skeleton" id="pl-margen">$0</div>
             </div>
         </div>
@@ -562,7 +561,7 @@
             }
             contador.textContent = d.total;
             contador.style.display = '';
-            cont.innerHTML = d.acciones.map(a => UX.accion({ prioridad: a.prioridad, categoria: a.categoria, titulo: a.titulo, detalle: a.detalle, link: a.link, linkTexto: a.link_texto })).join('');
+            cont.innerHTML = d.acciones.map((a, i) => UX.accion({ prioridad: a.prioridad, categoria: a.categoria, titulo: a.titulo, detalle: a.detalle, link: a.link, linkTexto: a.link_texto, principal: i === 0 })).join('');
         } catch (e) {
             cont.innerHTML = '';
             document.getElementById('bloque-acciones').style.display = 'none';
@@ -586,6 +585,8 @@
         el.querySelector('.ux-kpi-sub').innerHTML = subHtml || '';
     }
 
+    let _resumenDelDia = null;
+
     async function cargarKpisDia() {
         const [resumen, hoy, tendencia, ticker] = await Promise.allSettled([
             _fetchResumenDiarioCompartido(), fetch('/api/hoy').then(r => r.json()), _fetchTendenciaCompartida(), _fetchTickerCompartido(),
@@ -595,11 +596,13 @@
             const d = resumen.value;
             const vs = (d.variacion_pct !== null && d.variacion_pct !== undefined) ? ' ' + UX.delta(d.variacion_pct) + ' <span style="font-size:0.9em;">vs. ayer</span>' : '';
             const top = d.modelo_top ? (d.modelo_top.length > 26 ? d.modelo_top.slice(0, 26) + '…' : d.modelo_top) : '—';
-            _pintarKpi('kpi-facturado', { tono: 'accion', valor: '$' + sinCentavos(d.facturado_formateado), subHtml: `<b>${UX.esc(d.ordenes || 0)}</b> ventas · top: <span title="${UX.esc(d.modelo_top || '')}">${UX.esc(top)}</span>${vs}` });
+            _resumenDelDia = { vs, top, modeloTop: d.modelo_top || '' };
         }
         if (hoy.status === 'fulfilled' && hoy.value) {
             const d = hoy.value;
-            _pintarKpi('kpi-ventas', { tono: 'info', valor: String(d.ordenes_hoy ?? 0), subHtml: `<b>${UX.esc(d.unidades_hoy || 0)}</b> unidades vendidas hoy` });
+            // «Ventas hoy» lleva también lo que antes repetía «Facturado hoy» (que ya está en el hero): el modelo que más vendió y cómo viene contra ayer
+            const extra = _resumenDelDia ? ` · top: <span title="${UX.esc(_resumenDelDia.modeloTop)}">${UX.esc(_resumenDelDia.top)}</span>${_resumenDelDia.vs}` : '';
+            _pintarKpi('kpi-ventas', { tono: 'info', valor: String(d.ordenes_hoy ?? 0), subHtml: `<b>${UX.esc(d.unidades_hoy || 0)}</b> ${Number(d.unidades_hoy) === 1 ? 'unidad' : 'unidades'}${extra}` });
         }
         if (tendencia.status === 'fulfilled' && tendencia.value && tendencia.value.total_formateado) {
             const d = tendencia.value;

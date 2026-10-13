@@ -10,7 +10,17 @@
 <div class="page-header">
     <div>
         <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-bolt"/></svg>Día a día</h1>
-        <div class="page-subtitle">Despacho, preguntas, pendientes y reputación de hoy.</div>
+        {# En vez de una frase que explica lo obvio, el resumen de hoy con números: cada uno lleva a su parte #}
+        <nav class="dia-resumen" aria-label="Resumen de hoy">
+            {% if not errores.get('despacho') %}
+            {% set por_despachar = total - listos %}
+            <a class="dia-resumen-item ux-{{ 'warn' if por_despachar else 'ok' }}" href="#despacho"><svg class="icon" aria-hidden="true"><use href="#icon-truck"/></svg>{% if total == 0 %}Sin paquetes hoy{% elif por_despachar %}<b>{{ por_despachar }}</b> por despachar{% else %}Todo despachado{% endif %}</a>
+            {% endif %}
+            <a class="dia-resumen-item ux-neutral" href="#preguntas" id="resumen-preguntas"><svg class="icon" aria-hidden="true"><use href="#icon-chat"/></svg><span id="resumen-preguntas-texto">Preguntas</span></a>
+            {% if not errores.get('pendientes') %}
+            <a class="dia-resumen-item ux-{{ 'danger' if conteo_por_prioridad.urgente else ('warn' if conteo_por_prioridad.importante else ('accion' if misiones else 'ok')) }}" href="#pendientes"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg>{% if misiones %}<b>{{ misiones|length }}</b> pendiente{{ '' if misiones|length == 1 else 's' }}{% else %}Sin pendientes{% endif %}</a>
+            {% endif %}
+        </nav>
     </div>
 </div>
 

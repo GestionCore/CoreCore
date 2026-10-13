@@ -33,11 +33,11 @@
             <div class="ux-banner-titulo"><b>{{ sin_stock|length|plural('publicación activa sin stock', 'publicaciones activas sin stock') }}</b> — estás perdiendo ventas</div>
             <div class="ux-banner-detalle">Repone o pausá {{ 'esa publicación' if sin_stock|length == 1 else 'esas publicaciones' }} para no aparecer como disponible sin poder entregar.</div>
         </div>
-        <button type="button" class="btn btn-urgente" id="btn-ver-sin-stock">Ver las que faltan</button>
+        <button type="button" class="btn btn-secondary" id="btn-ver-sin-stock">Ver las que faltan</button>
     </div>
     {% endif %}
     {% if riesgo %}
-    {{ banner("warn", "box", "<b>" ~ (riesgo|length|plural(vocab.v1)) ~ "</b> " ~ ("se agota" if riesgo|length == 1 else "se agotan") ~ " pronto al ritmo de venta actual", "Mirá abajo cuáles son y cuánto te queda.", "Ver qué reponer", "#bloque-reponer", "btn-alerta") }}
+    {{ banner("warn", "box", "<b>" ~ (riesgo|length|plural(vocab.v1)) ~ "</b> " ~ ("se agota" if riesgo|length == 1 else "se agotan") ~ " pronto al ritmo de venta actual", "Mirá abajo cuáles son y cuánto te queda.", "Ver qué reponer", "#bloque-reponer", "btn-secondary") }}
     {% elif riesgo is not none and not sin_stock %}
     {{ banner("ok", "check", "<b>Stock sano.</b> Nada agotado ni por agotarse", "Te avisamos acá apenas alguno se acerque al final.") }}
     {% endif %}
@@ -78,7 +78,7 @@
 <div id="panel-reactivar" data-mostrar-mas-scope>
     <div class="text-muted" style="font-size:0.88em; margin-bottom:10px; line-height:1.5;"><b>Estas publicaciones están pausadas pero tienen unidades:</b> no se están vendiendo. Elegí cuáles reactivar; solo se tocan las que marques. Las bloqueadas por Mercado Libre no aparecen acá.</div>
     <div class="flex-gap" style="margin-bottom:8px;">
-        <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="reactivar-todas" data-change="reactivarMarcarTodas" data-change-args='["$checked"]'> Marcar todas</label>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="reactivar-todas" data-change="reactivarMarcarTodas" data-change-args='["$checked"]'> {{ 'Marcar la publicación' if reactivables|length == 1 else 'Marcar las ' ~ reactivables|length }}</label>
     </div>
     {% for r in reactivables %}
     <label class="ux-rank-fila ux-warn {% if loop.index > 4 %}oculto-mostrar-mas{% endif %}" style="cursor:pointer;" data-reactivar-fila="{{ r.id_meli }}">
@@ -93,10 +93,13 @@
     </label>
     {% endfor %}
     {% if reactivables|length > 4 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:10px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>{{ ver_mas(reactivables|length - 4, "publicación", "publicaciones", "las") }}</button>{% endif %}
-    <div style="margin-top:14px;"><button type="button" class="btn btn-primary" id="btn-reactivar" data-click="reactivarAplicar" disabled>Reactivar publicaciones</button></div>
 </div>
 </div>
 </details>
+<div class="ux-barra-accion" id="barra-reactivar" style="display:none;" role="status">
+    <div class="ux-barra-accion-texto"><b id="reactivar-n">0</b> <span id="reactivar-n-texto">seleccionadas</span> <span class="text-muted">— solo se reactivan las que marcaste</span></div>
+    <div class="flex-gap"><button type="button" class="btn btn-primary btn-lg" id="btn-reactivar" data-click="reactivarAplicar" disabled>Reactivar publicaciones</button></div>
+</div>
 <script nonce="{{ csp_nonce }}">
 // En el celular la lista arranca plegada (abierta ocupaba más de una pantalla); la persona la abre con un toque
 if (window.innerWidth <= 720) document.getElementById('det-reactivar').open = false;
@@ -105,6 +108,9 @@ function reactivarActualizarBoton() {
     const n = reactivarMarcadas().length, b = document.getElementById('btn-reactivar');
     b.disabled = n === 0;
     b.textContent = n ? `Reactivar ${n} publicaci${n === 1 ? 'ón' : 'ones'}` : 'Reactivar publicaciones';
+    document.getElementById('barra-reactivar').style.display = n ? '' : 'none';                                  // la barra fija solo aparece con algo marcado
+    document.getElementById('reactivar-n').textContent = n;
+    document.getElementById('reactivar-n-texto').textContent = n === 1 ? 'seleccionada' : 'seleccionadas';
 }
 function reactivarMarcarTodas(on) {
     // No se marca nada que no se vea: "Marcar todas" primero despliega las filas escondidas por "ver más"
@@ -146,7 +152,7 @@ async function reactivarAplicar() {
                 <div class="ux-item-accion-detalle"><b>{{ v.stock_total }} u.</b> restantes · {% if v.dias_restantes < 1 %}<b>no alcanzan ni para 1 día</b>{% else %}alcanzan ~<b>{{ v.dias_restantes|round|int }} {{ 'día' if v.dias_restantes|round|int == 1 else 'días' }}</b>{% endif %} al ritmo actual
                     {%- if v.proveedor_nombre %}{% if v.pedir_ya %} · <b>Pedí YA a {{ v.proveedor_nombre }}</b>: el envío tarda más de lo que te queda{% else %} · con {{ v.proveedor_nombre }} tenés ~{{ v.dias_para_pedir|round|int }} {{ 'día' if v.dias_para_pedir|round|int == 1 else 'días' }} para pedir{% endif %}{% endif %}</div>
             </div>
-            <button type="button" class="btn {{ 'btn-urgente' if urgente else 'btn-alerta' }}" data-drawer="{{ v.id_meli }}">Gestionar</button>
+            <button type="button" class="btn {{ 'btn-primary' if loop.first else 'btn-secondary' }}" data-drawer="{{ v.id_meli }}">Gestionar</button>
         </div>
         {% endfor %}
         {% if riesgo|length > 6 %}<div class="text-muted" style="font-size:0.82em; padding:4px 2px;">Y {{ riesgo|length - 6 }} {{ vocab.vN }} más — los ves en la tabla con el filtro «Se agota pronto».</div>{% endif %}

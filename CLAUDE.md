@@ -649,6 +649,11 @@ MeLi), y un 403 de MeLi al buscar en Tendencias por término/categoría.
 - **Íconos y celular acostado (2026-10-13)**: los íconos de la app (`static/icons/*`, `favicon.ico`) los genera `generar_iconos.py` (la «C» dorada con un punto sobre el grafito `#0a0a0c`; `icon-maskable-512.png` ocupa todo el cuadrado con la marca en el 60 % central); el manifiesto tiene el ícono normal y el «maskable» por separado.
   Antes eran una «S» naranja de Santi Mens. Con el celular acostado (`max-height: 500px`) las barras bajan de alto por las variables `--topbar-h` / `--bottombar-h`: no escribir alturas fijas para lo que cuelga de ellas.
 
+- **Botones y nombres (2026-10-13)**: colores de botón = violeta `btn-primary` (UNO por pantalla o por lista: en una lista solo el primero, `loop.first`; en JS `UX.accion({ principal })`), gris `btn-secondary`, rojo `btn-danger` (destructivo). Naranja y verde son ESTADOS (pastillas, bordes, tarjetas), nunca un botón:
+  `btn-urgente` y `btn-alerta` ya no existen y `tests/test_botones.py` falla si reaparecen. Donde la pantalla ya tiene su principal (Ganancia Real: «Descargar PDF»; Stock: «Gestionar» de la primera fila) los avisos de arriba llevan botón secundario.
+  Glosario de la plata (usarlo igual en toda pantalla nueva): **Ganancia neta real** = facturación − cargos de MeLi − envíos − publicidad − costo de fabricación − cargos mensuales de MeLi (título y KPI); **Te queda** = esa misma ganancia dicha en una frase o en una cascada («facturado − costos = te queda»);
+  **Margen** = ese número sobre lo facturado, en %; **Ganancia bruta real** (Facturación) = facturado − cargos de MeLi, antes de gastos; «(est.)» cuando es una estimación (Reporte fiscal). No inventar otro nombre para la misma cifra, ni usar uno de estos para una cifra distinta.
+
 ## Datos de entorno
 - `.env` necesita: `DATABASE_URL` (pooler de **sesión**, no de
   transacción — el puerto importa para que RLS sea confiable),
