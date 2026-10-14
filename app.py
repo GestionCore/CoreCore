@@ -889,10 +889,10 @@ def api_metricas_heatmap_horario():
                     EXTRACT(HOUR FROM {momento})::int AS hora,
                     SUM(cantidad)::int AS unidades
                 FROM ventas
-                WHERE fecha_venta >= CURRENT_DATE - (%s || ' days')::interval
+                WHERE fecha_venta >= %s
                   AND hora_venta IS NOT NULL
                 GROUP BY dow, hora
-            """.format(momento=sql_momento_argentina(por_defecto="12:00")), (dias,))
+            """.format(momento=sql_momento_argentina(por_defecto="12:00")), (hoy_argentina() - timedelta(days=dias),))
             filas = cur.fetchall()
         # dow: 0=Dom,1=Lun…6=Sab en Postgres EXTRACT(DOW) — reordenamos a Lun-Dom
         matriz = [[0] * 24 for _ in range(7)]
@@ -926,12 +926,12 @@ def api_correlacion_precio_ventas():
                     SUM(v.cantidad)::int AS unidades
                 FROM ventas v
                 LEFT JOIN productos_padre p ON p.id_meli = v.id_meli
-                WHERE v.fecha_venta >= CURRENT_DATE - (%s || ' days')::interval
+                WHERE v.fecha_venta >= %s
                 GROUP BY p.titulo, v.id_meli
                 HAVING SUM(v.cantidad) > 0
                 ORDER BY unidades DESC
                 LIMIT 60
-            """, (dias,))
+            """, (hoy_argentina() - timedelta(days=dias),))
             filas = cur.fetchall()
         puntos = [{"titulo": f[0][:40], "precio": float(f[1]), "unidades": f[2]} for f in filas]
         return jsonify({"puntos": puntos})

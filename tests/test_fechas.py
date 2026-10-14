@@ -48,3 +48,24 @@ def test_ninguna_plantilla_muestra_una_fecha_en_formato_iso():
                 continue
             crudas.append(f"{nombre}: {{{{ {m.group('expr')} }}}}")
     assert not crudas, "Fecha en formato ISO a la vista (usá |fecha): " + "; ".join(sorted(set(crudas)))
+
+
+# La base también corre en UTC: `current_date` en una consulta da «mañana» pasadas las 21 h argentinas y corre un día las ventanas de «los últimos N días». El día de arranque de cada ventana
+# se calcula con utils.hoy_argentina() y viaja como parámetro. Los permitidos son ventanas largas de relleno o controles del administrador donde un día no cambia nada.
+SQL_CURRENT_DATE_PERMITIDO = {
+    "ventas_sync.py": "ventanas de relleno de datos de envío, pago y financiación (60 a 540 días)",
+    "controles_de_datos.py": "controles de salud del administrador sobre ventanas de 90 días",
+}
+
+
+def test_las_ventanas_de_dias_de_las_consultas_no_usan_la_fecha_de_la_base():
+    encontrados = []
+    for ruta in _archivos():
+        if os.path.basename(ruta) in SQL_CURRENT_DATE_PERMITIDO:
+            continue
+        for n, linea in enumerate(open(ruta, encoding="utf-8"), 1):
+            if linea.strip().startswith("#"):
+                continue
+            if re.search(r"\bcurrent_date\b", linea, re.I):
+                encontrados.append(f"{os.path.basename(ruta)}:{n}: {linea.strip()[:90]}")
+    assert not encontrados, "Hay `current_date` en una consulta (usar utils.hoy_argentina() como parámetro):\n" + "\n".join(encontrados)

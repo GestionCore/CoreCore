@@ -6,7 +6,8 @@ la API. Las publicaciones de un mismo modelo (todos sus talles o variantes) comp
 se agrupan por esa clave y cada opinión se cuenta UNA vez. Sirve a cualquier rubro: los atributos ("le quedó como esperaba", "la
 calidad del material"...) los define Mercado Libre para cada categoría.
 """
-from utils import limpiar_titulo_modelo
+from datetime import timedelta
+from utils import hoy_argentina, limpiar_titulo_modelo
 
 MIN_OPINIONES_PARA_JUZGAR = 5       # con menos, un promedio no dice nada
 UMBRAL_PROMEDIO_BAJO = 4.3
@@ -27,9 +28,9 @@ def obtener_datos(cursor, cuenta_id):
                (SELECT CASE WHEN COUNT(DISTINCT NULLIF(x.talle, 'Único')) = 1 THEN MAX(NULLIF(x.talle, 'Único')) END FROM productos_variantes x WHERE x.id_padre = p.id)
         FROM productos_padre p
         LEFT JOIN (SELECT id_meli, SUM(cantidad) AS unidades FROM ventas
-                   WHERE cuenta_id = %(c)s AND origen = 'meli' AND fecha_venta >= current_date - %(d)s GROUP BY id_meli) v ON v.id_meli = p.id_meli
+                   WHERE cuenta_id = %(c)s AND origen = 'meli' AND fecha_venta >= %(desde)s GROUP BY id_meli) v ON v.id_meli = p.id_meli
         WHERE p.cuenta_id = %(c)s AND p.estado IN ('active', 'paused') AND p.opiniones_en IS NOT NULL
-    """, {"c": cuenta_id, "d": DIAS_VENTAS})
+    """, {"c": cuenta_id, "desde": hoy_argentina() - timedelta(days=DIAS_VENTAS)})
 
     familias = {}
     for id_meli, titulo, thumbnail, permalink, estado, family_id, promedio, total, niveles, atributos, criticas, unidades, talle in cursor.fetchall():

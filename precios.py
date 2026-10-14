@@ -13,6 +13,8 @@ rubros): con 1 o 2 ventas se marca como "pocas ventas" y las que todavía no ven
 Sirve a cualquier rubro: no depende de talles, categorías ni de un tipo de logística.
 """
 import math
+from datetime import timedelta
+from utils import hoy_argentina
 import meli_errores
 
 import meli_http
@@ -47,9 +49,9 @@ def obtener_datos(cursor, cuenta_id, margen_objetivo=MARGEN_OBJETIVO_DEFECTO, pu
     cursor.execute("""
         SELECT id_meli, SUM(cantidad), SUM(precio_venta * cantidad), SUM(COALESCE(cargo_venta, 0)), SUM(COALESCE(costo_envio, 0))
         FROM ventas
-        WHERE cuenta_id = %s AND origen = 'meli' AND fecha_venta >= current_date - %s
+        WHERE cuenta_id = %s AND origen = 'meli' AND fecha_venta >= %s
         GROUP BY id_meli
-    """, (cuenta_id, VENTANA_DIAS))
+    """, (cuenta_id, hoy_argentina() - timedelta(days=VENTANA_DIAS)))
     ventas = {r[0]: {"u": int(r[1] or 0), "ingreso": float(r[2] or 0), "cargos": float(r[3] or 0), "envios": float(r[4] or 0)} for r in cursor.fetchall()}
 
     cursor.execute("""

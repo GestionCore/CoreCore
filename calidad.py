@@ -6,7 +6,8 @@ Sirve a cualquier rubro: las acciones y sus textos las define Mercado Libre para
 """
 from collections import Counter
 
-from utils import formatear_moneda, limpiar_titulo_modelo, rotulo_variante, nombre_tipo_publicacion
+from datetime import timedelta
+from utils import formatear_moneda, hoy_argentina, limpiar_titulo_modelo, rotulo_variante, nombre_tipo_publicacion
 
 UMBRAL_BIEN = 90
 UMBRAL_JUSTO = 70
@@ -27,10 +28,10 @@ def obtener_datos(cursor, cuenta_id):
                (SELECT CASE WHEN COUNT(DISTINCT x.etiqueta) = 1 THEN MAX(x.etiqueta) END FROM productos_variantes x WHERE x.id_padre = p.id)
         FROM productos_padre p
         LEFT JOIN (SELECT id_meli, SUM(cantidad) AS unidades FROM ventas
-                   WHERE cuenta_id = %(c)s AND origen = 'meli' AND fecha_venta >= current_date - 13 GROUP BY id_meli) v ON v.id_meli = p.id_meli
+                   WHERE cuenta_id = %(c)s AND origen = 'meli' AND fecha_venta >= %(desde)s GROUP BY id_meli) v ON v.id_meli = p.id_meli
         WHERE p.cuenta_id = %(c)s AND p.estado = 'active'
         ORDER BY p.titulo
-    """, {"c": cuenta_id})
+    """, {"c": cuenta_id, "desde": hoy_argentina() - timedelta(days=13)})
     items = []
     for id_meli, titulo, thumbnail, permalink, score, nivel, acciones, visitas, previas, unidades, tipo_id, precio, talles, etiqueta in cursor.fetchall():
         visitas = visitas or 0
