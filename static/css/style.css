@@ -573,6 +573,8 @@ select option { background: #14162a; color: var(--text-primary); }
 .chat-header { padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--glass-border); font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
 .chat-body { flex: 1; padding: 16px; overflow-y: auto; font-size: 0.9em; display: flex; flex-direction: column; gap: 12px; }
 .chat-msg-bot { background: rgba(255,255,255,0.04); padding: 11px 15px; border-radius: 10px; border-left: 3px solid var(--accent-primary); }
+.chat-sugerencias { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-sugerencias .btn { padding: 6px 12px; font-size: 0.85em; text-align: left; }
 .chat-botones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .chat-botones .btn { padding: 6px 12px; font-size: 0.88em; }
 .chat-msg-user { background: var(--accent-denim); color: white; padding: 11px 15px; border-radius: 10px; align-self: flex-end; max-width: 85%; }

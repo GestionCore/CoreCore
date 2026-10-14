@@ -218,7 +218,13 @@
 <button type="button" class="chat-fab" data-click="toggleChat" title="Consultar con Asistente IA" aria-label="Consultar con Asistente IA"><svg class="icon" style="width:22px;height:22px;" aria-hidden="true"><use href="#icon-chat"/></svg></button>
 <div class="chat-window" id="chat-window">
     <div class="chat-header"><span>Asistente de Operaciones</span><button type="button" style="background:none;border:none;cursor:pointer;color:inherit;padding:2px;display:inline-flex;" data-click="toggleChat" title="Cerrar" aria-label="Cerrar chat"><svg class="icon" style="width:15px;height:15px;" aria-hidden="true"><use href="#icon-x"/></svg></button></div>
-    <div class="chat-body" id="chat-body"><div class="chat-msg-bot">¡Hola! Te ayudo con tu cuenta: preguntame por tus ventas, tu ganancia, el stock, los cobros o cómo usar la página, y te llevo a la pantalla que necesites.</div></div>
+    <div class="chat-body" id="chat-body"><div class="chat-msg-bot">¡Hola! Te ayudo con tu cuenta: preguntame por tus ventas, tu ganancia, el stock, los cobros o cómo usar la página, y te llevo a la pantalla que necesites.</div>
+        <div class="chat-sugerencias" id="chat-sugerencias">
+            <button type="button" class="btn btn-secondary" data-click="preguntarAlAsistente" data-click-args='["¿Cuánto gané esta semana?"]'>¿Cuánto gané esta semana?</button>
+            <button type="button" class="btn btn-secondary" data-click="preguntarAlAsistente" data-click-args='["¿Qué tengo que reponer?"]'>¿Qué tengo que reponer?</button>
+            <button type="button" class="btn btn-secondary" data-click="preguntarAlAsistente" data-click-args='["¿Cuándo se me acredita la plata?"]'>¿Cuándo se me acredita la plata?</button>
+            <button type="button" class="btn btn-secondary" data-click="preguntarAlAsistente" data-click-args='["¿Dónde cargo mis costos?"]'>¿Dónde cargo mis costos?</button>
+        </div></div>
     <div class="chat-footer">
         <input type="text" id="chat-input" placeholder="Escribí tu consulta..." aria-label="Escribí tu consulta para el asistente" data-keydown="enviarMensajeIA" data-keydown-tecla="Enter">
         <button type="button" class="btn btn-primary" data-click="enviarMensajeIA">Enviar</button>

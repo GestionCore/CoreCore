@@ -1484,7 +1484,12 @@ async function cargarTabSalud(idMeli) {
 }
 
 // ---------- Chat IA: markdown seguro + typing indicator ----------
-function toggleChat() { document.getElementById('chat-window').classList.toggle('open'); }
+// Al abrir, la conversación queda al final (con la ventana cerrada no tiene alto: el scroll solo se puede acomodar cuando ya se ve)
+function toggleChat() {
+    const ventana = document.getElementById('chat-window');
+    ventana.classList.toggle('open');
+    if (ventana.classList.contains('open')) { const cuerpo = document.getElementById('chat-body'); cuerpo.scrollTop = cuerpo.scrollHeight; }
+}
 function escapeHtml(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 
 function formatearMarkdownSeguro(texto) {
@@ -1507,24 +1512,84 @@ function formatearMarkdownSeguro(texto) {
     return html;
 }
 
-// La conversación del asistente vive solo en esta pestaña: se manda el final del hilo para que entienda «¿y el mes pasado?». El servidor lo valida (roles, largo) antes de usarlo.
-const _chatHistorial = [];
+// ── Asistente de IA ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// La conversación vive en ESTA pestaña (sessionStorage): así no se pierde cuando un botón «Ir a …» lleva a otra pantalla. Se manda el final del hilo para que el asistente entienda
+// «¿y el mes pasado?»; el servidor lo valida (roles, largo) antes de usarlo. Lo guardado se valida igual que lo que llega: solo texto y links internos.
+const _CHAT_GUARDADO = 'corelux_chat_v1';
+const _CHAT_ABIERTO = 'corelux_chat_abierto';
+const _CHAT_MAX_MENSAJES = 24;
+let _chatMensajes = [];          // [{ rol: 'user' | 'bot', texto, botones: [{ texto, url }] }]
 let _chatEsperando = false;
+
+function _chatLimpiarMensajes(crudo) {
+    if (!Array.isArray(crudo)) return [];
+    return crudo.filter(m => m && (m.rol === 'user' || m.rol === 'bot') && typeof m.texto === 'string' && m.texto.trim()).slice(-_CHAT_MAX_MENSAJES).map(m => ({
+        rol: m.rol,
+        texto: m.texto.slice(0, 4000),
+        botones: (Array.isArray(m.botones) ? m.botones : []).filter(b => b && typeof b.url === 'string' && b.url.startsWith('/') && !b.url.startsWith('//')).slice(0, 3)
+            .map(b => ({ texto: String(b.texto || 'Ir').slice(0, 60), url: b.url })),
+    }));
+}
+
+function _chatHistorialParaElServidor() {
+    return _chatMensajes.slice(-6).map(m => ({ role: m.rol === 'user' ? 'user' : 'assistant', content: m.texto }));
+}
+
+function _chatGuardar() {
+    try { sessionStorage.setItem(_CHAT_GUARDADO, JSON.stringify(_chatMensajes.slice(-_CHAT_MAX_MENSAJES))); } catch (e) { /* sin almacenamiento: el chat sigue andando, solo no se recuerda al cambiar de pantalla */ }
+}
 
 // Los botones «Ir a …» que sugiere el asistente: el servidor manda solo links de pantallas de CoreLux (lista cerrada); igual acá se exige un camino interno.
 function _agregarBotonesChat(contenedor, botones) {
-    const validos = (botones || []).filter(b => b && typeof b.url === 'string' && b.url.startsWith('/') && !b.url.startsWith('//'));
-    if (!validos.length) return;
+    if (!botones || !botones.length) return;
     const fila = document.createElement('div');
     fila.className = 'chat-botones';
-    validos.forEach(b => {
+    botones.forEach(b => {
         const a = document.createElement('a');
         a.className = 'btn btn-secondary';
         a.href = b.url;
-        a.textContent = String(b.texto || 'Ir');
+        a.textContent = b.texto;
+        a.addEventListener('click', () => { try { sessionStorage.setItem(_CHAT_ABIERTO, '1'); } catch (e) { /* idem */ } });          // la ventana vuelve abierta en la pantalla de destino
         fila.appendChild(a);
     });
     contenedor.appendChild(fila);
+}
+
+function _chatPintarMensaje(m) {
+    const div = document.createElement('div');
+    div.className = m.rol === 'user' ? 'chat-msg-user' : 'chat-msg-bot';
+    if (m.rol === 'user') div.textContent = m.texto; else { div.innerHTML = formatearMarkdownSeguro(m.texto); _agregarBotonesChat(div, m.botones); }
+    document.getElementById('chat-body').appendChild(div);
+    return div;
+}
+
+function _chatOcultarSugerencias() {
+    const s = document.getElementById('chat-sugerencias');
+    if (s) s.style.display = 'none';
+}
+
+// Al cargar cualquier pantalla: vuelve la conversación de esta pestaña y, si la persona venía de un botón del asistente, la ventana queda abierta.
+function _chatRestaurar() {
+    if (!document.getElementById('chat-body')) return;
+    let guardado = [];
+    try { guardado = _chatLimpiarMensajes(JSON.parse(sessionStorage.getItem(_CHAT_GUARDADO) || '[]')); } catch (e) { guardado = []; }
+    if (!guardado.length) return;
+    _chatMensajes = guardado;
+    _chatOcultarSugerencias();
+    guardado.forEach(_chatPintarMensaje);
+    let abrir = false;
+    try { abrir = sessionStorage.getItem(_CHAT_ABIERTO) === '1'; sessionStorage.removeItem(_CHAT_ABIERTO); } catch (e) { abrir = false; }
+    if (abrir) document.getElementById('chat-window').classList.add('open');             // primero se abre y recién después se baja al final: cerrada no tiene alto
+    const cuerpo = document.getElementById('chat-body');
+    cuerpo.scrollTop = cuerpo.scrollHeight;
+}
+
+// Una pregunta de ejemplo (las de la bienvenida): se escribe sola y se envía.
+function preguntarAlAsistente(texto) {
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+    input.value = String(texto || '');
+    enviarMensajeIA();
 }
 
 async function enviarMensajeIA() {
@@ -1532,23 +1597,29 @@ async function enviarMensajeIA() {
     const texto = input.value.trim();
     if (!texto || _chatEsperando) return;
     _chatEsperando = true;
+    _chatOcultarSugerencias();
     const body = document.getElementById('chat-body');
-    body.innerHTML += `<div class="chat-msg-user">${escapeHtml(texto)}</div>`;
+    _chatPintarMensaje({ rol: 'user', texto, botones: [] });
     input.value = '';
-    const typingId = 'typing-' + Date.now();
-    body.innerHTML += `<div class="chat-msg-bot" id="${typingId}"><span class="typing-dots"><span></span><span></span><span></span></span></div>`;
+    const typing = document.createElement('div');
+    typing.className = 'chat-msg-bot';
+    typing.innerHTML = '<span class="typing-dots"><span></span><span></span><span></span></span>';
+    body.appendChild(typing);
     body.scrollTop = body.scrollHeight;
+    const historial = _chatHistorialParaElServidor();
 
     try {
-        const res = await fetch('/api/chat_ia', { method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ pregunta: texto, historial: _chatHistorial.slice(-6), ruta: window.location.pathname }) });
+        const res = await fetch('/api/chat_ia', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ pregunta: texto, historial, ruta: window.location.pathname }) });
         const data = await res.json();
-        const burbuja = document.getElementById(typingId);
-        burbuja.innerHTML = formatearMarkdownSeguro(data.respuesta);
-        _agregarBotonesChat(burbuja, data.botones);
-        _chatHistorial.push({ role: 'user', content: texto }, { role: 'assistant', content: String(data.respuesta || '') });
+        const respuesta = _chatLimpiarMensajes([{ rol: 'bot', texto: String(data.respuesta || ''), botones: data.botones }])[0];
+        typing.remove();
+        if (respuesta) {
+            _chatPintarMensaje(respuesta);
+            _chatMensajes.push({ rol: 'user', texto, botones: [] }, respuesta);
+            _chatGuardar();
+        }
     } catch(e) {
-        document.getElementById(typingId).innerHTML = '<span class="text-danger">Error de comunicación.</span>';
+        typing.innerHTML = '<span class="text-danger">Error de comunicación.</span>';
     }
     _chatEsperando = false;
     body.scrollTop = body.scrollHeight;
@@ -1617,6 +1688,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logueado) actualizarTicker();
     revisarMensajeEnURL();
     if (logueado) marcarVariantesClaveAgotadas();
+    if (logueado) _chatRestaurar();
     if (logueado) cargarOportunidadesSeo();
     inicializarSidebar();
     inicializarProtectorInactividad();
