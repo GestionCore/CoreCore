@@ -1114,12 +1114,12 @@ def api_dashboard_top_productos():
     desde = (hoy_argentina() - timedelta(days=30)).isoformat()
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT COALESCE(v.titulo, ''), v.id_meli, SUM(v.cantidad), SUM(v.precio_venta * v.cantidad), MAX(p.thumbnail), BOOL_OR(p.id_meli IS NOT NULL),
                    MAX(NULLIF(pv.talle, 'Único'))
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
-            LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
+            LEFT JOIN productos_variantes pv ON pv.id_variante = {utils.sql_variante_de_venta("v")} AND pv.cuenta_id = v.cuenta_id
             WHERE v.cuenta_id = %s AND DATE(v.fecha_venta) >= %s AND v.eliminado_en IS NULL
             GROUP BY v.titulo, v.id_meli
         """, (g.cuenta_id, desde))
@@ -1148,7 +1148,7 @@ def api_dashboard_ultimas_ventas():
                 pv.etiqueta
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
-            LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
+            LEFT JOIN productos_variantes pv ON pv.id_variante = {utils.sql_variante_de_venta("v")} AND pv.cuenta_id = v.cuenta_id
             WHERE v.cuenta_id = %s
               AND v.eliminado_en IS NULL
             ORDER BY momento DESC
@@ -2164,11 +2164,12 @@ def api_chat_ia():
     datos = request.get_json(silent=True) or {}
     pregunta = datos.get("pregunta") or ""
     try:
-        respuesta = chat_ia.responder_pregunta(g.usuario_id, pregunta, g.cuenta_id)
+        # El historial y la pantalla actual los manda el navegador: el asistente los valida (roles, largo, pantalla conocida) antes de usarlos
+        resultado = chat_ia.responder_pregunta(g.usuario_id, pregunta, g.cuenta_id, historial=datos.get("historial"), ruta_actual=datos.get("ruta"))
     except Exception as e:
         print(f"[ChatIA] ⚠️ Error respondiendo: {e}")
-        respuesta = "Tuve un problema respondiendo eso — probá de nuevo en un rato."
-    return jsonify({"respuesta": respuesta})
+        resultado = {"respuesta": "Tuve un problema respondiendo eso — probá de nuevo en un rato.", "botones": []}
+    return jsonify({"respuesta": resultado["respuesta"], "botones": resultado["botones"]})
 
 
 @app.route("/facturacion")

@@ -289,3 +289,11 @@ def test_la_hora_de_la_venta_sale_en_formato_argentino(calcular):
 def test_la_variante_de_cada_venta_sale_de_la_variante_vendida(calcular):
     ventas = {v["id_orden"]: v["variante"] for v in calcular()["ventas"]}
     assert ventas["o1"] == "M / Negro" and ventas["o2"] == "L" and ventas["o3"] == "Única"      # sin color real solo el talle; sin variante «Única»
+
+
+def test_la_variante_de_una_venta_de_una_publicacion_sin_variaciones_se_busca_como_id_unica(calcular):
+    """Sin variaciones la venta guarda id_variante vacío y la variante se llama «<id>_unica»: antes ninguna de esas ventas (el 97 % en la cuenta real) encontraba su variante."""
+    datos = _datos()
+    datos["ventas"][3]["id_variante"] = ""
+    datos["variantes"].append({"id_variante": "MLA3_unica", "talle": "L", "color": "Único", "etiqueta": "Grande / Verde"})
+    assert {v["id_orden"]: v["variante"] for v in calcular(datos)["ventas"]}["o4"] == "Grande / Verde"

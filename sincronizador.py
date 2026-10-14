@@ -281,6 +281,15 @@ def sincronizar_item_individual(cuenta_id, id_item, headers, cursor):
     _escribir_item_en_db(cuenta_id, datos, cursor, _contexto_de_un_item(cursor, cuenta_id, datos["detalle"], headers))
 
 
+def id_item_del_recurso(resource):
+    """El id de la publicación de un `resource` de notificación: «/items/MLA123» (tema items) o «/items/MLA123/prices» (tema items_prices)."""
+    partes = [p for p in (resource or "").split("/") if p]
+    for i, parte in enumerate(partes[:-1]):
+        if parte == "items":
+            return partes[i + 1]
+    return partes[-1] if partes else ""
+
+
 def procesar_notificacion_webhook(topic, resource, meli_user_id):
     """
     Punto de entrada real del webhook de MeLi (/notificaciones_meli en
@@ -313,8 +322,8 @@ def procesar_notificacion_webhook(topic, resource, meli_user_id):
         except token_manager.CuentaDesconectada:
             return
 
-        if topic == "items":
-            id_item = (resource or "").rsplit("/", 1)[-1]
+        if topic in ("items", "items_prices"):
+            id_item = id_item_del_recurso(resource)
             if not id_item:
                 return
             headers = {"Authorization": f"Bearer {access_token}"}
@@ -338,7 +347,7 @@ def procesar_notificacion_webhook(topic, resource, meli_user_id):
         elif topic in ("claims", "post_purchase"):
             _antirrebote_webhook.ejecutar((cuenta_id, "reclamos"), lambda: devoluciones_sync.sincronizar_reclamos(usuario_id, cuenta_id, access_token, meli_user_id))
 
-        # Otros topics (payments, messages, etc.) no tienen sync propio — se ignoran a propósito en vez de fallar.
+        # Otros topics (payments, messages, public_offers, public_candidates, etc.) no tienen sync propio — se ignoran a propósito en vez de fallar.
 
     except Exception as e:
         print(f"❌ [Webhook] Error procesando notificación (topic={topic}, resource={resource}): {e}")

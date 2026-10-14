@@ -13,7 +13,7 @@ import db
 import dashboard
 import analisis_stock
 import ia_asistente
-from utils import hoy_argentina, limpiar_titulo_modelo
+from utils import hoy_argentina, limpiar_titulo_modelo, sql_variante_de_venta
 
 PROMPT_SISTEMA = """Sos el Asistente de Operaciones de CoreLux, una app de gestión para vendedores de Mercado Libre. Respondés preguntas del vendedor sobre SU negocio usando ÚNICAMENTE los datos reales de abajo — nunca inventás un número que no esté ahí.
 
@@ -75,9 +75,9 @@ def _armar_contexto(usuario_id, cuenta_id=None):
         """, (desde_30d, hoy_str))
         por_dia = [{"fecha": f.isoformat(), "facturado": round(float(t), 2), "ordenes": o} for f, t, o in cursor.fetchall()]
 
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT v.titulo, SUM(v.cantidad), SUM(v.precio_venta*v.cantidad), MAX(NULLIF(pv.talle, 'Único'))
-            FROM ventas v LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
+            FROM ventas v LEFT JOIN productos_variantes pv ON pv.id_variante = {sql_variante_de_venta("v")} AND pv.cuenta_id = v.cuenta_id
             WHERE v.fecha_venta BETWEEN %s AND %s AND v.origen = 'meli' GROUP BY v.titulo
         """, (desde_30d, hoy_str))
         top_modelos = _consolidar_por_modelo(cursor.fetchall())
@@ -117,7 +117,22 @@ def _armar_contexto(usuario_id, cuenta_id=None):
     }
 
 
-def responder_pregunta(usuario_id, pregunta, cuenta_id=None):
+def responder_pregunta(usuario_id, pregunta, cuenta_id=None, historial=None, ruta_actual=None):
+    """
+    La respuesta del chat: {"respuesta", "botones"}. Primero el asistente con herramientas (asistente.py: pide solo los datos que necesita y puede llevar a una pantalla); si el proveedor de IA
+    no lo atiende (por ejemplo, no admite herramientas), se vuelve al resumen fijo de siempre para que el chat nunca quede mudo.
+    """
+    import asistente
+    resultado = asistente.responder(usuario_id, cuenta_id, pregunta, historial=historial, ruta_actual=ruta_actual)
+    if resultado.get("fallo") and not resultado.get("herramientas"):
+        texto = responder_con_resumen(usuario_id, pregunta, cuenta_id)
+        if not texto.startswith("No pude conectar con la IA"):
+            return {"respuesta": texto, "botones": []}
+    return {"respuesta": resultado["respuesta"], "botones": resultado["botones"]}
+
+
+def responder_con_resumen(usuario_id, pregunta, cuenta_id=None):
+    """El chat de antes: un resumen fijo del negocio (hoy, 30 días, mes, top de modelos, stock en riesgo) pasado como contexto en un solo turno. Queda como respaldo."""
     pregunta = (pregunta or "").strip()
     if not pregunta:
         return "Escribí una pregunta primero."

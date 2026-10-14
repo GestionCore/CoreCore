@@ -11,7 +11,7 @@ import analisis_stock
 import salud_cuenta
 import resumen_semanal
 import ventas_hoy
-from utils import ARGENTINA, formatear_moneda, hoy_argentina, limpiar_titulo_modelo, rotulo_variante, SQL_RECLAMO_AFECTA, sql_momento_argentina
+from utils import ARGENTINA, formatear_moneda, hoy_argentina, limpiar_titulo_modelo, rotulo_variante, SQL_RECLAMO_AFECTA, sql_momento_argentina, sql_variante_de_venta
 
 
 def _detalle_venta(titulo, talle=None, etiqueta=None):
@@ -66,9 +66,9 @@ def obtener_ventas_hoy(usuario_id, cuenta_id=None):
 
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT v.titulo, v.id_variante, v.cantidad, v.precio_venta, v.hora_venta, v.id_orden, v.id_meli, pv.talle, pv.etiqueta
-            FROM ventas v LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
+            FROM ventas v LEFT JOIN productos_variantes pv ON pv.id_variante = {sql_variante_de_venta("v")} AND pv.cuenta_id = v.cuenta_id
             WHERE v.fecha_venta = %s ORDER BY v.id DESC
         """, (hoy_local,))
         filas_hoy = cursor.fetchall()

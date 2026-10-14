@@ -40,6 +40,15 @@ def cuenta_usa_talles(cursor):
     return bool(cursor.fetchone()[0])
 
 
+def sql_variante_de_venta(alias="v"):
+    """
+    Expresión SQL de la clave de `productos_variantes` de una venta (`ventas.id_variante`). Una publicación SIN variaciones guarda la venta con id_variante vacío y su variante se llama
+    «<id_meli>_unica»: unir por `id_variante` a secas no encuentra NINGUNA (en la cuenta real, 0 de 2.794 ventas; así se perdían el stock en riesgo, el talle de cada venta y el costo por variante).
+    Usarla en TODO join o agrupado de ventas contra variantes; en Python, `costos_moneda.variante_de_venta`.
+    """
+    return f"COALESCE(NULLIF({alias}.id_variante, ''), {alias}.id_meli || '_unica')"
+
+
 def hoy_argentina():
     """La fecha de hoy en Argentina (el servidor corre en UTC: pasadas las 21 h, "hoy" ya sería mañana)."""
     return datetime.now(ARGENTINA).date()

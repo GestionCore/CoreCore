@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from psycopg.rows import dict_row
 import db
 import meli_http
-from utils import limpiar_titulo_modelo, normalizar_talle, sql_momento_argentina, rotulo_variante
+from utils import limpiar_titulo_modelo, normalizar_talle, sql_momento_argentina, rotulo_variante, sql_variante_de_venta
 
 
 def _tipo_envio_legible(tipo_logistica):
@@ -49,12 +49,12 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
                    pv.talle AS talle_real, pv.etiqueta AS etiqueta_variante
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
-            LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
+            LEFT JOIN productos_variantes pv ON pv.id_variante = {variante} AND pv.cuenta_id = v.cuenta_id
             WHERE ({momento} + (%s || ' hours')::interval)::date = %s
               AND COALESCE(v.tipo_logistica, p.tipo_logistica, '') != 'fulfillment'
               AND v.origen = 'meli'
             ORDER BY v.despachado ASC, v.id ASC
-        """.format(momento=sql_momento_argentina("v")), (offset_horas, fecha))
+        """.format(momento=sql_momento_argentina("v"), variante=sql_variante_de_venta("v")), (offset_horas, fecha))
         filas = cursor.fetchall()
 
         paquetes = []

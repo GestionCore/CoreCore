@@ -12,7 +12,7 @@ conectado por ahora. Lo que sí está acá es la detección pura, que es lo
 que consumen las páginas y APIs del dashboard.
 """
 from datetime import timedelta
-from utils import hoy_argentina, limpiar_titulo_modelo, rotulo_variante
+from utils import hoy_argentina, limpiar_titulo_modelo, rotulo_variante, sql_variante_de_venta
 
 VENTANA_DIAS = 14
 UMBRAL_DIAS_RESTANTES = 5
@@ -31,8 +31,8 @@ def obtener_variantes_en_riesgo(cursor, umbral_dias=UMBRAL_DIAS_RESTANTES, venta
     """)
     variantes = cursor.fetchall()
 
-    cursor.execute("""
-        SELECT id_variante, SUM(cantidad) FROM ventas WHERE fecha_venta BETWEEN %s AND %s GROUP BY id_variante
+    cursor.execute(f"""
+        SELECT {sql_variante_de_venta("v")}, SUM(v.cantidad) FROM ventas v WHERE v.fecha_venta BETWEEN %s AND %s GROUP BY 1
     """, (fecha_desde, fecha_hasta))
     unidades_por_variante = dict(cursor.fetchall())
 
@@ -127,12 +127,12 @@ def evaluar_cobertura_variantes(cursor):
     con su propio stock. Se cuentan las activas y las pausadas (Mercado Libre pausa sola una publicación que llega a cero).
     """
     hasta = hoy_argentina()
-    cursor.execute("""
+    cursor.execute(f"""
         SELECT COALESCE(p.family_id, p.id_meli), v.id_variante, p.id_meli, p.titulo, v.talle, v.etiqueta,
                COALESCE(v.stock_propio, 0) + COALESCE(v.stock_full, 0), COALESCE(s.unidades, 0)
         FROM productos_variantes v
         JOIN productos_padre p ON p.id = v.id_padre
-        LEFT JOIN (SELECT id_variante, SUM(cantidad) AS unidades FROM ventas WHERE fecha_venta BETWEEN %s AND %s AND origen = 'meli' GROUP BY id_variante) s ON s.id_variante = v.id_variante
+        LEFT JOIN (SELECT {sql_variante_de_venta('vt')} AS id_variante, SUM(vt.cantidad) AS unidades FROM ventas vt WHERE vt.fecha_venta BETWEEN %s AND %s AND vt.origen = 'meli' GROUP BY 1) s ON s.id_variante = v.id_variante
         WHERE p.estado IN ('active', 'paused')
     """, (hasta - timedelta(days=VENTANA_COBERTURA_DIAS), hasta))
     filas = [dict(zip(("modelo", "id_variante", "id_meli", "titulo", "talle", "etiqueta", "stock", "unidades"), f)) for f in cursor.fetchall()]

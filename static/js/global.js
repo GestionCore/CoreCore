@@ -1507,10 +1507,31 @@ function formatearMarkdownSeguro(texto) {
     return html;
 }
 
+// La conversación del asistente vive solo en esta pestaña: se manda el final del hilo para que entienda «¿y el mes pasado?». El servidor lo valida (roles, largo) antes de usarlo.
+const _chatHistorial = [];
+let _chatEsperando = false;
+
+// Los botones «Ir a …» que sugiere el asistente: el servidor manda solo links de pantallas de CoreLux (lista cerrada); igual acá se exige un camino interno.
+function _agregarBotonesChat(contenedor, botones) {
+    const validos = (botones || []).filter(b => b && typeof b.url === 'string' && b.url.startsWith('/') && !b.url.startsWith('//'));
+    if (!validos.length) return;
+    const fila = document.createElement('div');
+    fila.className = 'chat-botones';
+    validos.forEach(b => {
+        const a = document.createElement('a');
+        a.className = 'btn btn-secondary';
+        a.href = b.url;
+        a.textContent = String(b.texto || 'Ir');
+        fila.appendChild(a);
+    });
+    contenedor.appendChild(fila);
+}
+
 async function enviarMensajeIA() {
     const input = document.getElementById('chat-input');
     const texto = input.value.trim();
-    if (!texto) return;
+    if (!texto || _chatEsperando) return;
+    _chatEsperando = true;
     const body = document.getElementById('chat-body');
     body.innerHTML += `<div class="chat-msg-user">${escapeHtml(texto)}</div>`;
     input.value = '';
@@ -1519,12 +1540,17 @@ async function enviarMensajeIA() {
     body.scrollTop = body.scrollHeight;
 
     try {
-        const res = await fetch('/api/chat_ia', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({pregunta: texto}) });
+        const res = await fetch('/api/chat_ia', { method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ pregunta: texto, historial: _chatHistorial.slice(-6), ruta: window.location.pathname }) });
         const data = await res.json();
-        document.getElementById(typingId).innerHTML = formatearMarkdownSeguro(data.respuesta);
+        const burbuja = document.getElementById(typingId);
+        burbuja.innerHTML = formatearMarkdownSeguro(data.respuesta);
+        _agregarBotonesChat(burbuja, data.botones);
+        _chatHistorial.push({ role: 'user', content: texto }, { role: 'assistant', content: String(data.respuesta || '') });
     } catch(e) {
         document.getElementById(typingId).innerHTML = '<span class="text-danger">Error de comunicación.</span>';
     }
+    _chatEsperando = false;
     body.scrollTop = body.scrollHeight;
 }
 

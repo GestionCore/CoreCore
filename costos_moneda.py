@@ -16,6 +16,8 @@ from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 
 import psycopg
 
+from utils import sql_variante_de_venta
+
 MONEDAS = ("ARS", "USD")
 MONTO_MAXIMO = 1e12
 
@@ -146,8 +148,7 @@ def sql_costo_de_venta(v="v", p="p"):
     (JOIN, expresión) de SQL para consultas que leen `ventas` (alias `v`) con su publicación (alias `p`, productos_padre): el costo en pesos de UNA unidad de esa venta. La variante
     de la venta es `ventas.id_variante`; una publicación sin variaciones se guarda como «<id>_unica». Una variante sin costo propio (NULL o 0) usa el de la publicación.
     """
-    join = (f"LEFT JOIN productos_variantes pv ON pv.cuenta_id = {v}.cuenta_id "
-            f"AND pv.id_variante = COALESCE(NULLIF({v}.id_variante, ''), {v}.id_meli || '_unica')")
+    join = f"LEFT JOIN productos_variantes pv ON pv.cuenta_id = {v}.cuenta_id AND pv.id_variante = {sql_variante_de_venta(v)}"
     return join, f"COALESCE(NULLIF(pv.precio_costo, 0), NULLIF({p}.precio_costo, 0), 0)"
 
 

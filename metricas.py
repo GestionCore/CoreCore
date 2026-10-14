@@ -372,7 +372,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
             conc_depositado += float(v["neto_recibido"])
             conc_esperado += ingreso_bruto_operacion - cargo_venta - (costo_envio - float(v["costo_flex"])) - retenciones_fila
 
-        talle_real, color_real, etiqueta_real = info_variantes.get(id_var, ("Único", "Único", None))
+        talle_real, color_real, etiqueta_real = info_variantes.get(costos_moneda.variante_de_venta(id_meli, id_var), ("Único", "Único", None))
         if etiqueta_real and etiqueta_real != "Única":
             variante_str = etiqueta_real                                # la variante por atributos: «128 GB / Azul», «M / Negro»
         else:

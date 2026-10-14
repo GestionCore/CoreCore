@@ -114,3 +114,43 @@ def _intentar_una_vez(prompt_sistema, historial_mensajes, max_tokens, temperatur
     except Exception as e:
         print(f"[IA] ❌ Error inesperado: {e}")
         return False, f"Error comunicando con la IA: {e}"
+
+
+def completar_con_herramientas(prompt_sistema, mensajes, herramientas=None, max_tokens=700, temperatura=0.2, timeout=25):
+    """
+    Un pedido al proveedor CON herramientas (llamadas a funciones, formato de OpenAI). Devuelve (True, mensaje) con el mensaje del asistente tal como vino
+    ({"role": "assistant", "content": "...", "tool_calls": [...]}: hay que reenviarlo igual en el turno siguiente) o (False, texto del error).
+    Sin `herramientas` es un pedido común: se usa para forzar la respuesta final cuando ya se pidieron todos los datos.
+    """
+    if not IA_API_KEY:
+        return False, "Falta configurar IA_API_KEY en el archivo .env."
+    cuerpo = {"model": IA_MODEL, "messages": [{"role": "system", "content": prompt_sistema}] + list(mensajes), "temperature": temperatura, "max_tokens": max_tokens, **parametros_extra()}
+    if herramientas:
+        cuerpo["tools"] = herramientas
+    try:
+        resp = requests.post(f"{IA_BASE_URL}/chat/completions", headers={"Authorization": f"Bearer {IA_API_KEY}", "Content-Type": "application/json"}, json=cuerpo, timeout=timeout)
+        if resp.status_code != 200:
+            try:
+                error = resp.json().get("error", {}).get("message", resp.text)
+            except Exception:
+                error = resp.text[:200]
+            print(f"[IA] ⚠️ Error del proveedor de IA: {resp.status_code} - {error}")
+            return False, f"Error comunicando con la IA: {error}"
+        opciones = resp.json().get("choices") or []
+        if not opciones:
+            return False, "La IA no devolvió ninguna opción válida."
+        mensaje = opciones[0].get("message") or {}
+        llamadas = mensaje.get("tool_calls") or []
+        texto = mensaje.get("content")
+        if not llamadas and not (isinstance(texto, str) and texto.strip()):
+            return False, "La IA respondió sin texto de contenido."
+        resultado = {"role": "assistant", "content": texto if isinstance(texto, str) else ""}
+        if llamadas:
+            resultado["tool_calls"] = llamadas
+        return True, resultado
+    except requests.exceptions.Timeout:
+        print("[IA] ❌ Timeout consultando al proveedor de IA.")
+        return False, "Error comunicando con la IA: tiempo de espera agotado (Timeout)."
+    except Exception as e:
+        print(f"[IA] ❌ Error inesperado: {e}")
+        return False, f"Error comunicando con la IA: {e}"
