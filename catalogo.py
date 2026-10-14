@@ -76,7 +76,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
                 "recibis_formateado": formatear_moneda(recibis_estimado) if recibis_estimado else None,
                 "cuotas_texto": f"{cuotas_cantidad} cuotas de ${formatear_moneda(cuotas_monto)}" if cuotas_cantidad and cuotas_monto else None,
                 "estado": estado, "thumbnail": thumbnail,
-                "stock_propio": 0, "stock_full": 0, "variantes": [], "_talles_index": {},
+                "stock_propio": 0, "stock_full": 0, "variantes": [], "_variantes_index": {},
                 "historial_7d": [0] * 7, "_ids_ya_sumados_historial": set(), "unidades_ritmo": 0
             }
 
@@ -95,8 +95,8 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
         m["precio_max"] = max(m["precio_max"], precio)
         pausada_por_stock = (estado == 'paused' and stock_propio == 0 and stock_full == 0)
 
-        if talle_detectado in m["_talles_index"]:
-            fila_existente = m["_talles_index"][talle_detectado]
+        if variante in m["_variantes_index"]:
+            fila_existente = m["_variantes_index"][variante]
             if stock_propio != fila_existente["propio"] or stock_full != fila_existente["full"]:
                 fila_existente["revisar_duplicado"] = True
             fila_existente["propio"] = max(fila_existente["propio"], stock_propio)
@@ -109,7 +109,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
                 "pausada_por_stock": pausada_por_stock, "revisar_duplicado": False
             }
             m["variantes"].append(nueva_fila)
-            m["_talles_index"][talle_detectado] = nueva_fila
+            m["_variantes_index"][variante] = nueva_fila
 
     productos_lista = []
     total_activas = 0
@@ -118,7 +118,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
     valor_inventario_total = 0.0
 
     for m in modelos_agrupados.values():
-        del m["_talles_index"]
+        del m["_variantes_index"]
         del m["_ids_ya_sumados_historial"]
         m["stock_propio"] = sum(v["propio"] for v in m["variantes"])
         m["stock_full"] = sum(v["full"] for v in m["variantes"])

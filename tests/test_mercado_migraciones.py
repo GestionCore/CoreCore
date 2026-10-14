@@ -143,7 +143,7 @@ def test_las_restricciones_de_las_tablas_nuevas_rechazan_lo_invalido():
                 rechazos["moneda_padre"] = _rechaza(cur, "UPDATE productos_padre SET moneda_costo = 'EUR' WHERE id = %s", (padre,))
                 rechazos["moneda_variante"] = _rechaza(cur, "UPDATE productos_variantes SET moneda_costo = 'EUR' WHERE id_variante = 'PRUEBA_0046_B'")
                 rechazos["costo_negativo"] = _rechaza(cur, "UPDATE productos_variantes SET precio_costo = -1 WHERE id_variante = 'PRUEBA_0046_B'")
-                aceptados["costo_usd"] = not _rechaza(cur, "UPDATE productos_variantes SET precio_costo = 150, moneda_costo = 'USD' WHERE id_variante = 'PRUEBA_0046_B'")
+                aceptados["costo_usd"] = not _rechaza(cur, "UPDATE productos_variantes SET precio_costo = 150, costo_original = 0.1, moneda_costo = 'USD' WHERE id_variante = 'PRUEBA_0046_B'")
             if cuenta:
                 rechazos["dolar_manual_cero"] = _rechaza(cur, "UPDATE cuentas_meli SET dolar_manual = 0 WHERE id = %s", (cuenta,))
                 rechazos["dolar_manual_negativo"] = _rechaza(cur, "UPDATE cuentas_meli SET dolar_manual = -5 WHERE id = %s", (cuenta,))
