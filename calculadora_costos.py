@@ -7,8 +7,11 @@ de blogs de terceros.
 """
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 import envio_gratis
+import flex
 import meli_http
+from utils import formatear_moneda, hoy_argentina
 
 # Nombre de categoría por category_id — es un dato global de MeLi (no
 # depende de la cuenta), así que a diferencia de las otras cachés del
@@ -167,3 +170,119 @@ def calcular_desglose_real(access_token, precio, category_id, listing_type_id, o
         "envio_motivo": envio_motivo,
         "recibis": round(ganancia_antes_de_costo_producto, 2),
     }
+
+
+# ── Unit Economics: lo que de verdad te deja UNA venta, con devoluciones, embalaje y publicidad ───────────────────────────────────────────────
+BASE_LOTE = 100               # se piensa en un lote de 100 ventas: «14 devoluciones cada 100» se entiende sin hacer cuentas
+VENTANA_REALES_DIAS = 90      # los datos reales de un producto salen de sus ventas de los últimos 90 días
+MIN_UNIDADES_REALES = 3       # con menos ventas el dato es orientativo
+
+
+def _num(valor, minimo=0.0):
+    """Un número válido y no negativo (los campos vacíos, el texto y NaN/infinito valen 0)."""
+    try:
+        v = float(valor)
+    except (TypeError, ValueError):
+        return 0.0
+    if v != v or v in (float("inf"), float("-inf")):
+        return 0.0
+    return max(v, minimo)
+
+
+def simular_merma(precio, comision, costo_fabricacion=0, costo_envio=0, costo_ads=0, costo_embalaje=0, tasa_devolucion=0, costo_envio_devolucion=0):
+    """
+    Lo que cuesta y lo que deja UNA venta concretada, pensando en un lote de BASE_LOTE (100) ventas. Si `tasa_devolucion` es 14, 14 de las 100 vuelven y se concretan 86.
+    Lo que se paga POR CADA UNA de las 100 aunque vuelva (publicidad, embalaje y el envío de ida) más el envío de vuelta de las devueltas es plata hundida: se reparte
+    entre las 86 que sí se concretaron.
+      · comisión y costo de fabricación: solo de las ventas concretadas (en una devolución Mercado Libre reintegra la comisión y el producto vuelve a tu stock);
+      · hundido = 100 × (publicidad + embalaje + envío de ida) + devoluciones × envío de devolución;
+      · costo de una venta = comisión + fabricación + hundido ÷ ventas concretadas; ganancia = precio − ese costo.
+    Con la tasa en 0 da lo mismo que sumar los costos de una venta sola. {"error": ...} si no hay precio o si TODAS vuelven (no se concreta ninguna).
+    """
+    precio, comision = _num(precio), _num(comision)
+    costo_fabricacion, costo_envio, costo_ads, costo_embalaje, costo_envio_devolucion = (_num(x) for x in (costo_fabricacion, costo_envio, costo_ads, costo_embalaje, costo_envio_devolucion))
+    tasa = _num(tasa_devolucion)
+    if precio <= 0:
+        return {"error": "Falta el precio de venta."}
+    if tasa >= 100:
+        return {"error": "Con el 100 % de devoluciones no se concreta ninguna venta: no hay ganancia por unidad."}
+    concretadas = BASE_LOTE * (1 - tasa / 100)
+    devoluciones = BASE_LOTE - concretadas
+    hundido_total = BASE_LOTE * (costo_ads + costo_embalaje + costo_envio) + devoluciones * costo_envio_devolucion
+    por_venta = {
+        "comision": comision, "fabricacion": costo_fabricacion,
+        "envio": BASE_LOTE * costo_envio / concretadas, "ads": BASE_LOTE * costo_ads / concretadas, "embalaje": BASE_LOTE * costo_embalaje / concretadas,
+        "devoluciones": devoluciones * costo_envio_devolucion / concretadas,
+    }
+    costo_total = sum(por_venta.values())
+    ganancia = precio - costo_total
+    sin_devoluciones = precio - comision - costo_fabricacion - costo_envio - costo_ads - costo_embalaje
+    return {
+        "base": BASE_LOTE, "devoluciones": round(devoluciones, 2), "concretadas": round(concretadas, 2), "tasa_devolucion": tasa,
+        "hundido_total": round(hundido_total, 2), "hundido_por_venta": round(hundido_total / concretadas, 2),
+        "por_venta": {k: round(v, 2) for k, v in por_venta.items()},
+        "costo_total_por_venta": round(costo_total, 2), "ganancia_por_venta": round(ganancia, 2), "margen_pct": round(ganancia / precio * 100, 1),
+        "ganancia_sin_devoluciones": round(sin_devoluciones, 2), "costo_de_las_devoluciones": round(sin_devoluciones - ganancia, 2),
+        "frase": _frase_merma(devoluciones, concretadas, costo_total, ganancia),
+    }
+
+
+def _cantidad(n):
+    """86 → «86»; 87,5 → «87,5»."""
+    n = round(n, 1)
+    return str(int(n)) if float(n).is_integer() else str(n).replace(".", ",")
+
+
+def _frase_merma(devoluciones, concretadas, costo_total, ganancia):
+    """La cuenta dicha en una frase (solo si hay devoluciones: sin ellas no hay nada que absorber)."""
+    if devoluciones <= 0:
+        return None
+    final = f"te deja ${formatear_moneda(ganancia)} limpios" if ganancia >= 0 else f"te hace perder ${formatear_moneda(abs(ganancia))}"
+    return (f"Tuviste que pagar {BASE_LOTE} envíos/ads para concretar {_cantidad(concretadas)} ventas. "
+            f"Absorbiendo esa pérdida, vender 1 sola unidad te cuesta realmente ${formatear_moneda(costo_total)} y {final}.")
+
+
+def escala_flex(umbrales):
+    """
+    La escala de entrega Flex que cargó el vendedor (los precios de sus umbrales, ver flex.py): {"minimo", "maximo", "promedio"}. El promedio es el punto medio del rango
+    (si paga entre $4.000 y $10.000 se asume $7.000). None si no cargó ningún precio. Son precios brutos: no se les descuenta el reintegro de Mercado Libre.
+    """
+    precios = []
+    for u in umbrales or []:
+        try:
+            p = float(u.get("precio"))
+        except (TypeError, ValueError):
+            continue
+        if p > 0:
+            precios.append(p)
+    if not precios:
+        return None
+    return {"minimo": min(precios), "maximo": max(precios), "promedio": round((min(precios) + max(precios)) / 2, 2)}
+
+
+def datos_de_producto(cursor, cuenta_id, id_meli, hoy=None):
+    """
+    Lo que CoreLux ya sabe de una publicación para completar la calculadora sin que la persona escriba nada: precio, categoría, tipo de publicación y costo de fabricación
+    cargados, la comisión, el envío y las retenciones REALES de sus ventas de los últimos 90 días, y la escala Flex del vendedor. None si la publicación no existe.
+    `reales` es None si no vendió en esos 90 días (nada se estima con otros productos: el envío de dos productos no se parece).
+    """
+    cursor.execute("SELECT id_meli, titulo, thumbnail, precio, precio_costo, category_id, listing_type_id FROM productos_padre WHERE cuenta_id = %s AND id_meli = %s", (cuenta_id, id_meli))
+    fila = cursor.fetchone()
+    if not fila:
+        return None
+    id_meli, titulo, thumbnail, precio, costo, category_id, listing_type_id = fila
+    desde = (hoy or hoy_argentina()) - timedelta(days=VENTANA_REALES_DIAS)
+    cursor.execute("""
+        SELECT COALESCE(SUM(cantidad), 0), COALESCE(SUM(precio_venta * cantidad), 0), COALESCE(SUM(COALESCE(cargo_venta, 0)), 0), COALESCE(SUM(COALESCE(costo_envio, 0)), 0),
+               COALESCE(SUM(retenciones), 0), COALESCE(SUM(precio_venta * cantidad) FILTER (WHERE retenciones IS NOT NULL), 0)
+        FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND id_meli = %s AND fecha_venta >= %s
+    """, (cuenta_id, id_meli, desde))
+    unidades, ingreso, cargos, envios, retenciones, ingreso_con_retenciones = (float(x or 0) for x in cursor.fetchone())
+    reales = None
+    if unidades > 0 and ingreso > 0:
+        reales = {"dias": VENTANA_REALES_DIAS, "unidades": int(unidades), "comision_pct": round(cargos / ingreso * 100, 1), "comision_unitaria": round(cargos / unidades, 2),
+                  "envio_unitario": round(envios / unidades, 2), "pocas_ventas": unidades < MIN_UNIDADES_REALES,
+                  "retenciones_pct": round(retenciones / ingreso_con_retenciones * 100, 2) if ingreso_con_retenciones > 0 else None}
+    return {"id_meli": id_meli, "titulo": titulo or id_meli, "thumbnail": thumbnail, "precio": float(precio) if precio else None,
+            "costo_fabricacion": float(costo) if costo else None, "category_id": category_id, "listing_type_id": listing_type_id,
+            "reales": reales, "flex": escala_flex(flex.obtener_config(cursor, cuenta_id)["umbrales"])}

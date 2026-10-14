@@ -2661,6 +2661,57 @@ def api_calculadora_costos():
     return jsonify(resultado)
 
 
+@app.route("/api/calculadora_producto")
+@login_requerido
+def api_calculadora_producto():
+    """
+    Lo que CoreLux ya sabe de una publicación para completar la calculadora: precio, categoría, costo de fabricación, comisión/envío/retenciones reales de sus ventas (90 días),
+    escala Flex del vendedor y, de Mercado Libre, el costo de publicidad por unidad vendida de los últimos 30 días (el mismo cálculo del Monitor en vivo): sugerido, editable.
+    """
+    id_meli = (request.args.get("id_meli") or "").strip()
+    if not id_meli:
+        return jsonify({"error": "Falta indicar la publicación."}), 400
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        datos = calculadora_costos.datos_de_producto(conexion.cursor(), g.cuenta_id, id_meli)
+    if datos is None:
+        return jsonify({"error": "No encontramos esa publicación."}), 404
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        access_token = None
+    ads_30 = metricas_mod.cpa_por_publicacion(g.usuario_id, g.cuenta_id, access_token, 30) if access_token else None
+    if ads_30 is None:
+        datos["ads"] = {"disponible": False}                                                     # Mercado Libre no contestó o no hay Publicidad: no es lo mismo que «no gasta»
+    else:
+        datos["ads"] = {"disponible": True, "dias": 30, **(ads_30.get(id_meli) or {"gasto": 0.0, "unidades": 0, "cpa": None})}
+    datos["categoria_nombre"] = None
+    if datos["category_id"] and access_token:
+        try:
+            datos["categoria_nombre"] = calculadora_costos.caminos_de_categorias([datos["category_id"]], {"Authorization": f"Bearer {access_token}"}).get(datos["category_id"])
+        except Exception:
+            datos["categoria_nombre"] = None
+    return jsonify(datos)
+
+
+@app.route("/api/calculadora_flex")
+@login_requerido
+def api_calculadora_flex():
+    """La escala de entrega Flex del vendedor (mínimo, máximo y promedio de los precios que cargó en Costos), para el costo del envío de vuelta de una devolución. {"escala": null} si no cargó ninguno."""
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        escala = calculadora_costos.escala_flex(flex.obtener_config(conexion.cursor(), g.cuenta_id)["umbrales"])
+    return jsonify({"escala": escala})
+
+
+@app.route("/api/calculadora_merma")
+@login_requerido
+def api_calculadora_merma():
+    """La cuenta de una venta con devoluciones, embalaje y publicidad (calculadora_costos.simular_merma): sin Mercado Libre ni base, es solo la matemática."""
+    a = request.args
+    return jsonify(calculadora_costos.simular_merma(
+        a.get("precio"), a.get("comision"), a.get("costo_fabricacion"), a.get("costo_envio"), a.get("costo_ads"), a.get("costo_embalaje"),
+        a.get("tasa_devolucion"), a.get("costo_envio_devolucion")))
+
+
 @app.route("/api/simular_costo")
 @login_requerido
 def api_simular_costo():

@@ -477,7 +477,11 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 
 /* ---------- Calculadora: datos a la izquierda, resultado a la derecha (se apilan en celular) ---------- */
 .ux-calc { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 20px; align-items: start; margin-bottom: 8px; }
-.ux-calc > .panel { position: sticky; top: calc(var(--topbar-h, 58px) + 56px); }
+.ux-calc > .panel { position: sticky; top: calc(var(--topbar-h, 58px) + 56px); max-height: calc(100vh - var(--topbar-h, 58px) - 76px); overflow-y: auto; }      /* con muchos campos, el panel se desplaza adentro en vez de quedar cortado */
+.calc-elegido { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.calc-elegido .ux-pill { min-width: 0; max-width: 100%; }
+.calc-elegido .titulo-1l { max-width: 100%; }
+.ux-merma-frase { margin-top: 16px; padding: 12px 14px; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--ux-c, var(--accent-primary)) 10%, transparent); font-weight: 600; line-height: 1.45; }
 .ux-input-grande { font-size: 1.5em !important; font-weight: 800; padding: 14px 16px !important; }
 .ux-lista-opciones { margin-top: 4px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); max-height: 220px; overflow-y: auto; background: var(--glass-bg-alt); box-shadow: var(--shadow-elevated); }
 .ux-opcion { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--border-soft); background: transparent; color: var(--text-primary); font-family: var(--font-ui); font-size: 0.88em; text-align: left; cursor: pointer; }
@@ -684,7 +688,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .flex-prev-total { border-top: 1px solid var(--border-soft); margin-top: 6px; padding-top: 10px; }
 .flex-incluir { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; font-size: 0.82em; color: var(--text-secondary); cursor: pointer; }
 .flex-incluir input { width: auto; margin-top: 3px; }
-@media (max-width: 900px) { .ux-calc { grid-template-columns: 1fr; } .ux-calc > .panel { position: static; } }
+@media (max-width: 900px) { .ux-calc { grid-template-columns: 1fr; } .ux-calc > .panel { position: static; max-height: none; overflow-y: visible; } }
 
 /* ---------- Escalera de niveles (reputación): 5 tramos, el actual resaltado ---------- */
 .ux-escalera { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 18px; }

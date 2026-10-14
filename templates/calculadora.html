@@ -4,7 +4,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-calculator"/></svg>Calculadora de comisiones</h1>
-        <div class="page-subtitle">Poné un precio y mirá <strong>cuánto te queda de verdad</strong> — comisión real de MeLi, envío y cuotas incluidos. Se calcula solo, mientras escribís.</div>
+        <div class="page-subtitle">Poné un precio y mirá <strong>cuánto te queda de verdad en UNA venta</strong> — comisión real de MeLi, envío, publicidad, embalaje y devoluciones incluidos. Se calcula solo, mientras escribís.</div>
     </div>
 </div>
 
@@ -12,6 +12,14 @@
     <!-- ── Datos ────────────────────────────────────────────────────────── -->
     <div class="panel" style="margin:0;">
         <div class="panel-title">1 · Qué vas a vender</div>
+
+        <div class="field-group" style="margin-bottom:16px;">
+            <label class="field-label" for="calc-producto-buscar"><b>Uno de tus productos</b> <span class="text-muted" style="font-weight:400;">(opcional)</span></label>
+            <input type="text" id="calc-producto-buscar" placeholder="Buscá por nombre y se completa con tus datos reales…" autocomplete="off" aria-controls="calc-prod-resultados">
+            <div id="calc-prod-resultados" class="ux-lista-opciones" style="display:none;" role="listbox"></div>
+            <div id="calc-prod-elegido" style="margin-top:8px;"></div>
+            <div id="calc-hint-producto" class="text-muted" style="font-size:0.82em; margin-top:6px;"></div>
+        </div>
 
         <div class="field-group" style="margin-bottom:16px;">
             <label class="field-label" for="calc-precio"><b>Precio de venta ($)</b></label>
@@ -37,14 +45,41 @@
         <div class="filter-row" style="margin-bottom:0;">
             <div class="field-group" style="flex:1; min-width:150px;">
                 <label class="field-label" for="calc-costo"><b>Costo de fabricación</b> <span class="text-muted" style="font-weight:400;">(opcional)</span></label>
-                <input type="number" id="calc-costo" min="0" step="1" inputmode="numeric" placeholder="8000">
+                <input type="number" id="calc-costo" min="0" step="1" inputmode="decimal" placeholder="8000">
             </div>
             <div class="field-group" style="flex:1; min-width:150px;">
                 <label class="field-label" for="calc-envio"><b>Costo de envío</b> <span class="text-muted" style="font-weight:400;">(si lo sabés)</span></label>
-                <input type="number" id="calc-envio" min="0" step="1" inputmode="numeric" placeholder="3500">
+                <input type="number" id="calc-envio" min="0" step="1" inputmode="decimal" placeholder="3500">
             </div>
         </div>
         <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Con el costo de fabricación ves tu ganancia neta real. El envío depende del peso y tamaño del producto: si MeLi no lo informa desde acá, cargalo vos.</div>
+
+        <div class="field-group" style="margin-top:16px; margin-bottom:0;">
+            <label class="field-label" for="calc-ads"><b>Costo unitario de Ads</b> <span class="text-muted" style="font-weight:400;">(lo que pagás de publicidad por cada unidad vendida)</span></label>
+            <input type="number" id="calc-ads" min="0" step="1" inputmode="decimal" placeholder="0">
+            <div id="calc-ads-nota" class="text-muted" style="font-size:0.82em; margin-top:6px;">Si elegís uno de tus productos, lo completamos con lo que te costó la publicidad por unidad en los últimos 30 días.</div>
+        </div>
+
+        <div class="panel-title" style="margin-top:26px;">2 · Devoluciones y embalaje</div>
+        <div class="filter-row" style="margin-bottom:0;">
+            <div class="field-group" style="flex:1; min-width:150px;">
+                <label class="field-label" for="calc-tasa"><b>Devoluciones cada 100 ventas</b></label>
+                <input type="number" id="calc-tasa" min="0" max="99" step="0.5" inputmode="decimal" placeholder="14">
+            </div>
+            <div class="field-group" style="flex:1; min-width:150px;">
+                <label class="field-label" for="calc-embalaje"><b>Costo de embalaje</b> <span class="text-muted" style="font-weight:400;">(por unidad)</span></label>
+                <input type="number" id="calc-embalaje" min="0" step="1" inputmode="decimal" placeholder="300">
+            </div>
+        </div>
+        <div class="field-group" style="margin-top:16px; margin-bottom:0;" id="calc-envio-dev-grupo">
+            <label class="field-label"><b>Costo del envío de vuelta</b> <span class="text-muted" style="font-weight:400;">(cuando el comprador devuelve)</span></label>
+            <div class="ux-periodo-botones" id="calc-envio-dev-modo">
+                <button type="button" class="btn btn-secondary active" data-modo="manual">Cargarlo a mano</button>
+                <button type="button" class="btn btn-secondary" data-modo="escala" id="calc-btn-escala" disabled>Promedio de mi escala Flex</button>
+            </div>
+            <input type="number" id="calc-envio-dev" min="0" step="1" inputmode="decimal" placeholder="7000" style="margin-top:8px;">
+            <div id="calc-envio-dev-nota" class="text-muted" style="font-size:0.82em; margin-top:6px;">Si todavía no cargaste los precios de tu entrega Flex (en Costos), ingresalo a mano.</div>
+        </div>
     </div>
 
     <!-- ── Resultado ────────────────────────────────────────────────────── -->
@@ -52,7 +87,7 @@
         <div class="ux-vacio">
             <div class="ux-vacio-icono"><svg class="icon"><use href="#icon-calculator"/></svg></div>
             <div class="ux-vacio-titulo">Completá el precio y la categoría</div>
-            <div class="ux-vacio-texto">El resultado aparece acá apenas tengas los dos datos.</div>
+            <div class="ux-vacio-texto">El resultado aparece acá apenas tengas los dos datos. Si elegís uno de tus productos se completa solo.</div>
         </div>
     </div>
 </div>
@@ -74,17 +109,97 @@ const CUOTAS_FINANCIACION = [
 const $ = id => document.getElementById(id);
 let categoriaElegida = null;      // { id, nombre }
 let tipoPublicacion = 'gold_special';
-let temporizador = null, pedido = 0;
+let productoElegido = null;       // lo que CoreLux sabe del producto (ver /api/calculadora_producto)
+let escalaFlex = null;            // { minimo, maximo, promedio } de la entrega Flex del vendedor
+let modoEnvioDev = 'manual';
+let ultimoDesglose = null;        // la última respuesta de Mercado Libre (precio, comisión, envío)
+let temporizador = null, pedido = 0, temporizadorMerma = null, pedidoMerma = 0;
+const num = id => { const v = parseFloat($(id).value); return isNaN(v) ? 0 : v; };
+
+// ── Producto: lo completa todo con los datos reales de la cuenta ─────────────────────────
+let buscarProductoTimer = null;
+$('calc-producto-buscar').addEventListener('input', () => {
+    clearTimeout(buscarProductoTimer);
+    const q = $('calc-producto-buscar').value.trim();
+    const caja = $('calc-prod-resultados');
+    if (q.length < 2) { caja.style.display = 'none'; return; }
+    buscarProductoTimer = setTimeout(async () => {
+        caja.style.display = '';
+        caja.innerHTML = '<div class="ux-opcion-msg">Buscando…</div>';
+        try {
+            const data = await (await fetch(`/api/buscar?q=${encodeURIComponent(q)}`)).json();
+            caja.innerHTML = '';
+            if (!data.length) { caja.innerHTML = '<div class="ux-opcion-msg">No encontramos ese producto</div>'; return; }
+            data.forEach(p => {
+                const b = document.createElement('button');
+                b.type = 'button'; b.className = 'ux-opcion'; b.setAttribute('role', 'option');
+                b.innerHTML = `<b>${UX.esc(p.titulo)}</b>`;
+                b.addEventListener('click', () => elegirProducto(p.id));
+                caja.appendChild(b);
+            });
+        } catch (e) { caja.innerHTML = '<div class="ux-opcion-msg">No se pudo buscar ahora — probá de nuevo</div>'; }
+    }, 300);
+});
+
+async function elegirProducto(idMeli) {
+    $('calc-prod-resultados').style.display = 'none';
+    $('calc-producto-buscar').value = '';
+    $('calc-prod-elegido').innerHTML = '<span class="text-muted">Trayendo tus datos…</span>';
+    try {
+        const p = await (await fetch(`/api/calculadora_producto?id_meli=${encodeURIComponent(idMeli)}`)).json();
+        if (p.error) { $('calc-prod-elegido').innerHTML = `<span class="text-danger">${UX.esc(p.error)}</span>`; return; }
+        productoElegido = p;
+        $('calc-prod-elegido').innerHTML = `<div class="calc-elegido"><span class="ux-pill ux-accion" title="${UX.esc(p.titulo)}">${UX.icono('check')}<span class="titulo-1l" title="${UX.esc(p.titulo)}">${UX.esc(p.titulo)}</span></span>
+            <button type="button" class="btn btn-secondary" style="padding:3px 10px; font-size:0.82em;" id="calc-quitar-producto">Quitar</button></div>`;
+        $('calc-quitar-producto').addEventListener('click', quitarProducto);
+        completarConProducto(p);
+    } catch (e) { $('calc-prod-elegido').innerHTML = '<span class="text-danger">No se pudieron traer los datos ahora — probá de nuevo.</span>'; }
+}
+
+function quitarProducto() {
+    productoElegido = null;
+    $('calc-prod-elegido').innerHTML = ''; $('calc-hint-producto').innerHTML = '';
+    $('calc-ads-nota').textContent = 'Si elegís uno de tus productos, lo completamos con lo que te costó la publicidad por unidad en los últimos 30 días.';
+    programarCalculo();
+}
+
+function completarConProducto(p) {
+    if (p.precio) $('calc-precio').value = Math.round(p.precio);
+    if (p.costo_fabricacion) $('calc-costo').value = Math.round(p.costo_fabricacion * 100) / 100;
+    if (p.listing_type_id === 'gold_pro' || p.listing_type_id === 'gold_special') {
+        tipoPublicacion = p.listing_type_id;
+        document.querySelectorAll('[data-listing]').forEach(b => b.classList.toggle('active', b.dataset.listing === tipoPublicacion));
+    }
+    if (p.category_id) elegirCategoria(p.category_id, p.categoria_nombre || p.category_id, false);
+    const r = p.reales;
+    if (r && r.envio_unitario > 0) $('calc-envio').value = Math.round(r.envio_unitario);       // el envío REAL que pagó este producto (si MeLi lo informa para el precio, gana el de MeLi)
+    if (r) {
+        const partes = [`comisión real <b>${UX.pct(r.comision_pct, 1)}</b>`, `envío promedio <b>${UX.plata(r.envio_unitario)}</b>`];
+        if (r.retenciones_pct !== null && r.retenciones_pct !== undefined) partes.push(`retenciones <b>${UX.pct(r.retenciones_pct, 1)}</b>`);
+        $('calc-hint-producto').innerHTML = `Completado con tus ${r.unidades} ${r.unidades === 1 ? 'venta' : 'ventas'} de los últimos ${r.dias} días: ${partes.join(' · ')}.${r.pocas_ventas ? ' <b>Son pocas ventas: tomalo como orientativo.</b>' : ''}`;
+    } else {
+        $('calc-hint-producto').textContent = 'Este producto no vendió en los últimos 90 días: completamos precio, categoría y costo; la comisión la consultamos a Mercado Libre.';
+    }
+    const a = p.ads || {};
+    const nota = $('calc-ads-nota');
+    if (!a.disponible) { $('calc-ads').value = ''; nota.textContent = 'No pudimos consultar tu publicidad ahora: cargá el costo por unidad a mano.'; }
+    else if (a.cpa !== null && a.cpa !== undefined) {
+        $('calc-ads').value = Math.round(a.cpa);
+        nota.innerHTML = `<b>Dato sugerido, podés modificarlo.</b> En los últimos ${a.dias} días gastaste ${UX.plata(a.gasto)} en publicidad de este producto y vendiste ${a.unidades} ${a.unidades === 1 ? 'unidad neta' : 'unidades netas'}: ${UX.plata(a.cpa)} por unidad (el mismo cálculo del Monitor en vivo).`;
+    } else if (a.gasto > 0) { $('calc-ads').value = ''; nota.innerHTML = `En los últimos ${a.dias} días gastaste ${UX.plata(a.gasto)} en publicidad de este producto y no vendiste ninguna unidad: no hay un costo por unidad para sugerir. Cargá el que quieras.`; }
+    else { $('calc-ads').value = '0'; nota.innerHTML = '<b>Dato sugerido, podés modificarlo.</b> Este producto no gastó en publicidad en los últimos 30 días.'; }
+    programarCalculo();
+}
 
 // ── Categoría: búsqueda + atajos a las del propio catálogo ──────────────────────────────
-function elegirCategoria(id, nombre) {
+function elegirCategoria(id, nombre, calcular = true) {
     categoriaElegida = { id, nombre };
     $('calc-cat-resultados').style.display = 'none';
     $('calc-categoria-buscar').value = '';
-    $('calc-cat-elegida').innerHTML = `<span class="ux-pill ux-accion">${UX.icono('check')}${UX.esc(nombre)}</span>
-        <button type="button" class="btn btn-secondary" style="padding:3px 10px; font-size:0.82em; margin-left:6px;" id="calc-cambiar-cat">Cambiar</button>`;
+    $('calc-cat-elegida').innerHTML = `<div class="calc-elegido"><span class="ux-pill ux-accion" title="${UX.esc(nombre)}">${UX.icono('check')}<span class="titulo-1l" title="${UX.esc(nombre)}">${UX.esc(nombre)}</span></span>
+        <button type="button" class="btn btn-secondary" style="padding:3px 10px; font-size:0.82em;" id="calc-cambiar-cat">Cambiar</button></div>`;
     $('calc-cambiar-cat').addEventListener('click', () => { categoriaElegida = null; $('calc-cat-elegida').innerHTML = ''; $('calc-categoria-buscar').focus(); programarCalculo(); });
-    programarCalculo();
+    if (calcular) programarCalculo();
 }
 
 function opcionCategoria(c) {
@@ -130,7 +245,7 @@ $('calc-categoria-buscar').addEventListener('input', () => {
             b.addEventListener('click', () => elegirCategoria(c.id, c.nombre));
             cont.appendChild(b);
         });
-        if (cats.length === 1) elegirCategoria(cats[0].id, cats[0].nombre);   // una sola categoría: ya queda elegida
+        if (cats.length === 1 && !categoriaElegida) elegirCategoria(cats[0].id, cats[0].nombre);   // una sola categoría: ya queda elegida
     } catch (e) { /* sin atajos: queda el buscador */ }
 })();
 
@@ -140,10 +255,33 @@ document.querySelectorAll('[data-listing]').forEach(btn => btn.addEventListener(
     tipoPublicacion = btn.dataset.listing;
     programarCalculo();
 }));
-['calc-precio', 'calc-costo', 'calc-envio'].forEach(id => $(id).addEventListener('input', programarCalculo));
+['calc-precio'].forEach(id => $(id).addEventListener('input', programarCalculo));                       // el precio cambia la comisión: se vuelve a preguntar a Mercado Libre
+['calc-costo', 'calc-envio', 'calc-ads', 'calc-tasa', 'calc-embalaje', 'calc-envio-dev'].forEach(id => $(id).addEventListener('input', programarMerma));    // el resto solo cambia la cuenta: no hace falta preguntar de nuevo
+
+// ── Escala Flex del vendedor: el costo de vuelta puede ser manual o el promedio de su escala ──────────────────
+function actualizarModoEnvioDev() {
+    document.querySelectorAll('#calc-envio-dev-modo [data-modo]').forEach(b => b.classList.toggle('active', b.dataset.modo === modoEnvioDev));
+    $('calc-envio-dev').style.display = modoEnvioDev === 'escala' ? 'none' : '';
+    const nota = $('calc-envio-dev-nota');
+    if (modoEnvioDev === 'escala' && escalaFlex) nota.innerHTML = `Tu escala de entrega Flex va de <b>${UX.plata(escalaFlex.minimo)}</b> a <b>${UX.plata(escalaFlex.maximo)}</b>: se asume el promedio, <b>${UX.plata(escalaFlex.promedio)}</b>, por cada devolución.`;
+    else nota.textContent = escalaFlex ? 'Ingresá lo que te cobra el envío de vuelta, o usá el promedio de tu escala Flex.' : 'Si todavía no cargaste los precios de tu entrega Flex (en Costos), ingresalo a mano.';
+}
+document.querySelectorAll('#calc-envio-dev-modo [data-modo]').forEach(b => b.addEventListener('click', () => { modoEnvioDev = b.dataset.modo; actualizarModoEnvioDev(); programarMerma(); }));
+function costoEnvioDevolucion() { return modoEnvioDev === 'escala' && escalaFlex ? escalaFlex.promedio : num('calc-envio-dev'); }
+
+(async function cargarEscalaFlex() {
+    if ((window.CAPACIDADES || {}).flex === false) { $('calc-btn-escala').style.display = 'none'; return; }       // la cuenta no usa Flex: solo carga manual
+    try {
+        const d = await (await fetch('/api/calculadora_flex')).json();
+        escalaFlex = d.escala;
+        if (escalaFlex) { const b = $('calc-btn-escala'); b.disabled = false; b.textContent = `Promedio de mi escala Flex (${UX.plata(escalaFlex.promedio)})`; }
+    } catch (e) { /* queda la carga manual */ }
+    actualizarModoEnvioDev();
+})();
 
 // ── Cálculo en vivo ────────────────────────────────────────────────────────────────────
 function programarCalculo() { clearTimeout(temporizador); temporizador = setTimeout(calcular, 450); }
+function programarMerma() { clearTimeout(temporizadorMerma); temporizadorMerma = setTimeout(repintar, 250); }
 
 async function calcular() {
     const precio = parseFloat($('calc-precio').value);
@@ -154,77 +292,107 @@ async function calcular() {
         const d = await (await fetch(`/api/calculadora_costos?precio=${precio}&category_id=${encodeURIComponent(categoriaElegida.id)}&listing_type_id=${tipoPublicacion}&ofrece_cuotas=false`)).json();
         if (miPedido !== pedido) return;   // llegó tarde: ya hay un cálculo más nuevo
         $('calc-resultado').style.opacity = '';
-        if (d.error) { $('calc-resultado').innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No pudimos calcular la comisión</b>', detalle: d.error }); $('calc-cuotas').innerHTML = ''; return; }
-        pintarResultado(d);
+        if (d.error) { desgloseDeRespaldo(precio, d.error); return; }
+        pintarResultado({ ...d, respaldo: false });
     } catch (e) {
         if (miPedido !== pedido) return;
         $('calc-resultado').style.opacity = '';
-        $('calc-resultado').innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No pudimos calcularlo ahora</b>', detalle: 'Probá de nuevo en un momento.' });
+        desgloseDeRespaldo(precio, 'Probá de nuevo en un momento.');
     }
 }
 
-function pintarResultado(d) {
-    const costo = parseFloat($('calc-costo').value) || 0;
+// Si Mercado Libre no contesta pero el producto tiene ventas reales, se usa la comisión que realmente pagó (de la base); si no, se avisa
+function desgloseDeRespaldo(precio, motivo) {
+    const r = productoElegido && productoElegido.reales;
+    if (!r) { $('calc-resultado').innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No pudimos calcular la comisión</b>', detalle: motivo }); $('calc-cuotas').innerHTML = ''; ultimoDesglose = null; return; }
+    pintarResultado({ precio, comision_total: Math.round(precio * r.comision_pct) / 100, pct_comision_base: r.comision_pct, cargo_fijo: 0, costo_envio: null, envio_obligatorio_gratis: null, respaldo: true });
+}
+
+function pintarResultado(d) { ultimoDesglose = d; repintar(); }
+
+async function repintar() {
+    const d = ultimoDesglose;
+    if (!d) return;
+    const miMerma = ++pedidoMerma;
+    const costo = num('calc-costo');
     const envioManual = parseFloat($('calc-envio').value);
     const envio = d.costo_envio !== null && d.costo_envio !== undefined ? d.costo_envio : (isNaN(envioManual) ? null : envioManual);
-    const recibis = d.precio - d.comision_total - (envio || 0);
-    const neto = recibis - costo;
-    const base = d.precio;
+    const consulta = new URLSearchParams({ precio: d.precio, comision: d.comision_total, costo_fabricacion: costo, costo_envio: envio || 0, costo_ads: num('calc-ads'),
+                                           costo_embalaje: num('calc-embalaje'), tasa_devolucion: num('calc-tasa'), costo_envio_devolucion: costoEnvioDevolucion() });
+    let m;
+    try { m = await (await fetch('/api/calculadora_merma?' + consulta)).json(); } catch (e) { return; }
+    if (miMerma !== pedidoMerma) return;
+    if (m.error) { $('calc-resultado').innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>Revisá las devoluciones</b>', detalle: m.error }); $('calc-cuotas').innerHTML = ''; return; }
 
+    const base = d.precio;
+    const neto = m.ganancia_por_venta;
     // Con costo cargado el color dice si conviene (mismos umbrales que el resto de la app); sin costo es informativo
     const margen = costo > 0 ? neto / base * 100 : null;
     const tono = margen === null ? 'info' : (neto < 0 ? 'danger' : (margen < window.MARGEN_MINIMO ? 'warn' : 'ok'));
-    const titulo = margen === null ? 'Te queda de este precio' : 'Tu ganancia neta real';
-    const numero = margen === null ? recibis : neto;
-
+    const titulo = margen === null ? 'Te queda de este precio' : 'Tu ganancia neta real por venta';
+    const pv = m.por_venta;
     const partes = [
-        { n: 'Comisión de MeLi', v: d.comision_total, c: 'var(--danger)' },
-        { n: 'Envío', v: envio || 0, c: 'var(--accent-cyan)' },
-        { n: 'Costo de fabricación', v: costo, c: 'var(--accent-primary)' },
+        { n: 'Comisión de MeLi', v: pv.comision, c: 'var(--danger)' },
+        { n: 'Envío', v: pv.envio, c: 'var(--accent-cyan)' },
+        { n: 'Costo de fabricación', v: pv.fabricacion, c: 'var(--accent-primary)' },
+        { n: 'Publicidad', v: pv.ads, c: 'var(--semantic-warning)' },
+        { n: 'Embalaje', v: pv.embalaje, c: 'var(--accent-gold)' },
+        { n: 'Envíos de devolución', v: pv.devoluciones, c: 'var(--text-faint)' },
     ].filter(p => p.v > 0);
     const gananciaPositiva = Math.max(neto, 0);
     const total = Math.max(base, partes.reduce((a, p) => a + p.v, 0));
 
     const avisos = [];
+    if (d.respaldo) avisos.push(UX.banner({ tono: 'info', icono: 'info', tituloHtml: '<b>Usamos la comisión real de tus ventas</b>', detalle: 'No pudimos consultar la comisión a Mercado Libre ahora: tomamos el porcentaje que pagó este producto en sus últimas ventas.' }));
     if (envio === null) avisos.push(UX.banner({ tono: 'info', icono: 'truck', tituloHtml: '<b>No incluye el envío</b> — MeLi no lo informa para este producto desde acá', detalle: 'Si ofrecés envío gratis, cargalo arriba para ver el resultado completo.' }));
     else if (d.envio_obligatorio_gratis) avisos.push(UX.banner({ tono: 'warn', icono: 'truck', tituloHtml: '<b>Por este precio el envío es gratis</b> y lo pagás vos', detalle: '' }));
+    const ret = productoElegido && productoElegido.reales && productoElegido.reales.retenciones_pct;
+    if (ret) avisos.push(UX.banner({ tono: 'info', icono: 'receipt', tituloHtml: `<b>Retenciones de impuestos: ${UX.pct(ret, 1)} del precio (${UX.plata(base * ret / 100)})</b>`, detalle: 'No se restan de tu ganancia: son un pago anticipado de tus impuestos. Dato de tus ventas reales.' }));
+
+    const costoDev = m.costo_de_las_devoluciones;
+    const fraseMerma = m.frase
+        ? `<div class="ux-merma-frase" role="note">${UX.esc(m.frase)}</div>
+           <div class="text-muted" style="font-size:0.8em; margin-top:6px;">Supuesto: en una devolución Mercado Libre te reintegra la comisión y el producto vuelve a tu stock. Las devoluciones te cuestan ${UX.plata(costoDev)} por cada venta concretada (sin ellas ganarías ${UX.plata(m.ganancia_sin_devoluciones)}).</div>`
+        : '';
 
     $('calc-resultado').innerHTML = `
         <div class="ux-hero ux-${tono}" style="margin:0 0 14px;">
             <div class="ux-hero-etiqueta">${titulo}</div>
-            <div class="ux-hero-numero">${UX.plata(numero)}</div>
+            <div class="ux-hero-numero">${UX.plata(neto)}</div>
             <div class="ux-hero-frase">${margen === null
-                ? `De <b>${UX.plata(base)}</b> te llegan <b>${UX.pct(recibis / base * 100, 1)}</b>. <span class="text-muted">Cargá tu costo de fabricación para ver la ganancia neta.</span>`
-                : (neto < 0 ? `<b>Perdés ${UX.plata(Math.abs(neto))}</b> por cada venta a este precio.` : `Es el <b>${UX.pct(margen, 1)}</b> del precio${margen < 15 ? ' — <b>margen justo</b>' : ''}.`)}</div>
+                ? `De <b>${UX.plata(base)}</b> te llegan <b>${UX.pct(neto / base * 100, 1)}</b>. <span class="text-muted">Cargá tu costo de fabricación para ver la ganancia neta.</span>`
+                : (neto < 0 ? `<b>Perdés ${UX.plata(Math.abs(neto))}</b> por cada venta a este precio.` : `Es el <b>${UX.pct(margen, 1)}</b> del precio${margen < window.MARGEN_MINIMO ? ' — <b>margen justo</b>' : ''}.`)}</div>
             <div class="ux-reparto" role="img" aria-label="Reparto del precio de venta">
                 ${partes.map(p => `<span style="width:${p.v / total * 100}%; background:${p.c};" title="${UX.esc(p.n)}"></span>`).join('')}
                 ${gananciaPositiva > 0 ? `<span style="width:${gananciaPositiva / total * 100}%; background:var(--success);" title="Te queda"></span>` : ''}
             </div>
             <div class="ux-reparto-leyenda">
-                <div class="ux-reparto-item"><i style="background:var(--danger);"></i><span>Comisión (${d.pct_comision_base !== null && d.pct_comision_base !== undefined ? UX.pct(d.pct_comision_base, 1) : '—'}${d.cargo_fijo ? ' + fijo' : ''})</span><b>${UX.plata(d.comision_total)}</b><em>${UX.pct(d.comision_total / base * 100, 1)}</em></div>
-                ${envio !== null ? `<div class="ux-reparto-item"><i style="background:var(--accent-cyan);"></i><span>Envío</span><b>${UX.plata(envio)}</b><em>${UX.pct(envio / base * 100, 1)}</em></div>` : ''}
-                ${costo > 0 ? `<div class="ux-reparto-item"><i style="background:var(--accent-primary);"></i><span>Fabricación</span><b>${UX.plata(costo)}</b><em>${UX.pct(costo / base * 100, 1)}</em></div>` : ''}
-                <div class="ux-reparto-item ux-reparto-ganancia"><i style="background:var(--success);"></i><span>${margen === null ? 'Te llega' : 'Te queda'}</span><b>${UX.plata(margen === null ? recibis : neto)}</b><em>${UX.pct((margen === null ? recibis : neto) / base * 100, 1)}</em></div>
+                <div class="ux-reparto-item"><i style="background:var(--danger);"></i><span>Comisión (${d.pct_comision_base !== null && d.pct_comision_base !== undefined ? UX.pct(d.pct_comision_base, 1) : '—'}${d.cargo_fijo ? ' + fijo' : ''})</span><b>${UX.plata(pv.comision)}</b><em>${UX.pct(pv.comision / base * 100, 1)}</em></div>
+                ${pv.envio > 0 ? `<div class="ux-reparto-item"><i style="background:var(--accent-cyan);"></i><span>Envío</span><b>${UX.plata(pv.envio)}</b><em>${UX.pct(pv.envio / base * 100, 1)}</em></div>` : ''}
+                ${pv.fabricacion > 0 ? `<div class="ux-reparto-item"><i style="background:var(--accent-primary);"></i><span>Fabricación</span><b>${UX.plata(pv.fabricacion)}</b><em>${UX.pct(pv.fabricacion / base * 100, 1)}</em></div>` : ''}
+                ${pv.ads > 0 ? `<div class="ux-reparto-item"><i style="background:var(--semantic-warning);"></i><span>Publicidad</span><b>${UX.plata(pv.ads)}</b><em>${UX.pct(pv.ads / base * 100, 1)}</em></div>` : ''}
+                ${pv.embalaje > 0 ? `<div class="ux-reparto-item"><i style="background:var(--accent-gold);"></i><span>Embalaje</span><b>${UX.plata(pv.embalaje)}</b><em>${UX.pct(pv.embalaje / base * 100, 1)}</em></div>` : ''}
+                ${pv.devoluciones > 0 ? `<div class="ux-reparto-item"><i style="background:var(--text-faint);"></i><span>Envíos de devolución</span><b>${UX.plata(pv.devoluciones)}</b><em>${UX.pct(pv.devoluciones / base * 100, 1)}</em></div>` : ''}
+                <div class="ux-reparto-item ux-reparto-ganancia"><i style="background:var(--success);"></i><span>${margen === null ? 'Te llega' : 'Te queda'}</span><b>${UX.plata(neto)}</b><em>${UX.pct(neto / base * 100, 1)}</em></div>
             </div>
+            ${fraseMerma}
         </div>
         ${avisos.join('')}`;
 
-    pintarCuotas(d, envio, costo);
+    pintarCuotas(d, m, costo);
 }
 
 // "¿Y si ofrezco cuotas sin interés?": cuánto más te cuesta cada opción
-function pintarCuotas(d, envio, costo) {
-    const recibisContado = d.precio - d.comision_total - (envio || 0);
+function pintarCuotas(d, m, costo) {
     $('calc-cuotas').innerHTML = `
         <div class="ux-seccion ux-warn">¿Y si ofrecés cuotas sin interés? <span class="text-muted" style="font-weight:600; font-size:0.82em;">estimado</span></div>
         <div class="ux-kpis">
             ${CUOTAS_FINANCIACION.map(c => {
                 const costoFin = d.precio * c.pct;
-                const recibis = recibisContado - costoFin;
-                const neto = recibis - costo;
+                const neto = m.ganancia_por_venta - costoFin;
                 const tono = c.cuotas === 1 ? 'ok' : (costo > 0 && neto < 0 ? 'danger' : 'warn');
                 return UX.kpi({
-                    tono, icono: 'credit-card', etiqueta: c.label, valor: UX.plata(costo > 0 ? neto : recibis),
+                    tono, icono: 'credit-card', etiqueta: c.label, valor: UX.plata(neto),
                     subHtml: c.cuotas === 1 ? (costo > 0 ? 'ganancia neta al contado' : 'lo que te llega al contado') : `${costo > 0 ? 'ganancia neta' : 'te llega'} · <b>perdés ${UX.plata(costoFin)}</b> vs. contado`
                 });
             }).join('')}
