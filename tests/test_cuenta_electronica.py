@@ -3,10 +3,12 @@
 Se arma esa cuenta con datos (publicaciones, variantes, ventas, costos en pesos y en dólares) dentro de una transacción que nunca se confirma, se recorren todas las pantallas y se verifica que:
   · ninguna falla;
   · en ningún texto que lee la persona aparece «talle» ni «talles»;
+  · todo campo de un formulario tiene un nombre que un lector de pantalla puede leer (etiqueta con `for`, etiqueta que lo envuelve, `aria-label` o `title`);
   · lo que distingue a cada variante («128 GB») sí aparece donde corresponde (Stock, Costos).
 """
 import os
 import re
+from html.parser import HTMLParser
 
 import pytest
 
@@ -49,12 +51,40 @@ def cliente_electronica(cliente_nuevo):  # noqa: F811  (el fixture importado de 
     return cliente_nuevo
 
 
+class _Campos(HTMLParser):
+    """Recorre una página y anota los campos (input, select, textarea) que no tienen ningún nombre accesible."""
+
+    SIN_NOMBRE_NECESARIO = {"hidden", "submit", "button", "reset", "image"}
+
+    def __init__(self):
+        super().__init__()
+        self.campos, self.etiquetados, self.dentro_de_etiqueta = [], set(), 0
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "label":
+            self.dentro_de_etiqueta += 1
+            if a.get("for"):
+                self.etiquetados.add(a["for"])
+        elif tag in ("input", "select", "textarea") and a.get("type", "text") not in self.SIN_NOMBRE_NECESARIO:
+            nombrado = a.get("aria-label") or a.get("aria-labelledby") or a.get("title") or self.dentro_de_etiqueta
+            oculto = a.get("hidden") is not None or "display:none" in (a.get("style") or "").replace(" ", "")
+            self.campos.append((tag, a.get("id"), a.get("name"), bool(nombrado), oculto))
+
+    def handle_endtag(self, tag):
+        if tag == "label" and self.dentro_de_etiqueta:
+            self.dentro_de_etiqueta -= 1
+
+    def sin_nombre(self):
+        return [f"{tag}#{id_}[{name}]" for tag, id_, name, nombrado, oculto in self.campos if not nombrado and not oculto and not (id_ and id_ in self.etiquetados)]
+
+
 def _texto_visible(html):
     return ETIQUETAS_TAG.sub(" ", BLOQUES_QUE_NO_LEE_NADIE.sub(" ", html))
 
 
 def test_una_cuenta_de_electronica_recorre_todas_las_pantallas_sin_hablar_de_talles(cliente_electronica):
-    malas, con_talle, total = [], [], 0
+    malas, con_talle, sin_nombre, total = [], [], [], 0
     for ruta in _rutas_get():
         total += 1
         try:
@@ -69,9 +99,27 @@ def test_una_cuenta_de_electronica_recorre_todas_las_pantallas_sin_hablar_de_tal
             coincidencias = PALABRA_TALLE.findall(_texto_visible(r.get_data(as_text=True)))
             if coincidencias:
                 con_talle.append(f"{ruta} -> {len(coincidencias)} vez/veces")
+            campos = _Campos()
+            campos.feed(r.get_data(as_text=True))
+            if campos.sin_nombre():
+                sin_nombre.append(f"{ruta} -> {', '.join(campos.sin_nombre()[:4])}")
     assert total > 40
     assert not malas, "\n".join(malas)
     assert not con_talle, "Pantallas que le hablan de talles a un vendedor de electrónica:\n" + "\n".join(con_talle)
+    assert not sin_nombre, "Campos de formulario sin nombre accesible (agregar `<label for>` o `aria-label`):\n" + "\n".join(sin_nombre)
+
+
+def test_el_analizador_de_campos_distingue_los_que_tienen_nombre_de_los_que_no():
+    p = _Campos()
+    p.feed('''
+        <label for="a">Uno</label><input id="a" type="text">
+        <label>Dos <input type="number"></label>
+        <input type="text" aria-label="Tres">
+        <input type="hidden" name="oculto"><button>ok</button>
+        <input type="text" id="sin" name="cuatro" placeholder="un placeholder no es un nombre">
+        <select name="cinco"></select>
+    ''')
+    assert p.sin_nombre() == ["input#sin[cuatro]", "select#None[cinco]"]
 
 
 def test_stock_y_costos_muestran_lo_que_distingue_a_cada_variante(cliente_electronica):

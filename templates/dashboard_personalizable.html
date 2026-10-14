@@ -285,8 +285,8 @@
 
         <form action="{{ url_for('monotributo_declarar') }}" method="POST" class="filter-row" style="margin-bottom:14px;">
             <div class="field-group">
-                <label class="field-label">Declarar tu categoría actual</label>
-                <select name="categoria_monotributo" class="field-input">
+                <label class="field-label" for="dash-categoria-monotributo">Declarar tu categoría actual</label>
+                <select id="dash-categoria-monotributo" name="categoria_monotributo" class="field-input">
                     <option value="">Sin declarar</option>
                     {% for e in mono.escalas %}
                     <option value="{{ e.categoria }}" {% if e.categoria == mono.categoria_declarada %}selected{% endif %}>{{ e.categoria }} — hasta {{ e.tope_anual|plata }}/año</option>

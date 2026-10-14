@@ -283,7 +283,7 @@
     <div id="costos-chat-mensajes" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px; max-height:280px; overflow-y:auto;"></div>
     <div id="costos-chat-propuesta" style="display:none;"></div>
     <form id="costos-chat-form" data-submit="enviarMensajeCostosChat" data-submit-args='["$ev"]' class="filter-row" style="margin:0;">
-        <input type="text" id="costos-chat-input" class="field-input" placeholder="Escribí un gasto o el costo de tus productos…" style="flex:1;" autocomplete="off">
+        <input type="text" id="costos-chat-input" class="field-input" aria-label="Contale a la IA un gasto o el costo de tus productos" placeholder="Escribí un gasto o el costo de tus productos…" style="flex:1;" autocomplete="off">
         <button type="submit" class="btn btn-primary">Enviar</button>
     </form>
 </div>
@@ -294,10 +294,10 @@
         <form action="/agregar_gasto" method="POST" class="filter-row">
             <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
             <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
-            <div class="field-group" style="flex:2; min-width:200px;"><label class="field-label">Concepto</label><input type="text" name="concepto" placeholder="Ej: Bolsas de envío" required></div>
-            <div class="field-group"><label class="field-label">Tipo</label><select name="categoria"><option value="variable">Variable (cambia mes a mes)</option><option value="fijo">Fijo (siempre igual)</option></select></div>
-            <div class="field-group" style="max-width:150px;"><label class="field-label">Monto ($)</label><input type="number" step="0.01" name="monto" min="0.01" inputmode="decimal" required></div>
-            <div class="field-group"><label class="field-label">Fecha</label><input type="date" name="fecha" value="{{ fecha_hasta }}" required></div>
+            <div class="field-group" style="flex:2; min-width:200px;"><label class="field-label" for="gasto-concepto">Concepto</label><input type="text" id="gasto-concepto" name="concepto" placeholder="Ej: Bolsas de envío" required></div>
+            <div class="field-group"><label class="field-label" for="gasto-tipo">Tipo</label><select id="gasto-tipo" name="categoria"><option value="variable">Variable (cambia mes a mes)</option><option value="fijo">Fijo (siempre igual)</option></select></div>
+            <div class="field-group" style="max-width:150px;"><label class="field-label" for="gasto-monto">Monto ($)</label><input type="number" step="0.01" id="gasto-monto" name="monto" min="0.01" inputmode="decimal" required></div>
+            <div class="field-group"><label class="field-label" for="gasto-fecha">Fecha</label><input type="date" id="gasto-fecha" name="fecha" value="{{ fecha_hasta }}" required></div>
             <button type="submit" class="btn btn-primary">Agregar gasto</button>
         </form>
     </div>
