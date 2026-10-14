@@ -49,8 +49,22 @@ def _fecha(valor, nombre):
         raise ErrorDeHerramienta(f"«{nombre}» tiene que ser una fecha AAAA-MM-DD (por ejemplo 2026-10-01).")
 
 
-def _periodo(ctx, desde=None, hasta=None):
-    """(desde, hasta, nota) como fechas. Sin datos: los últimos 30 días hasta hoy. Un período más largo que MAX_DIAS se acorta (y se avisa); uno al revés se da vuelta."""
+def _periodo(ctx, desde=None, hasta=None, dias=None):
+    """
+    (desde, hasta, nota) como fechas. `dias` = «los últimos N días contando hoy» (1 = solo hoy): lo calcula el servidor, así «los últimos 30 días» da SIEMPRE las mismas fechas y las mismas cifras
+    (cuando el modelo calculaba las fechas a mano, dos preguntas seguidas daban 14/09 y 15/09 como inicio). Sin datos: los últimos 30 días hasta hoy. Un período más largo que MAX_DIAS se acorta
+    (y se avisa); uno al revés se da vuelta.
+    """
+    if dias not in (None, ""):
+        try:
+            cantidad = int(dias)
+        except (TypeError, ValueError):
+            raise ErrorDeHerramienta("«dias» tiene que ser un número entero (por ejemplo 7 o 30).")
+        if cantidad < 1:
+            raise ErrorDeHerramienta("«dias» tiene que ser 1 o más.")
+        nota = f"El período se acortó a los últimos {MAX_DIAS} días (el máximo)." if cantidad > MAX_DIAS else None
+        cantidad = min(cantidad, MAX_DIAS)
+        return ctx.hoy - timedelta(days=cantidad - 1), ctx.hoy, nota
     hasta = _fecha(hasta, "hasta") or ctx.hoy
     desde = _fecha(desde, "desde") or (hasta - timedelta(days=DIAS_POR_DEFECTO - 1))
     if desde > hasta:
@@ -74,8 +88,8 @@ def _con_nota(datos, nota):
 
 # ── Ventas ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-def _ventas(ctx, desde=None, hasta=None, agrupar="total"):
-    desde, hasta, nota = _periodo(ctx, desde, hasta)
+def _ventas(ctx, desde=None, hasta=None, agrupar="total", dias=None):
+    desde, hasta, nota = _periodo(ctx, desde, hasta, dias)
     agrupar = agrupar if agrupar in ("total", "dia", "modelo", "variante") else "total"
     donde, parametros = "v.cuenta_id = %s AND v.origen = 'meli' AND v.fecha_venta BETWEEN %s AND %s", (ctx.cuenta_id, desde, hasta)
     with _conexion(ctx) as conexion:
@@ -109,8 +123,8 @@ def _ventas(ctx, desde=None, hasta=None, agrupar="total"):
     return _con_nota(datos, nota)
 
 
-def _ganancia_real(ctx, desde=None, hasta=None):
-    desde, hasta, nota = _periodo(ctx, desde, hasta)
+def _ganancia_real(ctx, desde=None, hasta=None, dias=None):
+    desde, hasta, nota = _periodo(ctx, desde, hasta, dias)
     try:
         access_token = token_manager.asegurar_token_valido(ctx.cuenta_id)
     except token_manager.CuentaDesconectada:
@@ -244,7 +258,9 @@ def _costos(ctx):
 
 # ── Registro ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-_PERIODO = {"desde": {"type": "string", "description": "Fecha inicial AAAA-MM-DD (por defecto, hace 30 días)."}, "hasta": {"type": "string", "description": "Fecha final AAAA-MM-DD (por defecto, hoy)."}}
+_PERIODO = {"dias": {"type": "integer", "description": "Los últimos N días contando hoy (1 = solo hoy, 7, 30, 90). USALO para «hoy», «esta semana», «los últimos 30 días»: no calcules fechas. Si se manda, se ignoran desde y hasta."},
+            "desde": {"type": "string", "description": "Fecha inicial AAAA-MM-DD, solo para un período con fechas concretas (por ejemplo «septiembre»). Por defecto, hace 30 días."},
+            "hasta": {"type": "string", "description": "Fecha final AAAA-MM-DD (por defecto, hoy)."}}
 
 HERRAMIENTAS = {
     "ventas": {

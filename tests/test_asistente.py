@@ -286,6 +286,23 @@ def test_el_periodo_se_acota_se_da_vuelta_y_exige_fechas_validas():
             herr._periodo(_ctx(), malo, None)
 
 
+def test_los_ultimos_n_dias_los_calcula_el_servidor_y_dan_siempre_las_mismas_fechas():
+    """Antes el modelo calculaba las fechas a mano: dos preguntas seguidas por «los últimos 30 días» arrancaron el 14/09 y el 15/09 y dieron $13,06 M y $12,76 M."""
+    hoy = date(2030, 3, 20)
+    assert herr._periodo(_ctx(), dias=30) == (date(2030, 2, 19), hoy, None)
+    assert herr._periodo(_ctx(), dias="30") == herr._periodo(_ctx(), dias=30) == herr._periodo(_ctx())          # el valor por defecto y el pedido son lo mismo
+    assert herr._periodo(_ctx(), dias=1) == (hoy, hoy, None)                                                       # «hoy»
+    assert herr._periodo(_ctx(), dias=7)[0] == date(2030, 3, 14)                                                   # 7 días contando hoy
+    assert herr._periodo(_ctx(), "2030-01-01", "2030-01-31", dias=7)[:2] == (date(2030, 3, 14), hoy)              # si viene `dias`, las fechas sueltas se ignoran
+    desde, hasta, nota = herr._periodo(_ctx(), dias=400)
+    assert (hasta - desde).days + 1 == herr.MAX_DIAS and "acortó" in nota
+    for malo in (0, -3, "muchos"):
+        with pytest.raises(herr.ErrorDeHerramienta):
+            herr._periodo(_ctx(), dias=malo)
+    for nombre in ("ventas", "ganancia_real"):
+        assert "dias" in herr.HERRAMIENTAS[nombre]["parametros"]
+
+
 def test_ejecutar_nunca_levanta_una_excepcion(monkeypatch):
     def _rota(ctx, **kw):
         raise RuntimeError("detalle interno con una contraseña")
