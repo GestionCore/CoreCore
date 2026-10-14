@@ -187,6 +187,8 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
 .ux-pregunta-acciones-aparte { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 720px) { .ux-pregunta-acciones-aparte { margin-left: 0; width: 100%; } }
 
+.dolar-mep { margin: 0 0 12px; }
+
 /* ---------- Título de sección con punto de color ---------- */
 .ux-seccion { display: flex; align-items: center; gap: 10px; font-size: 1.08em; font-weight: 800; margin: 30px 0 14px; }
 .ux-seccion::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--ux-c, var(--accent-primary)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ux-c, var(--accent-primary)) 20%, transparent); }

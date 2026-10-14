@@ -64,6 +64,40 @@
     </div>
 </div>
 
+{# El dólar con el que se llevan a pesos los costos cargados en dólares: automático (MEP) o el que la persona indica #}
+<div class="panel cuenta-panel" id="dolar">
+    <label class="field-label"><b>Dólar para tus costos</b></label>
+    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin:4px 0 12px; max-width:640px;">
+        Si cargás el costo de un producto en dólares, lo llevamos a pesos con esta cotización. Podés usar <b>la automática</b> (dólar MEP, se actualiza sola varias veces por día) o <b>fijar la tuya</b>, la que de verdad pagás para reponer.
+        Se guarda para <b>{{ (cuenta_actual.nombre_negocio or cuenta_actual.nickname) if cuenta_actual else 'esta cuenta' }}</b>.
+    </div>
+    <div id="dolar-mep" class="dolar-mep">
+        {% if dolar and dolar.mep %}
+        Dólar MEP: <b>{{ dolar.mep.valor|plata }}</b> <span class="text-muted">· actualizado {{ dolar.mep.actualizado or '—' }}{% if dolar.mep.fuente %} · {{ dolar.mep.fuente }}{% endif %}</span>
+        {% if dolar.mep.desactualizado %}<span class="ux-pill ux-warn ux-pill-suave" title="Hace {{ dolar.mep.dias }} días que no se actualiza">Desactualizado</span>{% endif %}
+        {% elif dolar %}
+        <span class="text-muted">Todavía no tenemos el dólar MEP de hoy (se trae solo en unos minutos). Mientras tanto podés fijar el tuyo.</span>
+        {% else %}
+        <span class="text-muted">No pudimos leer la cotización ahora. Probá de nuevo en un rato.</span>
+        {% endif %}
+    </div>
+    <div class="ux-periodo-botones" id="dolar-modo" role="group" aria-label="Qué cotización usar">
+        <button type="button" class="btn btn-secondary {{ 'active' if not dolar or dolar.modo == 'automatico' else '' }}" data-modo="automatico">Cotización automática (MEP)</button>
+        <button type="button" class="btn btn-secondary {{ 'active' if dolar and dolar.modo == 'manual' else '' }}" data-modo="manual">Dólar manual</button>
+    </div>
+    <div class="flex-gap" id="dolar-manual-caja" style="align-items:center; margin-top:12px;{% if not dolar or dolar.modo != 'manual' %} display:none;{% endif %}">
+        <span style="font-weight:700;">$</span>
+        <input type="text" id="input-dolar-manual" inputmode="decimal" autocomplete="off" value="{{ dolar.manual if dolar and dolar.manual else '' }}" placeholder="1480" style="width:130px; font-weight:800; text-align:right;" aria-label="Cuántos pesos pagás por dólar">
+        <span class="text-muted" id="dolar-comparacion" style="font-size:0.82em;">por dólar</span>
+    </div>
+    <div class="flex-gap" style="align-items:center; margin-top:12px;">
+        <button type="button" class="btn btn-secondary" id="btn-guardar-dolar">Guardar</button>
+        <span class="text-muted" id="dolar-ayuda" style="font-size:0.85em;">
+            {% if dolar and dolar.valor %}Hoy usás <b>{{ dolar.valor|plata }}</b> ({{ 'tu dólar manual' if dolar.modo == 'manual' else 'el MEP automático' }}).{% else %}Todavía no hay una cotización para usar.{% endif %}
+        </span>
+    </div>
+</div>
+
 {# Solo para cuentas que usan Flex: un False confirmado (capacidades.py) esconde el panel #}
 {% if capacidades.get('flex') is not false %}
 <div class="panel cuenta-panel" id="flex-corte">
@@ -132,6 +166,51 @@ if (document.getElementById('btn-guardar-flex-corte')) {
     });
     document.getElementById('btn-quitar-flex-corte').addEventListener('click', (e) => guardarFlexCorte('', e.currentTarget));
 }
+
+
+// ── Dólar: automático (MEP) o manual ──────────────────────────────────────────────────────────────────────────────────────────────────
+(() => {
+    const MEP = {{ (dolar.mep.valor if dolar and dolar.mep else none)|tojson }};
+    const caja = document.getElementById('dolar-manual-caja'), entrada = document.getElementById('input-dolar-manual'), ayuda = document.getElementById('dolar-ayuda'), comparacion = document.getElementById('dolar-comparacion');
+    const modoElegido = () => document.querySelector('#dolar-modo .active').dataset.modo;
+    // Mismo criterio que el servidor (dolar.normalizar_manual): «1.480» son mil cuatrocientos ochenta, «1480,50» también vale; algo menor a $10 casi seguro es un punto de miles que faltó
+    function parsearDolar(texto) {
+        let t = String(texto || '').trim().replace(/\$/g, '').replace(/\s/g, '');
+        if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+        else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+        const v = parseFloat(t);
+        return Number.isFinite(v) && v >= 10 && v < 1000000 ? Math.round(v * 100) / 100 : null;
+    }
+    function comparar() {
+        const v = parsearDolar(entrada.value);
+        if (!MEP || v === null) { comparacion.textContent = 'por dólar'; return; }
+        const pct = (v / MEP - 1) * 100;
+        comparacion.textContent = Math.abs(pct) < 0.5 ? 'por dólar · igual al MEP de hoy' : `por dólar · ${Math.abs(pct).toLocaleString('es-AR', { maximumFractionDigits: 1 })} % ${pct > 0 ? 'más alto' : 'más bajo'} que el MEP de hoy`;
+    }
+    document.querySelectorAll('#dolar-modo [data-modo]').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('#dolar-modo [data-modo]').forEach(x => x.classList.toggle('active', x === b));
+        caja.style.display = b.dataset.modo === 'manual' ? '' : 'none';
+        if (b.dataset.modo === 'manual') entrada.focus();
+    }));
+    entrada.addEventListener('input', comparar);
+    comparar();
+    document.getElementById('btn-guardar-dolar').addEventListener('click', async (e) => {
+        const boton = e.currentTarget, modo = modoElegido();
+        if (modo === 'manual' && parsearDolar(entrada.value) === null) { mostrarToast('Escribí cuánto pagás el dólar, por ejemplo 1480 (mínimo $10).', 'error'); entrada.focus(); return; }
+        boton.disabled = true;
+        try {
+            const r = await fetch('/api/cuenta/dolar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modo, valor: entrada.value }) });
+            const d = await r.json();
+            if (d.ok) {
+                const a = d.dolar;
+                ayuda.innerHTML = a.valor ? `Hoy usás <b>${UX.esc(UX.plata(a.valor))}</b> (${a.modo === 'manual' ? 'tu dólar manual' : 'el MEP automático'}).` : 'Todavía no hay una cotización para usar.';
+                if (a.modo === 'manual' && a.manual) entrada.value = a.manual;
+                mostrarToast(d.detalle || 'Guardado.', 'success');
+            } else mostrarToast(d.detalle || 'No se pudo guardar.', 'error');
+        } catch (err) { mostrarToast('No hubo conexión con el servidor. Probá de nuevo.', 'error'); }
+        boton.disabled = false;
+    });
+})();
 
 document.getElementById('btn-guardar-margen').addEventListener('click', async (e) => {
     const boton = e.currentTarget, entrada = document.getElementById('input-margen-minimo');

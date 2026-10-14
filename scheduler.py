@@ -6,6 +6,7 @@ dueño) las tareas se delegaban a Celery y el sistema se portaba distinto que en
   · cada 30 minutos (SYNC_INTERVALO_MINUTOS): barredora de seguridad de todas las cuentas activas. El motor principal es el webhook de Mercado Libre
     (/notificaciones_meli: items, órdenes, envíos, preguntas, reclamos), que en producción llega varias veces por minuto
   · cada 4 minutos: SOLO las cuentas cuya primera sincronización todavía no terminó (reintento rápido de las recién conectadas; normalmente ninguna)
+  · cada 3 horas (y un minuto después de arrancar): cotización del dólar (dolar.py: dolarapi.com con Bluelytics de respaldo) en `cotizaciones_dolar`; es global, no usa el token de nadie
   · cada 30 minutos: anota el acumulado de HOY de publicidad y visitas de cada cuenta (monitor_en_vivo.py): Mercado Libre los da por día, no por hora, y la curva por hora del
     Monitor en vivo es la diferencia entre dos anotaciones seguidas (2 consultas por cuenta)
   · cada hora: verificación de los permisos de Mercado Libre (salud_tokens) y limpieza de vinculaciones de OAuth abandonadas
@@ -23,6 +24,7 @@ import db
 import salud_tokens
 import sincronizador
 import espia_competencia
+import dolar
 import mercado_relevador
 import monitor_en_vivo
 import monitoreo
@@ -167,6 +169,18 @@ def _tarea_relevar_mercado():
         print(f"[Scheduler] 📈 Mercado relevado: {resumen}")
 
 
+def _tarea_actualizar_dolar():
+    """Trae el dólar (oficial, blue y MEP) y guarda la fila de hoy. Si ninguna fuente responde no escribe nada: las pantallas siguen con el último valor guardado."""
+    with db.conexion_admin() as conexion:
+        resumen = dolar.actualizar(conexion.cursor())
+    if resumen["errores"]:
+        print(f"[Scheduler] ⚠️ Dólar: {resumen['errores']}")
+    if not resumen["guardadas"]:
+        monitoreo.reportar("dolar", RuntimeError("ninguna fuente de cotización respondió"))
+    else:
+        print(f"[Scheduler] 💵 Dólar actualizado: {resumen['casas']}")
+
+
 def _tarea_anotar_monitor():
     """Anota el acumulado de hoy de publicidad y visitas de cada cuenta activa. Un fallo en una cuenta no corta a las demás (y va a Sentry, por fase, si está configurado)."""
     for cuenta_id, usuario_id in _obtener_cuentas_activas():
@@ -292,6 +306,8 @@ def _arrancar_apscheduler():
     from datetime import datetime, timedelta, timezone
     _scheduler_apscheduler.add_job(_tarea_relevar_mercado, "interval", hours=1, id="relevar_mercado", max_instances=1, coalesce=True,
                                    next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2))
+    _scheduler_apscheduler.add_job(_tarea_actualizar_dolar, "interval", hours=3, id="actualizar_dolar", max_instances=1, coalesce=True,
+                                   next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1))
     _scheduler_apscheduler.add_job(_tarea_anotar_monitor, "interval", minutes=30, id="anotar_monitor", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_verificar_tokens, "interval", hours=1, id="verificar_tokens", max_instances=1, coalesce=True)
     _scheduler_apscheduler.add_job(_tarea_limpiar_vinculaciones_oauth, "interval", hours=1, id="limpiar_oauth", max_instances=1, coalesce=True)

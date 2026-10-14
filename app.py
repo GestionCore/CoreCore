@@ -71,6 +71,7 @@ import scheduler
 import ventas_manuales
 import ventas_hoy
 import preguntas_acciones
+import dolar as dolar_mod
 import monitor_en_vivo
 import pagos
 import correos
@@ -3909,7 +3910,13 @@ def cuenta_vista():
     nombre_plan = {"trial": "Prueba gratuita", "base": "Plan Base", "elite": "Plan Elite", "cancelado": "Cancelado"}.get(plan, plan)
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         flex_hora_corte = despacho_corte.leer_flex(conexion.cursor(), g.cuenta_id)
-    return render_template("cuenta.html", active_nav="cuenta", plan=plan, flex_hora_corte=flex_hora_corte, nombre_plan=nombre_plan, email=email, dias_trial=dias_trial,
+    dolar_datos = None
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            dolar_datos = dolar_mod.para_pantalla(dolar_mod.cotizacion_activa(conexion.cursor(), g.cuenta_id))
+    except Exception as e:
+        print(f"[Cuenta] ⚠️ No se pudo leer la cotización del dólar: {e}")
+    return render_template("cuenta.html", active_nav="cuenta", plan=plan, flex_hora_corte=flex_hora_corte, dolar=dolar_datos, nombre_plan=nombre_plan, email=email, dias_trial=dias_trial,
                            pagos_habilitados=config.PAGOS_HABILITADOS, contacto=legal.CONTACTO_EMAIL,
                            condicion_fiscal_actual=fiscal.obtener(g.usuario_id, g.cuenta_id), condiciones_fiscales=fiscal.CONDICIONES, detalles_condicion=fiscal.DETALLES)
 
@@ -3928,6 +3935,24 @@ def api_cuenta_margen_minimo():
         return jsonify({"ok": False, "detalle": _detalle_error(e)}), 500
     cache_guardar(construir_key("margenes_usuario", g.usuario_id), {str(k): v for k, v in preferencias.margenes_de_usuario(g.usuario_id).items()}, timeout=60)
     return jsonify({"ok": True, "margen_minimo": margen})
+
+
+@app.route("/api/cuenta/dolar", methods=["POST"])
+@login_requerido
+@auditar("dolar_cambiar")
+def api_cuenta_dolar():
+    """A cuánto convierte esta cuenta un dólar: {"modo": "automatico"} (dólar MEP) o {"modo": "manual", "valor": 1480}. Devuelve la cotización activa para refrescar la pantalla."""
+    datos = request.get_json(silent=True) or {}
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            cursor = conexion.cursor()
+            ok, mensaje = dolar_mod.guardar_modo(cursor, g.cuenta_id, datos.get("modo"), datos.get("valor"))
+            activa = dolar_mod.para_pantalla(dolar_mod.cotizacion_activa(cursor, g.cuenta_id)) if ok else None
+    except Exception as e:
+        return jsonify({"ok": False, "detalle": _detalle_error(e)}), 500
+    if not ok:
+        return jsonify({"ok": False, "detalle": mensaje}), 400
+    return jsonify({"ok": True, "detalle": mensaje, "dolar": activa})
 
 
 @app.route("/api/cuenta/flex_hora_corte", methods=["POST"])
