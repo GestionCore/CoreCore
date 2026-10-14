@@ -1136,23 +1136,28 @@ def api_dashboard_ultimas_ventas():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         # fecha_venta es solo el DÍA: ordenar por ella dejaba las ventas de un mismo día en cualquier orden y mostraba todas a las 00:00
+        # Primero se eligen las 8 más recientes y recién ahí se une con publicaciones y variantes: unir las 30.000 ventas de una cuenta grande y ordenar después tardaba casi un minuto
         cursor.execute(f"""
             SELECT
                 COALESCE(v.titulo, 'Sin nombre') AS nombre,
                 v.cantidad,
                 v.precio_venta,
-                {utils.sql_momento_argentina("v")} AS momento,
+                v.momento,
                 v.hora_venta IS NOT NULL AS con_hora,
                 p.id_meli,
                 pv.talle,
                 pv.etiqueta
-            FROM ventas v
+            FROM (
+                SELECT v.*, {utils.sql_momento_argentina("v")} AS momento
+                FROM ventas v
+                WHERE v.cuenta_id = %s
+                  AND v.eliminado_en IS NULL
+                ORDER BY momento DESC
+                LIMIT 8
+            ) v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
             LEFT JOIN productos_variantes pv ON pv.id_variante = {utils.sql_variante_de_venta("v")} AND pv.cuenta_id = v.cuenta_id
-            WHERE v.cuenta_id = %s
-              AND v.eliminado_en IS NULL
-            ORDER BY momento DESC
-            LIMIT 8
+            ORDER BY v.momento DESC
         """, (g.cuenta_id,))
         filas = cursor.fetchall()
     return jsonify([{

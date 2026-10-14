@@ -35,6 +35,12 @@ POOL_ADMIN_MAX = max(1, int(os.getenv("DB_POOL_ADMIN_MAX", "2")))
 # solo apila pedidos: es mejor fallar rápido y mostrar "mucha demanda" (503) que dejar a la persona colgada medio minuto.
 POOL_TIMEOUT = max(1.0, float(os.getenv("DB_POOL_TIMEOUT", "10")))
 
+# Con RLS el planificador de Postgres calcula que cada tabla grande devuelve ~1 fila (no puede estimar las políticas) y elige «bucles anidados» para unir ventas con publicaciones y variantes: con 30.000 ventas
+# y 1.500 publicaciones eran 22 millones de comparaciones (una consulta del Dashboard tardaba 58 s; Calidad, 24 s; todo el recorrido de pantallas, 164 s en vez de 61 s). Se apagan los bucles anidados
+# SOLO dentro de la transacción de un pedido de una persona (set_config(..., true) = SET LOCAL, sin viaje extra): Postgres igual los usa donde no hay otra forma de unir (LATERAL, consultas sin join).
+# DB_SIN_BUCLES_ANIDADOS=0 lo apaga (para comparar o volver atrás sin desplegar).
+SIN_BUCLES_ANIDADOS = os.getenv("DB_SIN_BUCLES_ANIDADOS", "1") != "0"
+
 _pool = None
 _pool_admin = None
 
@@ -161,8 +167,8 @@ def _dejar_lista_para_rls(conexion, usuario_id, cuenta_id):
     # después para otro usuario.
     # Las dos variables en UNA sentencia: un viaje de ida y vuelta menos por cada bloque `with` (hay 5-7 por página).
     cursor.execute(
-        "SELECT set_config('app.usuario_actual', %s, true), set_config('app.cuenta_actual', %s, true)",
-        (str(usuario_id), str(cuenta_id) if cuenta_id is not None else ""),
+        "SELECT set_config('app.usuario_actual', %s, true), set_config('app.cuenta_actual', %s, true), set_config('enable_nestloop', %s, true)",
+        (str(usuario_id), str(cuenta_id) if cuenta_id is not None else "", "off" if SIN_BUCLES_ANIDADOS else "on"),
     )
     cursor.close()
 
