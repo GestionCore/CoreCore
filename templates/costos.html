@@ -276,6 +276,56 @@
     </div>
 </details>
 
+{% if capacidades.get('flex') is not false and flex_perdidas %}
+<!-- ── Envíos Flex de órdenes que ya salieron y después se cancelaron o se devolvieron ───────── -->
+<details class="ux-detalle" id="flex-devueltos" open>
+    <summary>
+        <svg class="icon" style="width:18px;height:18px;color:var(--semantic-warning);"><use href="#icon-truck"/></svg>
+        Envíos Flex de órdenes devueltas o canceladas <span class="ux-pill ux-warn ux-pill-suave">{{ flex_perdidas|length }}</span>
+        <span class="ux-detalle-nota">ya se pagaron y no se recuperan</span>
+    </summary>
+    <div class="ux-detalle-cuerpo">
+        <div class="text-muted" style="font-size:0.88em; line-height:1.55; margin-bottom:10px;">Cuando una orden Flex ya salió con tu logística y después se cancela o se devuelve, el envío de ida igual se pagó. CoreLux lo anota solo como un gasto (lo ves abajo, en «Gastos del período»). Si además pagaste el envío de <b>vuelta</b>, cargalo acá.</div>
+        <div style="overflow-x:auto;">
+        <table class="data-table" data-ordenable>
+            <thead><tr><th data-orden="texto" data-primero="desc">Fecha</th><th data-orden="texto">Orden</th><th class="num" data-orden="num">Envío de ida</th><th class="num">Envío de vuelta ($)</th><th></th></tr></thead>
+            <tbody>
+                {% for p in flex_perdidas %}
+                <tr data-orden-flex="{{ p.id_orden }}" data-vuelta-actual="{{ p.vuelta if p.vuelta is not none else '' }}">
+                    <td class="text-muted" data-orden="{{ p.fecha }}">{{ p.fecha|fecha }}</td>
+                    <td>{{ p.id_orden }}</td>
+                    <td class="num" data-orden="{{ p.ida }}">{{ p.ida|plata }}</td>
+                    <td class="num"><input type="number" min="0" step="1" inputmode="decimal" class="flex-vuelta-input" value="{{ (p.vuelta|round|int) if p.vuelta is not none else '' }}" placeholder="0" aria-label="Costo del envío de vuelta de la orden {{ p.id_orden }}" style="max-width:130px; text-align:right;"></td>
+                    <td><button type="button" class="btn btn-secondary" data-click="guardarCostoVueltaFlex" data-click-args='["$closest:tr"]' style="padding:6px 12px; font-size:0.82em;">Guardar</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</details>
+<script nonce="{{ csp_nonce }}">
+    // Carga (o corrige, o quita con 0) el costo del envío de vuelta de una orden Flex devuelta: gasto operativo que no se recupera. Muestra antes y después y pide confirmar.
+    async function guardarCostoVueltaFlex(fila) {
+        const id = fila.dataset.ordenFlex, entrada = fila.querySelector('.flex-vuelta-input');
+        const monto = parseFloat(entrada.value || '0');
+        const antes = fila.dataset.vueltaActual === '' ? null : parseFloat(fila.dataset.vueltaActual);
+        if (isNaN(monto) || monto < 0) { mostrarToast('Ingresá un monto válido (0 o más).', 'warning'); return; }
+        if (monto === (antes || 0)) { mostrarToast('No hay nada para guardar: el costo es el mismo.', 'info'); return; }
+        const textoAntes = antes === null ? 'sin costo de vuelta' : UX.plata(antes), textoDespues = monto === 0 ? 'sin costo de vuelta' : UX.plata(monto);
+        if (!(await confirmarDecision(monto === 0 ? '¿Quitar el costo de vuelta de esta orden?' : '¿Anotar este envío de vuelta como gasto?', 'Guardar', `Orden ${id}\nAntes: ${textoAntes}\nDespués: ${textoDespues}\nQueda como gasto operativo y no se recupera.`))) return;
+        try {
+            const r = await fetch('/api/flex/costo_vuelta', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_orden: id, monto }) });
+            const d = await r.json();
+            if (!d.ok) { mostrarToast(d.error || 'No se pudo guardar.', 'error'); return; }
+            fila.dataset.vueltaActual = monto === 0 ? '' : String(monto);
+            mostrarToast(d.mensaje || 'Guardado.', 'success');
+            setTimeout(() => location.reload(), 900);          // la lista de «Gastos del período» de abajo ya tiene el cambio
+        } catch (e) { mostrarToast('No se pudo guardar ahora. Probá de nuevo.', 'error'); }
+    }
+</script>
+{% endif %}
+
 <div class="panel" style="padding:0; overflow:hidden;">
     <div class="panel-title" style="padding:18px 22px 0;">Gastos del período <span class="text-muted" style="font-weight:600; font-size:0.85em;">{{ gastos|length }}</span></div>
     {% if gastos %}

@@ -427,7 +427,8 @@ def sincronizar_preguntas(usuario_id, cuenta_id, access_token, seller_id):
                     INSERT INTO preguntas_pendientes (cuenta_id, question_id, item_id, texto_pregunta, estado, fecha_pregunta, hora_limite_respuesta)
                     VALUES (%s, %s, %s, %s, 'pendiente', %s, %s)
                     ON CONFLICT (cuenta_id, question_id) DO UPDATE SET
-                        texto_pregunta = excluded.texto_pregunta, estado = 'pendiente',
+                        texto_pregunta = excluded.texto_pregunta,
+                        estado = CASE WHEN preguntas_pendientes.estado IN ('ignorada', 'borrada') THEN preguntas_pendientes.estado ELSE 'pendiente' END,
                         fecha_pregunta = excluded.fecha_pregunta, hora_limite_respuesta = excluded.hora_limite_respuesta
                 """, (cuenta_id, qid, str(p.get("item_id") or ""), p.get("text"), fecha_pregunta, preguntas_sla.limite_de(fecha_pregunta)))
 

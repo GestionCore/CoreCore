@@ -70,6 +70,7 @@ import exportador_redes
 import scheduler
 import ventas_manuales
 import ventas_hoy
+import preguntas_acciones
 import monitor_en_vivo
 import pagos
 import correos
@@ -2290,11 +2291,17 @@ def costos_vista():
             flex_pendientes_n = flex.contar_pendientes(cursor, g.cuenta_id)
     except Exception as e:
         print(f"[Costos] ⚠️ Error armando el panel de Flex: {e}")
+    flex_perdidas = []
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            flex_perdidas = flex.envios_perdidos(conexion.cursor(), g.cuenta_id, fecha_desde, fecha_hasta)
+    except Exception as e:
+        print(f"[Costos] ⚠️ Error armando los envíos Flex devueltos: {e}")
     flex_data = {"umbrales": flex.umbrales_para_vista(flex_config), "zonas": (flex_config["info"] or {}).get("zonas", []),
                  "origen": (flex_config["info"] or {}).get("origen"), "reintegro_pct": int(round(flex.REINTEGRO_MELI * 100)),
                  "vista_previa": flex_vista_previa}
     return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, modelos=modelos, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta,
-                           flex_data=flex_data, flex_pendientes_n=flex_pendientes_n, hay_flex=hay_flex, active_nav="costos")
+                           flex_data=flex_data, flex_pendientes_n=flex_pendientes_n, flex_perdidas=flex_perdidas, hay_flex=hay_flex, active_nav="costos")
 
 
 def _config_flex_json(cursor):
@@ -2367,6 +2374,17 @@ def api_flex_zona():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         ok, error = flex.asignar_manual(conexion.cursor(), g.cuenta_id, id_orden, umbral)
     return jsonify({"ok": ok, "error": error}), (200 if ok else 400)
+
+
+@app.route("/api/flex/costo_vuelta", methods=["POST"])
+@login_requerido
+@auditar("flex_costo_vuelta")
+def api_flex_costo_vuelta():
+    """Carga a mano lo que costó el envío de VUELTA de una orden Flex devuelta (0 lo quita). Queda como gasto operativo irrecuperable; solo para órdenes ya registradas como devueltas o canceladas."""
+    datos = request.get_json(silent=True) or {}
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        ok, mensaje = flex.guardar_costo_de_vuelta(conexion.cursor(), g.cuenta_id, datos.get("id_orden"), datos.get("monto"), hoy_argentina())
+    return jsonify({"ok": ok, "mensaje" if ok else "error": mensaje}), (200 if ok else 400)
 
 
 @app.route("/ventas_manuales")
@@ -3627,6 +3645,64 @@ def api_preguntas_ignorar():
     return jsonify({"ok": True, "actualizadas": len(ids)})
 
 
+@app.route("/api/preguntas/ya_respondida", methods=["POST"])
+@login_requerido
+@auditar("pregunta_ya_respondida")
+def api_preguntas_ya_respondida():
+    """
+    «Ya la respondí»: NO le cree a ciegas a la persona. Vuelve a preguntarle a Mercado Libre por esa pregunta y la cierra solo si de verdad está respondida (o ya no se puede responder);
+    si Mercado Libre todavía la muestra sin responder, lo dice y no toca nada.
+    """
+    question_id = str((request.get_json(silent=True) or {}).get("question_id") or "").strip()
+    if not question_id.isdigit():
+        return jsonify({"ok": False, "detalle": "Falta indicar la pregunta."}), 400
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        r = meli_http.get(f"https://api.mercadolibre.com/questions/{question_id}", headers={"Authorization": f"Bearer {access_token}"}, timeout=15)
+        datos = r.json() if r.status_code == 200 else None
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "detalle": "La cuenta de Mercado Libre está desconectada: reconectala primero."})
+    except Exception as e:
+        return jsonify({"ok": False, "detalle": _detalle_error(e)})
+    accion, texto, mensaje = preguntas_acciones.interpretar_pregunta_de_meli(r.status_code, datos)
+    if accion in ("sigue_abierta", "error"):
+        return jsonify({"ok": False, "detalle": mensaje})
+    estado = "respondida" if accion == "respondida" else "ignorada"
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        conexion.cursor().execute(
+            "UPDATE preguntas_pendientes SET estado = %s, respuesta_sugerida = COALESCE(%s, respuesta_sugerida) WHERE question_id = %s AND cuenta_id = %s",
+            (estado, texto, question_id, g.cuenta_id))
+    return jsonify({"ok": True, "estado": estado, "detalle": mensaje})
+
+
+@app.route("/api/preguntas/borrar", methods=["POST"])
+@login_requerido
+@auditar("pregunta_borrar")
+def api_preguntas_borrar():
+    """
+    Borra la pregunta de un comprador EN MERCADO LIBRE (`DELETE /questions/{id}`): no se puede deshacer, por eso la pantalla pide confirmar. Si Mercado Libre no deja borrarla desde acá,
+    se oculta de la bandeja (queda como ignorada) y se dice, sin prometer que se borró.
+    """
+    question_id = str((request.get_json(silent=True) or {}).get("question_id") or "").strip()
+    if not question_id.isdigit():
+        return jsonify({"ok": False, "detalle": "Falta indicar la pregunta."}), 400
+    try:
+        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
+        r = meli_http.delete(f"https://api.mercadolibre.com/questions/{question_id}", headers={"Authorization": f"Bearer {access_token}"}, timeout=15)
+    except token_manager.CuentaDesconectada:
+        return jsonify({"ok": False, "detalle": "La cuenta de Mercado Libre está desconectada: reconectala primero."})
+    except Exception as e:
+        return jsonify({"ok": False, "detalle": _detalle_error(e)})
+    accion, mensaje = preguntas_acciones.interpretar_borrado(r.status_code)
+    if accion == "error":
+        print(f"[Preguntas] MeLi no borró {question_id}: {r.status_code} {r.text[:200]}")
+        return jsonify({"ok": False, "detalle": mensaje})
+    estado = "borrada" if accion == "borrada" else "ignorada"
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        conexion.cursor().execute("UPDATE preguntas_pendientes SET estado = %s WHERE question_id = %s AND cuenta_id = %s", (estado, question_id, g.cuenta_id))
+    return jsonify({"ok": True, "estado": estado, "oculta": accion == "oculta", "detalle": mensaje})
+
+
 @app.route("/api/preguntas/sugerir", methods=["POST"])
 @login_requerido
 def api_preguntas_sugerir():
@@ -3636,14 +3712,19 @@ def api_preguntas_sugerir():
     titulo_item = (data.get("titulo_item") or "").strip()
     if not texto_pregunta:
         return jsonify({"ok": False, "error": "Falta el texto de la pregunta"}), 400
-    prompt = (
-        "Sos el vendedor de una tienda en Mercado Libre Argentina. "
-        "Respondé la siguiente pregunta de un comprador de forma breve, cordial y profesional. "
-        "La respuesta debe ser directa (máximo 2 oraciones). No uses emojis.\n\n"
-    )
-    if titulo_item:
-        prompt += f"Producto: {titulo_item}\n"
-    prompt += f"Pregunta: {texto_pregunta}\n\nRespuesta:"
+    # Los atributos de la publicación (marca, modelo, color, memoria…: lo que cargó el vendedor) salen de la base de la cuenta: la IA responde con esos datos y no inventa el resto
+    atributos = None
+    item_id = (data.get("item_id") or "").strip()
+    if item_id:
+        try:
+            with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+                cursor = conexion.cursor()
+                cursor.execute("SELECT atributos_clave FROM productos_padre WHERE cuenta_id = %s AND id_meli = %s", (g.cuenta_id, item_id))
+                fila = cursor.fetchone()
+                atributos = fila[0] if fila and isinstance(fila[0], dict) else None
+        except Exception as e:
+            print(f"[Preguntas] ⚠️ No se pudieron leer los atributos de {item_id}: {e}")
+    prompt = preguntas_acciones.prompt_de_sugerencia(texto_pregunta, titulo_item, atributos)
     try:
         respuesta = ia_asistente.preguntar_ia(prompt)
         return jsonify({"ok": True, "respuesta": respuesta.strip()})

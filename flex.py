@@ -19,6 +19,7 @@ usuario pida recalcular.
 """
 from datetime import datetime, timezone
 import json
+import psycopg
 import meli_http
 import flex_zonas as fz
 
@@ -289,3 +290,88 @@ def resumen_periodo(cursor, cuenta_id, desde, hasta):
     """, (cuenta_id, desde, hasta))
     ordenes, sin_zona, costo = cursor.fetchone()
     return {"ordenes": int(ordenes or 0), "sin_zona": int(sin_zona or 0), "costo": float(costo or 0)}
+
+
+# ── Envíos Flex que se pagaron y no se recuperan (la orden se entregó y después se canceló o se devolvió) ──────────────────────────────────
+ORIGEN_IDA = "flex_ida"
+ORIGEN_VUELTA = "flex_vuelta"
+_CLAVE_UNICA = "ON CONFLICT (cuenta_id, origen, referencia) WHERE origen IS NOT NULL"
+
+
+def perdidas_por_orden(filas):
+    """
+    De las filas de `ventas` que se retiran por cancelación o reembolso [(id_orden, tipo_logistica, despachado, costo_flex, fecha_venta)], lo que ya se pagó de entrega Flex y no se
+    recupera: [(id_orden, costo, fecha_venta)] de las órdenes entregadas con logística propia (Flex) y con costo de entrega cargado. Una orden cancelada ANTES de salir no costó nada
+    (`despachado` falso) y una sin costo asignado no se inventa: se suma el costo de todos los ítems de la orden. Es el mismo costo que ya contaba en tu ganancia mientras la orden vivía.
+    """
+    por_orden = {}
+    for id_orden, tipo_logistica, despachado, costo_flex, fecha_venta in filas:
+        if tipo_logistica != "self_service" or not despachado or not costo_flex or float(costo_flex) <= 0:
+            continue
+        previo = por_orden.get(id_orden, (0.0, fecha_venta))
+        por_orden[id_orden] = (previo[0] + float(costo_flex), previo[1])
+    return [(id_orden, round(costo, 2), fecha) for id_orden, (costo, fecha) in por_orden.items()]
+
+
+def registrar_envios_perdidos(cursor, cuenta_id, filas, hoy):
+    """
+    Registra como GASTO OPERATIVO irrecuperable el envío Flex de ida de cada orden entregada y luego cancelada o devuelta (ver perdidas_por_orden). Se anota en la fecha de HOY (cuando
+    se supo), no en la de la venta: así no se reescribe un período ya cerrado. Una sola vez por orden (clave única): repetirlo no duplica nada. Devuelve cuántos gastos nuevos anotó.
+    """
+    nuevos = 0
+    for id_orden, costo, fecha_venta in perdidas_por_orden(filas):
+        cursor.execute(f"""
+            INSERT INTO gastos_operativos (cuenta_id, concepto, categoria, monto, fecha, origen, referencia)
+            VALUES (%s, %s, 'variable', %s, %s, %s, %s) {_CLAVE_UNICA} DO NOTHING
+        """, (cuenta_id, f"Envío Flex de ida · orden {id_orden} (devuelta o cancelada, no se recupera)", costo, hoy, ORIGEN_IDA, str(id_orden)))
+        nuevos += cursor.rowcount
+    return nuevos
+
+
+def envios_perdidos(cursor, cuenta_id, desde, hasta):
+    """
+    Los envíos Flex de órdenes devueltas o canceladas del período, con el costo de ida que se registró solo y el de vuelta que cargó la persona (None si no cargó):
+    [{"id_orden", "fecha", "ida", "vuelta"}]. [] si todavía no existe la columna de origen (migración 0049 pendiente).
+    """
+    try:
+        with cursor.connection.transaction():
+            cursor.execute("""
+                SELECT i.referencia, i.fecha, i.monto, v.monto
+                FROM gastos_operativos i
+                LEFT JOIN gastos_operativos v ON v.cuenta_id = i.cuenta_id AND v.origen = %s AND v.referencia = i.referencia
+                WHERE i.cuenta_id = %s AND i.origen = %s AND i.fecha BETWEEN %s AND %s
+                ORDER BY i.fecha DESC, i.id DESC
+            """, (ORIGEN_VUELTA, cuenta_id, ORIGEN_IDA, desde, hasta))
+            filas = cursor.fetchall()
+    except psycopg.errors.UndefinedColumn:
+        return []
+    return [{"id_orden": ref, "fecha": f, "ida": float(ida), "vuelta": float(vuelta) if vuelta is not None else None} for ref, f, ida, vuelta in filas]
+
+
+def guardar_costo_de_vuelta(cursor, cuenta_id, id_orden, monto, hoy):
+    """
+    Anota (o corrige, o quita con 0) lo que costó el envío de VUELTA de una orden Flex devuelta, como otro gasto operativo irrecuperable. Solo para órdenes que ya figuran entre los envíos
+    Flex devueltos o cancelados de la cuenta. Devuelve (ok, mensaje).
+    """
+    try:
+        monto = round(float(monto), 2)
+    except (TypeError, ValueError):
+        return False, "Ingresá un monto válido."
+    if not 0 <= monto <= TOPE_PRECIO or monto != monto:
+        return False, f"El monto tiene que estar entre $0 y ${TOPE_PRECIO:,}.".replace(",", ".")
+    id_orden = str(id_orden or "").strip()
+    try:
+        with cursor.connection.transaction():
+            cursor.execute("SELECT 1 FROM gastos_operativos WHERE cuenta_id = %s AND origen = %s AND referencia = %s", (cuenta_id, ORIGEN_IDA, id_orden))
+            if not cursor.fetchone():
+                return False, "Esa orden no está entre tus envíos Flex devueltos o cancelados."
+            if monto == 0:
+                cursor.execute("DELETE FROM gastos_operativos WHERE cuenta_id = %s AND origen = %s AND referencia = %s", (cuenta_id, ORIGEN_VUELTA, id_orden))
+                return True, "Quitamos el costo de vuelta."
+            cursor.execute(f"""
+                INSERT INTO gastos_operativos (cuenta_id, concepto, categoria, monto, fecha, origen, referencia)
+                VALUES (%s, %s, 'variable', %s, %s, %s, %s) {_CLAVE_UNICA} DO UPDATE SET monto = excluded.monto
+            """, (cuenta_id, f"Envío Flex de vuelta · orden {id_orden} (devolución, no se recupera)", monto, hoy, ORIGEN_VUELTA, id_orden))
+            return True, "Guardamos el costo de vuelta."
+    except psycopg.errors.UndefinedColumn:                           # la migración 0049 todavía no se aplicó: todavía no hay envíos perdidos que corregir
+        return False, "Esta función se activa con la próxima actualización de CoreLux."

@@ -17,7 +17,7 @@ def _tablas(html):
 
 
 def test_las_tablas_de_promociones_costos_y_competencia_son_ordenables():
-    esperadas = {"promociones.html": 3, "costos.html": 1, "competencia.html": 1}
+    esperadas = {"promociones.html": 3, "costos.html": 2, "competencia.html": 1}                  # Costos: los gastos y los envíos Flex de órdenes devueltas
     for nombre, cantidad in esperadas.items():
         html = _html(nombre)
         ordenables = [t for t in _tablas(html) if "data-ordenable" in t.split(">", 1)[0]]

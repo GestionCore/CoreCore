@@ -181,14 +181,18 @@ function tarjeta(p) {
     const pl = pendiente ? plazo(p) : null;
     const a = pl ? { texto: pl.texto, tono: pl.tono } : antiguedad(p.creado_en_iso);
     const pillEstado = pendiente ? `<span class="ux-pill ux-${a.tono}" title="${pl ? UX.esc(AYUDA_PLAZO) : ''}">${UX.esc(a.texto || 'Pendiente')}</span>`
-        : (p.estado === 'respondida' ? '<span class="ux-pill ux-ok">Respondida</span>' : '<span class="ux-pill ux-neutral ux-pill-suave">Ignorada</span>');
+        : (p.estado === 'respondida' ? '<span class="ux-pill ux-ok">Respondida</span>' : (p.estado === 'borrada' ? '<span class="ux-pill ux-danger ux-pill-suave">Borrada</span>' : '<span class="ux-pill ux-neutral ux-pill-suave">Ignorada</span>'));
     const verPub = p.item_id ? `<a class="ux-pregunta-item" href="/stock?drawer=${encodeURIComponent(p.item_id)}" title="Ver la publicación">${UX.esc(p.titulo_item)} ↗</a>` : `<span class="ux-pregunta-item">${UX.esc(p.titulo_item)}</span>`;
     const acciones = pendiente ? `
         <textarea rows="3" placeholder="Escribí tu respuesta…" aria-label="Tu respuesta">${UX.esc(p.respuesta_sugerida)}</textarea>
-        <div class="flex-gap" style="margin-top:10px;">
+        <div class="flex-gap" style="margin-top:10px; flex-wrap:wrap;">
             <button type="button" class="btn btn-primary btn-lg" data-accion="publicar">${UX.icono('check')}Publicar respuesta</button>
-            <button type="button" class="btn btn-secondary" data-accion="sugerir">${UX.icono('bolt')}Sugerir con IA</button>
-            <button type="button" class="btn btn-secondary" data-accion="ignorar" style="margin-left:auto;">Ignorar</button>
+            <button type="button" class="btn btn-secondary" data-accion="sugerir">${UX.icono('bolt')}Sugerir respuesta con IA</button>
+            <span class="ux-pregunta-acciones-aparte">
+                <button type="button" class="btn btn-secondary" data-accion="yarespondida" title="Comprobamos en Mercado Libre que de verdad esté respondida, y la sacamos de la lista">Ya la respondí</button>
+                <button type="button" class="btn btn-secondary" data-accion="ignorar" title="No querés responderla: sale de la lista (no se borra en Mercado Libre)">Ignorar</button>
+                <button type="button" class="btn btn-danger" data-accion="borrar" title="La borra también en Mercado Libre. No se puede deshacer">Borrar</button>
+            </span>
         </div>` : (p.respuesta_sugerida ? `<div class="text-muted" style="font-size:0.85em; margin-top:8px;"><b>Respuesta:</b> ${UX.esc(p.respuesta_sugerida)}</div>` : '');
     return `<div class="ux-pregunta ux-${pendiente ? a.tono : 'neutral'}" data-qid="${UX.esc(p.question_id)}">
         <div class="ux-pregunta-cabecera"><div class="ux-titulo-thumb" style="min-width:0;">${p.thumbnail ? `<img src="${UX.esc(p.thumbnail)}" class="thumb-sm" alt="" loading="lazy">` : ''}${verPub}</div>${pillEstado}</div>
@@ -203,7 +207,7 @@ function alClickEnTarjeta(ev) {
     if (!boton) return;
     const card = boton.closest('.ux-pregunta');
     const qid = card.dataset.qid;
-    ({ publicar: publicarRespuesta, sugerir: sugerirIA, ignorar: ignorarPregunta })[boton.dataset.accion](qid, card, boton);
+    ({ publicar: publicarRespuesta, sugerir: sugerirIA, ignorar: ignorarPregunta, yarespondida: yaRespondida, borrar: borrarPregunta })[boton.dataset.accion](qid, card, boton);
 }
 
 async function publicarRespuesta(qid, card, boton) {
@@ -236,7 +240,7 @@ async function sugerirIA(qid, card, boton) {
     boton.disabled = true;
     boton.innerHTML = `${UX.icono('refresh').replace('class="icon"', 'class="icon spin-anim"')}Pensando…`;
     try {
-        const d = await (await fetch('/api/preguntas/sugerir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto: pregunta.texto, titulo_item: pregunta.titulo_item }) })).json();
+        const d = await (await fetch('/api/preguntas/sugerir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto: pregunta.texto, titulo_item: pregunta.titulo_item, item_id: pregunta.item_id }) })).json();
         if (d.ok) { ta.value = d.respuesta; ta.focus(); mostrarToast('Respuesta sugerida — leela y ajustala antes de publicar', 'info'); }
         else mostrarToast(d.error || 'No se pudo generar la sugerencia', 'error');
     } catch (e) {
@@ -252,6 +256,36 @@ async function ignorarPregunta(qid, card) {
         if (d.ok) { mostrarToast('Pregunta ignorada', 'info'); sacarTarjeta(qid, card); }
         else mostrarToast(d.detalle || 'No se pudo ignorar la pregunta', 'error');
     } catch (e) { mostrarToast('Error de red — probá de nuevo', 'error'); }
+}
+
+// Una acción que va a Mercado Libre: mientras tarda se traban todos los botones de la tarjeta (nada de doble clic) y el que se apretó dice qué está haciendo; si falla, vuelve todo como estaba
+async function conTarjetaOcupada(card, boton, textoOcupado, accion) {
+    const botones = [...card.querySelectorAll('button')], original = boton.innerHTML, estaban = botones.map(b => b.disabled);
+    botones.forEach(b => { b.disabled = true; });
+    boton.innerHTML = `${UX.icono('refresh').replace('class="icon"', 'class="icon spin-anim"')}${textoOcupado}`;
+    let resuelta = false;
+    try { resuelta = await accion(); }
+    catch (e) { mostrarToast('Error de red — probá de nuevo', 'error'); }
+    if (!resuelta) { boton.innerHTML = original; botones.forEach((b, i) => { b.disabled = estaban[i]; }); }
+}
+
+async function yaRespondida(qid, card, boton) {
+    await conTarjetaOcupada(card, boton, 'Comprobando…', async () => {
+        const d = await (await fetch('/api/preguntas/ya_respondida', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question_id: qid }) })).json();
+        if (d.ok) { mostrarToast(d.detalle || 'Listo', 'success'); sacarTarjeta(qid, card); return true; }
+        mostrarToast(d.detalle || 'No pudimos comprobarlo', 'warning');
+        return false;
+    });
+}
+
+async function borrarPregunta(qid, card, boton) {
+    if (!(await confirmarDecision('¿Borrar esta pregunta?', 'Borrar', 'Se borra también en Mercado Libre y no se puede deshacer. Si solo no querés responderla, usá «Ignorar»: sale de la lista y no se toca nada en Mercado Libre.'))) return;
+    await conTarjetaOcupada(card, boton, 'Borrando…', async () => {
+        const d = await (await fetch('/api/preguntas/borrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question_id: qid }) })).json();
+        if (d.ok) { mostrarToast(d.detalle || 'Pregunta borrada', d.oculta ? 'warning' : 'success'); sacarTarjeta(qid, card); return true; }
+        mostrarToast(d.detalle || 'No se pudo borrar la pregunta', 'error');
+        return false;
+    });
 }
 
 // La tarjeta resuelta sale con una animación corta y la bandeja se recalcula sin volver a pedir todo

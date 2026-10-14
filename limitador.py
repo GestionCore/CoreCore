@@ -18,6 +18,7 @@ REGLAS = (
     (("/api/chat_ia", "/api/costos_chat", "/api/logros/coach", "/api/preguntas/sugerir", "/api/drawer/optimizar_titulo"), None, 20, 60, "usuario", "ia"),
     (("/sincronizar_todo", "/api/flex/sincronizar"), {"POST"}, 4, 60, "usuario", "sync"),
     (("/api/costos/importar",), {"POST"}, 10, 60, "usuario", "importar"),
+    (("/api/preguntas/borrar", "/api/preguntas/ya_respondida"), {"POST"}, 30, 60, "usuario", "preguntas"),
     (("/api/reactivar", "/api/precios"), {"POST"}, 10, 60, "usuario", "cambios"),
     (("/api/feedback",), {"POST"}, 10, 60, "usuario", "feedback"),
     (("/cuenta/descargar_datos",), {"POST"}, 3, 60, "usuario", "descargar"),

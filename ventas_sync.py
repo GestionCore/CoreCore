@@ -19,7 +19,7 @@ import meli_http
 import db
 import monitoreo
 import flex
-from utils import ARGENTINA
+from utils import ARGENTINA, hoy_argentina
 
 TAMANO_PAGINA = 50
 COLCHON_INCREMENTAL_HORAS = 2
@@ -773,13 +773,25 @@ def retirar_ventas_canceladas(usuario_id, cuenta_id, access_token, seller_id, de
         cursor.execute("""
             WITH retiradas AS (
                 DELETE FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND id_orden = ANY(%s) RETURNING *
+            ), archivadas AS (
+                INSERT INTO ventas_retiradas (cuenta_id, id_orden, motivo, monto, fila)
+                SELECT cuenta_id, id_orden, %s, precio_venta * cantidad, to_jsonb(retiradas) FROM retiradas
             )
-            INSERT INTO ventas_retiradas (cuenta_id, id_orden, motivo, monto, fila)
-            SELECT cuenta_id, id_orden, %s, precio_venta * cantidad, to_jsonb(retiradas) FROM retiradas
+            SELECT id_orden, tipo_logistica, despachado, costo_flex, fecha_venta FROM retiradas
         """, (cuenta_id, ids, MOTIVO_RETIRADA))
-        retiradas = cursor.rowcount
+        filas_retiradas = cursor.fetchall()
         _archivar_canceladas_sin_contar(cursor, cuenta_id, ordenes)
-        return retiradas
+        # Una orden Flex que ya se entregó y después se canceló o se devolvió: el envío de ida igual se pagó. Antes ese costo desaparecía junto con la venta; ahora queda como gasto
+        # operativo irrecuperable. Va en un punto de guardado: si falla (p. ej. la migración 0049 todavía no se aplicó) la retirada de las ventas NO se pierde.
+        try:
+            with conexion.transaction():
+                anotados = flex.registrar_envios_perdidos(cursor, cuenta_id, filas_retiradas, hoy_argentina())
+            if anotados:
+                print(f"[VentasSync] 🚚 Cuenta {cuenta_id}: {anotados} envío(s) Flex de órdenes devueltas o canceladas anotado(s) como gasto.")
+        except Exception as e:
+            print(f"[VentasSync] ⚠️ No se pudo anotar el envío Flex de las órdenes retiradas: {e}")
+            monitoreo.reportar("ventas:flex_perdido", e, cuenta_id)
+        return len(filas_retiradas)
 
 
 def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
