@@ -44,6 +44,21 @@
     </div>
 </div>
 
+<div class="ux-seccion ux-info">Calidad de los datos <span class="text-muted" style="font-weight:500; font-size:0.85em;">· lo que las pruebas no ven: los números reales de cada cuenta</span></div>
+<div class="panel">
+    {% for c in e.cuentas %}
+    <div class="ux-paso">
+        <span class="ux-pill ux-{{ 'danger' if c.hallazgos|selectattr('tono', 'equalto', 'danger')|list else ('warn' if c.hallazgos else 'ok') }}">{{ c.nickname or ('#' ~ c.id) }}</span>
+        <div class="ux-paso-cuerpo">
+            {% if not c.hallazgos %}Todo en orden: las ventas encuentran su variante y su publicación, los pagos están informados y lo depositado cierra con lo calculado.{% endif %}
+            {% for h in c.hallazgos %}
+            <div style="margin-bottom:6px;"><span class="ux-pill ux-{{ h.tono }} ux-pill-suave">{{ 'falla' if h.tono == 'danger' else 'revisar' }}</span> <b>{{ h.titulo }}</b><div class="text-muted" style="font-size:0.85em;">{{ h.detalle }}</div></div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
 <div class="ux-seccion ux-{{ e.mercado.tono }}">Relevamiento de mercado</div>
 <div class="panel">
     <div class="ux-paso"><span class="ux-pill ux-{{ e.mercado.tono }}">{{ {'ok': 'bien', 'warn': 'revisar', 'danger': 'falla'}[e.mercado.tono] }}</span><div class="ux-paso-cuerpo">{{ e.mercado.texto }}</div></div>

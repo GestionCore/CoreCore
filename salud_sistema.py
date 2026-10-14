@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, g, render_template
 
 import config
+import controles_de_datos
 import db
 from auditoria import ETIQUETAS
 from auth.middleware import login_requerido, admin_requerido
@@ -120,8 +121,14 @@ def obtener_estado():
         for cid, email, nick, activa, sync_ini, ult_catalogo, ult_ventas, tokens, expira, plan in cursor.fetchall():
             minutos = (ahora - ult_ventas).total_seconds() / 60 if ult_ventas else None
             tono, texto = estado_de_cuenta(bool(activa), bool(tokens), bool(sync_ini), minutos)
+            # Los datos de verdad de cada cuenta: lo que las pruebas (con datos armados a mano) no pueden ver. Si un control falla no se cae la página: se dice.
+            try:
+                hallazgos = controles_de_datos.evaluar(controles_de_datos.reunir(cursor, cid))
+            except Exception as e:
+                conexion.rollback()
+                hallazgos = [{"clave": "controles", "tono": "warn", "titulo": "No se pudieron revisar los datos de esta cuenta", "detalle": f"{type(e).__name__}: {e}"[:200]}]
             cuentas.append({"id": cid, "email": email, "nickname": nick, "plan": plan, "tono": tono, "texto": texto,
-                            "ultima_ventas": ult_ventas, "ultimo_catalogo": ult_catalogo})
+                            "ultima_ventas": ult_ventas, "ultimo_catalogo": ult_catalogo, "hallazgos": hallazgos})
         estado["cuentas"] = cuentas
 
         cursor.execute("SELECT version FROM schema_migrations")
@@ -147,8 +154,10 @@ def obtener_estado():
     estado["config"] = {"faltan": faltan, "recomendadas": recomendadas}
     estado["servidor"] = {"app": os.getenv("FLY_APP_NAME") or "local", "region": os.getenv("FLY_REGION") or "—",
                           "maquina": os.getenv("FLY_MACHINE_ID") or "—", "version": (os.getenv("FLY_IMAGE_REF") or "—").rsplit(":", 1)[-1]}
-    estado["problemas"] = sum(1 for c in cuentas if c["tono"] == "danger") + len(estado["migraciones"]["pendientes"]) + len(faltan) + (estado["mercado"]["tono"] == "danger")
-    estado["avisos"] = sum(1 for c in cuentas if c["tono"] == "warn") + len(recomendadas) + (estado["mercado"]["tono"] == "warn")
+    hallazgos = [h for c in cuentas for h in c["hallazgos"]]
+    estado["problemas"] = (sum(1 for c in cuentas if c["tono"] == "danger") + len(estado["migraciones"]["pendientes"]) + len(faltan) + (estado["mercado"]["tono"] == "danger")
+                           + sum(1 for h in hallazgos if h["tono"] == "danger"))
+    estado["avisos"] = sum(1 for c in cuentas if c["tono"] == "warn") + len(recomendadas) + (estado["mercado"]["tono"] == "warn") + sum(1 for h in hallazgos if h["tono"] == "warn")
     return estado
 
 
