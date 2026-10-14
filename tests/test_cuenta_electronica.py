@@ -25,7 +25,7 @@ VARIANTES = [("128 GB / Azul", "128 GB", "Azul"), ("256 GB / Negro", "256 GB", "
 
 
 @pytest.fixture
-def cliente_electronica(cliente_nuevo):
+def cliente_electronica(cliente_nuevo):  # noqa: F811  (el fixture importado de arriba)
     cur = _Compartida.conexion.cursor()
     cuenta = _Compartida.cuenta
     cur.execute("SELECT set_config('app.cuenta_actual', %s, true)", (str(cuenta),))
