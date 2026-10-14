@@ -40,6 +40,7 @@ def sin_tope_diario(monkeypatch):
     monkeypatch.setattr(asistente, "_supero_el_tope_diario", lambda *a, **k: False)
     monkeypatch.setattr(asistente, "cuenta_es_de_la_persona", lambda *a, **k: True)
     monkeypatch.setattr(asistente.alcance_ia, "clasificar", lambda *a, **k: True)
+    monkeypatch.setattr(asistente.contexto_cuenta, "armar", lambda *a, **k: "")
 
 
 def _responder(modelo, pregunta="¿cuánto vendí?", **kw):
@@ -411,6 +412,7 @@ def test_la_ganancia_real_arma_el_desglose_y_avisa_si_falta_costo(monkeypatch):
     monkeypatch.setattr(herr.metricas, "calcular_ganancia_real", lambda *a: {"resumen": {"raw": {"facturado": 10000, "comision": 1500, "envios": 800, "costo_ads": 700, "costo_fabricacion": 4000,
                                                                                                "cargos_fuera_de_ventas": 200, "ganancia_neta": 2800}}})
     monkeypatch.setattr(herr.costos_mod, "cobertura_de_costos", lambda cursor, d, h: {"facturado": 10000, "sin_costo": 2000, "pct_sin_costo": 20.0, "publicaciones": 1, "avisar": True})
+    monkeypatch.setattr(herr.flex_mod, "resumen_periodo", lambda cursor, cuenta, d, h: {"ordenes": 10, "sin_zona": 3, "costo": 0.0})
 
     class _Cursor:
         def execute(self, *a, **k):
@@ -426,6 +428,7 @@ def test_la_ganancia_real_arma_el_desglose_y_avisa_si_falta_costo(monkeypatch):
     r = herr.ejecutar("ganancia_real", json.dumps({"desde": "2030-03-01", "hasta": "2030-03-31"}), _ctx())
     assert r["ok"] and r["datos"]["ganancia_neta_real"] == 2800 and r["datos"]["margen_pct"] == 28.0 and r["datos"]["ventas_sin_costo_de_fabricacion_cargado_pct"] == 20.0
     assert "costo de fabricación cargado" in r["datos"]["aviso"]
+    assert r["datos"]["envios_flex_del_periodo_sin_costo_de_entrega"] == 3 and "3 de 10 envíos Flex" in r["datos"]["aviso"]       # y avisa que las entregas Flex sin costo no están en la ganancia
 
 
 def test_una_cuenta_desconectada_se_explica_en_vez_de_fallar(monkeypatch):

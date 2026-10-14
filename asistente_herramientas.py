@@ -13,23 +13,32 @@ from datetime import date, datetime, timedelta, timezone
 
 import analisis_stock
 import calidad as calidad_mod
+import catalogo_ganar as catalogo_mod
+import chat_ia
 import cobros as cobros_mod
 import costos as costos_mod
 import dashboard as dashboard_mod
 import db
 import dolar as dolar_mod
+import embudo_conversion as embudo_mod
+import facturacion as facturacion_mod
 import fiscal
+import flex as flex_mod
+import historial_precios as historial_mod
 import logros as logros_mod
 import mercado as mercado_mod
 import metricas
 import monotributo as monotributo_mod
 import nav_config
+import opiniones as opiniones_mod
 import precios as precios_mod
+import promociones as promociones_mod
 import publicidad as publicidad_mod
 import reputacion as reputacion_mod
 import salud_cuenta
+import tiempo_respuesta as tiempo_respuesta_mod
 from auth import token_manager
-from utils import SQL_RECLAMO_AFECTA, hoy_argentina, limpiar_titulo_modelo, rotulo_variante, sql_variante_de_venta
+from utils import SQL_RECLAMO_AFECTA, hoy_argentina, limpiar_titulo_modelo, prorratear_mensual, rotulo_variante, sql_momento_argentina, sql_variante_de_venta
 
 MAX_DIAS = 92
 DIAS_POR_DEFECTO = 30
@@ -115,7 +124,7 @@ def _con_nota(datos, nota):
 
 def _ventas(ctx, desde=None, hasta=None, agrupar="total", dias=None):
     desde, hasta, nota = _periodo(ctx, desde, hasta, dias)
-    agrupar = agrupar if agrupar in ("total", "dia", "modelo", "variante") else "total"
+    agrupar = agrupar if agrupar in ("total", "dia", "modelo", "variante", "provincia", "horario", "logistica") else "total"
     donde, parametros = "v.cuenta_id = %s AND v.origen = 'meli' AND v.fecha_venta BETWEEN %s AND %s", (ctx.cuenta_id, desde, hasta)
     with _conexion(ctx) as conexion:
         cursor = conexion.cursor()
@@ -145,6 +154,26 @@ def _ventas(ctx, desde=None, hasta=None, agrupar="total", dias=None):
                 juntas[clave] = (u + int(cantidad or 0), f + float(total or 0))
             ordenadas = sorted(juntas.items(), key=lambda kv: -kv[1][1])[:15]
             datos["por_variante"] = [{"modelo": m, "variante": None if v == "Única" else v, "unidades": u, "facturado": _plata(f)} for (m, v), (u, f) in ordenadas]
+        elif agrupar == "provincia":
+            cursor.execute(f"""SELECT v.provincia, COUNT(DISTINCT v.id_orden), COALESCE(SUM(v.precio_venta * v.cantidad), 0) FROM ventas v
+                               WHERE {donde} AND v.provincia IS NOT NULL AND v.eliminado_en IS NULL GROUP BY v.provincia ORDER BY 3 DESC""", parametros)
+            filas = cursor.fetchall()
+            con_provincia = sum(float(f[2]) for f in filas)
+            datos["por_provincia"] = [{"provincia": p, "ordenes": int(o), "facturado": _plata(f), "pct_de_lo_facturado_con_provincia": round(float(f) / con_provincia * 100, 1) if con_provincia else 0} for p, o, f in filas[:10]]
+            datos["aclaracion"] = "La provincia sale del envío: las ventas sin ese dato (manuales o muy viejas) no entran en el ranking."
+        elif agrupar == "horario":
+            momento = sql_momento_argentina("v")
+            cursor.execute(f"""SELECT EXTRACT(ISODOW FROM {momento})::int, EXTRACT(HOUR FROM {momento})::int, COUNT(DISTINCT v.id_orden) FROM ventas v
+                               WHERE {donde} AND v.hora_venta IS NOT NULL AND v.eliminado_en IS NULL GROUP BY 1, 2""", parametros)
+            datos["cuando_compran"] = _cuando_compran(cursor.fetchall())
+        elif agrupar == "logistica":
+            cursor.execute(f"""SELECT COALESCE(NULLIF(v.tipo_logistica, ''), 'sin_dato'), COUNT(DISTINCT v.id_orden), COALESCE(SUM(v.cantidad), 0), COALESCE(SUM(v.precio_venta * v.cantidad), 0), COALESCE(SUM(v.costo_envio), 0)
+                               FROM ventas v WHERE {donde} AND v.eliminado_en IS NULL GROUP BY 1""", parametros)
+            datos["por_modalidad_de_envio"] = _resumen_de_logistica(cursor.fetchall())
+            sin_costo, total_flex = _flex_sin_costo(cursor, ctx, desde, hasta)
+            datos["envios_flex_del_periodo_sin_costo_de_entrega"] = sin_costo
+            datos["aclaracion"] = ("El costo de envío es lo que cuesta de verdad cada modalidad (en Flex, lo que cobra tu logística según tus precios por zona). "
+                                   + (f"{sin_costo} de {total_flex} envíos Flex del período todavía no tienen costo asignado: figuran en 0 hasta que se cargue en la pantalla Costos (entrega Flex)." if sin_costo else ""))
     return _con_nota(datos, nota)
 
 
@@ -153,10 +182,23 @@ def _calcular_ganancia(ctx, desde, hasta):
     return metricas.calcular_ganancia_real(ctx.usuario_id, ctx.cuenta_id, _token(ctx), desde.isoformat(), hasta.isoformat())
 
 
+def _flex_sin_costo(cursor, ctx, desde, hasta):
+    """(envíos Flex del período sin costo de entrega asignado, envíos Flex del período): lo mismo que avisa la pantalla Ganancia Real."""
+    r = flex_mod.resumen_periodo(cursor, ctx.cuenta_id, desde.isoformat(), hasta.isoformat())
+    return r["sin_zona"], r["ordenes"]
+
+
+def _texto_flex(sin_costo, total):
+    return (f"{sin_costo} de {total} envíos Flex del período todavía no tienen costo de entrega asignado: ese costo no está en la ganancia, que puede ser menor. "
+            "Se carga en la pantalla Costos (entrega Flex).")
+
+
 def _desglose_de_ganancia(ctx, resultado, desde, hasta):
     raw = resultado["resumen"]["raw"]
     with _conexion(ctx) as conexion:
-        cobertura = costos_mod.cobertura_de_costos(conexion.cursor(), desde.isoformat(), hasta.isoformat())
+        cursor = conexion.cursor()
+        cobertura = costos_mod.cobertura_de_costos(cursor, desde.isoformat(), hasta.isoformat())
+        flex_sin_costo, flex_total = _flex_sin_costo(cursor, ctx, desde, hasta)
     facturado = float(raw.get("facturado") or 0)
     ganancia = float(raw.get("ganancia_neta") or 0)
     datos = {
@@ -166,8 +208,11 @@ def _desglose_de_ganancia(ctx, resultado, desde, hasta):
         "ventas_sin_costo_de_fabricacion_cargado_pct": cobertura["pct_sin_costo"], "origen": "pantalla Ganancia Real",
     }
     avisos = []
+    datos["envios_flex_del_periodo_sin_costo_de_entrega"] = flex_sin_costo
     if cobertura["pct_sin_costo"] > 0:
         avisos.append("Parte de lo vendido no tiene costo de fabricación cargado: la ganancia real puede ser menor. Se carga en la pantalla Costos.")
+    if flex_sin_costo:
+        avisos.append(_texto_flex(flex_sin_costo, flex_total))
     if resultado.get("ads_incompleto"):
         avisos.append("Mercado Libre no devolvió todo el gasto en publicidad: el costo de publicidad puede estar incompleto.")
     if avisos:
@@ -184,6 +229,8 @@ def _ganancia_por_modelo(ctx, desde=None, hasta=None, dias=None):
     """Qué modelos dejan plata y cuáles no: la tabla «por modelo» de Ganancia Real (todas las variantes de un modelo juntas, promedio ponderado)."""
     desde, hasta, nota = _periodo(ctx, desde, hasta, dias)
     resultado = _calcular_ganancia(ctx, desde, hasta)
+    with _conexion(ctx) as conexion:
+        flex_sin_costo, flex_total = _flex_sin_costo(conexion.cursor(), ctx, desde, hasta)
     modelos = []
     for c in resultado.get("consolidados") or []:
         r = c["raw"]
@@ -200,6 +247,8 @@ def _ganancia_por_modelo(ctx, desde=None, hasta=None, dias=None):
     }
     if datos["modelos_sin_costo_de_fabricacion_cargado"]:
         datos["aviso"] = "Los modelos sin costo de fabricación cargado muestran una ganancia más alta que la real. El costo se carga en la pantalla Costos."
+    if flex_sin_costo:
+        datos["aviso_flex"] = _texto_flex(flex_sin_costo, flex_total)
     if resultado.get("ads_incompleto"):
         datos["aviso_publicidad"] = "Mercado Libre no devolvió todo el gasto en publicidad: la ganancia de cada modelo puede estar algo inflada."
     return _con_nota(datos, nota)
@@ -396,6 +445,7 @@ def _comparar_periodos(ctx, dias=None, modo=None):
         cursor = conexion.cursor()
         ahora, antes = _totales_de_ventas(cursor, *actual), _totales_de_ventas(cursor, *anterior)
         cobertura = costos_mod.cobertura_de_costos(cursor, actual[0].isoformat(), actual[1].isoformat())
+        flex_sin_costo, flex_total = _flex_sin_costo(cursor, ctx, *actual)
     datos = {
         "periodo_actual": {"desde": actual[0].isoformat(), "hasta": actual[1].isoformat()}, "periodo_anterior": {"desde": anterior[0].isoformat(), "hasta": anterior[1].isoformat()},
         "facturado": _variacion(ahora["facturado"], antes["facturado"]), "unidades": _variacion(ahora["unidades"], antes["unidades"]), "ordenes": _variacion(ahora["ordenes"], antes["ordenes"]),
@@ -411,8 +461,13 @@ def _comparar_periodos(ctx, dias=None, modo=None):
         datos["margen_pct"] = {"actual": m_actual, "anterior": m_anterior, "diferencia_en_puntos": round(m_actual - m_anterior, 1) if m_actual is not None and m_anterior is not None else None}
         datos["costos"] = {nombre: _variacion(g_actual[clave], g_anterior[clave]) for clave, nombre in
                            (("comision", "cargos_de_mercado_libre"), ("envios", "envios"), ("costo_ads", "publicidad"), ("costo_fabricacion", "costo_de_fabricacion"))}
+        avisos = []
         if cobertura["pct_sin_costo"] > 0:
-            datos["aviso"] = f"El {cobertura['pct_sin_costo']}% de lo vendido en el período actual no tiene costo de fabricación cargado: la ganancia real puede ser menor."
+            avisos.append(f"El {cobertura['pct_sin_costo']}% de lo vendido en el período actual no tiene costo de fabricación cargado: la ganancia real puede ser menor.")
+        if flex_sin_costo:
+            avisos.append(_texto_flex(flex_sin_costo, flex_total))
+        if avisos:
+            datos["aviso"] = " ".join(avisos)
     except ErrorDeHerramienta as e:
         datos["ganancia_no_disponible"] = str(e)
     except Exception as e:
@@ -548,6 +603,277 @@ def _producto(ctx, buscar=None):
             "origen": "pantallas Stock, Precios, Calidad y Opiniones"}
 
 
+# ── Dónde, cuándo y cómo se entrega lo que se vende ─────────────────────────────────────────────────────────────────────────────────────
+
+MIN_ORDENES_CUANDO_COMPRAN = 30        # con menos ventas el patrón por día y hora no dice nada (mismo criterio que la pantalla)
+NOMBRES_DE_LOGISTICA = {"fulfillment": "FULL (lo despacha Mercado Libre)", "self_service": "Flex (entregás vos)", "sin_dato": "Todavía sin dato del envío"}
+
+
+def _cuando_compran(filas):
+    """
+    Cuándo compran: de [(día ISO 1=lunes…7, hora, órdenes)] arma las órdenes por día de la semana, el mejor y el peor día y la mejor franja de 3 horas seguidas (puede cruzar la medianoche).
+    Es el mismo cálculo de la pantalla Inicio. Con menos de MIN_ORDENES_CUANDO_COMPRAN órdenes no se saca ninguna conclusión.
+    """
+    total = sum(int(n) for _, _, n in filas)
+    if total < MIN_ORDENES_CUANDO_COMPRAN:
+        return {"ordenes": total, "aviso": f"Hay muy pocas ventas en el período ({total}): con menos de {MIN_ORDENES_CUANDO_COMPRAN} el día y la hora todavía no dicen nada. Probá con un período más largo."}
+    por_dia = [{"dia": dashboard_mod.DIAS_SEMANA[i], "ordenes": 0} for i in range(7)]
+    por_hora = [0] * 24
+    for dia, hora, n in filas:
+        por_dia[int(dia) - 1]["ordenes"] += int(n)
+        por_hora[int(hora)] += int(n)
+    for d in por_dia:
+        d["pct_del_total"] = round(d["ordenes"] / total * 100)
+    mejor = max(range(24), key=lambda h: sum(por_hora[(h + k) % 24] for k in range(3)))
+    return {
+        "ordenes": total, "por_dia_de_la_semana": por_dia, "mejor_dia": max(por_dia, key=lambda d: d["ordenes"])["dia"], "peor_dia": min(por_dia, key=lambda d: d["ordenes"])["dia"],
+        "mejor_franja_de_3_horas": f"{mejor:02d} a {(mejor + 3) % 24:02d} h", "pct_de_las_ventas_en_esa_franja": round(sum(por_hora[(mejor + k) % 24] for k in range(3)) / total * 100),
+        "aclaracion": "Hora de Argentina; sirve para elegir cuándo conviene lanzar una promoción, responder preguntas o activar publicidad.",
+    }
+
+
+def _resumen_de_logistica(filas):
+    """De [(tipo de logística, órdenes, unidades, facturado, costo de envío)] arma el costo de envío de cada modalidad: por unidad y como % de lo facturado."""
+    total_unidades = sum(int(f[2] or 0) for f in filas) or 1
+    resultado = []
+    for tipo, ordenes, unidades, facturado, envio in sorted(filas, key=lambda f: -float(f[3] or 0)):
+        unidades, facturado, envio = int(unidades or 0), float(facturado or 0), float(envio or 0)
+        resultado.append({
+            "modalidad": NOMBRES_DE_LOGISTICA.get(tipo, "Correo / Mercado Envíos"), "ordenes": int(ordenes or 0), "unidades": unidades, "pct_de_las_unidades": round(unidades / total_unidades * 100),
+            "facturado": _plata(facturado), "costo_de_envio": _plata(envio), "costo_de_envio_por_unidad": _plata(envio / unidades) if unidades else None,
+            "costo_de_envio_pct_del_facturado": round(envio / facturado * 100, 1) if facturado > 0 else None,
+        })
+    return resultado
+
+
+# ── Posventa, promociones, competencia, opiniones, conversión, precios, gastos, facturación y preguntas ───────────────────────────────────────
+
+def _devoluciones(ctx, desde=None, hasta=None, dias=None):
+    """Devoluciones, reclamos y cancelaciones del período: cuántos, cuáles afectan la reputación, por qué motivos y cuánta plata está retenida."""
+    desde, hasta, nota = _periodo(ctx, desde, hasta, dias)
+    with _conexion(ctx) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            f"""SELECT tipo, COUNT(*), COUNT(*) FILTER (WHERE {SQL_RECLAMO_AFECTA}), COUNT(*) FILTER (WHERE estado NOT IN ('closed', 'resolved')),
+                       COALESCE(SUM(monto_retenido) FILTER (WHERE estado NOT IN ('closed', 'resolved')), 0)
+                FROM incidencias_posventa WHERE cuenta_id = %s AND fecha BETWEEN %s AND %s GROUP BY tipo""", (ctx.cuenta_id, desde, hasta))
+        por_tipo = {r[0]: r[1:] for r in cursor.fetchall()}
+        cursor.execute("""SELECT tipo, motivo, COUNT(*) FROM incidencias_posventa WHERE cuenta_id = %s AND fecha BETWEEN %s AND %s AND motivo IS NOT NULL AND motivo <> ''
+                          GROUP BY tipo, motivo ORDER BY 3 DESC LIMIT 12""", (ctx.cuenta_id, desde, hasta))
+        motivos = cursor.fetchall()
+        cursor.execute("SELECT COUNT(DISTINCT id_orden) FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND fecha_venta BETWEEN %s AND %s", (ctx.cuenta_id, desde, hasta))
+        ordenes = int(cursor.fetchone()[0] or 0)
+        cursor.execute("""SELECT COUNT(DISTINCT id_orden), COALESCE(SUM(monto), 0) FROM ventas_retiradas
+                          WHERE cuenta_id = %s AND motivo = 'cancelada' AND (fila->>'fecha_venta')::date BETWEEN %s AND %s""", (ctx.cuenta_id, desde, hasta))
+        retiradas, monto_retirado = cursor.fetchone()
+
+    def _tipo(clave):
+        total, afectan, abiertos, retenido = por_tipo.get(clave, (0, 0, 0, 0))
+        return {"cantidad": int(total), "afectan_la_reputacion": int(afectan), "todavia_abiertos": int(abiertos), "dinero_retenido": _plata(retenido)}
+    total = sum(int(v[0]) for v in por_tipo.values())
+
+    def _top(clave):
+        return [{"motivo": m, "cantidad": int(n)} for t, m, n in motivos if t == clave][:5]
+    datos = {
+        "desde": desde.isoformat(), "hasta": hasta.isoformat(), "ventas_del_periodo": ordenes,
+        "devoluciones": _tipo("return"), "reclamos": _tipo("claim"), "cancelaciones": _tipo("cancelacion"),
+        "motivos_de_devolucion": _top("return"), "motivos_de_reclamo": _top("claim"),
+        "ventas_canceladas_o_reembolsadas_que_ya_no_cuentan": {"ordenes": int(retiradas or 0), "monto": _plata(monto_retirado)},
+        "aprox_casos_cada_100_ventas": round(total / ordenes * 100, 1) if ordenes else None,
+        "aclaracion": "Solo los reclamos que Mercado Libre marca como «afecta la reputación» pesan en tu nivel; los demás igual se gestionan y pueden retener plata. Lo de «cada 100 ventas» es aproximado: los casos del período pueden venir de ventas anteriores.",
+        "origen": "pantallas Ganancia Real y Reputación",
+    }
+    return _con_nota(datos, nota)
+
+
+def _promociones(ctx):
+    """Promociones y descuentos: qué pasó con las ventas en las últimas, cupones que financia la persona, stock que rota lento (candidato a promoción) y campañas de Mercado Libre."""
+    with _conexion(ctx) as conexion:
+        cursor = conexion.cursor()
+        impacto = promociones_mod.obtener_impacto_promociones(cursor)
+        cupones = promociones_mod.obtener_cupones(cursor, ctx.cuenta_id, 30)
+        candidatos = promociones_mod.sugerir_candidatos_promocion(cursor)
+        cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (ctx.cuenta_id,))
+        fila = cursor.fetchone()
+    campanas, campanas_ok = [], False
+    try:
+        if fila:
+            campanas = promociones_mod.formatear_campanias_para_vista(promociones_mod.obtener_promociones_usuario(_token(ctx), fila[0]))
+            campanas_ok = True
+    except ErrorDeHerramienta:
+        pass
+    return {
+        "ultimas_promociones": [{"publicacion": i["titulo"], "precio_antes": _plata(i["precio_original"]), "precio_en_promocion": _plata(i["precio_promo"]), "desde": i["fecha_inicio"], "hasta": i["fecha_fin"],
+                                 "sigue_activa": i["activo"], "ventas_por_dia_antes": i["promedio_previo"], "ventas_por_dia_durante": i["promedio_durante"], "variacion_de_las_ventas_pct": i["variacion_pct"]}
+                                for i in impacto[:8]],
+        "cupones_que_pagaste_ultimos_30_dias": {"total": cupones["total"], "ventas_con_cupon": cupones["ventas_con_cupon"], "pct_de_lo_facturado": cupones["pct_facturado"],
+                                                "los_que_mas_costaron": [{"publicacion": t["titulo"], "total": t["total"]} for t in cupones["top"][:5]]} if cupones else None,
+        "stock_que_rota_lento_candidato_a_promocion": [{"publicacion": c["titulo"], "unidades_en_stock": c["stock_total"], "ventas_ultimos_14_dias": c["unidades_14d"], "plata_inmovilizada_a_precio_de_lista": c["capital_inmovilizado"]}
+                                                       for c in candidatos[:6]],
+        "campanas_de_mercado_libre": [{"campana": c["nombre"], "tipo": c["tipo_texto"], "estado": c["estado_texto"], "desde": c["vigencia_desde"], "hasta": c["vigencia_hasta"]} for c in campanas[:8]] if campanas_ok else None,
+        "aclaracion": "Si la lista de campañas de Mercado Libre viene vacía puede que no haya ninguna o que Mercado Libre no haya respondido. Las promociones se gestionan en la pantalla Promociones.",
+        "origen": "pantalla Promociones",
+    }
+
+
+def _competencia(ctx):
+    """Publicaciones de catálogo: si están ganando el puesto principal y a qué precio se ganaría (cruzado con el precio mínimo). Solo las publicaciones de catálogo."""
+    with _conexion(ctx) as conexion:
+        d = catalogo_mod.obtener(conexion.cursor(), ctx.cuenta_id)
+    if not d:
+        return {"tiene_publicaciones_de_catalogo": False, "mensaje": "Esta cuenta no tiene publicaciones de catálogo con datos de competencia todavía: no hay precios de competidores para comparar.", "origen": "pantalla Competencia"}
+    accionables = [i for i in d["items"] if i["estado"] == "competing"]
+    return {
+        "tiene_publicaciones_de_catalogo": True, "ganando_el_puesto_principal": d["ganando"], "compitiendo": d["perdiendo"], "conviene_bajar_el_precio": d["conviene_bajar"],
+        "las_que_compiten": [{"publicacion": i["titulo"], "tu_precio": _plata(i["precio"]), "precio_para_ganar": i["para_ganar"], "diferencia_pct": i["diferencia_pct"],
+                              "ganancia_por_unidad_a_ese_precio": i["neto_para_ganar"], "conviene": i["conviene"], "estado": i["texto"], "condiciones": [c["descripcion"] for c in i["condiciones"] if c.get("descripcion")][:3]}
+                             for i in accionables[:8]],
+        "aclaracion": "«Conviene» significa que a ese precio todavía queda ganancia, con la comisión, el envío y el costo reales. Mercado Libre no informa cuánto vende cada competidor.", "origen": "pantalla Competencia",
+    }
+
+
+def _opiniones(ctx):
+    """Lo que dicen las opiniones de los modelos: calificación, porcentaje de críticas y lo que MeLi resume de cada uno (talle, calidad…). Solo cifras y resúmenes de Mercado Libre, nunca los comentarios."""
+    with _conexion(ctx) as conexion:
+        d = opiniones_mod.obtener_datos(conexion.cursor(), ctx.cuenta_id)
+    if not d["total_opiniones"]:
+        return {"hay_opiniones": False, "mensaje": "Todavía no hay opiniones guardadas de los productos de esta cuenta.", "origen": "pantalla Opiniones"}
+
+    def _modelo(f):
+        return {"modelo": f["titulo"], "calificacion": f["promedio"], "opiniones": f["total"], "pct_de_criticas_1_y_2_estrellas": f["pct_criticas"], "unidades_vendidas_recientes": f["unidades"],
+                "resumen_de_mercado_libre": [a["texto"] for a in f["atributos"] if a.get("texto")][:3]}
+    return {
+        "hay_opiniones": True, "calificacion_promedio": d["promedio"], "opiniones_en_total": d["total_opiniones"], "pct_buenas_4_y_5_estrellas": d["pct_buenas"], "pct_malas_1_y_2_estrellas": d["pct_malas"],
+        "modelos_sin_opiniones": d["sin_opiniones"], "modelos_para_revisar": [_modelo(f) for f in d["revisar"][:5]],
+        "los_mas_opinados": [_modelo(f) for f in d["productos"][:5]],
+        "aclaracion": "Un modelo se marca «para revisar» con calificación baja o muchas críticas y opiniones suficientes. Los comentarios de la gente se leen en la pantalla Opiniones.", "origen": "pantalla Opiniones",
+    }
+
+
+def _conversion(ctx):
+    """De las visitas a las ventas por modelo (últimos 14 días): cuáles tienen mucho tráfico y venden poco (revisar la publicación) y cuáles venden bien lo poco que se ve (falta tráfico)."""
+    desde = ctx.hoy - timedelta(days=13)
+    with _conexion(ctx) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""SELECT p.id_meli, p.titulo, COALESCE(p.family_id, p.id_meli), COALESCE(p.visitas_14d, 0), COALESCE(p.visitas_previas_14d, 0) FROM productos_padre p
+                          WHERE p.cuenta_id = %s AND p.estado = 'active' AND p.visitas_en IS NOT NULL""", (ctx.cuenta_id,))
+        filas = cursor.fetchall()
+        cursor.execute("SELECT id_meli, COALESCE(SUM(cantidad), 0) FROM ventas WHERE cuenta_id = %s AND origen = 'meli' AND fecha_venta BETWEEN %s AND %s GROUP BY id_meli", (ctx.cuenta_id, desde, ctx.hoy))
+        vendidas = {r[0]: int(r[1]) for r in cursor.fetchall()}
+    if not filas:
+        return {"hay_datos": False, "mensaje": "Todavía no hay visitas guardadas de las publicaciones activas (se completan de a poco en cada sincronización).", "origen": "pantalla Embudo de Conversión"}
+    modelos = {}
+    for id_meli, titulo, familia, visitas, previas in filas:
+        m = modelos.setdefault(familia, {"titulos": [], "visitas": 0, "previas": 0, "unidades": 0})
+        m["titulos"].append(titulo or id_meli)
+        m["visitas"] += int(visitas)
+        m["previas"] += int(previas)
+        m["unidades"] += vendidas.get(id_meli, 0)
+    visitas_totales = sum(m["visitas"] for m in modelos.values())
+    conversion_global = sum(m["unidades"] for m in modelos.values()) / visitas_totales * 100 if visitas_totales else 0.0
+    filas_modelo = []
+    for m in modelos.values():
+        nombre, _ = costos_mod.nombres_de_variantes(list(dict.fromkeys(m["titulos"])))
+        filas_modelo.append({"modelo": nombre or m["titulos"][0], "visitas_14_dias": m["visitas"], "ventas_14_dias": m["unidades"], "conversion_pct": round(m["unidades"] / m["visitas"] * 100, 2) if m["visitas"] else None,
+                             "variacion_de_visitas_pct": round((m["visitas"] - m["previas"]) / m["previas"] * 100, 1) if m["previas"] > 0 else None,
+                             "diagnostico": embudo_mod.diagnosticar(m["visitas"], m["unidades"], conversion_global)})
+    revisar = sorted((f for f in filas_modelo if f["diagnostico"] == "revisar_ficha"), key=lambda f: -f["visitas_14_dias"])
+    falta_trafico = sorted((f for f in filas_modelo if f["diagnostico"] == "poca_visibilidad"), key=lambda f: -f["ventas_14_dias"])
+    return {
+        "hay_datos": True, "visitas_14_dias": visitas_totales, "conversion_promedio_de_la_cuenta_pct": round(conversion_global, 2),
+        "mucho_trafico_y_poca_venta_revisar_la_publicacion": [{k: v for k, v in f.items() if k != "diagnostico"} for f in revisar[:6]],
+        "venden_bien_pero_se_ven_poco_falta_trafico": [{k: v for k, v in f.items() if k != "diagnostico"} for f in falta_trafico[:6]],
+        "aclaracion": f"Solo se juzga con al menos {embudo_mod.MIN_VISITAS_PARA_JUZGAR} visitas y contra el promedio de la propia cuenta (cada rubro y precio convierte distinto). La conversión es ventas divididas por visitas de los últimos 14 días.",
+        "origen": "pantalla Embudo de Conversión (visitas guardadas por Mercado Libre)",
+    }
+
+
+def _historial_de_precios(ctx):
+    """Los últimos cambios de precio y qué pasó con las ventas de esa publicación en los 7 días de antes y de después."""
+    with _conexion(ctx) as conexion:
+        cambios = historial_mod.obtener_historial_con_impacto(conexion.cursor(), 7, 30)
+    return {
+        "cambios_recientes": [{"publicacion": c["titulo"], "fecha": c["fecha_cambio"], "precio_anterior": _plata(c["precio_anterior"]), "precio_nuevo": _plata(c["precio_nuevo"]), "movimiento": "subió" if c["precio_nuevo"] > c["precio_anterior"] else "bajó",
+                               "unidades_7_dias_antes": c["unidades_antes"], "unidades_7_dias_despues": c["unidades_despues"], "variacion_de_las_ventas_pct": c["variacion_pct"], "datos_incompletos": c["datos_incompletos"]}
+                              for c in cambios[:10]],
+        "aclaracion": "Es una comparación simple de unidades vendidas antes y después: no prueba que el precio sea la causa (también influyen la temporada, la publicidad y el stock). Sin ventas antes del cambio no hay comparación.",
+        "origen": "pantalla Historial de Precios",
+    }
+
+
+def _gastos(ctx, desde=None, hasta=None, dias=None):
+    """Gastos operativos cargados (alquiler, embalaje, sueldos…): fijos y variables del período, con los recurrentes prorrateados por día."""
+    desde, hasta, nota = _periodo(ctx, desde, hasta, dias)
+    with _conexion(ctx) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""SELECT concepto, categoria, monto, fecha, recurrente, fecha_fin FROM gastos_operativos
+                          WHERE cuenta_id = %s AND eliminado_en IS NULL AND ((recurrente = false AND fecha BETWEEN %s AND %s) OR (recurrente = true AND fecha <= %s AND (fecha_fin IS NULL OR fecha_fin >= %s)))""",
+                       (ctx.cuenta_id, desde, hasta, hasta, desde))
+        filas = cursor.fetchall()
+    fijos = variables = 0.0
+    lista = []
+    for concepto, categoria, monto, fecha, recurrente, fecha_fin in filas:
+        monto_del_periodo = prorratear_mensual(float(monto), fecha, fecha_fin, desde, hasta) if recurrente else float(monto)
+        if categoria == "fijo":
+            fijos += monto_del_periodo
+        else:
+            variables += monto_del_periodo
+        lista.append({"concepto": concepto, "tipo": "fijo" if categoria == "fijo" else "variable", "monto_en_el_periodo": _plata(monto_del_periodo), "recurrente": bool(recurrente)})
+    lista.sort(key=lambda g: -g["monto_en_el_periodo"])
+    return _con_nota({
+        "desde": desde.isoformat(), "hasta": hasta.isoformat(), "gastos_fijos": _plata(fijos), "gastos_variables": _plata(variables), "total": _plata(fijos + variables), "cantidad_de_gastos": len(lista), "los_mas_grandes": lista[:8],
+        "aclaracion": "Son los gastos que la persona cargó en la pantalla Costos (alquiler, embalaje, sueldos…). No están restados de la «ganancia neta real» de Ganancia Real, que cuenta lo que deja cada venta; sirven para el punto de equilibrio y el reporte fiscal.",
+        "origen": "pantalla Costos",
+    }, nota)
+
+
+def _cargos_de_mercado_libre(ctx):
+    """La factura de Mercado Libre del período en curso agrupada por rubro (comisiones, envíos, publicidad, impuestos, bonificaciones)."""
+    resumen = facturacion_mod.resumen_condensado_periodo_actual(_token(ctx), ctx.cuenta_id)
+    if not resumen:
+        raise ErrorDeHerramienta("Mercado Libre no devolvió la factura del período ahora mismo. Probá de nuevo en un rato.")
+    return {
+        "periodo": {"desde": resumen["date_from"], "hasta": resumen["date_to"], "en_curso": resumen["en_curso"]}, "total_facturado_por_mercado_libre": _plata(sum(f["monto"] for f in resumen["filas"])),
+        "por_rubro": [{"rubro": f["label"], "monto": _plata(f["monto"])} for f in resumen["filas"]],
+        "aclaracion": "Los montos en negativo son bonificaciones a favor. Los períodos de facturación de Mercado Libre van del 9 al 8. Los envíos Flex los cobra tu propia logística y no figuran en esta factura.",
+        "origen": "pantalla Facturación",
+    }
+
+
+def _preguntas(ctx):
+    """Preguntas de la gente: cuántas esperan respuesta, cuánto hace que espera la más vieja, cuántas pasaron el objetivo de CoreLux y cuánto tarda la persona en responder (sin leer el texto)."""
+    with _conexion(ctx) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("""SELECT COUNT(*), MIN(fecha_pregunta), COUNT(*) FILTER (WHERE hora_limite_respuesta IS NOT NULL AND hora_limite_respuesta < now())
+                          FROM preguntas_pendientes WHERE cuenta_id = %s AND estado = 'pendiente'""", (ctx.cuenta_id,))
+        pendientes, mas_vieja, vencidas = cursor.fetchone()
+        cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (ctx.cuenta_id,))
+        fila = cursor.fetchone()
+    horas = None
+    if mas_vieja is not None:
+        referencia = datetime.now(mas_vieja.tzinfo) if mas_vieja.tzinfo else datetime.now(timezone.utc).replace(tzinfo=None)
+        horas = max(0, round((referencia - mas_vieja).total_seconds() / 3600))
+    tiempo = None
+    try:
+        tiempo = tiempo_respuesta_mod.calcular(_token(ctx), fila[0]) if fila else None
+    except ErrorDeHerramienta:
+        pass
+    return {
+        "preguntas_sin_responder": int(pendientes), "horas_de_la_mas_vieja": horas, "pasaron_el_objetivo_de_una_hora": int(vencidas),
+        "tiempo_de_respuesta": {"mediana_en_minutos": tiempo["mediana_min"], "pct_respondidas_en_menos_de_1_hora": tiempo["pct_en_1h"], "preguntas_medidas": tiempo["muestra"]} if tiempo else None,
+        "aclaracion": "El objetivo de una hora es de CoreLux (no un plazo de Mercado Libre). Responder rápido ayuda a vender y a la reputación. Si el tiempo de respuesta viene vacío, Mercado Libre no respondió o no hay preguntas respondidas. Las preguntas se responden en la pantalla Preguntas.",
+        "origen": "pantalla Día a día (Preguntas)",
+    }
+
+
+def _panorama(ctx):
+    """El panorama general en una sola llamada: hoy, últimos 30 días, mes en curso, modelos más vendidos y stock en riesgo (el resumen de siempre del asistente)."""
+    datos = chat_ia._armar_contexto(ctx.usuario_id, ctx.cuenta_id)
+    datos.pop("ventas_por_dia_ultimos_30_dias", None)
+    datos["origen"] = "pantallas Inicio, Ganancia Real y Stock"
+    return datos
+
+
 # ── Registro ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 _PERIODO = {"dias": {"type": "integer", "description": "Los últimos N días contando hoy (1 = solo hoy, 7, 30, 90). USALO para «hoy», «esta semana», «los últimos 30 días»: no calcules fechas. Si se manda, se ignoran desde y hasta."},
@@ -556,8 +882,10 @@ _PERIODO = {"dias": {"type": "integer", "description": "Los últimos N días con
 
 HERRAMIENTAS = {
     "ventas": {
-        "descripcion": "Ventas netas (sin canceladas ni devueltas) de un período: facturado, unidades y órdenes. `agrupar`: total, dia (por día), modelo (ranking de modelos con todas sus variantes juntas: usalo para «el producto o modelo más vendido») o variante (ranking por variante: solo si preguntan por un tamaño, color u otra variante puntual).",
-        "parametros": {**_PERIODO, "agrupar": {"type": "string", "enum": ["total", "dia", "modelo", "variante"]}}, "funcion": _ventas},
+        "descripcion": ("Ventas netas (sin canceladas ni devueltas) de un período: facturado, unidades y órdenes. `agrupar`: total, dia (por día), modelo (ranking de modelos con todas sus variantes juntas: usalo para «el producto o modelo más vendido»), "
+                        "variante (ranking por variante: solo si preguntan por un tamaño, color u otra variante puntual), provincia (dónde se vende más), horario (qué día y a qué hora compran más: sirve para elegir cuándo promocionar) "
+                        "o logistica (cuánto cuesta el envío de cada modalidad: FULL, Flex o Correo, por unidad y como % de lo facturado)."),
+        "parametros": {**_PERIODO, "agrupar": {"type": "string", "enum": ["total", "dia", "modelo", "variante", "provincia", "horario", "logistica"]}}, "funcion": _ventas},
     "ganancia_real": {
         "descripcion": "Ganancia neta real de un período con todo el desglose (cargos de Mercado Libre, envíos, publicidad, costo de fabricación, cargos mensuales) y el margen. Es lo que queda de verdad.",
         "parametros": dict(_PERIODO), "funcion": _ganancia_real},
@@ -588,6 +916,24 @@ HERRAMIENTAS = {
     "producto": {
         "descripcion": "Cómo viene UN producto puntual: stock, precios, margen, ventas de los últimos 30 días, calidad, visitas y opiniones. Buscalo por palabras de su título (por ejemplo «campera jean» o «iphone 14»).",
         "parametros": {"buscar": {"type": "string", "description": "Palabras del título del producto, sin la marca de la tienda ni signos."}}, "funcion": _producto},
+    "panorama": {"descripcion": "El panorama general del negocio en una sola llamada: ventas de hoy, últimos 30 días, mes en curso con su proyección, modelos más vendidos y stock en riesgo. Usala para preguntas abiertas como «¿cómo voy?» o «dame un resumen».",
+                 "parametros": {}, "funcion": _panorama},
+    "devoluciones": {"descripcion": "Devoluciones, reclamos y cancelaciones de un período: cuántos, cuáles afectan la reputación, los motivos más repetidos, la plata retenida y las ventas canceladas o reembolsadas. Usala para «¿por qué me devuelven?» o «¿tengo muchos reclamos?».",
+                     "parametros": dict(_PERIODO), "funcion": _devoluciones},
+    "promociones": {"descripcion": "Promociones y descuentos: qué pasó con las ventas en las últimas promociones, cupones que paga la persona, stock que rota lento (candidato a promoción) y campañas de Mercado Libre disponibles.",
+                    "parametros": {}, "funcion": _promociones},
+    "competencia": {"descripcion": "Publicaciones de catálogo: cuáles ganan el puesto principal, a qué precio se ganaría y si a ese precio todavía queda ganancia. Solo sirve si la cuenta tiene publicaciones de catálogo.",
+                    "parametros": {}, "funcion": _competencia},
+    "opiniones": {"descripcion": "Lo que dicen las opiniones de los productos: calificación promedio, porcentaje de críticas, los modelos para revisar y el resumen que arma Mercado Libre de cada uno. No incluye los comentarios.",
+                  "parametros": {}, "funcion": _opiniones},
+    "conversion": {"descripcion": "De las visitas a las ventas por modelo (14 días): cuáles tienen mucho tráfico y venden poco (revisar la publicación) y cuáles venden bien pero se ven poco (falta tráfico).",
+                   "parametros": {}, "funcion": _conversion},
+    "historial_de_precios": {"descripcion": "Los últimos cambios de precio y qué pasó con las ventas de esa publicación en los 7 días de antes y de después.", "parametros": {}, "funcion": _historial_de_precios},
+    "gastos": {"descripcion": "Gastos operativos cargados por la persona (alquiler, embalaje, sueldos…): fijos y variables de un período, con los más grandes.", "parametros": dict(_PERIODO), "funcion": _gastos},
+    "cargos_de_mercado_libre": {"descripcion": "La factura de Mercado Libre del período en curso agrupada por rubro: comisiones, envíos, publicidad, impuestos y bonificaciones. Usala para «¿en qué me cobra Mercado Libre?».",
+                                "parametros": {}, "funcion": _cargos_de_mercado_libre},
+    "preguntas": {"descripcion": "Las preguntas de la gente: cuántas esperan respuesta, hace cuánto espera la más vieja, cuántas pasaron el objetivo de una hora y cuánto tarda la persona en responder. No lee el texto de las preguntas.",
+                  "parametros": {}, "funcion": _preguntas},
 }
 
 

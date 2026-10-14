@@ -82,6 +82,7 @@ def test_la_ganancia_real_avisa_si_la_publicidad_vino_incompleta(monkeypatch):
             return _Cursor()
     monkeypatch.setattr(herr.db, "conexion_usuario", lambda u, c=None: _Prestada(_Conexion()))
     monkeypatch.setattr(herr.costos_mod, "cobertura_de_costos", lambda cursor, d, h: {"facturado": 1000, "sin_costo": 0, "pct_sin_costo": 0.0, "publicaciones": 0, "avisar": False})
+    monkeypatch.setattr(herr.flex_mod, "resumen_periodo", lambda cursor, cuenta, d, h: {"ordenes": 0, "sin_zona": 0, "costo": 0.0})
     monkeypatch.setattr(herr, "_calcular_ganancia", lambda ctx, d, h: {"ads_incompleto": True, "resumen": {"raw": {"facturado": 1000, "ganancia_neta": 100}}})
     assert "publicidad" in herr.ejecutar("ganancia_real", "{}", _ctx())["datos"]["aviso"]
 

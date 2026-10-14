@@ -70,14 +70,14 @@ def test_al_servidor_viaja_solo_el_final_del_hilo_con_los_roles_que_entiende():
     fuente = _js()
     programa = f"""
 const _CHAT_MAX_MENSAJES = 24;
-let _chatMensajes = {json.dumps([{"rol": "user" if i % 2 == 0 else "bot", "texto": f"t{i}", "botones": []} for i in range(10)])};
+let _chatMensajes = {json.dumps([{"rol": "user" if i % 2 == 0 else "bot", "texto": f"t{i}", "botones": []} for i in range(12)])};
 {_funcion(fuente, '_chatHistorialParaElServidor')}
 console.log(JSON.stringify(_chatHistorialParaElServidor()));
 """
     r = subprocess.run(["node", "-e", programa], capture_output=True, text=True, encoding="utf-8", timeout=20)
     assert r.returncode == 0, r.stderr
     enviado = json.loads(r.stdout.strip().splitlines()[-1])
-    assert len(enviado) == 6 and [m["role"] for m in enviado] == ["user", "assistant"] * 3 and enviado[-1]["content"] == "t9"
+    assert len(enviado) == 10 and [m["role"] for m in enviado] == ["user", "assistant"] * 5 and enviado[-1]["content"] == "t11" and enviado[0]["content"] == "t2"
 
 
 def test_la_bienvenida_ofrece_preguntas_de_ejemplo_y_la_pantalla_restaura_la_conversacion():

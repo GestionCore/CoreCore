@@ -1532,7 +1532,7 @@ function _chatLimpiarMensajes(crudo) {
 }
 
 function _chatHistorialParaElServidor() {
-    return _chatMensajes.slice(-6).map(m => ({ role: m.rol === 'user' ? 'user' : 'assistant', content: m.texto }));
+    return _chatMensajes.slice(-10).map(m => ({ role: m.rol === 'user' ? 'user' : 'assistant', content: m.texto }));
 }
 
 function _chatGuardar() {

@@ -30,6 +30,7 @@ CUENTA_ES_DE_LA_PERSONA = asistente.cuenta_es_de_la_persona              # la ve
 def base_falsa(monkeypatch):
     monkeypatch.setattr(asistente, "_supero_el_tope_diario", lambda *a, **k: False)
     monkeypatch.setattr(asistente, "cuenta_es_de_la_persona", lambda *a, **k: True)
+    monkeypatch.setattr(asistente.contexto_cuenta, "armar", lambda *a, **k: "")
 
 
 def _filtro(*respuestas):
