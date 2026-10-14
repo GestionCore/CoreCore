@@ -1,4 +1,6 @@
-# PENDIENTES — leer primero al retomar (actualizado 2026-10-13)
+# PENDIENTES — leer primero al retomar (actualizado 2026-10-14)
+
+> **Lo que le toca hacer al dueño, paso a paso: [`docs/TUS_PENDIENTES.md`](docs/TUS_PENDIENTES.md)** (desplegar, costo de entrega Flex, `soporte@corelux.app`, Mercado Pago real, mails, monitor de caída, Sentry, webhooks de Mercado Libre, respaldo, CSP estricta, abogado). Lo hecho entre el deploy `f787467` y hoy (modo pulir: IA con 29 herramientas y alcance estricto, celular a 320 px, accesibilidad, planificador de Postgres para cuentas grandes) está subido pero NO desplegado.
 
 Este archivo es la lista viva de lo que falta. CLAUDE.md lo referencia arriba de todo. Regla de oro (ver `memory/feedback_auditorias_externas.md`): **las auditorías externas traen ~25 % de puntos falsos o parciales**:
 verificar cada uno contra el código, la base real (EXPLAIN, `pg_constraint`, conteos) o un navegador ANTES de tocar nada; arreglar lo real con un test que falle sin el arreglo; informar «corregido / endurecido / rechazado con evidencia».
