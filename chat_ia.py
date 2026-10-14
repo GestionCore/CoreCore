@@ -12,6 +12,7 @@ from datetime import timedelta
 import db
 import dashboard
 import analisis_stock
+import alcance_ia
 import ia_asistente
 from utils import hoy_argentina, limpiar_titulo_modelo, sql_variante_de_venta
 
@@ -19,6 +20,8 @@ PROMPT_SISTEMA = """Sos el Asistente de Operaciones de CoreLux, una app de gesti
 
 Hoy es {fecha_hoy}. Datos actuales del negocio:
 {contexto_json}
+
+{alcance}
 
 Reglas:
 - Respondé en español, corto y directo (2-4 oraciones), como si le hablaras al dueño de un local, no a un programador.
@@ -146,12 +149,12 @@ def responder_con_resumen(usuario_id, pregunta, cuenta_id=None):
         return "No pude leer los datos del negocio ahora mismo — probá de nuevo en un rato."
 
     prompt = PROMPT_SISTEMA.format(
-        fecha_hoy=hoy_legible(), contexto_json=json.dumps(contexto, ensure_ascii=False, indent=2, default=str)
+        fecha_hoy=hoy_legible(), contexto_json=json.dumps(contexto, ensure_ascii=False, indent=2, default=str), alcance=alcance_ia.REGLA_DE_ALCANCE
     )
     ok, respuesta = ia_asistente.preguntar_ia(prompt, pregunta, max_tokens=500, temperatura=0.3)
     if not ok:
         return f"No pude conectar con la IA ({respuesta})."
-    return respuesta
+    return alcance_ia.filtrar_salida(respuesta, alcance_ia.huellas_del_prompt(PROMPT_SISTEMA, alcance_ia.REGLA_DE_ALCANCE))
 
 
 def hoy_legible():

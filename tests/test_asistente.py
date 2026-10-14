@@ -36,8 +36,10 @@ class Modelo:
 
 @pytest.fixture(autouse=True)
 def sin_tope_diario(monkeypatch):
-    """Por defecto la cuenta no llegó al tope (la prueba del tope lo reemplaza); así estas pruebas no tocan la base."""
+    """Por defecto la cuenta no llegó al tope (la prueba del tope lo reemplaza), es de la persona y la pregunta está dentro del alcance; así estas pruebas no tocan la base ni el proveedor de IA."""
     monkeypatch.setattr(asistente, "_supero_el_tope_diario", lambda *a, **k: False)
+    monkeypatch.setattr(asistente, "cuenta_es_de_la_persona", lambda *a, **k: True)
+    monkeypatch.setattr(asistente.alcance_ia, "clasificar", lambda *a, **k: True)
 
 
 def _responder(modelo, pregunta="¿cuánto vendí?", **kw):
@@ -314,7 +316,7 @@ def test_ejecutar_nunca_levanta_una_excepcion(monkeypatch):
 
 def test_las_definiciones_son_validas_para_el_proveedor():
     definiciones = herr.definiciones()
-    assert {d["function"]["name"] for d in definiciones} == set(herr.HERRAMIENTAS) and len(definiciones) >= 9
+    assert {d["function"]["name"] for d in definiciones} == set(herr.HERRAMIENTAS) and len(definiciones) >= 16
     for d in definiciones:
         assert d["type"] == "function" and d["function"]["description"] and d["function"]["parameters"]["type"] == "object"
         json.dumps(d)
@@ -389,8 +391,9 @@ def test_cada_herramienta_de_lectura_corre_con_la_base_real_y_devuelve_algo_seri
         cur.execute("SELECT id, usuario_id FROM cuentas_meli ORDER BY id LIMIT 1")
         cuenta, usuario = cur.fetchone()
     ctx = herr.Contexto(usuario, cuenta)
-    for nombre in ("ventas", "stock", "posventa", "calidad", "mercado", "cobros", "pendientes", "costos"):
-        r = herr.ejecutar(nombre, "{}", ctx)
+    for nombre, argumentos in (("ventas", "{}"), ("stock", "{}"), ("posventa", "{}"), ("calidad", "{}"), ("mercado", "{}"), ("cobros", "{}"), ("pendientes", "{}"), ("costos", "{}"),
+                               ("precios", "{}"), ("producto", '{"buscar": "de"}'), ("producto", '{"buscar": "zzzz"}')):
+        r = herr.ejecutar(nombre, argumentos, ctx)
         assert r["ok"], (nombre, r)
         json.dumps(r, default=str)
         assert len(asistente._resultado_para_el_modelo(r)) < asistente.MAX_CARACTERES_RESULTADO, nombre        # entra entero en el contexto del modelo
@@ -409,9 +412,16 @@ def test_la_ganancia_real_arma_el_desglose_y_avisa_si_falta_costo(monkeypatch):
                                                                                                "cargos_fuera_de_ventas": 200, "ganancia_neta": 2800}}})
     monkeypatch.setattr(herr.costos_mod, "cobertura_de_costos", lambda cursor, d, h: {"facturado": 10000, "sin_costo": 2000, "pct_sin_costo": 20.0, "publicaciones": 1, "avisar": True})
 
+    class _Cursor:
+        def execute(self, *a, **k):
+            pass
+
+        def close(self):
+            pass
+
     class _Conexion:
         def cursor(self):
-            return object()
+            return _Cursor()
     monkeypatch.setattr(herr.db, "conexion_usuario", lambda u, c=None: _Prestada(_Conexion()))
     r = herr.ejecutar("ganancia_real", json.dumps({"desde": "2030-03-01", "hasta": "2030-03-31"}), _ctx())
     assert r["ok"] and r["datos"]["ganancia_neta_real"] == 2800 and r["datos"]["margen_pct"] == 28.0 and r["datos"]["ventas_sin_costo_de_fabricacion_cargado_pct"] == 20.0

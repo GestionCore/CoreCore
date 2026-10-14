@@ -6,6 +6,9 @@ direcciones ni mensajes de compradores). Cada una abre `db.conexion_usuario(usua
 fallara, una cuenta no podría leer los datos de otra. Ninguna escribe nada. Todo lo que devuelven es DATO, no instrucciones (el prompt del asistente se lo dice al modelo).
 """
 import json
+import re
+import unicodedata
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 
 import analisis_stock
@@ -15,16 +18,25 @@ import costos as costos_mod
 import dashboard as dashboard_mod
 import db
 import dolar as dolar_mod
+import fiscal
 import logros as logros_mod
 import mercado as mercado_mod
 import metricas
+import monotributo as monotributo_mod
 import nav_config
+import precios as precios_mod
+import publicidad as publicidad_mod
+import reputacion as reputacion_mod
 import salud_cuenta
 from auth import token_manager
 from utils import SQL_RECLAMO_AFECTA, hoy_argentina, limpiar_titulo_modelo, rotulo_variante, sql_variante_de_venta
 
 MAX_DIAS = 92
 DIAS_POR_DEFECTO = 30
+MAX_PALABRAS_DE_BUSQUEDA = 6
+MAX_LARGO_DE_BUSQUEDA = 80
+MAX_MODELOS_EN_PRODUCTO = 3
+MENSAJE_DESCONECTADA = "La cuenta de Mercado Libre está desconectada: hay que volver a conectarla desde la página para calcular este dato."
 
 
 class ErrorDeHerramienta(Exception):
@@ -36,8 +48,21 @@ class Contexto:
         self.usuario_id, self.cuenta_id, self.hoy = usuario_id, cuenta_id, hoy or hoy_argentina()
 
 
+@contextmanager
 def _conexion(ctx):
-    return db.conexion_usuario(ctx.usuario_id, ctx.cuenta_id)
+    """La conexión de la persona (con RLS) y de SOLO LECTURA: si una herramienta intentara escribir algo, Postgres mismo lo rechaza."""
+    with db.conexion_usuario(ctx.usuario_id, ctx.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SET TRANSACTION READ ONLY")
+        cursor.close()
+        yield conexion
+
+
+def _token(ctx):
+    try:
+        return token_manager.asegurar_token_valido(ctx.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        raise ErrorDeHerramienta(MENSAJE_DESCONECTADA)
 
 
 def _fecha(valor, nombre):
@@ -123,13 +148,12 @@ def _ventas(ctx, desde=None, hasta=None, agrupar="total", dias=None):
     return _con_nota(datos, nota)
 
 
-def _ganancia_real(ctx, desde=None, hasta=None, dias=None):
-    desde, hasta, nota = _periodo(ctx, desde, hasta, dias)
-    try:
-        access_token = token_manager.asegurar_token_valido(ctx.cuenta_id)
-    except token_manager.CuentaDesconectada:
-        raise ErrorDeHerramienta("La cuenta de Mercado Libre está desconectada: hay que volver a conectarla desde la página para calcular la ganancia.")
-    resultado = metricas.calcular_ganancia_real(ctx.usuario_id, ctx.cuenta_id, access_token, desde.isoformat(), hasta.isoformat())
+def _calcular_ganancia(ctx, desde, hasta):
+    """El mismo cálculo de la pantalla Ganancia Real (metricas.calcular_ganancia_real) para la cuenta de la persona."""
+    return metricas.calcular_ganancia_real(ctx.usuario_id, ctx.cuenta_id, _token(ctx), desde.isoformat(), hasta.isoformat())
+
+
+def _desglose_de_ganancia(ctx, resultado, desde, hasta):
     raw = resultado["resumen"]["raw"]
     with _conexion(ctx) as conexion:
         cobertura = costos_mod.cobertura_de_costos(conexion.cursor(), desde.isoformat(), hasta.isoformat())
@@ -141,8 +165,43 @@ def _ganancia_real(ctx, desde=None, hasta=None, dias=None):
         "ganancia_neta_real": _plata(ganancia), "margen_pct": round(ganancia / facturado * 100, 1) if facturado > 0 else None,
         "ventas_sin_costo_de_fabricacion_cargado_pct": cobertura["pct_sin_costo"], "origen": "pantalla Ganancia Real",
     }
+    avisos = []
     if cobertura["pct_sin_costo"] > 0:
-        datos["aviso"] = "Parte de lo vendido no tiene costo de fabricación cargado: la ganancia real puede ser menor. Se carga en la pantalla Costos."
+        avisos.append("Parte de lo vendido no tiene costo de fabricación cargado: la ganancia real puede ser menor. Se carga en la pantalla Costos.")
+    if resultado.get("ads_incompleto"):
+        avisos.append("Mercado Libre no devolvió todo el gasto en publicidad: el costo de publicidad puede estar incompleto.")
+    if avisos:
+        datos["aviso"] = " ".join(avisos)
+    return datos
+
+
+def _ganancia_real(ctx, desde=None, hasta=None, dias=None):
+    desde, hasta, nota = _periodo(ctx, desde, hasta, dias)
+    return _con_nota(_desglose_de_ganancia(ctx, _calcular_ganancia(ctx, desde, hasta), desde, hasta), nota)
+
+
+def _ganancia_por_modelo(ctx, desde=None, hasta=None, dias=None):
+    """Qué modelos dejan plata y cuáles no: la tabla «por modelo» de Ganancia Real (todas las variantes de un modelo juntas, promedio ponderado)."""
+    desde, hasta, nota = _periodo(ctx, desde, hasta, dias)
+    resultado = _calcular_ganancia(ctx, desde, hasta)
+    modelos = []
+    for c in resultado.get("consolidados") or []:
+        r = c["raw"]
+        facturado, neto = float(r["total_facturado"] or 0), float(r["neto_total"] or 0)
+        modelos.append({"modelo": c["titulo"], "unidades": int(c["unidades"]), "facturado": _plata(facturado), "ganancia_neta": _plata(neto), "ganancia_por_unidad": _plata(r["neto_u"]),
+                        "margen_pct": round(neto / facturado * 100, 1) if facturado > 0 else None, "sin_costo_cargado": float(r["costo_u"] or 0) <= 0})
+    datos = {
+        "desde": desde.isoformat(), "hasta": hasta.isoformat(), "modelos_vendidos": len(modelos),
+        "los_que_mas_dejan": sorted(modelos, key=lambda m: -m["ganancia_neta"])[:8],
+        "los_que_pierden_plata": sorted((m for m in modelos if m["ganancia_neta"] < 0), key=lambda m: m["ganancia_neta"])[:8],
+        "modelos_sin_costo_de_fabricacion_cargado": [m["modelo"] for m in modelos if m["sin_costo_cargado"]][:8],
+        "aclaracion": "La ganancia de cada modelo ya descuenta cargos de Mercado Libre, envíos, publicidad y costo de fabricación, pero no los cargos mensuales de Mercado Libre (se descuentan solo del total): por eso la suma de los modelos puede ser algo mayor que la ganancia neta real.",
+        "origen": "pantalla Ganancia Real (tabla por modelo)",
+    }
+    if datos["modelos_sin_costo_de_fabricacion_cargado"]:
+        datos["aviso"] = "Los modelos sin costo de fabricación cargado muestran una ganancia más alta que la real. El costo se carga en la pantalla Costos."
+    if resultado.get("ads_incompleto"):
+        datos["aviso_publicidad"] = "Mercado Libre no devolvió todo el gasto en publicidad: la ganancia de cada modelo puede estar algo inflada."
     return _con_nota(datos, nota)
 
 
@@ -256,6 +315,239 @@ def _costos(ctx):
     }
 
 
+# ── Publicidad, precios, comparación entre períodos, reputación, Monotributo y búsqueda de un producto ──────────────────────────────────────
+
+def _publicidad(ctx, desde=None, hasta=None, dias=None):
+    """Product Ads: lo mismo que la pantalla Publicidad (gasto, ventas que trajo, retorno contra el punto de equilibrio, cada campaña, publicaciones que gastan sin vender)."""
+    desde, hasta, nota = _periodo(ctx, desde, hasta, dias)
+    datos = publicidad_mod.calcular_datos_publicidad(ctx.usuario_id, ctx.cuenta_id, _token(ctx), desde.isoformat(), hasta.isoformat())
+    if datos is None:
+        return {"usa_product_ads": False, "mensaje": "Esta cuenta no tiene Product Ads (la publicidad de Mercado Libre) activado, o todavía no se pudo leer. No hay gasto en publicidad para analizar.", "origen": "pantalla Publicidad"}
+    if datos.get("incompleto"):
+        raise ErrorDeHerramienta("Mercado Libre no devolvió los datos de publicidad ahora mismo: no puedo decir cuánto se gastó. Probá de nuevo en un rato.")
+    campanas = datos["campanas"]
+    gasto = sum(float(c["costo"] or 0) for c in campanas)
+    ventas = sum(float(c["ventas_atribuidas"] or 0) for c in campanas)
+    sin_ventas = [i for i in datos["items_ads"] if i["sin_ventas"]]
+    resultado = {
+        "desde": desde.isoformat(), "hasta": hasta.isoformat(), "usa_product_ads": True, "gastaste": _plata(gasto), "ventas_que_trajo_la_publicidad": _plata(ventas), "unidades_vendidas_con_publicidad": int(datos["unidades_total"] or 0),
+        "retorno_roas": datos["roas_general"], "roas_de_equilibrio": datos["roas_equilibrio"], "la_publicidad_te_deja_ganancia": datos["te_deja_ganancia"],
+        "veces_por_encima_del_equilibrio": round(datos["roas_general"] / datos["roas_equilibrio"], 1) if datos["roas_general"] is not None and datos["roas_equilibrio"] else None,
+        "acos_pct": datos["acos_general"], "peso_de_la_publicidad_sobre_lo_facturado_pct": datos["tacos"], "costo_por_clic": datos["cpc"], "costo_por_venta": datos["cpa"],
+        "porcentaje_de_lo_facturado_que_vino_de_anuncios": datos["pct_origen_pagado"],
+        "contra_el_periodo_anterior": {"variacion_del_gasto_pct": datos["anterior"]["costo_pct"], "variacion_de_las_ventas_pct": datos["anterior"]["ventas_pct"], "roas_anterior": datos["anterior"]["roas"]} if datos.get("anterior") else None,
+        "campanas": [{"campana": c["nombre"], "estado": c["estado"], "gastaste": _plata(c["costo"]), "ventas": _plata(c["ventas_atribuidas"]), "retorno_roas": c["roas"], "unidades": int(c["unidades"] or 0),
+                      "presupuesto_diario": _plata(c["presupuesto"]) if c.get("presupuesto") else None, "uso_promedio_del_presupuesto_diario_pct": c["pct_presupuesto"], "sugerencia": c["recomendacion"]["texto"] if c.get("recomendacion") else None} for c in campanas[:8]],
+        "publicaciones_que_gastaron_sin_vender": {"cantidad": len(sin_ventas), "gastaste_en_ellas": _plata(sum(i["costo"] for i in sin_ventas)), "las_que_mas_gastaron": [{"publicacion": i["titulo"], "gastaste": _plata(i["costo"])} for i in sin_ventas[:5]]},
+        "aclaracion": "El retorno (ROAS) es lo que vendió la publicidad por cada $1 gastado. Para que no te coma la ganancia tiene que superar el ROAS de equilibrio, que sale del margen real del negocio sin contar la publicidad.",
+        "origen": "pantalla Publicidad (Product Ads)",
+    }
+    return _con_nota(resultado, nota)
+
+
+def _precios(ctx, margen_objetivo=None):
+    """Precio mínimo (ganancia $0) y precio recomendado (con el margen objetivo) de cada publicación, calculados con la comisión y el envío reales de los últimos 90 días."""
+    margen, _ = precios_mod.parametros(margen_objetivo, 0)
+    with _conexion(ctx) as conexion:
+        d = precios_mod.obtener_datos(conexion.cursor(), ctx.cuenta_id, margen, 0.0)
+
+    def _fila(i):
+        return {"publicacion": i["titulo"], "unidades_vendidas_90_dias": i["unidades"], "precio_actual": _plata(i["precio"]), "precio_minimo": i["minimo"], "precio_recomendado": i["recomendado"],
+                "margen_actual_pct": i["margen_actual"], "perdida_mensual_estimada": _plata(i["perdida_mensual"]) if i["perdida_mensual"] else None, "pocas_ventas_para_confiar": bool(i["estimado"])}
+    return {
+        "margen_objetivo_pct": margen, "publicaciones_activas": d["total_activas"], "analizadas": len(d["items"]), "cubren_tu_margen": len(d["bien"]),
+        "pierden_plata_al_precio_actual": {"cantidad": len(d["pierden"]), "perdida_mensual_total_estimada": _plata(d["perdida_mensual"]), "las_peores": [_fila(i) for i in d["pierden"][:8]]},
+        "ganan_menos_que_tu_margen_objetivo": {"cantidad": len(d["justos"]), "las_de_mas_ventas": [_fila(i) for i in sorted(d["justos"], key=lambda i: -i["unidades"])[:8]]},
+        "sin_costo_de_fabricacion_cargado": len(d["sin_costo"]), "sin_ventas_todavia": len(d["sin_ventas"]),
+        "aclaracion": "Se calcula con los datos reales de cada publicación (comisión y envío de sus ventas de los últimos 90 días); las que no vendieron o no tienen costo cargado no se estiman. Los precios se pueden cambiar en la pantalla Precios.",
+        "origen": "pantalla Precios",
+    }
+
+
+def _totales_de_ventas(cursor, desde, hasta):
+    """Facturado, unidades y órdenes de un período: la misma suma con la que Ganancia Real se compara contra el período anterior (todas las ventas cargadas)."""
+    cursor.execute("SELECT COALESCE(SUM(precio_venta * cantidad), 0), COALESCE(SUM(cantidad), 0), COUNT(DISTINCT id_orden) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (desde, hasta))
+    facturado, unidades, ordenes = cursor.fetchone()
+    return {"facturado": float(facturado or 0), "unidades": int(unidades or 0), "ordenes": int(ordenes or 0)}
+
+
+def _variacion(actual, anterior):
+    actual, anterior = float(actual or 0), float(anterior or 0)
+    return {"actual": _plata(actual), "anterior": _plata(anterior), "diferencia": _plata(actual - anterior), "variacion_pct": round((actual - anterior) / anterior * 100, 1) if anterior > 0 else None}
+
+
+def _periodos_a_comparar(ctx, dias, modo):
+    """((desde, hasta) actual, (desde, hasta) anterior, nota). `modo` «mes»: lo que va del mes contra el mismo tramo del mes anterior; si no, los últimos `dias` contra los `dias` anteriores."""
+    if modo == "mes":
+        inicio = ctx.hoy.replace(day=1)
+        fin_anterior = inicio - timedelta(days=1)
+        inicio_anterior = fin_anterior.replace(day=1)
+        hasta_anterior = min(inicio_anterior + timedelta(days=(ctx.hoy - inicio).days), fin_anterior)
+        return (inicio, ctx.hoy), (inicio_anterior, hasta_anterior), None
+    desde, hasta, nota = _periodo(ctx, dias=dias if dias not in (None, "") else DIAS_POR_DEFECTO)
+    largo = (hasta - desde).days + 1
+    return (desde, hasta), (desde - timedelta(days=largo), desde - timedelta(days=1)), nota
+
+
+def _comparar_periodos(ctx, dias=None, modo=None):
+    """Este período contra el anterior de igual largo: ventas siempre, y ganancia real con sus costos cuando se puede calcular."""
+    actual, anterior, nota = _periodos_a_comparar(ctx, dias, "mes" if modo == "mes" else "dias")
+    with _conexion(ctx) as conexion:
+        cursor = conexion.cursor()
+        ahora, antes = _totales_de_ventas(cursor, *actual), _totales_de_ventas(cursor, *anterior)
+        cobertura = costos_mod.cobertura_de_costos(cursor, actual[0].isoformat(), actual[1].isoformat())
+    datos = {
+        "periodo_actual": {"desde": actual[0].isoformat(), "hasta": actual[1].isoformat()}, "periodo_anterior": {"desde": anterior[0].isoformat(), "hasta": anterior[1].isoformat()},
+        "facturado": _variacion(ahora["facturado"], antes["facturado"]), "unidades": _variacion(ahora["unidades"], antes["unidades"]), "ordenes": _variacion(ahora["ordenes"], antes["ordenes"]),
+        "origen": "pantalla Ganancia Real (comparación con el período anterior)",
+    }
+    try:
+        g_actual, g_anterior = _calcular_ganancia(ctx, *actual)["resumen"]["raw"], _calcular_ganancia(ctx, *anterior)["resumen"]["raw"]
+        datos["ganancia_neta_real"] = _variacion(g_actual["ganancia_neta"], g_anterior["ganancia_neta"])
+
+        def _margen(raw):
+            return round(float(raw["ganancia_neta"]) / float(raw["facturado"]) * 100, 1) if float(raw["facturado"] or 0) > 0 else None
+        m_actual, m_anterior = _margen(g_actual), _margen(g_anterior)
+        datos["margen_pct"] = {"actual": m_actual, "anterior": m_anterior, "diferencia_en_puntos": round(m_actual - m_anterior, 1) if m_actual is not None and m_anterior is not None else None}
+        datos["costos"] = {nombre: _variacion(g_actual[clave], g_anterior[clave]) for clave, nombre in
+                           (("comision", "cargos_de_mercado_libre"), ("envios", "envios"), ("costo_ads", "publicidad"), ("costo_fabricacion", "costo_de_fabricacion"))}
+        if cobertura["pct_sin_costo"] > 0:
+            datos["aviso"] = f"El {cobertura['pct_sin_costo']}% de lo vendido en el período actual no tiene costo de fabricación cargado: la ganancia real puede ser menor."
+    except ErrorDeHerramienta as e:
+        datos["ganancia_no_disponible"] = str(e)
+    except Exception as e:
+        print(f"[Asistente] ⚠️ No se pudo calcular la ganancia para comparar períodos: {type(e).__name__}: {e}")
+        datos["ganancia_no_disponible"] = "No pude calcular la ganancia de los dos períodos ahora mismo; la comparación de ventas sí es completa."
+    return _con_nota(datos, nota)
+
+
+def _reputacion(ctx):
+    """La reputación en Mercado Libre: nivel, MercadoLíder y las métricas que arman el nivel."""
+    token = _token(ctx)
+    with _conexion(ctx) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("SELECT meli_user_id FROM cuentas_meli WHERE id = %s", (ctx.cuenta_id,))
+        fila = cursor.fetchone()
+    if not fila:
+        raise ErrorDeHerramienta("No encontré la cuenta de Mercado Libre.")
+    rep = reputacion_mod.obtener_reputacion(token, fila[0])
+    if not rep:
+        raise ErrorDeHerramienta("Mercado Libre no devolvió la reputación ahora mismo. Probá de nuevo en un rato.")
+
+    def _pct(metrica):
+        return round(metrica["tasa"] * 100, 2) if metrica and metrica.get("tasa") is not None else None
+    return {
+        "nivel": rep["nivel_nombre"], "mercadolider": rep["power_seller_nombre"], "operaciones_que_mide_mercado_libre": rep["total_transacciones"], "completadas": rep["completadas"], "canceladas": rep["canceladas"],
+        "metricas_que_arman_el_nivel_pct": {"reclamos": _pct(rep["reclamos"]), "demora_en_el_despacho": _pct(rep["demora_en_despacho"]), "cancelaciones": _pct(rep["cancelaciones_metrica"])},
+        "aclaracion": "Mercado Libre arma el nivel con esas tres métricas; cuanto más bajas, mejor. Ya no informa calificaciones de vendedor: lo que opina la gente de cada modelo está en la pantalla Opiniones.",
+        "origen": "pantalla Reputación (en Día a día)",
+    }
+
+
+def _monotributo(ctx):
+    """Facturación de los últimos 12 meses contra el tope de la categoría de Monotributo, SOLO si la persona declaró que es monotributista."""
+    condicion = fiscal.obtener(ctx.usuario_id, ctx.cuenta_id)
+    if condicion != fiscal.MONOTRIBUTO:
+        return {"aplica": False, "condicion_declarada": fiscal.etiqueta(condicion) if condicion else None,
+                "mensaje": "Esta persona no declaró ser monotributista en CoreLux (se declara en la pantalla Monotributo): no se calcula nada. Para lo fiscal conviene consultar con un contador.", "origen": "pantalla Monotributo"}
+    d = monotributo_mod.evaluar_categoria(ctx.usuario_id, ctx.cuenta_id)
+    tope = d["tope_categoria_declarada"]
+    return {
+        "aplica": True, "facturacion_ultimos_12_meses": _plata(d["facturacion_12m"]), "categoria_que_corresponde_por_lo_facturado": d["categoria_real"], "categoria_declarada": d["categoria_declarada"],
+        "tope_anual_de_la_categoria_declarada": _plata(tope) if tope else None, "porcentaje_del_tope_usado": round(d["facturacion_12m"] / tope * 100, 1) if tope else None,
+        "te_queda_para_llegar_al_tope": _plata(tope - d["facturacion_12m"]) if tope else None,
+        "cuota_mensual_de_la_categoria_declarada": _plata(d["cuota_mensual_declarada"]) if d["cuota_mensual_declarada"] else None,
+        "variacion_de_lo_facturado_ultimos_3_meses_pct": d["variacion_pct_propia"], "meses_estimados_para_superar_el_tope": d["meses_para_cruzar"], "avisos": [a["texto"] for a in d["alertas"]],
+        "escalas_vigentes_desde": d["vigente_desde"],
+        "aclaracion": "Es una orientación con las escalas publicadas por ARCA, que se actualizan cada tanto: la categoría y los pasos a seguir hay que confirmarlos con un contador.",
+        "origen": "pantalla Monotributo",
+    }
+
+
+def _sin_acentos(texto):
+    return "".join(c for c in unicodedata.normalize("NFD", texto or "") if unicodedata.category(c) != "Mn")
+
+
+def _palabras_de_busqueda(texto):
+    palabras = [p for p in re.findall(r"[a-z0-9]+", _sin_acentos(str(texto or "")[:MAX_LARGO_DE_BUSQUEDA]).lower()) if len(p) >= 2][:MAX_PALABRAS_DE_BUSQUEDA]
+    if not palabras:
+        raise ErrorDeHerramienta("Decime qué producto buscás (al menos una palabra del título).")
+    return palabras
+
+
+def _producto(ctx, buscar=None):
+    """Cómo viene un producto puntual: stock, precio y margen, ventas de 30 días, calidad, visitas y opiniones. Busca por palabras del título entre las publicaciones de ESTA cuenta."""
+    palabras = _palabras_de_busqueda(buscar)
+    desde, hasta = ctx.hoy - timedelta(days=DIAS_POR_DEFECTO - 1), ctx.hoy
+    titulo_normalizado = "translate(lower(p.titulo), 'áéíóúüñ', 'aeiouun')"
+    with _conexion(ctx) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute(
+            f"""SELECT p.id, p.id_meli, p.titulo, p.estado, p.precio, COALESCE(p.precio_costo, 0), COALESCE(p.family_id, p.id_meli), p.calidad_score, p.visitas_14d, p.visitas_previas_14d,
+                       p.opiniones_promedio, p.opiniones_total
+                FROM productos_padre p WHERE p.cuenta_id = %s AND {" AND ".join([f"position(%s in {titulo_normalizado}) > 0"] * len(palabras))}
+                ORDER BY (p.estado = 'active') DESC, p.titulo LIMIT 120""", (ctx.cuenta_id, *palabras))
+        filas = cursor.fetchall()
+        if not filas:
+            return {"coincidencias": 0, "mensaje": "No encontré publicaciones de esta cuenta con esas palabras en el título. Probá con menos palabras o con otro nombre.", "origen": "pantallas Stock y Precios"}
+        ids_meli, ids_padre = [f[1] for f in filas], [f[0] for f in filas]
+        cursor.execute("""SELECT id_meli, COALESCE(SUM(cantidad), 0), COALESCE(SUM(precio_venta * cantidad), 0) FROM ventas
+                          WHERE cuenta_id = %s AND origen = 'meli' AND fecha_venta BETWEEN %s AND %s AND id_meli = ANY(%s) GROUP BY id_meli""", (ctx.cuenta_id, desde, hasta, ids_meli))
+        ventas = {r[0]: (int(r[1]), float(r[2])) for r in cursor.fetchall()}
+        cursor.execute("""SELECT id_padre, COALESCE(SUM(COALESCE(stock_propio, 0) + COALESCE(stock_full, 0)), 0),
+                                 COUNT(*) FILTER (WHERE COALESCE(stock_propio, 0) + COALESCE(stock_full, 0) = 0)
+                          FROM productos_variantes WHERE cuenta_id = %s AND id_padre = ANY(%s) GROUP BY id_padre""", (ctx.cuenta_id, ids_padre))
+        stock = {r[0]: (int(r[1]), int(r[2])) for r in cursor.fetchall()}
+        precios = precios_mod.obtener_datos(cursor, ctx.cuenta_id, precios_mod.MARGEN_OBJETIVO_DEFECTO, 0.0)
+    por_precio = {i["id_meli"]: i for i in precios["items"]}
+
+    modelos = {}
+    for id_padre, id_meli, titulo, estado, precio, costo, familia, calidad, visitas, previas, op_promedio, op_total in filas:
+        m = modelos.setdefault(familia, {"titulos": [], "activas": 0, "pausadas": 0, "otras": 0, "precios": [], "sin_costo": 0, "unidades": 0, "facturado": 0.0, "stock": 0, "variantes_sin_stock": 0,
+                                         "calidad": [], "visitas": 0, "previas": 0, "op": [], "estados_de_precio": {"pierden": 0, "justo": 0, "ok": 0}, "neto": 0.0, "venta_90": 0.0})
+        m["titulos"].append(titulo or id_meli)
+        m["activas" if estado == "active" else ("pausadas" if estado == "paused" else "otras")] += 1
+        u, f = ventas.get(id_meli, (0, 0.0))
+        m["unidades"] += u
+        m["facturado"] += f
+        if estado == "active":
+            m["precios"].append(float(precio or 0))
+            m["sin_costo"] += 1 if float(costo) <= 0 else 0
+            s, sin = stock.get(id_padre, (0, 0))
+            m["stock"] += s
+            m["variantes_sin_stock"] += sin
+            if id_meli in por_precio:
+                p = por_precio[id_meli]
+                m["estados_de_precio"][{"pierde": "pierden", "justo": "justo", "ok": "ok"}[p["estado"]]] += 1
+                m["neto"] += p["neto_unitario"] * p["unidades"]
+                m["venta_90"] += p["precio"] * p["unidades"]
+        if calidad is not None:
+            m["calidad"].append(int(calidad))
+        m["visitas"] += int(visitas or 0)
+        m["previas"] += int(previas or 0)
+        if op_promedio is not None and (op_total or 0) > 0:
+            m["op"].append((float(op_promedio), int(op_total)))
+
+    resultado = []
+    for m in sorted(modelos.values(), key=lambda m: (-m["unidades"], -m["activas"]))[:MAX_MODELOS_EN_PRODUCTO]:
+        nombre, _ = costos_mod.nombres_de_variantes(list(dict.fromkeys(m["titulos"])))
+        resultado.append({
+            "producto": nombre or m["titulos"][0], "publicaciones_activas": m["activas"], "publicaciones_pausadas": m["pausadas"],
+            "precio": {"minimo": _plata(min(m["precios"])), "maximo": _plata(max(m["precios"]))} if m["precios"] else None,
+            "publicaciones_activas_sin_costo_de_fabricacion_cargado": m["sin_costo"],
+            "stock": {"unidades": m["stock"], "variantes_activas_sin_stock": m["variantes_sin_stock"]},
+            "ultimos_30_dias": {"unidades_vendidas": m["unidades"], "facturado": _plata(m["facturado"])},
+            "margen_actual_pct": round(m["neto"] / m["venta_90"] * 100, 1) if m["venta_90"] > 0 else None,
+            "estado_del_precio": {"pierden_plata": m["estados_de_precio"]["pierden"], "ganan_menos_que_tu_margen_objetivo": m["estados_de_precio"]["justo"], "cubren_tu_margen": m["estados_de_precio"]["ok"]},
+            "calidad_promedio_de_mercado_libre": round(sum(m["calidad"]) / len(m["calidad"]), 1) if m["calidad"] else None,
+            "visitas_14_dias": m["visitas"], "variacion_de_visitas_pct": round((m["visitas"] - m["previas"]) / m["previas"] * 100, 1) if m["previas"] > 0 else None,
+            "opiniones": {"promedio": round(sum(p * t for p, t in m["op"]) / sum(t for _, t in m["op"]), 1), "cantidad": sum(t for _, t in m["op"])} if m["op"] else None,
+        })
+    return {"coincidencias": len(filas), "productos": resultado, "hay_mas_productos": max(0, len(modelos) - MAX_MODELOS_EN_PRODUCTO),
+            "aclaracion": "El margen y el estado del precio usan la comisión y el envío reales de los últimos 90 días y el margen objetivo de 20%. Si hay más productos que coinciden, pedile a la persona que precise el nombre.",
+            "origen": "pantallas Stock, Precios, Calidad y Opiniones"}
+
+
 # ── Registro ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 _PERIODO = {"dias": {"type": "integer", "description": "Los últimos N días contando hoy (1 = solo hoy, 7, 30, 90). USALO para «hoy», «esta semana», «los últimos 30 días»: no calcules fechas. Si se manda, se ignoran desde y hasta."},
@@ -277,6 +569,25 @@ HERRAMIENTAS = {
     "pendientes": {"descripcion": "Qué tiene que atender la persona hoy (misiones por prioridad) y la salud de su cuenta con el motivo de cada descuento.", "parametros": {}, "funcion": _pendientes},
     "costos": {"descripcion": "Cuántas publicaciones activas no tienen costo de fabricación cargado, qué parte de lo vendido queda sin costo (infla la ganancia) y el dólar que usa para los costos en USD.",
                "parametros": {}, "funcion": _costos},
+    "ganancia_por_modelo": {
+        "descripcion": "Qué modelos dejan más ganancia y cuáles pierden plata en un período (ganancia neta, ganancia por unidad y margen de cada modelo, con todas sus variantes juntas). Usala para «qué producto me conviene», «qué me deja más margen» o «qué vendo a pérdida».",
+        "parametros": dict(_PERIODO), "funcion": _ganancia_por_modelo},
+    "publicidad": {
+        "descripcion": "Product Ads de Mercado Libre en un período: cuánto se gastó, cuánto vendió la publicidad, el retorno (ROAS) contra el punto de equilibrio, cada campaña y las publicaciones que gastan sin vender.",
+        "parametros": dict(_PERIODO), "funcion": _publicidad},
+    "precios": {
+        "descripcion": "Precio mínimo (ganancia cero) y recomendado de las publicaciones: cuáles pierden plata al precio actual y cuáles ganan menos que el margen objetivo.",
+        "parametros": {"margen_objetivo": {"type": "number", "description": "Margen objetivo en % del precio, de 0 a 60. Por defecto 20."}}, "funcion": _precios},
+    "comparar_periodos": {
+        "descripcion": "Compara un período contra el anterior de igual largo: facturado, unidades, órdenes, ganancia neta real, margen y cada costo (cargos, envíos, publicidad, fabricación). Usala para «¿mejoré o empeoré?», «¿cómo vengo contra el mes pasado?».",
+        "parametros": {"dias": {"type": "integer", "description": "Largo del período en días contando hoy (por defecto 30). Se compara contra los mismos días inmediatamente anteriores."},
+                       "modo": {"type": "string", "enum": ["dias", "mes"], "description": "dias (por defecto) o mes: lo que va del mes en curso contra el mismo tramo del mes anterior."}}, "funcion": _comparar_periodos},
+    "reputacion": {"descripcion": "La reputación en Mercado Libre: nivel, MercadoLíder y las tasas de reclamos, demora en el despacho y cancelaciones que arman el nivel.", "parametros": {}, "funcion": _reputacion},
+    "monotributo": {"descripcion": "Lo facturado en 12 meses contra el tope de la categoría de Monotributo y si conviene recategorizarse (solo si la persona declaró que es monotributista). Es orientativo: siempre confirmarlo con un contador.",
+                    "parametros": {}, "funcion": _monotributo},
+    "producto": {
+        "descripcion": "Cómo viene UN producto puntual: stock, precios, margen, ventas de los últimos 30 días, calidad, visitas y opiniones. Buscalo por palabras de su título (por ejemplo «campera jean» o «iphone 14»).",
+        "parametros": {"buscar": {"type": "string", "description": "Palabras del título del producto, sin la marca de la tienda ni signos."}}, "funcion": _producto},
 }
 
 

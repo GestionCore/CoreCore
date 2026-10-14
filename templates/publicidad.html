@@ -12,6 +12,10 @@
     </div>
 </div>
 
+{% if incompleto %}
+{{ banner("warn", "alert", "<b>Mercado Libre no devolvió tus campañas ahora mismo</b>", "Los números de abajo pueden estar incompletos o en cero. Recargá en un rato.") }}
+{% endif %}
+
 <form action="/publicidad" method="GET" class="ux-periodo no-imprimir">
     <div class="ux-periodo-botones">
         {{ botones_periodo() }}
@@ -203,8 +207,9 @@
         <div class="ux-camp-roas">{% if c.costo > 0 and c.roas is not none %}<b>{{ c.roas|string|replace('.', ',') }}x</b> <span class="text-muted">ROAS{% if not c.unidades %} · todavía sin ventas{% endif %}</span>{% elif c.costo > 0 %}<span class="text-muted">Sin ROAS todavía</span>{% else %}<span class="text-muted">Sin gasto en este período</span>{% endif %}</div>
         {% if c.presupuesto_formateado %}
         <div class="ux-camp-presu">
-            <div class="ux-barra {{ 'ux-danger' if (c.pct_presupuesto or 0) >= 90 else ('ux-warn' if (c.pct_presupuesto or 0) >= 70 else 'ux-ok') }}"><span style="width:{{ [c.pct_presupuesto or 0, 100]|min }}%;"></span></div>
-            <div class="text-muted" style="font-size:0.82em; margin-top:4px;">Presupuesto: <b>${{ c.costo_formateado.split(',')[0] }}</b> de ${{ c.presupuesto_formateado.split(',')[0] }} · {{ c.pct_presupuesto|round|int }}% usado</div>
+            {# Gastar todo el presupuesto diario solo es una mala noticia si la campaña no rinde (ROAS bajo); con buen retorno es una campaña que podría vender más si tuviera más presupuesto #}
+            <div class="ux-barra {{ 'ux-danger' if ((c.pct_presupuesto or 0) >= 90 and c.roas_bajo) else ('ux-warn' if (c.pct_presupuesto or 0) >= 90 or ((c.pct_presupuesto or 0) >= 70 and c.roas_bajo) else 'ux-ok') }}"><span style="width:{{ [c.pct_presupuesto or 0, 100]|min }}%;"></span></div>
+            <div class="text-muted" style="font-size:0.82em; margin-top:4px;">Presupuesto diario: <b>${{ c.presupuesto_formateado.split(',')[0] }}</b> · usás en promedio el {{ (c.pct_presupuesto or 0)|round|int }}% por día</div>
         </div>
         {% endif %}
         <div class="ux-camp-stats">

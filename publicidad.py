@@ -30,12 +30,27 @@ def _comparar_con_periodo_anterior(access_token, advertiser_id, fecha_desde, fec
         return None
 
 
+def uso_del_presupuesto(costo, presupuesto_diario, dias):
+    """
+    Qué parte del presupuesto usó en promedio una campaña, en %. El presupuesto de Mercado Libre es DIARIO (se verificó con la cuenta real: una campaña con $38.159 de presupuesto gasta
+    $38.159 cada día), así que el gasto de un período se compara con el presupuesto de TODOS sus días. Antes se dividía por el presupuesto de un solo día: en 30 días daba «2704 % usado»
+    y cualquier campaña de varios días figuraba como «presupuesto casi agotado». None si no hay presupuesto.
+    """
+    if not presupuesto_diario or presupuesto_diario <= 0 or dias < 1:
+        return None
+    return round(float(costo or 0) / (float(presupuesto_diario) * dias) * 100, 1)
+
+
 def calcular_datos_publicidad(usuario_id, cuenta_id, access_token, fecha_desde, fecha_hasta):
     advertiser_id = ads.obtener_advertiser_id(access_token, cuenta_id)
     if not advertiser_id:
         return None
 
-    campanas = ads.obtener_campanas_con_metricas(access_token, advertiser_id, fecha_desde, fecha_hasta)
+    # estricto: un error de Mercado Libre no puede pasar por «no gastaste nada» (la pantalla y el asistente de IA mostraban $0 como si fuera cierto)
+    campanas = ads.obtener_campanas_con_metricas(access_token, advertiser_id, fecha_desde, fecha_hasta, estricto=True)
+    incompleto = campanas is None
+    campanas = campanas or []
+    dias_del_periodo = (datetime.strptime(fecha_hasta, "%Y-%m-%d") - datetime.strptime(fecha_desde, "%Y-%m-%d")).days + 1
     serie_diaria = ads.obtener_serie_diaria_ads(access_token, advertiser_id, fecha_desde, fecha_hasta)
 
     costo_total = sum(c["costo"] for c in campanas)
@@ -155,7 +170,7 @@ def calcular_datos_publicidad(usuario_id, cuenta_id, access_token, fecha_desde, 
         # Una campaña que no gastó nada no tiene un ROAS "bajo": no hay retorno que medir
         c["roas_bajo"] = c["costo"] > 0 and c["roas"] is not None and c["roas"] < 3
 
-        c["pct_presupuesto"] = round((c["costo"] / c["presupuesto"]) * 100, 1) if c["presupuesto"] else None
+        c["pct_presupuesto"] = uso_del_presupuesto(c["costo"], c["presupuesto"], dias_del_periodo)
         c["recomendacion"] = None
         if c["estado"] == "active" and c["roas"] is not None:
             presupuesto_alto_uso = c["pct_presupuesto"] is not None and c["pct_presupuesto"] >= 80
@@ -191,4 +206,5 @@ def calcular_datos_publicidad(usuario_id, cuenta_id, access_token, fecha_desde, 
         "venta_directa_formateada": formatear_moneda(venta_directa_total), "venta_indirecta_formateada": formatear_moneda(venta_indirecta_total),
         "pct_origen_pagado": pct_origen_pagado, "pct_origen_organico": pct_origen_organico,
         "ventas_organicas_formateada": formatear_moneda(max(facturacion_total_negocio - ventas_atribuidas_total, 0)),
+        "incompleto": incompleto,
     }
