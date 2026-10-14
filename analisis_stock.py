@@ -12,7 +12,7 @@ conectado por ahora. Lo que sí está acá es la detección pura, que es lo
 que consumen las páginas y APIs del dashboard.
 """
 from datetime import timedelta
-from utils import hoy_argentina, limpiar_titulo_modelo
+from utils import hoy_argentina, limpiar_titulo_modelo, rotulo_variante
 
 VENTANA_DIAS = 14
 UMBRAL_DIAS_RESTANTES = 5
@@ -24,7 +24,7 @@ def obtener_variantes_en_riesgo(cursor, umbral_dias=UMBRAL_DIAS_RESTANTES, venta
 
     cursor.execute("""
         SELECT v.id_variante, v.talle, v.color, v.stock_propio, v.stock_full, p.titulo, p.id_meli,
-               pr.nombre, pr.tiempo_entrega_dias
+               pr.nombre, pr.tiempo_entrega_dias, v.etiqueta
         FROM productos_variantes v
         JOIN productos_padre p ON p.id = v.id_padre
         LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
@@ -37,7 +37,7 @@ def obtener_variantes_en_riesgo(cursor, umbral_dias=UMBRAL_DIAS_RESTANTES, venta
     unidades_por_variante = dict(cursor.fetchall())
 
     en_riesgo = []
-    for id_variante, talle, color, stock_propio, stock_full, titulo, id_meli, proveedor_nombre, tiempo_entrega in variantes:
+    for id_variante, talle, color, stock_propio, stock_full, titulo, id_meli, proveedor_nombre, tiempo_entrega, etiqueta in variantes:
         stock_total = (stock_propio or 0) + (stock_full or 0)
         unidades_vendidas = unidades_por_variante.get(id_variante, 0)
         if unidades_vendidas <= 0:
@@ -56,7 +56,7 @@ def obtener_variantes_en_riesgo(cursor, umbral_dias=UMBRAL_DIAS_RESTANTES, venta
         umbral_efectivo = umbral_dias if tiempo_entrega is None else max(umbral_dias, tiempo_entrega)
         if dias_restantes <= umbral_efectivo:
             en_riesgo.append({
-                "id_variante": id_variante, "id_meli": id_meli, "titulo": titulo, "talle": talle, "color": color,
+                "id_variante": id_variante, "id_meli": id_meli, "titulo": titulo, "talle": talle, "color": color, "variante": rotulo_variante(etiqueta, talle),
                 "stock_total": stock_total, "velocidad_diaria": round(velocidad_diaria, 1), "dias_restantes": round(dias_restantes, 1),
                 "proveedor_nombre": proveedor_nombre, "tiempo_entrega_dias": tiempo_entrega,
                 "dias_para_pedir": dias_para_pedir, "pedir_ya": pedir_ya

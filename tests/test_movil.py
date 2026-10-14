@@ -135,7 +135,7 @@ def test_cada_talle_de_stock_masivo_es_una_ficha_con_su_campo_para_editar_a_la_v
     """Medido el 2026-10-13 en 375 px: la tabla de talles medía 488 px dentro de una caja de 301 px y el campo «− 12 +» quedaba escondido a la derecha."""
     html = _leer("templates", "stock_masivo.html")
     assert 'class="data-table ux-tabla-cards ux-masivo-cards"' in html
-    for clase in ("c-talle", "c-estado", "c-propio", "c-full"):
+    for clase in ("c-variante", "c-estado", "c-propio", "c-full"):
         assert f'class="{clase}"' in html or f' {clase}"' in html, clase
     assert html.count('data-label="Depósito propio"') == 1 and 'data-label="FULL"' in html
     assert 'name="stock_{{ v.id_meli }}"' in html and 'data-original="{{ v.propio }}"' in html          # el campo y lo que usa la barra de cambios siguen igual

@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from psycopg.rows import dict_row
 import db
 import meli_http
-from utils import limpiar_titulo_modelo, normalizar_talle, sql_momento_argentina
+from utils import limpiar_titulo_modelo, normalizar_talle, sql_momento_argentina, rotulo_variante
 
 
 def _tipo_envio_legible(tipo_logistica):
@@ -71,7 +71,7 @@ def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_
             clave = f"{id_orden}-{id_meli}-{id_variante}"
             paquetes.append({
                 "clave": clave, "id_orden": id_orden, "id_meli": id_meli, "id_variante": id_variante,
-                "modelo": modelo, "talle": talle, "variante": fila["etiqueta_variante"], "cantidad": cantidad, "despachado": bool(despachado),
+                "modelo": modelo, "talle": talle, "variante": rotulo_variante(fila["etiqueta_variante"], fila["talle_real"]), "cantidad": cantidad, "despachado": bool(despachado),
                 "comprador_nickname": comprador_nickname, "comprador_nombre": comprador_nombre,
                 "thumbnail": thumbnail, "etiqueta_impresa": False, "tipo_envio": _tipo_envio_legible(tipo_logistica),
                 "flex_zona": fila["flex_zona"], "flex_zona_meli": fila["flex_zona_meli"]

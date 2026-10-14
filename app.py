@@ -422,7 +422,7 @@ def stock_vista():
 def exportar_planilla_stock():
     """
     "Exportar CSV" en Stock — nunca había tenido backend (404 directo).
-    Un renglón por publicación/talle, con el mismo dato que ya se ve en
+    Un renglón por publicación y variante, con el mismo dato que ya se ve en
     pantalla — sin pegarle a MeLi, sale directo de la base local.
     """
     import csv
@@ -431,11 +431,11 @@ def exportar_planilla_stock():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
-            SELECT p.id_meli, p.titulo, COALESCE(v.talle, 'Único') AS talle, v.color, p.precio, p.estado,
+            SELECT p.id_meli, p.titulo, v.talle, v.etiqueta, p.precio, p.estado,
                    COALESCE(v.stock_propio, 0), COALESCE(v.stock_full, 0)
             FROM productos_padre p
             LEFT JOIN productos_variantes v ON v.id_padre = p.id
-            ORDER BY p.titulo, talle
+            ORDER BY p.titulo, v.etiqueta, v.talle
         """)
         filas = cursor.fetchall()
 
@@ -444,9 +444,9 @@ def exportar_planilla_stock():
     # es-AR usa la coma como separador decimal — con "," como
     # delimitador, un precio "1234,50" en una celda rompe las columnas.
     writer = csv.writer(buffer_texto, delimiter=';')
-    writer.writerow(["ID MeLi", "Título", _vocabulario_de_la_cuenta(g.usuario_id, g.cuenta_id)["V1"], "Color", "Precio", "Estado", "Stock Propio", "Stock FULL"])
-    for id_meli, titulo, talle, color, precio, estado, stock_propio, stock_full in filas:
-        writer.writerow([id_meli, titulo, talle, color or "", precio, estado, stock_propio, stock_full])
+    writer.writerow(["ID MeLi", "Título", "Variante", "Precio", "Estado", "Stock Propio", "Stock FULL"])
+    for id_meli, titulo, talle, etiqueta, precio, estado, stock_propio, stock_full in filas:
+        writer.writerow([id_meli, titulo, utils.rotulo_variante(etiqueta, talle), precio, estado, stock_propio, stock_full])
 
     # utf-8-sig (con BOM): sin esto Excel interpreta los acentos/ñ como
     # caracteres sueltos en vez de UTF-8 al abrir el archivo.
@@ -1143,7 +1143,8 @@ def api_dashboard_ultimas_ventas():
                 {utils.sql_momento_argentina("v")} AS momento,
                 v.hora_venta IS NOT NULL AS con_hora,
                 p.id_meli,
-                pv.talle
+                pv.talle,
+                pv.etiqueta
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
             LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
@@ -1155,7 +1156,7 @@ def api_dashboard_ultimas_ventas():
         filas = cursor.fetchall()
     return jsonify([{
         "nombre": utils.limpiar_titulo_modelo(f[0], f[6]) or f[0],
-        "talle": (lambda talle: None if talle == "Único" else talle)(utils.normalizar_talle(f[6])),       # lo que distingue una fila de otra; nada si no tiene talle
+        "variante": (lambda rotulo: None if rotulo == "Única" else rotulo)(utils.rotulo_variante(f[7], f[6])),       # lo que distingue una fila de otra; nada si no tiene
         "cantidad": int(f[1]),
         "precio_f": utils.plata(f[2]),
         "fecha": utils.cuando_corto(f[3], con_hora=f[4]),
@@ -2917,7 +2918,7 @@ def actualizar_stock_multiple():
 
     partes = ["1 actualizada" if actualizados == 1 else f"{actualizados} actualizadas"]
     if saltados:
-        partes.append(f"{saltados} con varios colores (revisalas a mano en MeLi)")
+        partes.append(f"{saltados} con varias variantes (revisalas a mano en MeLi)")
     if cambiaron:
         detalle = ", ".join(f"{i} ahora tiene {n}" for i, n in cambiaron[:3]) + ("…" if len(cambiaron) > 3 else "")
         partes.append(f"{len(cambiaron)} sin guardar porque su stock cambió mientras editabas (probablemente una venta): {detalle}. Recargá la pantalla y revisalas")
@@ -3329,7 +3330,7 @@ def api_drawer_optimizar_titulo(id_meli):
     prompt_sistema = (
         "Sos un experto en optimización de títulos para Mercado Libre Argentina. "
         "El título tiene que tener entre 60 y 80 caracteres, incluir el modelo o marca si está implícita, "
-        "mencionar atributos clave de búsqueda (material, talle si aplica, uso), "
+        "mencionar atributos clave de búsqueda (material, medidas o capacidad, variante si aplica, uso), "
         "y estar en mayúsculas como es la convención en MeLi. "
         "Respondé SOLO con el título sugerido, sin comillas, sin explicación."
     )

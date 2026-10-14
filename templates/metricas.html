@@ -206,7 +206,7 @@
             {% for v in c.variantes %}
             <tr class="ux-subfila" data-variantes-de="{{ indice }}" hidden>
                 <td></td>
-                <td class="ux-col-titulo"><span class="text-muted">└</span> {% if v.talle %}<b>{{ v.talle }}</b>{% else %}Publicación {{ v.id_meli }}{% endif %}{% if v.tipo %} <span class="text-muted">· {{ v.tipo }}</span>{% endif %}</td>
+                <td class="ux-col-titulo"><span class="text-muted">└</span> {% if v.variante %}<b>{{ v.variante }}</b>{% else %}Publicación {{ v.id_meli }}{% endif %}{% if v.tipo %} <span class="text-muted">· {{ v.tipo }}</span>{% endif %}</td>
                 <td class="num">{{ v.unidades }}</td>
                 <td class="num">${{ v.precio_promedio }}</td>
                 <td class="num costo">${{ v.cargo_u }}</td>
@@ -478,13 +478,13 @@
     <h3 class="ux-tab-titulo"><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Historial de ventas detallado <span class="ux-detalle-nota">{{ ventas|length }} ventas</span></h3>
     <div class="ux-detalle-cuerpo" data-mostrar-mas-scope>
         <table class="data-table" data-ordenable>
-            <thead><tr><th data-orden="texto" data-primero="desc">Fecha</th><th data-orden="texto">Producto</th><th data-orden="texto">{{ vocab.V1 }}</th><th class="num" data-orden="num">Cant.</th><th class="num" data-orden="num">Venta</th><th class="num" data-orden="num">Cargo</th><th class="num" data-orden="num">Envío</th><th class="num" data-orden="num">Ads</th><th class="num" data-orden="num">Costo</th><th class="num" data-orden="num">Neto</th></tr></thead>
+            <thead><tr><th data-orden="texto" data-primero="desc">Fecha</th><th data-orden="texto">Producto</th><th data-orden="texto">Variante</th><th class="num" data-orden="num">Cant.</th><th class="num" data-orden="num">Venta</th><th class="num" data-orden="num">Cargo</th><th class="num" data-orden="num">Envío</th><th class="num" data-orden="num">Ads</th><th class="num" data-orden="num">Costo</th><th class="num" data-orden="num">Neto</th></tr></thead>
             <tbody>
                 {% for v in ventas %}
                 <tr class="{% if v.es_negativo %}ux-fila-danger{% endif %} {% if loop.index > 10 %}oculto-mostrar-mas{% endif %}">
                     <td class="text-muted" data-orden="{{ v.momento or v.fecha }}">{{ v.fecha|fecha }}</td>
                     <td class="celda-titulo-1l"><span class="titulo-1l" title="{{ v.titulo }}">{{ v.titulo }}</span></td>
-                    <td>{{ v.talle }}</td>
+                    <td>{{ v.variante }}</td>
                     <td class="num">{{ v.cantidad }}</td>
                     <td class="num">${{ v.precio_venta }}</td>
                     <td class="num costo">${{ v.cargo_venta }}</td>

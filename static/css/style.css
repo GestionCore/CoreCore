@@ -316,7 +316,7 @@ a.stat-chip:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevat
 }
 .mini-list-titulo { flex: 1; min-width: 0; font-size: 0.86em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini-list-precio { flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 0.88em; }
-.mini-list-talle { flex-shrink: 0; min-width: 34px; text-align: center; font-size: 0.74em; font-weight: 800; padding: 2px 7px; border-radius: var(--radius-pill); background: var(--bg-elevated, rgba(255,255,255,0.06)); color: var(--text-secondary); letter-spacing: 0.03em; }
+.mini-list-variante { flex-shrink: 0; min-width: 34px; text-align: center; font-size: 0.74em; font-weight: 800; padding: 2px 7px; border-radius: var(--radius-pill); background: var(--bg-elevated, rgba(255,255,255,0.06)); color: var(--text-secondary); letter-spacing: 0.03em; }
 .mini-list-fecha { flex-shrink: 0; color: var(--text-faint); font-size: 0.82em; min-width: 64px; text-align: right; }
 /* Una fila que abre la publicación es un botón: se ve como la fila de siempre y se resalta al pasar el mouse o con el teclado */
 button.mini-list-row, button.top-prod-fila { width: 100%; background: none; border: 0; border-bottom: 1px solid var(--border-soft); color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: var(--radius-sm); }

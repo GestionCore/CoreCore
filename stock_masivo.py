@@ -2,7 +2,7 @@
 import re
 
 import db
-from utils import limpiar_titulo_modelo, normalizar_talle
+from utils import limpiar_titulo_modelo, normalizar_talle, rotulo_variante
 
 ORDEN_LETRAS = {"XS": 0, "S": 1, "M": 2, "L": 3, "XL": 4, "XXL": 5, "XXXL": 6}
 ORDEN_ESTADO = {"active": 0, "paused": 1, "closed": 2}
@@ -30,7 +30,8 @@ def obtener_modelos_agrupados(usuario_id, cuenta_id=None):
             SELECT p.id_meli, p.titulo, p.estado, p.thumbnail,
                    COALESCE(SUM(v.stock_propio), 0) as propio,
                    COALESCE(SUM(v.stock_full), 0) as full,
-                   CASE WHEN COUNT(DISTINCT NULLIF(v.talle, 'Único')) = 1 THEN MAX(NULLIF(v.talle, 'Único')) END AS talle_real
+                   CASE WHEN COUNT(DISTINCT NULLIF(v.talle, 'Único')) = 1 THEN MAX(NULLIF(v.talle, 'Único')) END AS talle_real,
+                   CASE WHEN COUNT(DISTINCT v.etiqueta) = 1 THEN MAX(v.etiqueta) END AS etiqueta
             FROM productos_padre p
             LEFT JOIN productos_variantes v ON v.id_padre = p.id
             GROUP BY p.id_meli, p.titulo, p.estado, p.thumbnail
@@ -39,7 +40,7 @@ def obtener_modelos_agrupados(usuario_id, cuenta_id=None):
         todos = cursor.fetchall()
 
     modelos = {}
-    for id_meli, titulo, estado, thumbnail, propio, full, talle_real in todos:
+    for id_meli, titulo, estado, thumbnail, propio, full, talle_real, etiqueta in todos:
         clave = limpiar_titulo_modelo(titulo, talle_real)
         talle = normalizar_talle(talle_real)
         if clave not in modelos:
@@ -48,10 +49,10 @@ def obtener_modelos_agrupados(usuario_id, cuenta_id=None):
         m["propio"] += propio
         m["full"] += full
         pausada_por_stock = (estado == 'paused' and propio == 0 and full == 0)
-        m["variantes"].append({"id_meli": id_meli, "talle": talle, "estado": estado, "propio": propio, "full": full, "pausada_por_stock": pausada_por_stock})
+        m["variantes"].append({"id_meli": id_meli, "talle": talle, "variante": rotulo_variante(etiqueta, talle_real), "estado": estado, "propio": propio, "full": full, "pausada_por_stock": pausada_por_stock})
 
     for m in modelos.values():
-        m["variantes"].sort(key=lambda v: (ORDEN_ESTADO.get(v["estado"], 3), orden_de_talle(v["talle"])))
+        m["variantes"].sort(key=lambda v: (ORDEN_ESTADO.get(v["estado"], 3), orden_de_talle(v["talle"]), orden_de_talle(v["variante"])))
 
     return sorted(
         modelos.values(),

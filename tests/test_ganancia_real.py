@@ -286,6 +286,6 @@ def test_la_hora_de_la_venta_sale_en_formato_argentino(calcular):
     assert calcular()["ventas"][0]["fecha"] == "2026-09-10"
 
 
-def test_el_talle_y_el_color_salen_de_la_variante(calcular):
-    ventas = {v["id_orden"]: v["talle"] for v in calcular()["ventas"]}
-    assert ventas["o1"] == "M / Negro" and ventas["o2"] == "L" and ventas["o3"] == "Único"      # sin color real solo el talle; sin variante «Único»
+def test_la_variante_de_cada_venta_sale_de_la_variante_vendida(calcular):
+    ventas = {v["id_orden"]: v["variante"] for v in calcular()["ventas"]}
+    assert ventas["o1"] == "M / Negro" and ventas["o2"] == "L" and ventas["o3"] == "Única"      # sin color real solo el talle; sin variante «Única»

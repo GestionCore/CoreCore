@@ -62,20 +62,20 @@ def test_solo_cuentan_los_reclamos_abiertos_que_afectan_la_reputacion(curva):
 
 
 @pytest.mark.parametrize("sin_stock, resta", [(1, 4), (3, 12), (5, 20), (9, 20)])
-def test_cada_talle_sin_stock_resta_4_con_tope_de_20(curva, sin_stock, resta):
+def test_cada_variante_sin_stock_resta_4_con_tope_de_20(curva, sin_stock, resta):
     r = _score(stocks=[0] * sin_stock + [10, 10])
     assert r["score"] == 100 - resta and f"-{resta} por " in r["detalle"][0]
 
 
 @pytest.mark.parametrize("bajos, resta", [(1, 2), (4, 8), (5, 10), (8, 10)])
-def test_cada_talle_con_stock_de_1_o_2_resta_2_con_tope_de_10(curva, bajos, resta):
+def test_cada_variante_con_stock_de_1_o_2_resta_2_con_tope_de_10(curva, bajos, resta):
     r = _score(stocks=[1] * bajos + [3, 50])                                      # el stock de 3 en adelante no cuenta
     assert r["score"] == 100 - resta
 
 
 def test_los_textos_van_en_singular_y_plural_y_sin_parentesis(curva):
-    assert _score(stocks=[0, 1])["detalle"] == ["-4 por 1 talle sin stock dentro de publicaciones activas", "-2 por 1 talle con stock muy bajo (1-2 u.)"]
-    assert _score(stocks=[0, 0, 1, 1, 2])["detalle"] == ["-8 por 2 talles sin stock dentro de publicaciones activas", "-6 por 3 talles con stock muy bajo (1-2 u.)"]
+    assert _score(stocks=[0, 1])["detalle"] == ["-4 por 1 variante sin stock dentro de publicaciones activas", "-2 por 1 variante con stock muy bajo (1-2 u.)"]
+    assert _score(stocks=[0, 0, 1, 1, 2])["detalle"] == ["-8 por 2 variantes sin stock dentro de publicaciones activas", "-6 por 3 variantes con stock muy bajo (1-2 u.)"]
     curva(1)
     todo = " ".join(_score(reclamos=1, stocks=[0, 1], preguntas_viejas=1)["detalle"])
     assert "(s)" not in todo and "(es)" not in todo

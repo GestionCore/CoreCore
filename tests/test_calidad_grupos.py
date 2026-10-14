@@ -27,7 +27,7 @@ def test_las_publicaciones_del_mismo_modelo_y_talle_se_juntan_en_una_fila():
             _pub("D", "Clásica", 55990, 210, 0, titulo="Otro", clave=("Otro", "XL"))]
     grupos = c.agrupar_publicaciones(pubs)
     assert len(grupos) == 2
-    jean = next(g for g in grupos if g["talle"] == "L")
+    jean = next(g for g in grupos if g["variante"] == "L")
     assert [p["id_meli"] for p in jean["publicaciones"]] == ["C", "B", "A"]            # la que más visitas recibe, primero
     assert jean["visitas"] == 82 + 97 + 1792 and jean["unidades"] == 23
     assert jean["titulo"] == pubs[2]["titulo"]
@@ -41,9 +41,9 @@ def test_la_conversion_del_grupo_se_calcula_sobre_la_suma_no_como_promedio_de_po
 
 def test_cada_publicacion_de_un_grupo_se_distingue_y_la_que_esta_sola_no_lleva_etiqueta():
     grupos = c.agrupar_publicaciones([_pub("A", "Premium", 78990, 82, 2), _pub("B", "Clásica", 65990, 100, 1), _pub("S", "Premium", 50000, 5, 0, titulo="Sola", clave=("Sola", "M"))])
-    doble = next(g for g in grupos if g["talle"] == "L")
+    doble = next(g for g in grupos if g["variante"] == "L")
     assert {p["etiqueta"] for p in doble["publicaciones"]} == {"Premium · $78.990", "Clásica · $65.990"}
-    sola = next(g for g in grupos if g["talle"] == "M")
+    sola = next(g for g in grupos if g["variante"] == "M")
     assert sola["publicaciones"][0]["etiqueta"] == "" and sola["publicaciones"][0]["hermanas"] == 1
 
 

@@ -20,7 +20,7 @@ from psycopg.rows import dict_row
 import db
 import stock_meli
 from auth import token_manager
-from utils import formatear_moneda, ARGENTINA
+from utils import formatear_moneda, rotulo_variante, ARGENTINA
 
 AVISO_FULL = "Esa publicación está en FULL: su stock lo maneja Mercado Libre, así que el descuento quedó solo en CoreLux."
 
@@ -40,7 +40,7 @@ def obtener_catalogo_para_selector(usuario_id, cuenta_id):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
         cursor.execute("""
-            SELECT pv.id_variante, pp.id_meli, pp.titulo, pv.talle, pv.color, pv.stock_propio, pp.precio
+            SELECT pv.id_variante, pp.id_meli, pp.titulo, pv.talle, pv.etiqueta, pv.stock_propio, pp.precio
             FROM productos_variantes pv
             JOIN productos_padre pp ON pp.id = pv.id_padre AND pp.cuenta_id = pv.cuenta_id
             WHERE pv.cuenta_id = %s AND pp.estado = 'active'
@@ -50,7 +50,7 @@ def obtener_catalogo_para_selector(usuario_id, cuenta_id):
 
     return [{
         "id_variante": f["id_variante"], "id_meli": f["id_meli"],
-        "etiqueta": f"{f['titulo']} — {f['talle']}" + (f" / {f['color']}" if f["color"] and f["color"] != "Único" else "") + f" (stock: {f['stock_propio']})",
+        "etiqueta": f"{f['titulo']}" + ("" if rotulo_variante(f["etiqueta"], f["talle"]) == "Única" else f" — {rotulo_variante(f['etiqueta'], f['talle'])}") + f" (stock: {f['stock_propio']})",
         "precio_sugerido": float(f["precio"] or 0),
     } for f in filas]
 

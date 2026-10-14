@@ -6,7 +6,7 @@ Sirve a cualquier rubro: las acciones y sus textos las define Mercado Libre para
 """
 from collections import Counter
 
-from utils import formatear_moneda, limpiar_titulo_modelo, normalizar_talle, nombre_tipo_publicacion
+from utils import formatear_moneda, limpiar_titulo_modelo, rotulo_variante, nombre_tipo_publicacion
 
 UMBRAL_BIEN = 90
 UMBRAL_JUSTO = 70
@@ -23,7 +23,8 @@ def obtener_datos(cursor, cuenta_id):
     cursor.execute("""
         SELECT p.id_meli, p.titulo, p.thumbnail, p.permalink, p.calidad_score, p.calidad_nivel, p.calidad_acciones,
                p.visitas_14d, p.visitas_previas_14d, COALESCE(v.unidades, 0), p.listing_type_id, p.precio,
-               (SELECT string_agg(DISTINCT x.talle, ',') FROM productos_variantes x WHERE x.id_padre = p.id)
+               (SELECT string_agg(DISTINCT x.talle, ',') FROM productos_variantes x WHERE x.id_padre = p.id),
+               (SELECT CASE WHEN COUNT(DISTINCT x.etiqueta) = 1 THEN MAX(x.etiqueta) END FROM productos_variantes x WHERE x.id_padre = p.id)
         FROM productos_padre p
         LEFT JOIN (SELECT id_meli, SUM(cantidad) AS unidades FROM ventas
                    WHERE cuenta_id = %(c)s AND origen = 'meli' AND fecha_venta >= current_date - 13 GROUP BY id_meli) v ON v.id_meli = p.id_meli
@@ -31,7 +32,7 @@ def obtener_datos(cursor, cuenta_id):
         ORDER BY p.titulo
     """, {"c": cuenta_id})
     items = []
-    for id_meli, titulo, thumbnail, permalink, score, nivel, acciones, visitas, previas, unidades, tipo_id, precio, talles in cursor.fetchall():
+    for id_meli, titulo, thumbnail, permalink, score, nivel, acciones, visitas, previas, unidades, tipo_id, precio, talles, etiqueta in cursor.fetchall():
         visitas = visitas or 0
         previas = previas or 0
         tendencia = round((visitas - previas) / previas * 100) if previas >= MIN_VISITAS_PARA_TENDENCIA else None
@@ -43,8 +44,8 @@ def obtener_datos(cursor, cuenta_id):
             "unidades": int(unidades), "conversion": round(unidades / visitas * 100, 2) if visitas > 0 else None,
             "sin_dato": score is None,
             "tipo": nombre_tipo_publicacion(tipo_id), "precio": float(precio) if precio is not None else None,
-            # clave de "mismo modelo, mismo talle": una publicación con varios talles adentro no tiene un talle propio
-            "_clave": (limpiar_titulo_modelo(titulo or id_meli, talles if talles and "," not in talles else None), normalizar_talle(talles if talles and "," not in talles else None)),
+            # clave de "mismo modelo, misma variante": una publicación con varios talles adentro no tiene uno propio
+            "_clave": (limpiar_titulo_modelo(titulo or id_meli, talles if talles and "," not in talles else None), rotulo_variante(etiqueta, talles if talles and "," not in talles else None)),
         })
 
     # El mismo modelo y talle puede estar publicado varias veces (tipo Clásica y Premium, a precios distintos): se juntan en una fila con el detalle de cada una
@@ -88,14 +89,14 @@ def obtener_datos(cursor, cuenta_id):
 
 
 def etiqueta_publicacion(tipo, precio):
-    """«Clásica · $65.990» — lo que distingue a dos publicaciones del mismo modelo y talle. Vacío si no hay ni tipo ni precio."""
+    """«Clásica · $65.990» — lo que distingue a dos publicaciones del mismo modelo y variante. Vacío si no hay ni tipo ni precio."""
     partes = [p for p in (tipo, f"${formatear_moneda(precio)}" if precio else None) if p]
     return " · ".join(partes)
 
 
 def agrupar_publicaciones(items):
     """
-    Junta las publicaciones del mismo modelo y talle. Devuelve una lista de grupos {titulo, thumbnail, talle, publicaciones, visitas, unidades, conversion,
+    Junta las publicaciones del mismo modelo y variante. Devuelve una lista de grupos {titulo, thumbnail, variante, publicaciones, visitas, unidades, conversion,
     tendencia, score, tono}, con la conversión y la tendencia calculadas sobre la SUMA (no un promedio de porcentajes) y el puntaje de la peor publicación (es
     la que hay que mejorar). Cada publicación de un grupo con más de una recibe `etiqueta` («Clásica · $65.990»); las que están solas, no.
     """
@@ -114,7 +115,7 @@ def agrupar_publicaciones(items):
         con_dato = [i["score"] for i in pubs if i["score"] is not None]
         score = min(con_dato) if con_dato else None
         grupos.append({
-            "titulo": pubs[0]["titulo"], "thumbnail": next((i["thumbnail"] for i in pubs if i["thumbnail"]), None), "talle": clave[1], "publicaciones": pubs,
+            "titulo": pubs[0]["titulo"], "thumbnail": next((i["thumbnail"] for i in pubs if i["thumbnail"]), None), "variante": clave[1], "publicaciones": pubs,
             "visitas": visitas, "visitas_previas": previas, "unidades": unidades,
             "conversion": round(unidades / visitas * 100, 2) if visitas > 0 else None,
             "tendencia": round((visitas - previas) / previas * 100) if previas >= MIN_VISITAS_PARA_TENDENCIA else None,

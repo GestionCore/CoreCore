@@ -17,23 +17,23 @@ def calcular_score_salud(cursor):
         detalle.append(f"-{resta} por {plural(reclamos_activos, 'reclamo activo', 'reclamos activos')}")
 
     cursor.execute("""
-        SELECT COALESCE(v.stock_propio,0) + COALESCE(v.stock_full,0) as stock_talle
+        SELECT COALESCE(v.stock_propio,0) + COALESCE(v.stock_full,0) as stock_variante
         FROM productos_variantes v
         JOIN productos_padre p ON p.id = v.id_padre
         WHERE p.estado = 'active'
     """)
-    stocks_talles = [row[0] for row in cursor.fetchall()]
-    talles_sin_stock = sum(1 for s in stocks_talles if s == 0)
-    talles_stock_bajo = sum(1 for s in stocks_talles if 1 <= s <= 2)
+    stocks_variantes = [row[0] for row in cursor.fetchall()]
+    variantes_sin_stock = sum(1 for s in stocks_variantes if s == 0)
+    variantes_stock_bajo = sum(1 for s in stocks_variantes if 1 <= s <= 2)
 
-    if talles_sin_stock > 0:
-        resta = min(talles_sin_stock * 4, 20)
+    if variantes_sin_stock > 0:
+        resta = min(variantes_sin_stock * 4, 20)
         score -= resta
-        detalle.append(f"-{resta} por {plural(talles_sin_stock, 'talle')} sin stock dentro de publicaciones activas")
-    if talles_stock_bajo > 0:
-        resta = min(talles_stock_bajo * 2, 10)
+        detalle.append(f"-{resta} por {plural(variantes_sin_stock, 'variante')} sin stock dentro de publicaciones activas")
+    if variantes_stock_bajo > 0:
+        resta = min(variantes_stock_bajo * 2, 10)
         score -= resta
-        detalle.append(f"-{resta} por {plural(talles_stock_bajo, 'talle')} con stock muy bajo (1-2 u.)")
+        detalle.append(f"-{resta} por {plural(variantes_stock_bajo, 'variante')} con stock muy bajo (1-2 u.)")
 
     try:
         variantes_clave = len(analisis_stock.evaluar_cobertura_variantes(cursor))

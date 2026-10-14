@@ -110,6 +110,17 @@ def normalizar_talle(talle_real):
     return "Único"
 
 
+def rotulo_variante(etiqueta, talle=None):
+    """
+    Cómo se nombra una variante en pantalla y en los exports: su etiqueta por atributos («128 GB / Azul», «M / Negro») y, si todavía no la tiene, el valor de SIZE. «Única» si nada la distingue.
+    Las pantallas y los archivos muestran SIEMPRE esto, nunca una columna «Talle» o «Color» fija: en un celular la variante es la memoria, en una pintura los litros.
+    """
+    if etiqueta and str(etiqueta).strip() and not _es_talle_unico(etiqueta):
+        return str(etiqueta).strip()
+    talle = normalizar_talle(talle)
+    return "Única" if talle == "Único" else talle
+
+
 def limpiar_titulo_modelo(titulo, talle=None):
     """
     La clave de «modelo» de un título: el título sin el talle de ESA publicación, para que todos los talles de un modelo caigan en la misma clave. El talle se saca solo si se CONOCE

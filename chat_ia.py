@@ -110,7 +110,7 @@ def _armar_contexto(usuario_id, cuenta_id=None):
             "variantes_publicadas": variantes_totales,
             "stock_total_deposito_propio": stock_propio_total, "stock_total_full": stock_full_total,
             "variantes_en_riesgo_de_quiebre": [
-                {"producto": v["titulo"], "variante": v["talle"], "stock_restante": v["stock_total"], "dias_restantes": v["dias_restantes"]}
+                {"producto": v["titulo"], "variante": v["variante"], "stock_restante": v["stock_total"], "dias_restantes": v["dias_restantes"]}
                 for v in en_riesgo[:8]
             ] if en_riesgo else "ninguno detectado ahora mismo",
         },

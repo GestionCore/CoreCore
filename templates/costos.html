@@ -71,7 +71,7 @@
 
 {% macro fila_costo(p, rotulo) -%}
 <div class="ux-fila-costo" data-activa="{{ 1 if p.estado == 'active' else 0 }}" data-precio="{{ p.precio }}" data-comision="{{ p.comision if p.comision is not none else '' }}" data-envio="{{ p.envio }}">
-    <div class="ux-fila-costo-talle"><span class="ux-pill ux-neutral ux-pill-suave"><b>{{ rotulo }}</b></span>{% if p.estado != 'active' %} <span class="ux-pill ux-warn ux-pill-suave">Pausada</span>{% endif %}</div>
+    <div class="ux-fila-costo-variante"><span class="ux-pill ux-neutral ux-pill-suave"><b>{{ rotulo }}</b></span>{% if p.estado != 'active' %} <span class="ux-pill ux-warn ux-pill-suave">Pausada</span>{% endif %}</div>
     <div class="ux-fila-costo-precio text-muted">Precio <b style="color:var(--text-primary);">{{ ('$' ~ p.precio_formateado.split(',')[0]) if p.precio_formateado else '—' }}</b></div>
     <div class="ux-fila-costo-input">
         <input type="number" step="0.01" min="0" inputmode="decimal" class="input-costo-producto" data-id-meli="{{ p.id }}" data-original="{{ num(p.costo_mostrado) }}" data-moneda-original="{{ p.moneda }}" value="{{ num(p.costo_mostrado) if p.costo_mostrado else '' }}" placeholder="0" aria-label="Costo de fabricación, {{ rotulo }}">

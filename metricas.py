@@ -245,7 +245,8 @@ def consolidar_por_modelo(por_publicacion):
             m["mejor"], m["thumbnail"] = p["facturado"], p["thumbnail"]
         talle = normalizar_talle(p.get("talle"))
         fila = _fila_consolidada(p)
-        fila.update({"id_meli": id_meli, "talle": None if talle == "Único" else talle, "tipo": nombre_tipo_publicacion(p.get("tipo"))})
+        variante = p.get("variante") or ("Única" if talle == "Único" else talle)
+        fila.update({"id_meli": id_meli, "talle": None if talle == "Único" else talle, "variante": None if variante == "Única" else variante, "tipo": nombre_tipo_publicacion(p.get("tipo"))})
         m["variantes"].append(fila)
     filas = []
     for m in modelos.values():
@@ -373,12 +374,13 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
 
         talle_real, color_real, etiqueta_real = info_variantes.get(id_var, ("Único", "Único", None))
         if etiqueta_real and etiqueta_real != "Única":
-            talle_str = etiqueta_real                                   # la variante por atributos: «128 GB / Azul», «M / Negro»
+            variante_str = etiqueta_real                                # la variante por atributos: «128 GB / Azul», «M / Negro»
         else:
-            talle_str = talle_real if (not color_real or color_real == "Único") else f"{talle_real} / {color_real}"
+            variante_str = talle_real if (not color_real or color_real == "Único") else f"{talle_real} / {color_real}"
+        variante_str = "Única" if variante_str in (None, "", "Único") else variante_str
 
         ventas_procesadas.append({
-            "id_orden": id_orden, "id_meli": id_meli, "titulo": titulo, "talle": talle_str, "cantidad": cantidad,
+            "id_orden": id_orden, "id_meli": id_meli, "titulo": titulo, "variante": variante_str, "cantidad": cantidad,
             "precio_venta": formatear_moneda(ingreso_bruto_operacion), "cargo_venta": formatear_moneda(cargo_venta),
             "costo_envio": formatear_moneda(costo_envio), "envio_pendiente": (envio_estado == "pendiente"),
             "costo_ads": formatear_moneda(costo_ads_fila), "costo_fabricacion": formatear_moneda(costo_fabricacion_total),
@@ -394,7 +396,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         })
 
         if id_meli not in consolidado_dict:
-            consolidado_dict[id_meli] = {"titulo": titulo, "talle": talle_real, "thumbnail": thumbnails_por_item.get(id_meli), "tipo": tipos_por_item.get(id_meli), "unidades": 0, "facturado": 0.0, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": costo_ads_total_item}
+            consolidado_dict[id_meli] = {"titulo": titulo, "talle": talle_real, "variante": variante_str, "thumbnail": thumbnails_por_item.get(id_meli), "tipo": tipos_por_item.get(id_meli), "unidades": 0, "facturado": 0.0, "costo_fab": 0.0, "cargos_meli": 0.0, "envios": 0.0, "ads": costo_ads_total_item}
         consolidado_dict[id_meli]["unidades"] += cantidad
         consolidado_dict[id_meli]["facturado"] += ingreso_bruto_operacion
         consolidado_dict[id_meli]["costo_fab"] += costo_fabricacion_total
@@ -672,16 +674,17 @@ def generar_excel_balance(datos, fecha_desde, fecha_hasta):
         ws_modelos.column_dimensions[col].width = 15
 
     ws_ventas = wb.create_sheet("Detalle de ventas")
-    _armar_header(ws_ventas, ["Fecha", "Orden", "Producto", "Talle", "Cantidad", "Precio venta", "Cargo MeLi", "Envío", "Ads", "Costo fabricación", "Ganancia neta"])
+    _armar_header(ws_ventas, ["Fecha", "Orden", "Producto", "Variante", "Cantidad", "Precio venta", "Cargo MeLi", "Envío", "Ads", "Costo fabricación", "Ganancia neta"])
     for v in datos["ventas"]:
         vr = v["raw"]
         ws_ventas.append([
-            v["fecha"], v["id_orden"], v["titulo"], v["talle"], v["cantidad"],
+            v["fecha"], v["id_orden"], v["titulo"], v["variante"], v["cantidad"],
             vr["precio_venta"], vr["cargo_venta"], vr["costo_envio"], vr["costo_ads"],
             vr["costo_fabricacion"], vr["ganancia_neta"]
         ])
     ws_ventas.column_dimensions["C"].width = 45
-    for col in "ABDEFGHIJK":
+    ws_ventas.column_dimensions["D"].width = 24
+    for col in "ABEFGHIJK":
         ws_ventas.column_dimensions[col].width = 14
 
     buffer = BytesIO()

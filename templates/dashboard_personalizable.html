@@ -514,8 +514,8 @@
                             const tag = v.id_meli ? 'button' : 'div';
                             return `<${tag} ${v.id_meli ? `type="button" data-abrir="${UX.esc(v.id_meli)}"` : ''} class="mini-list-row ${v.id_meli ? 'clickeable' : ''}">
                                 <span class="mini-list-qty">×${UX.esc(v.cantidad)}</span>
-                                ${v.talle ? `<span class="mini-list-talle">${UX.esc(v.talle)}</span>` : ''}
-                                <span class="mini-list-titulo" title="${UX.esc(v.nombre)}${v.talle ? ' · ' + UX.esc(v.talle) : ''}">${UX.esc(v.nombre)}</span>
+                                ${v.variante ? `<span class="mini-list-variante">${UX.esc(v.variante)}</span>` : ''}
+                                <span class="mini-list-titulo" title="${UX.esc(v.nombre)}${v.variante ? ' · ' + UX.esc(v.variante) : ''}">${UX.esc(v.nombre)}</span>
                                 <span class="mini-list-precio">${UX.esc(v.precio_f)}</span>
                                 <span class="mini-list-fecha">${UX.esc(v.fecha)}</span>
                             </${tag}>`;

@@ -138,7 +138,7 @@ async function reactivarAplicar() {
 </script>
 {% endif %}
 
-<!-- ── 3. QUÉ REPONER: los talles que se agotan, ordenados por urgencia ─────── -->
+<!-- ── 3. QUÉ REPONER: las variantes que se agotan, ordenadas por urgencia ─────── -->
 {% if riesgo %}
 <div id="bloque-reponer">
     <div class="ux-acciones-titulo">Lo que tenés que reponer <span class="ux-contador">{{ riesgo|length }}</span></div>
@@ -148,7 +148,7 @@ async function reactivarAplicar() {
         <div class="ux-item-accion ux-{{ 'danger' if urgente else 'warn' }}">
             <div class="ux-item-accion-icono"><svg class="icon" aria-hidden="true"><use href="#icon-box"/></svg></div>
             <div class="ux-item-accion-cuerpo">
-                <div class="ux-item-accion-titulo">{{ v.titulo }} — {{ vocab.v1 }} <b>{{ v.talle }}</b></div>
+                <div class="ux-item-accion-titulo">{{ v.titulo }}{% if v.variante != 'Única' %} — <b>{{ v.variante }}</b>{% endif %}</div>
                 <div class="ux-item-accion-detalle"><b>{{ v.stock_total }} u.</b> restantes · {% if v.dias_restantes < 1 %}<b>no alcanzan ni para 1 día</b>{% else %}alcanzan ~<b>{{ v.dias_restantes|round|int }} {{ 'día' if v.dias_restantes|round|int == 1 else 'días' }}</b>{% endif %} al ritmo actual
                     {%- if v.proveedor_nombre %}{% if v.pedir_ya %} · <b>Pedí YA a {{ v.proveedor_nombre }}</b>: el envío tarda más de lo que te queda{% else %} · con {{ v.proveedor_nombre }} tenés ~{{ v.dias_para_pedir|round|int }} {{ 'día' if v.dias_para_pedir|round|int == 1 else 'días' }} para pedir{% endif %}{% endif %}</div>
             </div>
@@ -219,9 +219,9 @@ async function reactivarAplicar() {
                                 {% for v in p.variantes %}
                                 {% set total_v = v.propio + v.full %}
                                 <a href="#" data-click="abrirDrawer" data-click-args='{{ [v.id_meli|string]|tojson }}' data-prevenir style="text-decoration:none;"
-                                   title="Gestionar talle {{ v.talle }} — {{ v.propio }} propias, {{ v.full }} en FULL{% if v.revisar_duplicado %} · hay publicaciones hermanas con distinto stock, revisar en MeLi{% endif %}">
+                                   title="Gestionar {{ v.variante }} — {{ v.propio }} propias, {{ v.full }} en FULL{% if v.revisar_duplicado %} · hay publicaciones hermanas con distinto stock, revisar en MeLi{% endif %}">
                                     <span class="ux-pill ux-pill-suave {{ 'ux-danger' if total_v == 0 else ('ux-warn' if total_v <= 2 or v.revisar_duplicado else 'ux-neutral') }}" style="font-weight:700;">
-                                        <b>{{ v.talle }}</b> {{ total_v }}{% if v.full > 0 and v.propio == 0 %}<span style="opacity:.7; font-weight:600;"> FULL</span>{% elif v.full > 0 %}<span style="opacity:.7; font-weight:600;"> ({{ v.propio }}+{{ v.full }}F)</span>{% endif %}
+                                        <b>{{ v.variante }}</b> {{ total_v }}{% if v.full > 0 and v.propio == 0 %}<span style="opacity:.7; font-weight:600;"> FULL</span>{% elif v.full > 0 %}<span style="opacity:.7; font-weight:600;"> ({{ v.propio }}+{{ v.full }}F)</span>{% endif %}
                                         {% if v.revisar_duplicado %}<svg class="icon" style="width:11px;height:11px;"><use href="#icon-alert"/></svg>{% endif %}
                                     </span>
                                 </a>

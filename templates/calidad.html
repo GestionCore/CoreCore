@@ -123,7 +123,7 @@
 </div>
 {% endif %}
 
-<!-- ── 6. DETALLE: una fila por modelo y talle; si está publicado más de una vez (Clásica, Premium, a distintos precios) se suman y se abre el detalle de cada una ── -->
+<!-- ── 6. DETALLE: una fila por modelo y variante; si está publicado más de una vez (Clásica, Premium, a distintos precios) se suman y se abre el detalle de cada una ── -->
 <details class="ux-detalle">
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-chart"/></svg> Todas las publicaciones activas <span class="ux-detalle-nota">{{ total_activas }} publicaciones · {{ grupos|length }} {{ 'modelo y ' ~ vocab.v1 if grupos|length == 1 else 'modelos y ' ~ vocab.vN }} · puntaje, visitas y ventas</span></summary>
     <div class="ux-detalle-cuerpo" style="overflow-x:auto;">
@@ -137,7 +137,7 @@
                 {% set indice = loop.index %}
                 <tr>
                     <td class="ux-col-titulo celda-titulo-1l" data-orden="{{ gr.titulo|lower }}">
-                        <div class="ux-titulo-thumb">{% if gr.thumbnail %}<img src="{{ gr.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}{% if gr.talle and gr.talle != 'Único' %}<span class="ux-pill ux-neutral" style="flex-shrink:0;" title="{{ vocab.V1 }}">{{ gr.talle }}</span>{% endif %}<span class="titulo-1l" title="{{ gr.titulo }}">{{ gr.titulo }}</span></div>
+                        <div class="ux-titulo-thumb">{% if gr.thumbnail %}<img src="{{ gr.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}{% if gr.variante and gr.variante != 'Única' %}<span class="ux-pill ux-neutral" style="flex-shrink:0;" title="Variante">{{ gr.variante }}</span>{% endif %}<span class="titulo-1l" title="{{ gr.titulo }}">{{ gr.titulo }}</span></div>
                         {% if gr.publicaciones|length > 1 %}<div><button type="button" class="ux-toggle-variantes" data-variantes="{{ indice }}" aria-expanded="false">{{ gr.publicaciones|length }} publicaciones · ver el detalle <span aria-hidden="true">▸</span></button></div>{% endif %}
                     </td>
                     <td class="num" data-orden="{{ gr.score if gr.score is not none else '' }}">{% if gr.score is not none %}<span class="ux-pill ux-{{ gr.tono }}">{{ gr.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>

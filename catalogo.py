@@ -12,7 +12,7 @@ Postgres multi-tenant. Los cambios reales son mínimos gracias a RLS:
 from datetime import datetime, timedelta
 import analisis_stock
 import db
-from utils import formatear_moneda, limpiar_titulo_modelo, normalizar_talle, ARGENTINA
+from utils import formatear_moneda, limpiar_titulo_modelo, normalizar_talle, rotulo_variante, ARGENTINA
 
 
 def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
@@ -25,15 +25,15 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
 
         cursor.execute("""
             WITH variantes_deduplicadas AS (
-                SELECT id_padre, talle, color, MAX(stock_propio) AS stock_propio, MAX(stock_full) AS stock_full
+                SELECT id_padre, talle, color, etiqueta, MAX(stock_propio) AS stock_propio, MAX(stock_full) AS stock_full
                 FROM productos_variantes
-                GROUP BY id_padre, talle, color
+                GROUP BY id_padre, talle, color, etiqueta
             )
             SELECT p.id_meli, p.titulo, p.precio, p.estado, p.thumbnail,
                    p.precio_original, p.recibis_estimado, p.cuotas_cantidad, p.cuotas_monto,
                    COALESCE(v.stock_propio, 0) AS stock_propio,
                    COALESCE(v.stock_full, 0) AS stock_full,
-                   v.talle AS talle_real
+                   v.talle AS talle_real, v.etiqueta
             FROM productos_padre p
             LEFT JOIN variantes_deduplicadas v ON v.id_padre = p.id
             ORDER BY p.titulo
@@ -59,9 +59,10 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
 
     for item in items_db:
         (id_meli, titulo, precio, estado, thumbnail, precio_original,
-         recibis_estimado, cuotas_cantidad, cuotas_monto, stock_propio, stock_full, talle_real) = item
+         recibis_estimado, cuotas_cantidad, cuotas_monto, stock_propio, stock_full, talle_real, etiqueta) = item
 
         talle_detectado = normalizar_talle(talle_real)
+        variante = rotulo_variante(etiqueta, talle_real)
         modelo_clave = limpiar_titulo_modelo(titulo, talle_real)
 
         if modelo_clave not in modelos_agrupados:
@@ -103,7 +104,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
             fila_existente["pausada_por_stock"] = fila_existente["pausada_por_stock"] and pausada_por_stock
         else:
             nueva_fila = {
-                "id_meli": id_meli, "talle": talle_detectado, "propio": stock_propio,
+                "id_meli": id_meli, "talle": talle_detectado, "variante": variante, "propio": stock_propio,
                 "full": stock_full, "precio": precio, "estado": estado,
                 "pausada_por_stock": pausada_por_stock, "revisar_duplicado": False
             }

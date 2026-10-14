@@ -11,14 +11,14 @@ import analisis_stock
 import salud_cuenta
 import resumen_semanal
 import ventas_hoy
-from utils import ARGENTINA, formatear_moneda, hoy_argentina, limpiar_titulo_modelo, normalizar_talle, SQL_RECLAMO_AFECTA, sql_momento_argentina
+from utils import ARGENTINA, formatear_moneda, hoy_argentina, limpiar_titulo_modelo, rotulo_variante, SQL_RECLAMO_AFECTA, sql_momento_argentina
 
 
-def _detalle_venta(titulo, talle=None):
-    """El título de la venta sin su talle y, si lo tiene, el talle entre paréntesis. `talle` es el atributo de Mercado Libre de la variante vendida (nunca se deduce del título)."""
+def _detalle_venta(titulo, talle=None, etiqueta=None):
+    """El título de la venta sin su talle y, si la variante vendida se distingue por algo, eso entre paréntesis («128 GB / Azul», «M»). `talle` y `etiqueta` son los atributos de Mercado Libre de la variante (nunca se deduce del título)."""
     modelo = limpiar_titulo_modelo(titulo, talle)
-    talle = normalizar_talle(talle)
-    return modelo if talle == "Único" else f"{modelo} ({talle})"
+    variante = rotulo_variante(etiqueta, talle)
+    return modelo if variante == "Única" else f"{modelo} ({variante})"
 
 
 def top_modelos(filas, maximo=5):
@@ -67,7 +67,7 @@ def obtener_ventas_hoy(usuario_id, cuenta_id=None):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
-            SELECT v.titulo, v.id_variante, v.cantidad, v.precio_venta, v.hora_venta, v.id_orden, v.id_meli, pv.talle
+            SELECT v.titulo, v.id_variante, v.cantidad, v.precio_venta, v.hora_venta, v.id_orden, v.id_meli, pv.talle, pv.etiqueta
             FROM ventas v LEFT JOIN productos_variantes pv ON pv.id_variante = v.id_variante AND pv.cuenta_id = v.cuenta_id
             WHERE v.fecha_venta = %s ORDER BY v.id DESC
         """, (hoy_local,))
@@ -79,10 +79,10 @@ def obtener_ventas_hoy(usuario_id, cuenta_id=None):
         facturado_hoy, unidades_hoy, ordenes_hoy = netas["facturado"], netas["unidades"], netas["ordenes"]
 
     lista_ventas = []
-    for titulo, id_variante, cant, precio_unitario, hora_venta, id_orden, id_meli, talle in filas_hoy:
+    for titulo, id_variante, cant, precio_unitario, hora_venta, id_orden, id_meli, talle, etiqueta in filas_hoy:
         hora_str = hora_venta.strftime("%H:%M") if hasattr(hora_venta, "strftime") else (hora_venta or arg_now.strftime("%H:%M"))
         lista_ventas.append({
-            "id_venta": f"{id_orden}_{id_variante}", "id_orden": id_orden, "titulo": _detalle_venta(titulo, talle),
+            "id_venta": f"{id_orden}_{id_variante}", "id_orden": id_orden, "titulo": _detalle_venta(titulo, talle, etiqueta),
             "cantidad": cant, "precio": formatear_moneda(cant * float(precio_unitario)), "hora": hora_str,
             "link_meli": f"https://myaccount.mercadolibre.com.ar/sales/{id_orden}/detail"
         })

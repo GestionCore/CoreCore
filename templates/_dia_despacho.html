@@ -67,7 +67,7 @@
         <div class="despacho-info" data-click="toggleDespacho" data-click-args='{{ ["$closest:.despacho-item", p.id_orden|string, p.id_meli|string, (p.id_variante or "")|string]|tojson }}' style="cursor:pointer;">
             <strong>{{ p.modelo }}</strong>
             <div style="margin-top:4px; font-size:0.9em;">
-                {% if p.variante and p.variante != 'Única' %}<b>{{ p.variante }}</b> · {% elif p.talle != 'Único' %}<b>{{ vocab.V1 }} {{ p.talle }}</b> · {% endif %}<b>{{ p.cantidad }} u.</b>
+                {% if p.variante and p.variante != 'Única' %}<b>{{ p.variante }}</b> · {% endif %}<b>{{ p.cantidad }} u.</b>
                 {% if p.comprador_nombre %} · {{ p.comprador_nombre }}{% endif %}
                 {% if p.comprador_nickname %} · <span class="text-muted" title="Usuario de MeLi">@{{ p.comprador_nickname }}</span>{% endif %}
             </div>

@@ -41,7 +41,7 @@
         {% set hay_editable = m.variantes|rejectattr('full')|list|length > 0 %}
         {# Sin stock = editable (no sale por FULL) y en 0: es lo que más probablemente haya que reponer #}
         {% set sin_stock = m.variantes|rejectattr('full')|selectattr('propio', 'equalto', 0)|list|length %}
-        <div class="panel acordeon-item" data-editable="{{ 1 if hay_editable else 0 }}" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.talle|lower }} {% endfor %}" style="padding:0; overflow:hidden;">
+        <div class="panel acordeon-item" data-editable="{{ 1 if hay_editable else 0 }}" data-modelo-titulo="{{ m.titulo }}" data-buscar="{{ m.titulo|lower }} {% for v in m.variantes %}{{ v.variante|lower }} {% endfor %}" style="padding:0; overflow:hidden;">
             <div class="acordeon-header" role="button" tabindex="0" aria-expanded="false" data-click="toggleAcordeon" data-click-args='["$el"]' style="padding:16px 20px;">
                 <div class="row-flex">
                     {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}
@@ -65,7 +65,7 @@
                     <tbody>
                         {% for v in m.variantes %}
                         <tr>
-                            <td class="c-talle"><b>{{ v.talle }}</b> <span class="text-muted" style="font-size:0.82em;">· {{ v.id_meli }}</span></td>
+                            <td class="c-variante"><b>{{ v.variante }}</b> <span class="text-muted" style="font-size:0.82em;">· {{ v.id_meli }}</span></td>
                             <td class="c-estado" data-label="Estado">
                                 {% if v.pausada_por_stock %}<span class="ux-pill ux-neutral ux-pill-suave">Pausada por stock (0 u.)</span>
                                 {% elif v.estado == 'active' %}<span class="ux-pill ux-ok">Activa</span>
@@ -78,7 +78,7 @@
                                 {% else %}
                                 <span class="ux-stepper">
                                     <button type="button" class="btn btn-secondary" aria-label="Restar una unidad" data-click="paso" data-click-args='["$el", -1]'>−</button>
-                                    <input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" data-original="{{ v.propio }}" min="0" inputmode="numeric" aria-label="Unidades en depósito, talle {{ v.talle }}" data-input="alCambiar" data-input-args='["$el"]'>
+                                    <input type="number" name="stock_{{ v.id_meli }}" value="{{ v.propio }}" data-original="{{ v.propio }}" min="0" inputmode="numeric" aria-label="Unidades en depósito, {{ v.variante }}" data-input="alCambiar" data-input-args='["$el"]'>
                                     <button type="button" class="btn btn-secondary" aria-label="Sumar una unidad" data-click="paso" data-click-args='["$el", 1]'>+</button>
                                 </span>
                                 <input type="hidden" name="orig_{{ v.id_meli }}" value="{{ v.propio }}">

@@ -87,7 +87,7 @@
 @media (max-width: 720px) {
     .data-table.ux-masivo-cards tr { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 8px; padding: 10px 0; }
     .data-table.ux-masivo-cards td { padding: 4px 0; border: 0; text-align: left; align-items: flex-start; }
-    .data-table.ux-masivo-cards td.c-talle, .data-table.ux-masivo-cards td.c-estado { grid-column: span 3; }
+    .data-table.ux-masivo-cards td.c-variante, .data-table.ux-masivo-cards td.c-estado { grid-column: span 3; }
     .data-table.ux-masivo-cards td.c-propio { grid-column: span 4; }
     .data-table.ux-masivo-cards td.c-full { grid-column: span 2; }
     .acordeon-header strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
