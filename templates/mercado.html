@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% from "_ux.html" import banner, kpi, vacio %}
+{% block title %}Mercado · CoreLux{% endblock %}
+{% block content %}
+
+{# Una fila de «búsqueda en alza»: puesto, texto, categoría, movimiento y si ya tenés publicaciones con esa búsqueda. El texto viene de Mercado Libre: se escapa solo (autoescape). #}
+{% macro fila_busqueda(b, con_categoria=False) %}
+<div class="mercado-fila">
+    <span class="mercado-puesto" title="Puesto en la lista de Mercado Libre">#{{ b.posicion }}</span>
+    <div class="mercado-cuerpo">
+        <div class="mercado-texto"><b>{{ b.texto }}</b>{% if b.entiende %} <span class="text-muted">· {{ b.entiende|join(' · ') }}</span>{% endif %}</div>
+        <div class="mercado-meta">
+            {% if con_categoria %}<span>{{ b.categoria_nombre }}</span>{% endif %}
+            {% if b.movimiento %}
+            {% set tono = {'sube': 'ok', 'baja': 'warn', 'nueva': 'info', 'igual': 'neutral'}[b.movimiento[0]] %}
+            <span class="ux-pill ux-{{ tono }} ux-pill-suave">{{ b.movimiento[1] }}</span>
+            {% endif %}
+            {% if b.racha %}<span>{{ b.racha }} días seguidos</span>{% endif %}
+        </div>
+    </div>
+    <div class="mercado-tuyo">
+        {% if b.tus_publicaciones %}<span class="ux-pill ux-ok ux-pill-suave">Tenés {{ b.tus_publicaciones|plural("publicación", "publicaciones") }}</span>
+        {% else %}<span class="ux-pill ux-neutral ux-pill-suave">Sin publicación tuya con esto</span>{% endif %}
+    </div>
+</div>
+{% endmacro %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-trend"/></svg>Mercado</h1>
+        <div class="page-subtitle">Qué busca la gente en Mercado Libre y cómo está la oferta en las categorías donde vendés. ¿Querés analizar un producto o un término puntual? Usá <a href="/tendencias"><b>Tendencias</b></a>.</div>
+    </div>
+</div>
+
+{% if not seguidas %}
+{{ vacio("Todavía no hay datos de mercado", "CoreLux junta los datos de las categorías una vez por día. Volvé mañana: apenas haya la primera medición aparece acá.", "trend", "info") }}
+{% else %}
+
+{% set dias = cobertura.dias %}
+<div class="text-muted mercado-cobertura">
+    <svg class="icon" style="width:13px;height:13px;vertical-align:middle;margin-right:4px;" aria-hidden="true"><use href="#icon-info"/></svg>
+    Seguimos <b>{{ cobertura.categorias }}</b> categorías de Mercado Libre.
+    {% if dias %}Hay <b>{{ dias|plural("día", "días") }}</b> de historia{% if cobertura.desde %} (desde el {{ cobertura.desde|fecha }}, última medición el {{ cobertura.hasta|fecha }}){% endif %}{% if dias < 8 %}: los movimientos de la semana aparecen a medida que se junta.{% else %}.{% endif %}{% endif %}
+    Mercado Libre informa <b>qué puesto</b> ocupa cada búsqueda, no cuántas veces se busca, ni cuánto vende cada competidor: por eso acá no hay ventas de otros.
+</div>
+
+{% if sin_relevar %}
+{{ banner("info", "info", "Estas categorías tuyas todavía no están en el seguimiento diario", (sin_relevar|map(attribute='category_id')|join(', ')) ~ ": empezamos a medirlas con la próxima actualización de la madrugada.") }}
+{% endif %}
+
+{# ── 1. LO QUE SE BUSCA EN TUS CATEGORÍAS ──────────────────────────────────────────────────────────────────────────────────────────── #}
+<div class="panel" id="panel-busquedas">
+    <div class="panel-title"><svg class="icon"><use href="#icon-search"/></svg> Lo que se busca en tus categorías <span class="ux-detalle-nota">Real · lista de Mercado Libre</span></div>
+    {% if busquedas_tuyas %}
+    <div class="mercado-lista">
+        {% for b in busquedas_tuyas %}{{ fila_busqueda(b, True) }}{% endfor %}
+    </div>
+    <div class="text-muted" style="font-size:0.8em; margin-top:10px;">«Tenés N publicaciones» cuenta las que tienen en el título todas las palabras que distinguen a esa búsqueda. Una búsqueda sin publicación tuya no es una orden: es algo para mirar.</div>
+    {% elif propias %}
+    <div class="text-muted">Todavía no hay búsquedas medidas para tus categorías: aparecen apenas se complete la primera actualización diaria.</div>
+    {% else %}
+    <div class="text-muted">Cuando tengas publicaciones activas vas a ver acá las búsquedas en alza de sus categorías. Mientras tanto, elegí una categoría abajo.</div>
+    {% endif %}
+</div>
+
+{# ── 2. UNA CATEGORÍA EN DETALLE ───────────────────────────────────────────────────────────────────────────────────────────────────── #}
+<div class="panel" id="panel-categoria">
+    <div class="panel-title"><svg class="icon"><use href="#icon-chart"/></svg> Una categoría en detalle</div>
+    <form method="get" action="/mercado" class="mercado-selector">
+        <div class="field-group" style="margin:0;">
+            <label class="field-label" for="mercado-categoria">Categoría</label>
+            <select name="categoria" id="mercado-categoria">
+                {% set propias_relevadas = propias|selectattr('relevada')|list %}
+                {% if propias_relevadas %}
+                <optgroup label="Donde vendés">
+                    {% for c in propias_relevadas %}<option value="{{ c.category_id }}" {{ 'selected' if c.category_id == elegida }}>{{ c.nombre }}</option>{% endfor %}
+                </optgroup>
+                {% endif %}
+                <optgroup label="Todas las que seguimos">
+                    {% for c in seguidas if c.category_id not in ids_propias %}<option value="{{ c.category_id }}" {{ 'selected' if c.category_id == elegida }}>{{ c.nombre }}{% if c.camino|length > 1 %} · {{ c.camino[0] }}{% endif %}</option>{% endfor %}
+                </optgroup>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Ver</button>
+    </form>
+
+    {% if ficha %}
+    {% set muestra = ficha.muestra %}
+    <div class="mercado-ficha-titulo"><b>{{ ficha.nombre }}</b>{% if ficha.camino_nombres and ficha.camino_nombres|length > 1 %} <span class="text-muted">{{ ficha.camino_nombres|join(' › ') }}</span>{% endif %}</div>
+
+    <div class="ux-kpis">
+        {% if ficha.publicaciones is not none %}
+        {% set v7 = ficha.variacion_7 %}
+        {{ kpi("Publicaciones activas", ficha.publicaciones|numero, "accion", "box",
+               ("Real · " ~ (('subió ' if v7.pct >= 0 else 'bajó ') ~ (v7.pct|abs|string|replace('.', ',')) ~ ' % en 7 días') if v7 else 'Real · la historia todavía no alcanza para ver si sube o baja')) }}
+        {% endif %}
+        {% if ficha.peso_rubro %}{{ kpi("Peso en su rubro", (ficha.peso_rubro.pct|string|replace('.', ',')) ~ " %", "info", "chart", "Calculado · de las publicaciones de " ~ ficha.peso_rubro.nombre) }}{% endif %}
+        {% if muestra and not muestra.vacia %}
+        {{ kpi("Precio mediano", muestra.precio_p50|plata, "ok", "coin", "Real · la mitad cuesta menos; " ~ muestra.precio_p25|plata ~ " a " ~ muestra.precio_p75|plata ~ " en el tramo medio") }}
+        {% if muestra.concentracion %}
+        {% set nivel = muestra.concentracion[0] %}
+        {{ kpi("Competencia", muestra.concentracion[1], 'danger' if nivel == 'alta' else ('warn' if nivel == 'media' else 'ok'), "users",
+               "Calculado · los 3 vendedores más grandes tienen el " ~ (muestra.concentracion_top3|string|replace('.', ',')) ~ " % de las ofertas de la muestra") }}
+        {% endif %}
+        {% endif %}
+    </div>
+
+    {% if muestra and not muestra.vacia %}
+    <div class="ux-ministats mercado-logistica">
+        <span><b>{{ (muestra.pct_full|string|replace('.', ',')) if muestra.pct_full is not none else '—' }} %</b> con FULL</span>
+        <span><b>{{ (muestra.pct_envio_gratis|string|replace('.', ',')) if muestra.pct_envio_gratis is not none else '—' }} %</b> con envío gratis</span>
+        <span><b>{{ (muestra.pct_tienda_oficial|string|replace('.', ',')) if muestra.pct_tienda_oficial is not none else '—' }} %</b> de tiendas oficiales</span>
+        <span><b>{{ (muestra.pct_con_descuento|string|replace('.', ',')) if muestra.pct_con_descuento is not none else '—' }} %</b> con descuento</span>
+    </div>
+    <div class="text-muted" style="font-size:0.8em; margin:6px 0 16px;">
+        Muestra del {{ muestra.fecha|fecha }}: {{ muestra.ofertas|plural("oferta", "ofertas") }} de {{ muestra.productos|plural("producto de catálogo", "productos de catálogo") }} y {{ muestra.vendedores|plural("vendedor", "vendedores") }}{% if muestra.alcance == 'dominio' %}; en esta categoría había muy pocas, así que se usaron las de todo el tipo de producto{% endif %}.
+        Es una muestra de los productos de catálogo, no de todo lo publicado.
+    </div>
+    {% else %}
+    <div class="text-muted" style="font-size:0.84em; margin:4px 0 16px;">
+        {% if ficha.es_hoja %}
+        No hay precios medidos en esta categoría: casi no tiene productos de catálogo en Mercado Libre, y CoreLux no estima precios que no ve.
+        {% else %}
+        Los precios se miden en categorías específicas, no en un rubro entero: elegí una más puntual.
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="mercado-subtitulo">Búsquedas en alza en esta categoría</div>
+    {% if busquedas_ficha %}
+    <div class="mercado-lista">
+        {% for b in busquedas_ficha %}{{ fila_busqueda(b) }}{% endfor %}
+    </div>
+    {% else %}
+    <div class="text-muted" style="font-size:0.88em;">Mercado Libre no informa búsquedas en alza para esta categoría.</div>
+    {% endif %}
+    {% else %}
+    <div class="text-muted">No hay datos de esta categoría todavía.</div>
+    {% endif %}
+</div>
+
+{# ── 3. COMPARAR ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────── #}
+<details class="ux-detalle" id="comparar">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-chart"/></svg> Comparar categorías <span class="ux-detalle-nota">{{ seguidas|length }} categorías · tocá un título para ordenar</span></summary>
+    <div class="ux-detalle-cuerpo">
+        <table class="data-table" data-ordenable>
+            <thead><tr>
+                <th data-orden="texto">Categoría</th>
+                <th class="num" data-orden="num">Publicaciones</th>
+                <th class="num" data-orden="num">Precio mediano</th>
+                <th class="num" data-orden="num">Con FULL</th>
+                <th class="num" data-orden="num">Con envío gratis</th>
+                <th data-orden="texto">Competencia</th>
+                <th class="num" data-orden="num">Búsquedas en alza</th>
+            </tr></thead>
+            <tbody>
+                {% for c in seguidas %}
+                <tr>
+                    <td><a href="/mercado?categoria={{ c.category_id }}#panel-categoria"><b>{{ c.nombre }}</b></a>{% if c.category_id in ids_propias %} <span class="ux-pill ux-accion ux-pill-suave">Vendés acá</span>{% endif %}</td>
+                    <td class="num" data-orden="{{ c.publicaciones if c.publicaciones is not none else '' }}">{{ c.publicaciones|numero }}</td>
+                    <td class="num" data-orden="{{ c.precio_p50 if c.precio_p50 is not none else '' }}">{{ c.precio_p50|plata }}</td>
+                    <td class="num" data-orden="{{ c.pct_full if c.pct_full is not none else '' }}">{{ (c.pct_full|string|replace('.', ',') ~ ' %') if c.pct_full is not none else '—' }}</td>
+                    <td class="num" data-orden="{{ c.pct_envio_gratis if c.pct_envio_gratis is not none else '' }}">{{ (c.pct_envio_gratis|string|replace('.', ',') ~ ' %') if c.pct_envio_gratis is not none else '—' }}</td>
+                    <td data-orden="{{ c.hhi if c.hhi is not none else '' }}">{{ c.concentracion[1] if c.concentracion else '—' }}</td>
+                    <td class="num" data-orden="{{ c.busquedas }}">{{ c.busquedas }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="text-muted" style="font-size:0.8em; margin-top:8px;">Precios, FULL, envío y competencia salen de la muestra de productos de catálogo: donde no hay muestra, queda «—».</div>
+    </div>
+</details>
+{% endif %}
+{% endblock %}

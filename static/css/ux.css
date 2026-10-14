@@ -429,6 +429,25 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
     .ux-fila-reparto .ux-barra { flex-basis: 100%; order: 3; }
 }
 
+/* ---------- Mercado: búsquedas en alza y ficha de categoría ---------- */
+.mercado-cobertura { font-size: 0.84em; margin: -6px 0 18px; line-height: 1.5; }
+.mercado-lista { display: flex; flex-direction: column; }
+.mercado-fila { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
+.mercado-fila:last-child { border-bottom: 0; }
+.mercado-puesto { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ux-accion); text-align: center; }
+.mercado-texto { overflow-wrap: anywhere; }
+.mercado-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 0.82em; color: var(--text-secondary); margin-top: 2px; }
+.mercado-selector { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-bottom: 16px; }
+.mercado-selector select { min-width: min(100%, 340px); }
+.mercado-ficha-titulo { margin: 4px 0 12px; font-size: 1.05em; }
+.mercado-ficha-titulo .text-muted { font-size: 0.82em; margin-left: 6px; }
+.mercado-subtitulo { font-weight: 800; margin: 6px 0 4px; }
+.mercado-logistica { margin-top: 4px; }
+@media (max-width: 720px) {
+    .mercado-fila { grid-template-columns: 38px minmax(0, 1fr); }
+    .mercado-tuyo { grid-column: 2; }
+}
+
 /* ---------- Costos: un bloque por modelo, una fila por talle ---------- */
 .ux-modelo-costo { margin-bottom: 16px; }
 .ux-modelo-cabecera { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02); }

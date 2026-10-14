@@ -34,6 +34,7 @@ import logistica
 import despacho as despacho_mod
 import stock_masivo as stock_masivo_mod
 import promociones as promociones_mod
+import mercado as mercado_mod
 import tendencias as tendencias_mod
 import logros as logros_mod
 import embudo_conversion as embudo_mod
@@ -1474,6 +1475,16 @@ def eliminar_descuento(id_meli):
         cursor = conexion.cursor()
         promociones_mod.cerrar_promocion_activa(cursor, id_meli)
     return redirect(_con_aviso("/promociones", "Listo: el descuento se eliminó en Mercado Libre.", "success"))
+
+
+@app.route("/mercado")
+@login_requerido
+def mercado_vista():
+    """Búsquedas en alza y oferta de las categorías, desde las tablas globales del relevador (mercado.py): solo la base, sin Mercado Libre ni token."""
+    categoria = (request.args.get("categoria") or "").strip()[:20]
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        datos = mercado_mod.armar_pantalla(conexion.cursor(), g.cuenta_id, categoria or None)
+    return render_template("mercado.html", active_nav="mercado", **datos)
 
 
 @app.route("/tendencias")

@@ -39,3 +39,60 @@ def test_el_runner_y_el_panel_leen_las_versiones_igual():
     import re
     fuente = open("migrate.py", encoding="utf-8").read()
     assert re.search(r"match\.group\(1\)", fuente)
+
+
+# ── Relevamiento diario de mercado: la señal para enterarse de que Mercado Libre cerró un endpoint ────────────────────────────────────────
+
+def _corrida(fecha=None, fin=True, categorias=39, llamadas=396, errores=0, con_tendencias=37, tipo="diario"):
+    from datetime import date, datetime, timedelta
+    from utils import ARGENTINA
+    fecha = fecha or date(2030, 5, 10)
+    inicio = datetime(2030, 5, 10, 4, 0, tzinfo=ARGENTINA)
+    return {"tipo": tipo, "fecha": fecha, "inicio": inicio, "fin": (inicio + timedelta(minutes=4)) if fin else None, "categorias": categorias, "llamadas": llamadas,
+            "errores": errores, "detalle": {"con_tendencias": con_tendencias}}
+
+
+def _ahora(hora, minuto=0, dia=10):
+    from datetime import datetime
+    from utils import ARGENTINA
+    return datetime(2030, 5, dia, hora, minuto, tzinfo=ARGENTINA)
+
+
+def test_el_relevamiento_al_dia_esta_bien():
+    from salud_sistema import estado_del_relevamiento
+    tono, texto = estado_del_relevamiento([_corrida()], _ahora(9))
+    assert tono == "ok" and "39 categorías" in texto
+
+
+def test_sin_ninguna_corrida_avisa_y_no_falla():
+    from salud_sistema import estado_del_relevamiento
+    assert estado_del_relevamiento([], _ahora(9))[0] == "warn"
+    assert estado_del_relevamiento([_corrida(tipo="muestra")], _ahora(9))[0] == "warn"        # solo cuentan las corridas diarias
+
+
+def test_si_a_las_seis_todavia_no_corrio_hoy_es_un_problema_pero_antes_no():
+    from datetime import date
+    from salud_sistema import estado_del_relevamiento
+    ayer = _corrida(fecha=date(2030, 5, 9))
+    assert estado_del_relevamiento([ayer], _ahora(3, 30))[0] == "ok"                           # todavía no es la hora
+    tono, texto = estado_del_relevamiento([ayer], _ahora(6, 0))
+    assert tono == "danger" and "09/05" in texto
+
+
+def test_un_endpoint_cerrado_se_nota_porque_no_trae_nada_en_ninguna_categoria():
+    from salud_sistema import estado_del_relevamiento
+    assert estado_del_relevamiento([_corrida(categorias=0, llamadas=40, errores=40, con_tendencias=0)], _ahora(9))[0] == "danger"
+    tono, texto = estado_del_relevamiento([_corrida(con_tendencias=0)], _ahora(9))
+    assert tono == "danger" and "/trends" in texto                                             # midió las categorías pero ninguna lista de búsquedas
+
+
+def test_los_errores_solo_avisan_si_son_mas_de_uno_cada_veinte_llamadas():
+    from salud_sistema import estado_del_relevamiento
+    assert estado_del_relevamiento([_corrida(llamadas=400, errores=20)], _ahora(9))[0] == "ok"       # 5 %: ruido normal
+    assert estado_del_relevamiento([_corrida(llamadas=400, errores=21)], _ahora(9))[0] == "warn"
+
+
+def test_un_relevamiento_que_empezo_y_no_termino_se_da_por_cortado_pasada_media_hora():
+    from salud_sistema import estado_del_relevamiento
+    assert estado_del_relevamiento([_corrida(fin=False)], _ahora(4, 10))[0] == "ok"           # corriendo
+    assert estado_del_relevamiento([_corrida(fin=False)], _ahora(4, 31))[0] == "danger"

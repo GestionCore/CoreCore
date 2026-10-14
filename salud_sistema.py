@@ -14,12 +14,16 @@ import config
 import db
 from auditoria import ETIQUETAS
 from auth.middleware import login_requerido, admin_requerido
+from utils import ARGENTINA
 
 bp = Blueprint("salud_sistema", __name__)
 
 CICLO_SYNC_MINUTOS = 4
 AVISO_DESPUES_DE = 3 * CICLO_SYNC_MINUTOS       # 12 min: se salteó algún ciclo
 FALLA_DESPUES_DE = 30                           # 30 min sin sincronizar: algo está mal
+HORA_LIMITE_RELEVAMIENTO = 6                    # el relevamiento diario de mercado arranca a las 4 (hora argentina): a las 6 ya tiene que haber corrido
+MINUTOS_PARA_DARLO_POR_CORTADO = 30             # corre unos 4 minutos: si lleva media hora «en curso», se cortó
+PROPORCION_DE_ERRORES_QUE_AVISA = 0.05          # más de 1 error cada 20 llamadas
 
 
 def estado_de_cuenta(activa, tiene_tokens, sync_inicial, minutos_desde_sync):
@@ -37,6 +41,33 @@ def estado_de_cuenta(activa, tiene_tokens, sync_inicial, minutos_desde_sync):
     if minutos_desde_sync > AVISO_DESPUES_DE:
         return "warn", f"Última sincronización hace {_duracion(minutos_desde_sync)}"
     return "ok", "Al día"
+
+
+def estado_del_relevamiento(corridas, ahora_arg):
+    """
+    (tono, texto) del relevamiento diario de mercado (mercado_relevador.py) a partir de sus últimas corridas, la más nueva primero. Es la forma de enterarse de que Mercado Libre cerró un endpoint:
+    una lista que de golpe no trae nada en ninguna categoría. `corridas`: dicts de mercado_relevamientos; `ahora_arg`: la hora de Argentina con zona horaria.
+    """
+    diarias = [c for c in corridas if c["tipo"] == "diario"]
+    if not diarias:
+        return "warn", "Todavía no corrió ningún relevamiento"
+    ultima = diarias[0]
+    detalle = ultima.get("detalle") or {}
+    if ultima["fin"] is None:
+        minutos = (ahora_arg - ultima["inicio"]).total_seconds() / 60
+        if minutos > MINUTOS_PARA_DARLO_POR_CORTADO:
+            return "danger", f"El relevamiento empezó hace {_duracion(minutos)} y no terminó: se cortó"
+        return "ok", "Corriendo ahora"
+    if ultima["fecha"] < ahora_arg.date() and ahora_arg.hour >= HORA_LIMITE_RELEVAMIENTO:
+        return "danger", f"Hoy no corrió el relevamiento (el último fue el {ultima['fecha'].strftime('%d/%m')})"
+    if not ultima["categorias"]:
+        return "danger", "No pudo medir ninguna categoría: puede que Mercado Libre haya cerrado un endpoint"
+    if detalle.get("con_tendencias") == 0:
+        return "danger", "Ninguna categoría trajo búsquedas en alza: puede que Mercado Libre haya cerrado /trends"
+    errores, llamadas = ultima["errores"] or 0, max(ultima["llamadas"] or 0, 1)
+    if errores / llamadas > PROPORCION_DE_ERRORES_QUE_AVISA:
+        return "warn", f"{errores} errores en {llamadas} llamadas: mirá el detalle abajo"
+    return "ok", f"Al día: {ultima['categorias']} categorías, {ultima['llamadas']} llamadas, {errores} errores"
 
 
 def _duracion(minutos):
@@ -99,6 +130,11 @@ def obtener_estado():
         estado["migraciones"] = {"aplicadas": len(aplicadas), "en_disco": len(disco),
                                  "pendientes": migraciones_pendientes(disco, aplicadas)}
 
+        cursor.execute("SELECT tipo, fecha, inicio, fin, categorias, llamadas, errores, detalle FROM mercado_relevamientos ORDER BY id DESC LIMIT 14")
+        corridas = [dict(zip(("tipo", "fecha", "inicio", "fin", "categorias", "llamadas", "errores", "detalle"), f)) for f in cursor.fetchall()]
+        tono, texto = estado_del_relevamiento(corridas, datetime.now(ARGENTINA))
+        estado["mercado"] = {"tono": tono, "texto": texto, "corridas": corridas}
+
         cursor.execute("SELECT accion, count(*) FROM auditoria WHERE creado_en > now() - interval '24 hours' GROUP BY accion ORDER BY 2 DESC")
         estado["actividad_24h"] = [(ETIQUETAS.get(a, a), n) for a, n in cursor.fetchall()]
 
@@ -111,8 +147,8 @@ def obtener_estado():
     estado["config"] = {"faltan": faltan, "recomendadas": recomendadas}
     estado["servidor"] = {"app": os.getenv("FLY_APP_NAME") or "local", "region": os.getenv("FLY_REGION") or "—",
                           "maquina": os.getenv("FLY_MACHINE_ID") or "—", "version": (os.getenv("FLY_IMAGE_REF") or "—").rsplit(":", 1)[-1]}
-    estado["problemas"] = sum(1 for c in cuentas if c["tono"] == "danger") + len(estado["migraciones"]["pendientes"]) + len(faltan)
-    estado["avisos"] = sum(1 for c in cuentas if c["tono"] == "warn") + len(recomendadas)
+    estado["problemas"] = sum(1 for c in cuentas if c["tono"] == "danger") + len(estado["migraciones"]["pendientes"]) + len(faltan) + (estado["mercado"]["tono"] == "danger")
+    estado["avisos"] = sum(1 for c in cuentas if c["tono"] == "warn") + len(recomendadas) + (estado["mercado"]["tono"] == "warn")
     return estado
 
 

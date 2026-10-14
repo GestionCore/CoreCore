@@ -44,6 +44,33 @@
     </div>
 </div>
 
+<div class="ux-seccion ux-{{ e.mercado.tono }}">Relevamiento de mercado</div>
+<div class="panel">
+    <div class="ux-paso"><span class="ux-pill ux-{{ e.mercado.tono }}">{{ {'ok': 'bien', 'warn': 'revisar', 'danger': 'falla'}[e.mercado.tono] }}</span><div class="ux-paso-cuerpo">{{ e.mercado.texto }}</div></div>
+    {% if e.mercado.corridas %}
+    <details class="ux-detalle" style="margin:12px 0 0;">
+        <summary>Últimas corridas <span class="ux-detalle-nota">{{ e.mercado.corridas|length }}</span></summary>
+        <div class="ux-detalle-cuerpo">
+            <table class="data-table">
+                <thead><tr><th>Tipo</th><th>Fecha</th><th class="num">Categorías</th><th class="num">Llamadas</th><th class="num">Errores</th><th class="num">Duración</th><th>Primeros errores</th></tr></thead>
+                <tbody>
+                {% for c in e.mercado.corridas %}
+                    <tr>
+                        <td>{{ c.tipo }}</td>
+                        <td>{{ c.fecha.strftime('%d/%m') }}</td>
+                        <td class="num">{{ c.categorias }}</td><td class="num">{{ c.llamadas }}</td>
+                        <td class="num {{ 'text-danger' if c.errores else '' }}">{{ c.errores }}</td>
+                        <td class="num">{{ ((c.fin - c.inicio).total_seconds()|int ~ ' s') if c.fin else 'sin terminar' }}</td>
+                        <td class="text-muted" style="font-size:0.82em;">{{ (c.detalle.primeros_errores or [])[:3]|join(' · ') if c.detalle else '' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </details>
+    {% endif %}
+</div>
+
 {% if e.migraciones.pendientes %}
 {{ banner("danger", "alert", "<b>Hay migraciones sin aplicar</b>", e.migraciones.pendientes|join(', ') ~ ". Corré python migrate.py (el deploy lo hace solo).") }}
 {% endif %}

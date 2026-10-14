@@ -1088,6 +1088,7 @@ const ATAJOS_COMANDO = [
     { alias: ['mono', 'monotributo'], texto: 'Ir a Monotributo', url: '/monotributo', requiere: 'monotributo' },
     { alias: ['manual', 'mostrador', 'directo'], texto: 'Ir a Ventas fuera de MeLi', url: '/ventas_manuales' },
     { alias: ['prom', 'promo', 'promociones'], texto: 'Ir a Promociones', url: '/promociones' },
+    { alias: ['merc', 'mercado', 'busquedas', 'categoria'], texto: 'Ir a Mercado', url: '/mercado' },
     { alias: ['tend', 'tendencias'], texto: 'Ir a Tendencias', url: '/tendencias' },
     { alias: ['comp', 'competencia', 'espia'], texto: 'Ir a Competencia', url: '/competencia', requiere: 'catalogo' },
     { alias: ['embudo', 'conversion'], texto: 'Ir a Embudo de Conversión', url: '/embudo_conversion' },

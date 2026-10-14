@@ -79,6 +79,7 @@ GRUPOS_NAV = {
         "paginas": [
             {"nav_key": "promociones", "label": "Promociones", "href": "/promociones", "endpoint": "promociones_vista"},
             {"nav_key": "publicidad", "label": "Publicidad", "href": "/publicidad", "endpoint": "publicidad_vista", "requiere": "ads"},
+            {"nav_key": "mercado", "label": "Mercado", "href": "/mercado", "endpoint": "mercado_vista"},
             {"nav_key": "tendencias", "label": "Tendencias", "href": "/tendencias", "endpoint": "tendencias_vista"},
             {"nav_key": "competencia", "label": "Competencia", "href": "/competencia", "endpoint": "competencia_vista", "requiere": "catalogo"},
         ],
