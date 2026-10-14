@@ -181,3 +181,9 @@ legítimo choca con un límite, subir el valor en `REGLAS` de `limitador.py`.
 - `SENTRY_DSN` (para enterarse de errores sin mirar los logs), `MP_ACCESS_TOKEN` (cobro de suscripciones) y `MP_WEBHOOK_SECRET` (la "clave secreta" del panel de webhooks de Mercado Pago: con ella el webhook solo acepta avisos firmados por Mercado Pago).
 - Revisión de los términos y la política de privacidad (`legal.py`) por un abogado antes del lanzamiento.
 - Un monitor externo de `/healthz/db`.
+
+## 9b-3. Probar un cobro real con un monto chico (precio de prueba)
+
+- `MP_EMAIL_DE_PRUEBA` (el mail de la persona que prueba) y `MP_PRECIO_DE_PRUEBA` (pesos, de 1 a 2.000) hacen que SOLO ese mail pague el monto chico al suscribirse; los demás pagan el precio del plan (`pagos.precio_para`). Sin las dos variables no cambia nada.
+- Cargar: `fly secrets set MP_EMAIL_DE_PRUEBA=mail@ejemplo.com MP_PRECIO_DE_PRUEBA=100 -a corecore`. **Sacar al terminar**: `fly secrets unset MP_EMAIL_DE_PRUEBA MP_PRECIO_DE_PRUEBA -a corecore`.
+- Un cambio de plan (Base → Elite) de esa persona no usa el precio de prueba: probar solo el alta y la cancelación.

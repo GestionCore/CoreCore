@@ -16,6 +16,7 @@ El flujo completo:
 """
 import hashlib
 import hmac
+import os
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -27,6 +28,22 @@ PRECIOS_PLAN = {
     "base": 40000,
     "elite": 99000,
 }
+
+PRECIO_DE_PRUEBA_MAXIMO = 2000      # tope del precio de prueba: aunque se configure mal, nunca puede ser un precio «de verdad»
+
+
+def precio_para(plan, email):
+    """
+    El monto mensual que se le cobra a ESTE mail. Es el precio del plan, salvo para UN mail de prueba: con `MP_EMAIL_DE_PRUEBA` y `MP_PRECIO_DE_PRUEBA` (en pesos, hasta PRECIO_DE_PRUEBA_MAXIMO)
+    esa única persona paga el monto chico, para probar un cobro real sin gastar el precio completo. Nadie más lo ve; sin las dos variables no cambia nada. Se borran con `fly secrets unset`.
+    """
+    precio = PRECIOS_PLAN[plan]
+    mail_de_prueba = (os.getenv("MP_EMAIL_DE_PRUEBA") or "").strip().lower()
+    monto = (os.getenv("MP_PRECIO_DE_PRUEBA") or "").strip()
+    if mail_de_prueba and monto.isdigit() and 1 <= int(monto) <= PRECIO_DE_PRUEBA_MAXIMO and (email or "").strip().lower() == mail_de_prueba:
+        return int(monto)
+    return precio
+
 
 NOMBRES_PLAN = {
     "base": "CoreLux Plan Base — gestión completa para tu negocio en MeLi",
@@ -57,7 +74,7 @@ def crear_link_suscripcion(plan, usuario_id, email, back_url):
     Crea una suscripción recurrente mensual en MP.
     Devuelve (init_point_url, preapproval_id) o lanza excepción.
     """
-    precio = PRECIOS_PLAN[plan]
+    precio = precio_para(plan, email)
     nombre = NOMBRES_PLAN[plan]
     payload = {
         "reason": nombre,
