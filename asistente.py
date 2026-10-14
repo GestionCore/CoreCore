@@ -28,7 +28,9 @@ MAX_HERRAMIENTAS_POR_RONDA = 4
 MAX_CARACTERES_RESULTADO = 7000
 MAX_BOTONES = 3
 SEGUNDOS_TOTALES = 40
-LIMITE_DIARIO = int(os.getenv("ASISTENTE_LIMITE_DIARIO", "80") or 80)
+# Consultas por día y por cuenta según el plan (lo que prometen la página de planes y la landing: Elite 4 veces más). ASISTENTE_LIMITE_DIARIO, si está, pisa a todos.
+LIMITE_DIARIO_POR_PLAN = {"elite": 120}
+LIMITE_DIARIO = 30                       # Base, prueba y cualquier otro
 
 # Qué es cada pantalla, en una línea. Una prueba exige que cada pantalla del menú tenga la suya: así la guía no se desactualiza cuando se agrega una.
 GUIA_DE_PANTALLAS = {
@@ -134,14 +136,24 @@ def _resultado_para_el_modelo(resultado):
     return texto
 
 
+def limite_diario(plan):
+    """Cuántas consultas por día le tocan a un plan (ASISTENTE_LIMITE_DIARIO en el entorno pisa a todos)."""
+    fijo = os.getenv("ASISTENTE_LIMITE_DIARIO")
+    if fijo and fijo.strip().isdigit():
+        return int(fijo)
+    return LIMITE_DIARIO_POR_PLAN.get(plan, LIMITE_DIARIO)
+
+
 def _supero_el_tope_diario(usuario_id, cuenta_id, hoy):
-    """True si la cuenta ya hizo LIMITE_DIARIO preguntas hoy; si no, anota esta. Aproximado a propósito (no es atómico): es un freno al costo, no una facturación."""
+    """True si la cuenta ya hizo las consultas de hoy que le tocan por su plan; si no, anota esta. Aproximado a propósito (no es atómico): es un freno al costo, no una facturación."""
     try:
         with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
             cursor = conexion.cursor()
+            cursor.execute("SELECT plan FROM usuarios WHERE id = %s", (usuario_id,))
+            fila = cursor.fetchone()
             hit, usadas = cache_db.leer(cursor, cuenta_id, "asistente_uso", firma=hoy.isoformat(), ttl_segundos=26 * 3600)
             usadas = int(usadas or 0) if hit else 0
-            if usadas >= LIMITE_DIARIO:
+            if usadas >= limite_diario(fila[0] if fila else None):
                 return True
             cache_db.guardar(cursor, cuenta_id, "asistente_uso", usadas + 1, firma=hoy.isoformat())
     except Exception as e:

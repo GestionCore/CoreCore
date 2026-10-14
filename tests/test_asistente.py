@@ -212,9 +212,18 @@ def test_el_contador_diario_se_reinicia_cada_dia(monkeypatch):
     """Con la caché por cuenta (firma = la fecha) y el tope en 2: la tercera pregunta del día se frena y al día siguiente se vuelve a contar."""
     guardado = {}
 
+    plan_de = {1: "base"}
+
+    class _Cursor:
+        def execute(self, sql, params=None):
+            self.fila = (plan_de.get(params[0], "trial"),)
+
+        def fetchone(self):
+            return self.fila
+
     class _Conexion:
         def cursor(self):
-            return object()
+            return _Cursor()
 
     class _Prestada:
         def __enter__(self):
@@ -231,10 +240,32 @@ def test_el_contador_diario_se_reinicia_cada_dia(monkeypatch):
     monkeypatch.setattr(asistente.cache_db, "leer", _leer)
     monkeypatch.setattr(asistente.cache_db, "guardar", lambda cursor, cuenta_id, clave, valor, firma="": guardado.__setitem__((cuenta_id, clave), (firma, valor)))
     monkeypatch.setattr(asistente, "LIMITE_DIARIO", 2)
+    monkeypatch.setattr(asistente, "LIMITE_DIARIO_POR_PLAN", {"elite": 8})
+    monkeypatch.delenv("ASISTENTE_LIMITE_DIARIO", raising=False)
     lunes, martes = date(2030, 3, 18), date(2030, 3, 19)
     assert [asistente._supero_el_tope_diario(1, 7, lunes) for _ in range(3)] == [False, False, True]
     assert asistente._supero_el_tope_diario(1, 7, martes) is False
     assert asistente._supero_el_tope_diario(1, 8, lunes) is False                        # otra cuenta tiene su propio contador
+    plan_de[2] = "elite"                                                                  # el plan Elite tiene un tope mayor: 8 en vez de 2
+    assert [asistente._supero_el_tope_diario(2, 9, lunes) for _ in range(9)] == [False] * 8 + [True]
+
+
+def test_cada_plan_tiene_su_tope_y_elite_tiene_cuatro_veces_mas(monkeypatch):
+    monkeypatch.delenv("ASISTENTE_LIMITE_DIARIO", raising=False)
+    assert asistente.limite_diario("elite") == 4 * asistente.limite_diario("base") == 4 * asistente.limite_diario("trial") == 4 * asistente.limite_diario(None)
+    monkeypatch.setenv("ASISTENTE_LIMITE_DIARIO", "7")
+    assert asistente.limite_diario("elite") == asistente.limite_diario("base") == 7        # la variable de entorno pisa a todos
+    monkeypatch.setenv("ASISTENTE_LIMITE_DIARIO", "abc")
+    assert asistente.limite_diario("base") == asistente.LIMITE_DIARIO                      # un valor inválido se ignora
+
+
+def test_los_planes_prometen_lo_que_el_producto_hace():
+    """Lo que dicen la landing y los planes de la actualización y de la IA tiene que seguir siendo cierto: no «cada 4 minutos» (hoy avisa Mercado Libre y barre cada 30) ni IA «avanzada» sin nada detrás."""
+    raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for plantilla in ("landing.html", "planes.html", "index.html"):
+        t = open(os.path.join(raiz, "templates", plantilla), encoding="utf-8").read()
+        assert "cada 4 minutos" not in t and "Soporte por chat" not in t and "Funciones de IA avanzadas" not in t and "Coach IA de costos" not in t, plantilla
+    assert "4 veces más consultas" in open(os.path.join(raiz, "templates", "planes.html"), encoding="utf-8").read()
 
 
 # ── Las herramientas ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
