@@ -16,7 +16,18 @@ import app as aplicacion  # noqa: E402
 import db  # noqa: E402
 
 
+class _Transaccion:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
 class _Cursor:
+    connection = type("Con", (), {"transaction": lambda self: _Transaccion()})()          # el guardado del costo usa un punto de guardado
+    rowcount = 1
+
     def __init__(self, base):
         self.base = base
 
@@ -45,7 +56,7 @@ class _Respuesta:
         return self._cuerpo
 
 
-def _guardar(monkeypatch, pedido, respuesta_meli, fila=("Campera", 54999, "active")):
+def _guardar(monkeypatch, pedido, respuesta_meli, fila=("Campera", 54999, "active", 0)):          # título, precio, estado y costo actual (en pesos)
     base, enviados = _Base(fila), []
     monkeypatch.setattr(db, "conexion_usuario", base.conexion)
     monkeypatch.setattr(aplicacion.token_manager, "asegurar_token_valido", lambda cuenta: "token")
@@ -89,3 +100,10 @@ def test_solo_el_costo_no_llama_a_mercado_libre(monkeypatch):
     cuerpo, enviados, sql = _guardar(monkeypatch, {"titulo": "Campera", "precio": 54999, "estado": "active", "precio_costo": 8000}, _Respuesta(500))
     assert cuerpo["ok"] is True and cuerpo["costo_guardado"] is True and enviados == []
     assert any("precio_costo = %s" in s for s, _ in sql)
+
+
+def test_el_costo_del_panel_solo_se_escribe_si_cambio(monkeypatch):
+    """Un costo cargado en dólares llega al panel ya convertido a pesos: si no se tocó, guardar el panel NO lo vuelve a pesos (perdería su moneda y su valor en dólares)."""
+    cuerpo, enviados, sql = _guardar(monkeypatch, {"titulo": "Campera", "precio": 54999, "estado": "active", "precio_costo": 15000}, _Respuesta(500), fila=("Campera", 54999, "active", 15000))
+    assert cuerpo["ok"] is True and enviados == []
+    assert not any("precio_costo" in s for s, _ in sql if s.startswith("UPDATE"))

@@ -90,9 +90,9 @@ class _Conexion:
         return self._cursor
 
 
-def _reporte(monkeypatch, gastos, ventas=(), fabricacion=(), costos_fab=()):
-    cursor = _Cursor({"FROM productos_padre": list(costos_fab), "COALESCE(SUM(precio_venta * cantidad), 0)": list(ventas),
-                      "SUM(cantidad)::int": list(fabricacion), "FROM gastos_operativos": list(gastos)})
+def _reporte(monkeypatch, gastos, ventas=(), fabricacion=()):
+    """`fabricacion` = lo que devuelve la base para el costo de cada mes: (mes, costo de fabricación). La suma de «unidades × el costo de cada una» la hace la consulta y se prueba en test_costos_moneda."""
+    cursor = _Cursor({"LEFT JOIN productos_variantes": list(fabricacion), "COALESCE(SUM(precio_venta * cantidad), 0)": list(ventas), "FROM gastos_operativos": list(gastos)})
     monkeypatch.setattr(reporte_fiscal.db, "conexion_usuario", lambda u, c=None: _Conexion(cursor))
     return {m["mes"]: m for m in reporte_fiscal.calcular_reporte_anual(1, 2026, 7)}
 
@@ -117,7 +117,7 @@ def test_un_gasto_unico_va_al_mes_en_que_cae_y_uno_de_otro_anio_no_cuenta(monkey
 def test_la_ganancia_estimada_del_mes_resta_cargos_gastos_y_costo_de_fabricacion(monkeypatch):
     # junio: facturó 100.000, comisiones 15.000, envíos 8.000, 12 unidades (10 del MLA1 a $2.000 y 2 del MLA2 a $500) y un gasto de 5.000
     meses = _reporte(monkeypatch, [(5000, date(2026, 6, 15), False, None)],
-                     ventas=[(6, 100000, 15000, 8000, 12, 9, 1200)], fabricacion=[(6, "MLA1", 10), (6, "MLA2", 2)], costos_fab=[("MLA1", 2000), ("MLA2", 500)])
+                     ventas=[(6, 100000, 15000, 8000, 12, 9, 1200)], fabricacion=[(6, 21000)])
     j = meses[6]
     assert j["costo_fabricacion"] == 21000.0 and j["cargos_totales"] == 23000.0 and j["retenciones"] == 1200.0 and j["ordenes"] == 9
     assert j["ganancia_estimada"] == 100000 - 23000 - 5000 - 21000 == 51000.0 and j["ganancia_f"] == "51.000"

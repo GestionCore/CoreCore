@@ -54,10 +54,16 @@
     {%- if g.costo_min is not none %} · {% if g.costo_min == g.costo_max %}{{ g.costo_max|plata }} en todas{% else %}de {{ g.costo_min|plata }} a {{ g.costo_max|plata }}{% endif %}{% endif -%}
 {%- endmacro %}
 
+{# El costo se carga en pesos ($) o en dólares (US$): los dólares se llevan a pesos con la cotización de Mi cuenta (automática o manual) #}
+{% macro selector_moneda(moneda, clase) -%}
+<select class="{{ clase }}" aria-label="Moneda del costo" title="Pesos o dólares"><option value="ARS" {{ 'selected' if moneda != 'USD' }}>$</option><option value="USD" {{ 'selected' if moneda == 'USD' }}>US$</option></select>
+{%- endmacro %}
+
 {% macro campo_grupo(g, nombre, boton) -%}
 <div class="ux-copiar-costo">
     <span class="flex-gap" style="gap:6px;">
-        <input type="number" step="0.01" min="0" inputmode="decimal" placeholder="{{ 'Varios costos' if g.costo_min is not none and not g.costo_comun else '$ por unidad' }}" {% if g.costo_comun %}value="{{ num(g.costo_comun) }}"{% endif %} class="input-costo-grupo" aria-label="Costo por unidad de {{ nombre }}">
+        <input type="number" step="0.01" min="0" inputmode="decimal" placeholder="{{ 'Varios costos' if g.costo_min is not none and not g.costo_comun else 'Costo por unidad' }}" {% if g.costo_comun %}value="{{ num(g.costo_comun) }}"{% endif %} class="input-costo-grupo" aria-label="Costo por unidad de {{ nombre }}">
+        {{ selector_moneda('ARS', 'select-moneda-grupo') }}
         <button type="button" class="btn btn-secondary btn-copiar-costo" title="Aplicar {{ boton }}">Aplicar<span class="ux-aplicar-largo"> {{ boton }}</span></button>
     </span>
 </div>
@@ -68,16 +74,37 @@
     <div class="ux-fila-costo-talle"><span class="ux-pill ux-neutral ux-pill-suave"><b>{{ rotulo }}</b></span>{% if p.estado != 'active' %} <span class="ux-pill ux-warn ux-pill-suave">Pausada</span>{% endif %}</div>
     <div class="ux-fila-costo-precio text-muted">Precio <b style="color:var(--text-primary);">{{ ('$' ~ p.precio_formateado.split(',')[0]) if p.precio_formateado else '—' }}</b></div>
     <div class="ux-fila-costo-input">
-        <input type="number" step="0.01" min="0" inputmode="decimal" class="input-costo-producto" data-id-meli="{{ p.id }}" data-original="{{ num(p.precio_costo) }}" value="{{ num(p.precio_costo) if p.precio_costo else '' }}" placeholder="0" aria-label="Costo de fabricación, {{ rotulo }}">
+        <input type="number" step="0.01" min="0" inputmode="decimal" class="input-costo-producto" data-id-meli="{{ p.id }}" data-original="{{ num(p.costo_mostrado) }}" data-moneda-original="{{ p.moneda }}" value="{{ num(p.costo_mostrado) if p.costo_mostrado else '' }}" placeholder="0" aria-label="Costo de fabricación, {{ rotulo }}">
+        {{ selector_moneda(p.moneda, 'select-moneda-costo') }}
     </div>
     <div class="ux-fila-costo-ganancia" data-ganancia></div>
+    {% if p.variantes_ml %}
+    {# Una publicación con varias variantes (colores, tamaños…) puede costar distinto en cada una: el costo de la variante manda sobre el de la publicación; vacío = usa el de la publicación #}
+    <details class="ux-variantes-ml">
+        <summary>Costo por variante <span class="text-muted">· {{ p.variantes_ml|length }} · vacío = el de la publicación</span></summary>
+        {% for v in p.variantes_ml %}
+        <div class="ux-variante-ml-fila">
+            <span class="ux-variante-ml-nombre" title="{{ v.etiqueta }}">{{ v.etiqueta }}</span>
+            <span class="ux-fila-costo-input">
+                <input type="number" step="0.01" min="0" inputmode="decimal" class="input-costo-variante" data-id-variante="{{ v.id_variante }}" data-original="{{ num(v.original) if v.pesos else '' }}" data-moneda-original="{{ v.moneda }}" value="{{ num(v.original) if v.pesos else '' }}" placeholder="igual" aria-label="Costo de fabricación, variante {{ v.etiqueta }}">
+                {{ selector_moneda(v.moneda, 'select-moneda-costo') }}
+            </span>
+        </div>
+        {% endfor %}
+    </details>
+    {% endif %}
 </div>
 {%- endmacro %}
 
 <div class="ux-seccion ux-warn" id="costos-fabricacion">Costo de fabricación por modelo
     {% if sin_costo %}<span class="ux-pill ux-warn">{{ sin_costo|length }} sin costo</span>{% endif %}
 </div>
-<div class="text-muted" style="font-size:0.88em; margin:-6px 0 14px;">Escribí lo que te cuesta cada unidad y tocá <b>Aplicar</b>: se carga a todo el modelo de una vez. Si el costo cambia de una variante a otra, ajustalo en esa variante{% if usa_talles %} (y por {{ u1 }} solo si de verdad cambia){% endif %}. Ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>
+<div class="text-muted" style="font-size:0.88em; margin:-6px 0 6px;" id="nota-dolar-costos">
+    Podés cargar cada costo en <b>pesos ($)</b> o en <b>dólares (US$)</b>: los dólares se llevan a pesos con tu cotización
+    {% if dolar_activo and dolar_activo.valor %}(<b>{{ dolar_activo.valor|plata }}</b>, {{ 'tu dólar manual' if dolar_activo.modo == 'manual' else 'el dólar MEP automático' }}) y se actualizan solos cuando el dólar cambia{% else %}(todavía no hay una: elegila en <a href="/cuenta#dolar"><b>Mi cuenta</b></a>){% endif %}.
+    <a href="/cuenta#dolar">Cambiar el dólar</a>
+</div>
+<div class="text-muted" style="font-size:0.88em; margin:0 0 14px;">Escribí lo que te cuesta cada unidad y tocá <b>Aplicar</b>: se carga a todo el modelo de una vez. Si el costo cambia de una variante a otra, ajustalo en esa variante{% if usa_talles %} (y por {{ u1 }} solo si de verdad cambia){% endif %}. Ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>
 
 {% if not productos %}
 {{ vacio("Todavía no hay publicaciones sincronizadas", "Sincronizá para traer tu catálogo y poder cargarles el costo.", "refresh", "accion") }}
@@ -357,27 +384,46 @@
 </div>
 
 <script nonce="{{ csp_nonce }}">
+    // ── Dólar y moneda de cada costo ──────────────────────────────────────────────────────────────────────────────────
+    // Con «US$» el costo se lleva a pesos con la cotización de la cuenta (Mi cuenta). Sin cotización no se supone ninguna: la ganancia de esa fila pide elegirla.
+    const DOLAR = {{ (dolar_activo.valor if dolar_activo else none)|tojson }};
+    const monedaDe = (input) => { const sel = input.parentElement.querySelector('select'); return sel ? sel.value : 'ARS'; };
+    const aPesos = (valor, moneda) => moneda === 'USD' ? (DOLAR ? valor * DOLAR : null) : valor;
+    const costoEnPesos = (input) => aPesos(parseFloat(input.value) || 0, monedaDe(input));               // null = en dólares y no hay cotización
+    const montoTexto = (valor, moneda) => moneda === 'USD' ? 'US$ ' + valor.toLocaleString('es-AR', { maximumFractionDigits: 2 }) : UX.plata(valor);
+    const cambio = (input) => {
+        const valor = parseFloat(input.value) || 0;
+        return valor !== (parseFloat(input.dataset.original) || 0) || (valor > 0 && monedaDe(input) !== input.dataset.monedaOriginal);
+    };
+
     // ── Ganancia por unidad en vivo: precio − comisión − envío − costo ────────
     function pintarGanancia(fila) {
         const precio = parseFloat(fila.dataset.precio), comision = parseFloat(fila.dataset.comision), envio = parseFloat(fila.dataset.envio) || 0;
-        const costo = parseFloat(fila.querySelector('.input-costo-producto').value) || 0;
+        const entrada = fila.querySelector('.input-costo-producto');
         const cont = fila.querySelector('[data-ganancia]');
-        if (!precio || isNaN(comision)) { cont.innerHTML = '<span class="text-muted" style="font-size:0.8em;">Sin datos de comisión todavía</span>'; return; }
+        const costo = costoEnPesos(entrada);
+        if (costo === null) { cont.innerHTML = '<span class="text-muted" style="font-size:0.8em;">Para verlo en dólares, elegí tu dólar en <a href="/cuenta#dolar">Mi cuenta</a></span>'; return; }
+        const equivalente = monedaDe(entrada) === 'USD' && costo > 0 ? `<span class="text-muted" style="font-size:0.8em; margin-right:6px;">= ${UX.plata(costo)}</span>` : '';
+        if (!precio || isNaN(comision)) { cont.innerHTML = equivalente + '<span class="text-muted" style="font-size:0.8em;">Sin datos de comisión todavía</span>'; return; }
         const ganancia = precio - comision - envio - costo;
         const margen = ganancia / precio * 100;
         const tono = costo === 0 ? 'warn' : (ganancia < 0 ? 'danger' : (margen < window.MARGEN_MINIMO ? 'warn' : 'ok'));
         const texto = costo === 0 ? 'Cargá el costo para ver tu ganancia'
             : (ganancia < 0 ? `Perdés ${UX.plata(Math.abs(ganancia))} por unidad` : `Ganás ${UX.plata(ganancia)} por unidad (${UX.pct(margen, 0)})`);
-        cont.innerHTML = `<span class="ux-pill ux-${tono} ux-pill-suave">${texto}</span>`;
+        cont.innerHTML = equivalente + `<span class="ux-pill ux-${tono} ux-pill-suave">${texto}</span>`;
         fila.classList.toggle('ux-fila-costo-perdida', costo > 0 && ganancia < 0);
     }
 
     function cambiosCostos() {
-        return [...document.querySelectorAll('.input-costo-producto')].filter(i => (parseFloat(i.value) || 0) !== (parseFloat(i.dataset.original) || 0));
+        return [...document.querySelectorAll('.input-costo-producto')].filter(cambio);
+    }
+
+    function cambiosVariantes() {
+        return [...document.querySelectorAll('.input-costo-variante')].filter(cambio);
     }
 
     function refrescarBarraCostos() {
-        const n = cambiosCostos().length;
+        const n = cambiosCostos().length + cambiosVariantes().length;
         const barra = document.getElementById('barra-costos');
         if (!barra) return;
         barra.style.display = n ? '' : 'none';
@@ -393,7 +439,8 @@
         grupo.querySelectorAll('.ux-fila-costo').forEach(fila => {
             if (fila.dataset.activa !== '1') return;
             activas++;
-            const costo = parseFloat(fila.querySelector('.input-costo-producto').value) || 0;
+            const costo = costoEnPesos(fila.querySelector('.input-costo-producto'));
+            if (costo === null) return;                                              // cargado en dólares y sin cotización: tiene costo, pero todavía no se sabe cuánto en pesos
             if (!costo) { sinCosto++; return; }
             const precio = parseFloat(fila.dataset.precio), comision = parseFloat(fila.dataset.comision), envio = parseFloat(fila.dataset.envio) || 0;
             if (!precio || isNaN(comision)) return;
@@ -413,45 +460,64 @@
 
     function alCambiarCosto(input) {
         if (input.value !== '' && parseFloat(input.value) < 0) input.value = 0;
-        input.classList.toggle('ux-campo-cambiado', (parseFloat(input.value) || 0) !== (parseFloat(input.dataset.original) || 0));
+        input.classList.toggle('ux-campo-cambiado', cambio(input));
         pintarGanancia(input.closest('.ux-fila-costo'));
         for (let grupo = input.closest('.ux-grupo-costo'); grupo; grupo = grupo.parentElement && grupo.parentElement.closest('.ux-grupo-costo')) pintarResumen(grupo);      // la variante y el modelo que la contienen
         refrescarBarraCostos();
     }
 
+    function alCambiarCostoVariante(input) {
+        if (input.value !== '' && parseFloat(input.value) < 0) input.value = 0;
+        input.classList.toggle('ux-campo-cambiado', cambio(input));
+        refrescarBarraCostos();
+    }
+
     document.querySelectorAll('.input-costo-producto').forEach(i => i.addEventListener('input', () => alCambiarCosto(i)));
+    document.querySelectorAll('.input-costo-variante').forEach(i => i.addEventListener('input', () => alCambiarCostoVariante(i)));
+    document.querySelectorAll('.select-moneda-costo').forEach(sel => sel.addEventListener('change', () => {
+        const entrada = sel.parentElement.querySelector('input');
+        if (entrada.classList.contains('input-costo-variante')) alCambiarCostoVariante(entrada); else alCambiarCosto(entrada);
+    }));
     document.querySelectorAll('.ux-fila-costo').forEach(pintarGanancia);
     document.querySelectorAll('.ux-grupo-costo').forEach(pintarResumen);
 
-    // «Aplicar»: el costo escrito en un modelo o en una variante pasa a todas sus publicaciones (nada se guarda hasta tocar «Guardar»).
+    // «Aplicar»: el costo escrito en un modelo o en una variante (con su moneda) pasa a todas sus publicaciones (nada se guarda hasta tocar «Guardar»).
     document.querySelectorAll('.btn-copiar-costo').forEach(btn => btn.addEventListener('click', () => {
         const grupo = btn.closest('.ux-grupo-costo');
         const valor = grupo.querySelector('.input-costo-grupo').value;
+        const moneda = grupo.querySelector('.select-moneda-grupo').value;
         if (valor === '' || parseFloat(valor) < 0) { mostrarToast('Escribí primero el costo por unidad', 'error'); return; }
-        grupo.querySelectorAll('.input-costo-producto').forEach(i => { i.value = valor; alCambiarCosto(i); });
+        grupo.querySelectorAll('.input-costo-producto').forEach(i => { i.value = valor; i.parentElement.querySelector('select').value = moneda; alCambiarCosto(i); });
         // Se abren solo las listas donde queda alguna publicación a pérdida con ese costo, para verla
         grupo.querySelectorAll('.ux-fila-costo-perdida').forEach(fila => { for (let d = fila.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true; });
     }));
 
     function descartarCostos() {
-        document.querySelectorAll('.input-costo-producto').forEach(i => { i.value = parseFloat(i.dataset.original) ? i.dataset.original : ''; alCambiarCosto(i); });
+        document.querySelectorAll('.input-costo-producto').forEach(i => { i.value = parseFloat(i.dataset.original) ? i.dataset.original : ''; i.parentElement.querySelector('select').value = i.dataset.monedaOriginal; alCambiarCosto(i); });
+        document.querySelectorAll('.input-costo-variante').forEach(i => { i.value = i.dataset.original; i.parentElement.querySelector('select').value = i.dataset.monedaOriginal; alCambiarCostoVariante(i); });
     }
 
     let _costosGuardando = false;
 
     async function guardarCostosMasivo() {
-        const cambios = {};
-        cambiosCostos().forEach(i => { cambios[i.dataset.idMeli] = parseFloat(i.value) || 0; });
-        if (!Object.keys(cambios).length) return;
+        const cambios = {}, monedas = {}, variantes = {}, monedasVariantes = {};
+        const publicaciones = cambiosCostos(), deVariantes = cambiosVariantes();
+        publicaciones.forEach(i => { cambios[i.dataset.idMeli] = parseFloat(i.value) || 0; monedas[i.dataset.idMeli] = monedaDe(i); });
+        deVariantes.forEach(i => { variantes[i.dataset.idVariante] = parseFloat(i.value) || 0; monedasVariantes[i.dataset.idVariante] = monedaDe(i); });
+        if (!publicaciones.length && !deVariantes.length) return;
 
-        // Es plata: si se cambia un costo que ya estaba cargado se muestra el antes y el después, y no se guarda sin confirmar
-        const pisados = cambiosCostos().filter(i => (parseFloat(i.dataset.original) || 0) > 0);
+        // Es plata: si se cambia un costo que ya estaba cargado se muestra el antes y el después (con su moneda), y no se guarda sin confirmar
+        const pisados = [...publicaciones, ...deVariantes].filter(i => (parseFloat(i.dataset.original) || 0) > 0);
         if (pisados.length) {
-            const antes = pisados.map(i => parseFloat(i.dataset.original)), ahora = pisados.map(i => parseFloat(i.value) || 0);
-            const rango = v => Math.min(...v) === Math.max(...v) ? UX.plata(v[0]) : 'entre ' + UX.plata(Math.min(...v)) + ' y ' + UX.plata(Math.max(...v));
-            const nuevos = Object.keys(cambios).length - pisados.length;
+            const antes = pisados.map(i => ({ valor: parseFloat(i.dataset.original), moneda: i.dataset.monedaOriginal })), ahora = pisados.map(i => ({ valor: parseFloat(i.value) || 0, moneda: monedaDe(i) }));
+            const rango = v => {
+                if (new Set(v.map(x => x.moneda)).size > 1) return [...new Set(v.map(x => montoTexto(x.valor, x.moneda)))].slice(0, 3).join(', ') + (v.length > 3 ? '…' : '');
+                const n = v.map(x => x.valor);
+                return Math.min(...n) === Math.max(...n) ? montoTexto(n[0], v[0].moneda) : 'entre ' + montoTexto(Math.min(...n), v[0].moneda) + ' y ' + montoTexto(Math.max(...n), v[0].moneda);
+            };
+            const nuevos = publicaciones.length + deVariantes.length - pisados.length;
             const detalle = 'Antes: ' + rango(antes) + '. Ahora: ' + rango(ahora) + '.' + (nuevos ? ' Además se cargan ' + nuevos + (nuevos === 1 ? ' costo nuevo.' : ' costos nuevos.') : '');
-            const pregunta = pisados.length === 1 ? '¿Cambiar el costo de una publicación que ya tenía uno?' : '¿Cambiar el costo de ' + pisados.length + ' publicaciones que ya tenían uno?';
+            const pregunta = pisados.length === 1 ? '¿Cambiar un costo que ya estaba cargado?' : '¿Cambiar ' + pisados.length + ' costos que ya estaban cargados?';
             if (!(await confirmarDecision(pregunta, 'Guardar costos', detalle))) return;
         }
 
@@ -460,12 +526,12 @@
         boton.disabled = true;
         boton.innerHTML = '<svg class="icon spin-anim"><use href="#icon-refresh"/></svg>Guardando…';
         try {
-            const d = await (await fetch('/guardar_costos_masivo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ costos: cambios }) })).json();
+            const d = await (await fetch('/guardar_costos_masivo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ costos: cambios, monedas, variantes, monedas_variantes: monedasVariantes }) })).json();
             if (d.ok) {
                 mostrarToast(`✓ ${d.actualizados} costo${d.actualizados === 1 ? '' : 's'} guardado${d.actualizados === 1 ? '' : 's'} — tu ganancia real ya los descuenta`, 'success');
                 setTimeout(() => window.location.reload(), 900);   // recarga: el estado de arriba y los KPIs se recalculan con datos reales
             } else {
-                mostrarToast('No se pudo guardar. Probá de nuevo.', 'error');
+                mostrarToast(d.error || 'No se pudo guardar. Probá de nuevo.', 'error');
                 boton.disabled = false; boton.innerHTML = htmlOriginal; _costosGuardando = false;
             }
         } catch (e) {
@@ -657,14 +723,14 @@
                 body: JSON.stringify({ incluir_valuadas: document.getElementById('flex-incluir')?.checked || false }) })).json();
             if (!d.ok) { mostrarToast('No se pudo aplicar. Probá de nuevo.', 'error'); boton.disabled = false; return; }
             const msg = `Listo: ${d.aplicadas} envío${d.aplicadas === 1 ? '' : 's'} Flex con su costo de entrega — ya está en tu ganancia`;
-            if (cambiosCostos().length) { mostrarToast(msg + '. Guardá tus costos y recargá para ver el estado actualizado.', 'success'); document.getElementById('flex-vista-previa').innerHTML = ''; return; }
+            if (cambiosCostos().length || cambiosVariantes().length) { mostrarToast(msg + '. Guardá tus costos y recargá para ver el estado actualizado.', 'success'); document.getElementById('flex-vista-previa').innerHTML = ''; return; }
             const params = new URLSearchParams(window.location.search);
             params.set('msg', msg); params.set('tipo', 'success');
             window.location.href = window.location.pathname + '?' + params.toString() + '#entrega-flex';
         } catch (e) { mostrarToast('No pude conectar — probá de nuevo.', 'error'); boton.disabled = false; }
     }
 
-    window.addEventListener('beforeunload', (e) => { if (!_costosGuardando && cambiosCostos().length) { e.preventDefault(); e.returnValue = ''; } });
+    window.addEventListener('beforeunload', (e) => { if (!_costosGuardando && (cambiosCostos().length || cambiosVariantes().length)) { e.preventDefault(); e.returnValue = ''; } });
     document.getElementById('btn-guardar-costos-masivo')?.addEventListener('click', () => { _costosGuardando = true; }, true);
     document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-costos'));
 </script>

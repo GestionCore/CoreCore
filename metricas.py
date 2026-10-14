@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from psycopg.rows import dict_row
 import db
 import ads
+import costos_moneda
 import facturacion
 from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina, sql_momento_argentina, limpiar_titulo_modelo, normalizar_talle, nombre_tipo_publicacion
 
@@ -35,14 +36,16 @@ def obtener_evolucion_mensual(usuario_id, cuenta_id, access_token, meses=6):
 
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
-        cursor.execute("""
+        join_variante, costo_unitario = costos_moneda.sql_costo_de_venta()          # el costo de la variante vendida si tiene uno propio; si no, el de la publicación
+        cursor.execute(f"""
             SELECT to_char(date_trunc('month', v.fecha_venta), 'YYYY-MM') AS mes,
                    COALESCE(SUM(v.precio_venta * v.cantidad), 0) AS facturado,
                    COALESCE(SUM(v.cargo_venta), 0) AS comision,
                    COALESCE(SUM(v.costo_envio), 0) AS envios,
-                   COALESCE(SUM(COALESCE(p.precio_costo, 0) * v.cantidad), 0) AS costo_fabricacion
+                   COALESCE(SUM({costo_unitario} * v.cantidad), 0) AS costo_fabricacion
             FROM ventas v
             LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            {join_variante}
             WHERE v.fecha_venta BETWEEN %s AND %s
             GROUP BY 1
         """, (inicios_mes[0].strftime("%Y-%m-%d"), hoy.strftime("%Y-%m-%d")))
@@ -266,12 +269,14 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         """, (fecha_desde, fecha_hasta))
         ventas_db = cursor.fetchall()
 
-        cursor.execute("SELECT id_variante, talle, color, etiqueta FROM productos_variantes")
+        cursor.execute("SELECT id_variante, talle, color, etiqueta, precio_costo FROM productos_variantes")
         # El cursor usa row_factory=dict_row (filas como {"id_variante": ...},
         # no tuplas) — indexar con r[0]/r[1] tira KeyError apenas hay alguna
         # fila. Antes nunca se notaba porque productos_variantes estaba
         # vacía (bloqueada por el bug de RLS sin política).
-        info_variantes = {r["id_variante"]: (r["talle"], r["color"], r.get("etiqueta")) for r in cursor.fetchall()}
+        filas_variantes = cursor.fetchall()
+        info_variantes = {r["id_variante"]: (r["talle"], r["color"], r.get("etiqueta")) for r in filas_variantes}
+        costos_por_variante = {r["id_variante"]: r["precio_costo"] for r in filas_variantes if r.get("precio_costo")}      # solo las variantes con costo propio (en pesos): mandan sobre el de la publicación
 
         cursor.execute("SELECT id_meli, precio_costo, thumbnail, listing_type_id FROM productos_padre")
         # dict(cursor.fetchall()) tampoco sirve con dict_row: cada fila ya es
@@ -340,7 +345,7 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
         cargo_venta = float(cargo_venta or 0.0)
         costo_envio = float(costo_envio or 0.0)
 
-        costo_fabrica_unitario = float(costos_por_item.get(id_meli) or 0.0)
+        costo_fabrica_unitario = costos_moneda.costo_de_venta(id_meli, id_var, costos_por_item, costos_por_variante)
         costo_fabricacion_total = costo_fabrica_unitario * cantidad
 
         unidades_item = unidades_por_item.get(id_meli, 0)

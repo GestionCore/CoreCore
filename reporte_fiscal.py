@@ -13,6 +13,7 @@ del reporte (no al momento de la venta).
 """
 from datetime import date, timedelta
 from io import BytesIO
+import costos_moneda
 import db
 from utils import formatear_moneda, prorratear_mensual
 
@@ -41,10 +42,6 @@ def calcular_reporte_anual(usuario_id, anio: int, cuenta_id=None):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
 
-        # Costos de fabricación por producto
-        cursor.execute("SELECT id_meli, COALESCE(precio_costo, 0) FROM productos_padre")
-        costos_fab = dict(cursor.fetchall())
-
         # Ventas del año — agrupadas por mes
         cursor.execute("""
             SELECT
@@ -61,21 +58,16 @@ def calcular_reporte_anual(usuario_id, anio: int, cuenta_id=None):
         """, (desde_anio, hasta_anio))
         ventas_por_mes = {row[0]: row for row in cursor.fetchall()}
 
-        # Costo fabricación por mes (unidades vendidas × precio_costo por item)
-        cursor.execute("""
-            SELECT
-                EXTRACT(MONTH FROM fecha_venta)::int AS mes,
-                id_meli,
-                SUM(cantidad)::int                   AS total_uds
-            FROM ventas
-            WHERE fecha_venta BETWEEN %s AND %s
-            GROUP BY EXTRACT(MONTH FROM fecha_venta), id_meli
+        # Costo fabricación por mes (unidades vendidas × el costo de cada una: el de su variante si la persona cargó uno, si no el de su publicación)
+        join_variante, costo_unitario = costos_moneda.sql_costo_de_venta()
+        cursor.execute(f"""
+            SELECT EXTRACT(MONTH FROM v.fecha_venta)::int AS mes, COALESCE(SUM({costo_unitario} * v.cantidad), 0)
+            FROM ventas v LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            {join_variante}
+            WHERE v.fecha_venta BETWEEN %s AND %s
+            GROUP BY EXTRACT(MONTH FROM v.fecha_venta)
         """, (desde_anio, hasta_anio))
-        fab_por_mes = {}
-        for row in cursor.fetchall():
-            mes_num, id_meli, total_uds = row[0], row[1], row[2]
-            fab_por_mes.setdefault(mes_num, 0)
-            fab_por_mes[mes_num] += costos_fab.get(id_meli, 0) * total_uds
+        fab_por_mes = {int(mes): float(costo) for mes, costo in cursor.fetchall()}
 
         # Gastos operativos del año — todos los que solapan con el año
         cursor.execute("""

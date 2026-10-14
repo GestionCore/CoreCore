@@ -24,6 +24,7 @@ import db
 import salud_tokens
 import sincronizador
 import espia_competencia
+import costos_moneda
 import dolar
 import mercado_relevador
 import monitor_en_vivo
@@ -177,8 +178,20 @@ def _tarea_actualizar_dolar():
         print(f"[Scheduler] ⚠️ Dólar: {resumen['errores']}")
     if not resumen["guardadas"]:
         monitoreo.reportar("dolar", RuntimeError("ninguna fuente de cotización respondió"))
-    else:
-        print(f"[Scheduler] 💵 Dólar actualizado: {resumen['casas']}")
+        return
+    print(f"[Scheduler] 💵 Dólar actualizado: {resumen['casas']}")
+    # Con el MEP nuevo, cada cuenta que usa el dólar automático vuelve a llevar a pesos sus costos cargados en dólares (con dólar manual no cambia nada: el manual es el mismo)
+    for cuenta_id, usuario_id in _obtener_cuentas_activas():
+        try:
+            with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+                cursor = conexion.cursor()
+                activa = dolar.cotizacion_activa(cursor, cuenta_id)
+                recalculados = costos_moneda.recalcular_cuenta(cursor, cuenta_id, activa["valor"]) if activa["modo"] == "automatico" else 0
+            if recalculados:
+                print(f"[Scheduler] 💵 Cuenta {cuenta_id}: {recalculados} costo(s) en dólares recalculado(s) con el MEP de hoy.")
+        except Exception as e:
+            print(f"[Scheduler] ❌ No se pudieron recalcular los costos en dólares de la cuenta {cuenta_id}: {e}")
+            monitoreo.reportar("dolar:costos", e, cuenta_id)
 
 
 def _tarea_anotar_monitor():

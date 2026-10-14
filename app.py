@@ -72,6 +72,7 @@ import ventas_manuales
 import ventas_hoy
 import preguntas_acciones
 import dolar as dolar_mod
+import costos_moneda
 import monitor_en_vivo
 import pagos
 import correos
@@ -2298,11 +2299,17 @@ def costos_vista():
             flex_perdidas = flex.envios_perdidos(conexion.cursor(), g.cuenta_id, fecha_desde, fecha_hasta)
     except Exception as e:
         print(f"[Costos] ⚠️ Error armando los envíos Flex devueltos: {e}")
+    dolar_activo = None                      # el dólar con el que se llevan a pesos los costos cargados en dólares (Mi cuenta)
+    try:
+        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+            dolar_activo = dolar_mod.para_pantalla(dolar_mod.cotizacion_activa(conexion.cursor(), g.cuenta_id))
+    except Exception as e:
+        print(f"[Costos] ⚠️ No se pudo leer la cotización del dólar: {e}")
     flex_data = {"umbrales": flex.umbrales_para_vista(flex_config), "zonas": (flex_config["info"] or {}).get("zonas", []),
                  "origen": (flex_config["info"] or {}).get("origen"), "reintegro_pct": int(round(flex.REINTEGRO_MELI * 100)),
                  "vista_previa": flex_vista_previa}
     return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, modelos=modelos, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta,
-                           flex_data=flex_data, flex_pendientes_n=flex_pendientes_n, flex_perdidas=flex_perdidas, hay_flex=hay_flex, active_nav="costos")
+                           flex_data=flex_data, flex_pendientes_n=flex_pendientes_n, flex_perdidas=flex_perdidas, dolar_activo=dolar_activo, hay_flex=hay_flex, active_nav="costos")
 
 
 def _config_flex_json(cursor):
@@ -2453,23 +2460,29 @@ def agregar_gasto():
 def guardar_costos_masivo():
     import db
     data = request.get_json(silent=True) or {}
-    costos_dict = data.get("costos", {})
-    if not costos_dict:
+    costos_dict, variantes_dict = data.get("costos") or {}, data.get("variantes") or {}
+    monedas, monedas_variantes = data.get("monedas") or {}, data.get("monedas_variantes") or {}
+    if not (isinstance(costos_dict, dict) and isinstance(variantes_dict, dict)) or not (costos_dict or variantes_dict):
         return jsonify({"ok": False, "error": "Nada para guardar"}), 400
-    actualizados = 0
+    actualizados, errores = 0, []
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
+        valor_dolar = dolar_mod.cotizacion_activa(cursor, g.cuenta_id)["valor"]          # la cotización de la cuenta (MEP automático o su dólar manual) para los costos en dólares
+        # Cada costo pasa por costos_moneda: valida el monto (nada de negativos, «nan» ni «inf», que ensuciarían todos los márgenes) y deja bien la moneda y el valor en pesos
         for id_meli, nuevo_costo in costos_dict.items():
-            try:
-                costo = float(nuevo_costo)
-            except (ValueError, TypeError):
-                continue
-            # Un costo negativo o "nan"/"inf" no tiene sentido y ensuciaría todos los márgenes
-            if not (0 <= costo < 1e12):
-                continue
-            cursor.execute("UPDATE productos_padre SET precio_costo = %s WHERE id_meli = %s", (costo, id_meli))
-            actualizados += cursor.rowcount
-    return jsonify({"ok": True, "actualizados": actualizados})
+            ok, mensaje, filas = costos_moneda.guardar_costo_publicacion(cursor, g.cuenta_id, str(id_meli), nuevo_costo, monedas.get(id_meli) or "ARS", valor_dolar)
+            actualizados += filas
+            if not ok:
+                errores.append(mensaje)
+        for id_variante, nuevo_costo in variantes_dict.items():
+            ok, mensaje, filas = costos_moneda.guardar_costo_variante(cursor, g.cuenta_id, str(id_variante), nuevo_costo, monedas_variantes.get(id_variante) or "ARS", valor_dolar)
+            actualizados += filas
+            if not ok:
+                errores.append(mensaje)
+    errores = list(dict.fromkeys(errores))
+    if errores and not actualizados:
+        return jsonify({"ok": False, "error": errores[0], "errores": errores}), 400
+    return jsonify({"ok": True, "actualizados": actualizados, "errores": errores})
 
 
 @app.route("/eliminar_gasto/<int:id_gasto>", methods=["POST"])
@@ -3111,6 +3124,8 @@ def api_drawer_info(id_meli):
     descripcion = ""
     atributos = []
     editable = estado in publicacion_edicion.ESTADOS_EDITABLES
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        en_dolares = costos_moneda.costos_originales(conexion.cursor(), g.cuenta_id)[0].get(id_meli)          # {"moneda": "USD", "original": …} si el costo está cargado en dólares
 
     if access_token:
         try:
@@ -3131,7 +3146,7 @@ def api_drawer_info(id_meli):
 
     return jsonify({
         "titulo": titulo, "precio": precio, "estado": estado, "estado_nombre": publicacion_edicion.nombre_estado(estado), "estado_editable": editable,
-        "titulo_max": publicacion_edicion.MAX_TITULO, "precio_costo": precio_costo or 0.0,
+        "titulo_max": publicacion_edicion.MAX_TITULO, "precio_costo": precio_costo or 0.0, "costo_en_dolares": en_dolares["original"] if en_dolares else None,
         "descripcion": descripcion, "atributos": atributos,
     })
 
@@ -3147,11 +3162,12 @@ def api_drawer_guardar(id_meli):
     data = request.get_json(silent=True) or {}
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("SELECT titulo, precio, estado FROM productos_padre WHERE cuenta_id = %s AND id_meli = %s", (g.cuenta_id, id_meli))
+        cursor.execute("SELECT titulo, precio, estado, precio_costo FROM productos_padre WHERE cuenta_id = %s AND id_meli = %s", (g.cuenta_id, id_meli))
         fila = cursor.fetchone()
     if not fila:
         return jsonify({"ok": False, "detalle": "No encontramos esa publicación."}), 404
     actual = {"titulo": fila[0], "precio": float(fila[1] or 0), "estado": fila[2]}
+    costo_actual = float(fila[3] or 0)
 
     payload, errores = publicacion_edicion.armar_cambios(actual, {"titulo": data.get("titulo"), "precio": data.get("precio"), "estado": data.get("estado")})
     precio_costo = None
@@ -3165,9 +3181,9 @@ def api_drawer_guardar(id_meli):
     if errores:
         return jsonify({"ok": False, "detalle": errores[0]}), 400
 
-    if precio_costo is not None:
+    if precio_costo is not None and abs(precio_costo - costo_actual) >= 0.005:
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-            conexion.cursor().execute("UPDATE productos_padre SET precio_costo = %s WHERE cuenta_id = %s AND id_meli = %s", (precio_costo, g.cuenta_id, id_meli))
+            costos_moneda.guardar_costo_publicacion(conexion.cursor(), g.cuenta_id, id_meli, precio_costo, "ARS")
 
     cambios = publicacion_edicion.resumen_cambios(actual, payload)
     if payload:
@@ -3948,11 +3964,13 @@ def api_cuenta_dolar():
             cursor = conexion.cursor()
             ok, mensaje = dolar_mod.guardar_modo(cursor, g.cuenta_id, datos.get("modo"), datos.get("valor"))
             activa = dolar_mod.para_pantalla(dolar_mod.cotizacion_activa(cursor, g.cuenta_id)) if ok else None
+            # Los costos cargados en dólares se vuelven a llevar a pesos con la cotización nueva (en la misma transacción: nunca queda a medias)
+            recalculados = costos_moneda.recalcular_cuenta(cursor, g.cuenta_id, activa["valor"]) if ok and activa else 0
     except Exception as e:
         return jsonify({"ok": False, "detalle": _detalle_error(e)}), 500
     if not ok:
         return jsonify({"ok": False, "detalle": mensaje}), 400
-    return jsonify({"ok": True, "detalle": mensaje, "dolar": activa})
+    return jsonify({"ok": True, "detalle": mensaje, "dolar": activa, "costos_recalculados": recalculados})
 
 
 @app.route("/api/cuenta/flex_hora_corte", methods=["POST"])

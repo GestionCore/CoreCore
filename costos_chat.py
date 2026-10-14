@@ -17,6 +17,7 @@ import json
 import re
 import unicodedata
 from datetime import datetime
+import costos_moneda
 import db
 import ia_asistente
 from utils import limpiar_titulo_modelo, hoy_argentina
@@ -280,6 +281,5 @@ def confirmar_y_guardar(usuario_id, cuenta_id, propuestas, costos_productos=None
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, fila)
         for costo, ids in cargas_costo:
-            cursor.execute("UPDATE productos_padre SET precio_costo = %s WHERE id_meli = ANY(%s)", (costo, ids))
-            actualizadas += cursor.rowcount
+            actualizadas += costos_moneda.guardar_costo_publicacion(cursor, cuenta_id, ids, costo, "ARS")[2]            # en pesos, por el camino único de los costos
     return True, {"gastos": len(filas), "publicaciones": actualizadas}

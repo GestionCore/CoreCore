@@ -59,6 +59,7 @@ def _producto(id_meli, titulo, costo, precio, recibis, estado="active", talle_re
 def _datos(monkeypatch, gastos, productos, envios, desde="2026-09-01", hasta="2026-09-14"):
     cursor = _Cursor({"FROM gastos_operativos": gastos, "FROM productos_padre": productos, "AVG(costo_envio)": envios})
     monkeypatch.setattr(costos.db, "conexion_usuario", lambda usuario, cuenta=None: _Conexion(cursor))
+    monkeypatch.setattr(costos.costos_moneda, "costos_originales", lambda cur, cuenta_id: ({}, {}))        # costos en dólares y por variante: se prueban contra la base real en test_costos_moneda
     return costos.obtener_datos_costos(1, desde, hasta, 7), cursor
 
 
@@ -158,4 +159,4 @@ def test_la_cobertura_mide_por_plata_y_cuenta_costo_cero_como_sin_costo():
     cursor = _Cursor({"FROM ventas": [(None, None, None)]})
     assert costos.cobertura_de_costos(cursor, "a", "b")["pct_sin_costo"] == 0.0                                         # una base sin ventas devuelve NULL: no rompe
     sql = cursor.ejecutadas[0][0]
-    assert "COALESCE(p.precio_costo, 0) <= 0" in sql                                                                    # costo vacío o en $0 = sin costo
+    assert "COALESCE(NULLIF(pv.precio_costo, 0), NULLIF(p.precio_costo, 0), 0) <= 0" in sql                             # costo vacío o en $0 = sin costo (el de la variante vendida, y si no tiene, el de la publicación)

@@ -53,4 +53,4 @@ def test_aplicar_valida_otra_vez_y_filtra_por_cuenta():
     n = ci.aplicar(cur, 7, [{"id_meli": "MLA1", "despues": 4500}, {"id_meli": "MLA2", "despues": "mal"}, {"id_meli": "", "despues": 1}, {"id_meli": "MLA3", "despues": -2}])
     assert n == 1 and len(cur.consultas) == 1
     sql, params = cur.consultas[0]
-    assert "cuenta_id = %s" in sql and params == (4500.0, 7, "MLA1")
+    assert "cuenta_id = %s" in sql and params == (4500.0, 4500.0, "ARS", 7, ["MLA1"])          # en pesos: costo en pesos, valor original, moneda, cuenta y publicación

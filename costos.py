@@ -11,6 +11,7 @@ sentido en períodos cortos como "últimos 7 días"."""
 import re
 from datetime import datetime
 from psycopg.rows import dict_row
+import costos_moneda
 import db
 from utils import formatear_moneda, limpiar_titulo_modelo, normalizar_talle, prorratear_mensual
 
@@ -25,11 +26,13 @@ def cobertura_de_costos(cursor, desde, hasta):
     vende y no tiene costo importa poco; la que más factura sin costo, mucho.
     Devuelve {"facturado", "sin_costo", "pct_sin_costo", "publicaciones", "avisar"}.
     """
-    cursor.execute("""
+    join_variante, costo_unitario = costos_moneda.sql_costo_de_venta()          # una venta tiene costo si lo tiene su variante o, si no, su publicación
+    cursor.execute(f"""
         SELECT COALESCE(SUM(v.precio_venta * v.cantidad), 0),
-               COALESCE(SUM(v.precio_venta * v.cantidad) FILTER (WHERE COALESCE(p.precio_costo, 0) <= 0), 0),
-               COUNT(DISTINCT v.id_meli) FILTER (WHERE COALESCE(p.precio_costo, 0) <= 0)
+               COALESCE(SUM(v.precio_venta * v.cantidad) FILTER (WHERE {costo_unitario} <= 0), 0),
+               COUNT(DISTINCT v.id_meli) FILTER (WHERE {costo_unitario} <= 0)
         FROM ventas v LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+        {join_variante}
         WHERE v.fecha_venta BETWEEN %s AND %s
     """, (desde, hasta))
     facturado, sin_costo, publicaciones = cursor.fetchone()
@@ -177,6 +180,8 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
         # columna calculada sin alias.
         cursor.execute("SELECT id_meli, AVG(costo_envio) AS envio_promedio FROM ventas WHERE costo_envio > 0 GROUP BY id_meli")
         envio_promedio_por_item = {r["id_meli"]: float(r["envio_promedio"]) for r in cursor.fetchall()}
+        # Cargado en pesos o en dólares, y el costo propio de cada variante (en las publicaciones que tienen más de una)
+        en_dolares, variantes_por_publicacion = costos_moneda.costos_originales(conexion.cursor(), cuenta_id)
 
     productos_costo = []
     for fila in filas_costo:
@@ -195,8 +200,11 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
                 "comision": round((comision_est / precio_p) * 100, 1),
                 "ganancia": round(max(ganancia_neta, 0) / precio_p * 100, 1),
             }
+        usd = en_dolares.get(fila["id_meli"])
         productos_costo.append({
             "id": fila["id_meli"], "titulo": fila["titulo"], "precio_costo": precio_costo_p,
+            # lo que la persona cargó: en dólares el monto en US$, y si no el de pesos (precio_costo es SIEMPRE el costo en pesos)
+            "moneda": "USD" if usd else "ARS", "costo_mostrado": usd["original"] if usd else precio_costo_p, "variantes_ml": variantes_por_publicacion.get(fila["id_meli"], []),
             "precio_costo_formateado": formatear_moneda(precio_costo_p), "estado": fila["estado"],
             "thumbnail": fila["thumbnail"],
             "precio_formateado": formatear_moneda(precio_p) if precio_p else None,

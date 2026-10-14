@@ -16,12 +16,13 @@ import costos
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def _pub(id_, titulo, familia, costo=0.0, estado="active", talle=None, precio=30000.0, comision=2000.0, envio=1500.0, thumbnail=None, etiqueta=None):
+def _pub(id_, titulo, familia, costo=0.0, estado="active", talle=None, precio=30000.0, comision=2000.0, envio=1500.0, thumbnail=None, etiqueta=None, moneda="ARS", variantes_ml=None):
     from utils import limpiar_titulo_modelo, normalizar_talle
     ganancia = precio - comision - envio - costo
     return {"id": id_, "titulo": titulo, "precio_costo": costo, "precio_costo_formateado": "0", "estado": estado, "thumbnail": thumbnail, "precio": precio, "comision": comision, "envio": envio,
             "precio_formateado": "10.000", "ganancia_negativa": costo > 0 and ganancia < 0, "modelo": limpiar_titulo_modelo(titulo, talle) or titulo,
-            "talle": normalizar_talle(talle), "etiqueta": etiqueta, "familia": familia}
+            "talle": normalizar_talle(talle), "etiqueta": etiqueta, "familia": familia,
+            "moneda": moneda, "costo_mostrado": costo, "variantes_ml": variantes_ml or []}
 
 
 def _buzo(color, talles, **kw):
@@ -153,7 +154,7 @@ def renderizar():
 def _contexto(productos):
     return dict(gastos=[], stats={"fijos": "0", "variables": "0", "total": "0", "fijos_raw": 0, "variables_raw": 0}, productos=productos, modelos=costos.agrupar_modelos(productos),
                 fecha_desde="2026-10-01", fecha_hasta="2026-10-12", flex_data={"umbrales": [], "zonas": [], "origen": None, "reintegro_pct": 10, "vista_previa": {"umbrales": [], "ordenes": 0, "costo_total": 0, "sin_precio": 0}},
-                flex_pendientes_n=0, hay_flex=False, active_nav="costos")
+                flex_pendientes_n=0, hay_flex=False, active_nav="costos", dolar_activo={"modo": "automatico", "valor": 1500.0})
 
 
 def test_la_pantalla_ofrece_un_campo_por_modelo_y_otro_por_variante_y_conserva_un_campo_por_publicacion(renderizar):
@@ -189,7 +190,7 @@ def test_los_titulos_de_terceros_se_escapan_en_la_pantalla(renderizar):
 
 def test_guardar_confirma_antes_de_pisar_un_costo_ya_cargado():
     fuente = open(os.path.join(RAIZ, "templates", "costos.html"), encoding="utf-8").read()
-    assert "await confirmarDecision(" in fuente and "que ya tenían uno" in fuente and "'Antes: ' + rango(antes)" in fuente
+    assert "await confirmarDecision(" in fuente and "que ya estaban cargados" in fuente and "'Antes: ' + rango(antes)" in fuente
 
 
 # ── El resumen en vivo de cada grupo (JavaScript, con node) ─────────────────────────────────────────────────────────────────
@@ -208,15 +209,24 @@ def _funcion_js(fuente, nombre):
             return fuente[i:k + 1]
 
 
-def _resumen(filas, margen_minimo=15):
-    """filas: [(activa, costo, precio, comision, envio)] → (clase, texto) que pinta pintarResumen."""
+def _constantes_js(fuente, nombres):
+    """Las líneas `const nombre = …;` de la pantalla (el dólar y la conversión a pesos), tal cual están escritas."""
+    import re
+    return "\n".join(re.search(rf"^\s*const {n} = .*$", fuente, re.M).group(0) for n in nombres)
+
+
+def _resumen(filas, margen_minimo=15, dolar=None):
+    """filas: [(activa, costo, precio, comision, envio)] o con una moneda al final ('USD') → (clase, texto) que pinta pintarResumen."""
     fuente = open(os.path.join(RAIZ, "templates", "costos.html"), encoding="utf-8").read()
+    filas = [tuple(f) + ("ARS",) if len(f) == 5 else tuple(f) for f in filas]
     programa = f"""
 global.window = {{ MARGEN_MINIMO: {margen_minimo} }};
 global.UX = {{ plata: (n) => '$' + Math.round(n).toLocaleString('es-AR') }};
-const filas = {json.dumps([{"activa": a, "costo": c, "precio": p, "comision": co, "envio": e} for a, c, p, co, e in filas])}.map(f => ({{
+const DOLAR = {json.dumps(dolar)};
+{_constantes_js(fuente, ("monedaDe", "aPesos", "costoEnPesos"))}
+const filas = {json.dumps([{"activa": a, "costo": c, "precio": p, "comision": co, "envio": e, "moneda": m} for a, c, p, co, e, m in filas])}.map(f => ({{
   dataset: {{ activa: f.activa ? '1' : '0', precio: String(f.precio), comision: f.comision === null ? '' : String(f.comision), envio: String(f.envio) }},
-  querySelector: () => ({{ value: f.costo === null ? '' : String(f.costo) }}) }}));
+  querySelector: () => ({{ value: f.costo === null ? '' : String(f.costo), parentElement: {{ querySelector: () => ({{ value: f.moneda }}) }} }}) }}));
 const marca = {{ className: '', textContent: '' }};
 const grupo = {{ querySelector: () => marca, querySelectorAll: () => filas }};
 {_funcion_js(fuente, "pintarResumen")}
@@ -256,3 +266,33 @@ def test_el_resumen_sin_datos_de_comision_no_inventa_una_ganancia():
 @CON_NODE
 def test_el_resumen_de_un_grupo_todo_pausado():
     assert _resumen([(False, 0, 10000, 2000, 1500), (False, 3000, 10000, 2000, 1500)]) == ["ux-grupo-resumen ux-pill ux-neutral ux-pill-suave", "Todas pausadas"]
+
+
+@CON_NODE
+def test_un_costo_en_dolares_se_lleva_a_pesos_con_la_cotizacion_antes_de_calcular_la_ganancia():
+    # US$ 3 × 1.500 = $4.500: 10.000 − 2.000 − 1.500 − 4.500 = $2.000 de ganancia (20 %)
+    assert _resumen([(True, 3, 10000, 2000, 1500, "USD")], dolar=1500) == ["ux-grupo-resumen ux-pill ux-ok ux-pill-suave", "Ganás desde $2.000 por unidad"]
+    # con el dólar a 2.500 el mismo costo es $7.500 y se pierde plata
+    assert _resumen([(True, 3, 10000, 2000, 1500, "USD")], dolar=2500)[1] == "1 pierde plata"
+
+
+@CON_NODE
+def test_sin_cotizacion_un_costo_en_dolares_no_se_toma_por_cero_ni_se_inventa_una_ganancia():
+    # cargado en dólares y sin dólar elegido: tiene costo (no es «sin costo»), pero todavía no se sabe cuánto en pesos
+    assert _resumen([(True, 3, 10000, 2000, 1500, "USD")], dolar=None) == ["ux-grupo-resumen ux-pill ux-ok ux-pill-suave", "Costo cargado"]
+
+
+def test_cada_costo_lleva_su_selector_de_moneda_y_las_publicaciones_con_variantes_su_costo_propio(renderizar):
+    variantes = [{"id_variante": "V1", "etiqueta": "Rojo", "pesos": 10500.0, "moneda": "USD", "original": 7.0}, {"id_variante": "V2", "etiqueta": "Azul", "pesos": None, "moneda": "ARS", "original": None}]
+    productos = [_pub("a", "Termo Acero 1l", "F1", costo=15000.0, moneda="USD", variantes_ml=variantes), _pub("sola", "Gorra Lisa Roja", None, costo=3000.0)]
+    html = renderizar(**_contexto(productos))
+    assert html.count('class="select-moneda-costo"') == 2 + 2                                    # uno por publicación y uno por variante
+    assert 'data-moneda-original="USD"' in html and 'value="15000"' in html                      # lo que se muestra es lo que la persona cargó, no los pesos
+    assert html.count('class="input-costo-variante"') == 2 and 'data-id-variante="V1"' in html and 'value="7"' in html
+    assert "Costo por variante" in html and html.count('class="ux-variantes-ml"') == 1           # solo la publicación que tiene más de una variante
+    assert "1.500" in html and "dólar MEP automático" in html and 'href="/cuenta#dolar"' in html  # de dónde sale la cotización y cómo cambiarla
+
+
+def test_sin_cotizacion_la_pantalla_manda_a_elegir_el_dolar(renderizar):
+    html = renderizar(**{**_contexto([_pub("sola", "Gorra Lisa Roja", None, costo=3000.0)]), "dolar_activo": {"modo": "automatico", "valor": None}})
+    assert "todavía no hay una" in html and 'href="/cuenta#dolar"' in html

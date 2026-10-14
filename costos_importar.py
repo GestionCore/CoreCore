@@ -12,6 +12,7 @@ import re
 from flask import Blueprint, request, jsonify, send_file, g
 from auth.middleware import login_requerido
 from auditoria import auditar
+import costos_moneda
 import db
 
 bp = Blueprint("costos_importar", __name__)
@@ -121,8 +122,7 @@ def aplicar(cursor, cuenta_id, cambios):
         id_meli, monto = str(c.get("id_meli") or ""), parsear_monto(c.get("despues"))
         if not id_meli or monto is None:
             continue
-        cursor.execute("UPDATE productos_padre SET precio_costo = %s WHERE cuenta_id = %s AND id_meli = %s", (round(monto, 2), cuenta_id, id_meli))
-        actualizadas += cursor.rowcount
+        actualizadas += costos_moneda.guardar_costo_publicacion(cursor, cuenta_id, id_meli, round(monto, 2), "ARS")[2]     # en pesos, por el camino único de los costos
     return actualizadas
 
 

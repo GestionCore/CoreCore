@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 import db
 import ads
+import costos_moneda
 from utils import formatear_moneda, limpiar_titulo_modelo, normalizar_talle
 
 
@@ -49,13 +50,15 @@ def calcular_datos_publicidad(usuario_id, cuenta_id, access_token, fecha_desde, 
 
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("""
+        join_variante, costo_unitario = costos_moneda.sql_costo_de_venta()          # el costo de la variante vendida si tiene uno propio; si no, el de la publicación
+        cursor.execute(f"""
             SELECT
                 COALESCE(SUM(v.precio_venta*v.cantidad),0) AS facturado,
                 COALESCE(SUM(v.cargo_venta),0) AS comision,
                 COALESCE(SUM(v.costo_envio),0) AS envios,
-                COALESCE(SUM(COALESCE(p.precio_costo,0)*v.cantidad),0) AS costo_fabricacion
+                COALESCE(SUM({costo_unitario}*v.cantidad),0) AS costo_fabricacion
             FROM ventas v LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            {join_variante}
             WHERE v.fecha_venta BETWEEN %s AND %s
         """, (fecha_desde, fecha_hasta))
         facturacion_total_negocio, comision_total, envios_total, costo_fabricacion_total = (float(x or 0.0) for x in cursor.fetchone())

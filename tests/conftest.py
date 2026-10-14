@@ -18,8 +18,24 @@ except ImportError:
     pass
 
 
+class _TransaccionFalsa:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _ConexionFalsa:
+    """Lo mínimo de una conexión que usa el código con puntos de guardado (`cursor.connection.transaction()`)."""
+    def transaction(self):
+        return _TransaccionFalsa()
+
+
 class CursorFalso:
     """Cursor de mentira para probar funciones que arman datos a partir de consultas: devuelve, en orden, los resultados que se le cargan."""
+
+    connection = _ConexionFalsa()
 
     def __init__(self, *resultados):
         self.resultados = list(resultados)

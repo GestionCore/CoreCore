@@ -1281,7 +1281,8 @@ async function cargarTabInfo(idMeli) {
                     <select id="drawer-estado" ${d.estado_editable ? '' : 'disabled'}>${opcionesEstado}</select>
                 </div>
             </div>
-            <div class="field-group" style="margin-bottom:14px;"><label class="field-label">Costo de fabricación ($) <span class="text-muted" style="font-weight:400;">solo en CoreLux</span></label><input type="number" step="0.01" min="0" inputmode="decimal" id="drawer-costo" value="${Number(d.precio_costo) || 0}"></div>
+            <div class="field-group" style="margin-bottom:14px;"><label class="field-label">Costo de fabricación ($) <span class="text-muted" style="font-weight:400;">solo en CoreLux</span></label><input type="number" step="0.01" min="0" inputmode="decimal" id="drawer-costo" value="${Number(d.precio_costo) || 0}" ${d.costo_en_dolares ? 'disabled' : ''}>
+                ${d.costo_en_dolares ? `<div class="text-muted" style="font-size:0.82em; margin-top:6px;">Está cargado en <b>US$ ${UX.esc(Number(d.costo_en_dolares).toLocaleString('es-AR'))}</b> y se lleva a pesos con tu dólar del día. Para cambiarlo, andá a <a href="/costos"><b>Costos</b></a>.</div>` : ''}</div>
             <button type="button" class="btn btn-primary btn-block" data-click="guardarDrawerInfo">Guardar cambios</button>
             <a href="/publicacion/${encodeURIComponent(idMeli)}/timeline" class="btn btn-secondary btn-block" style="margin-top:8px; text-align:center; text-decoration:none;"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-info"/></svg>Ver línea de tiempo completa</a>
         `;

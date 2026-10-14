@@ -1,4 +1,5 @@
 """Comparador Logística Propia vs. FULL — portado de Santi Mens."""
+import costos_moneda
 import db
 import facturacion
 from utils import formatear_moneda
@@ -7,10 +8,12 @@ from utils import formatear_moneda
 def calcular_comparacion(usuario_id, cuenta_id, access_token, fecha_desde, fecha_hasta):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("""
+        join_variante, costo_unitario = costos_moneda.sql_costo_de_venta()          # el costo de la variante vendida si tiene uno propio; si no, el de la publicación
+        cursor.execute(f"""
             SELECT v.id_meli, v.cantidad, v.precio_venta, v.cargo_venta, v.costo_envio,
-                   COALESCE(v.tipo_logistica, p.tipo_logistica, 'desconocido'), COALESCE(p.precio_costo, 0)
+                   COALESCE(v.tipo_logistica, p.tipo_logistica, 'desconocido'), {costo_unitario}
             FROM ventas v LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+            {join_variante}
             WHERE v.fecha_venta BETWEEN %s AND %s
         """, (fecha_desde, fecha_hasta))
         filas = cursor.fetchall()
