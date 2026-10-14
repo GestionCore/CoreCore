@@ -43,7 +43,7 @@
 </div>
 
 {% if rs.pendiente > 0 %}
-{{ banner("warn", "alert", "<b>Tenés " ~ (rs.pendiente|plata) ~ " de cargos pendientes de pago</b> a Mercado Libre", "Con las percepciones, el total adeudado aproximado es " ~ (rs.adeudado|plata) ~ ".") }}
+{{ banner("warn", "alert", "<b>Tenés " ~ (rs.pendiente|plata) ~ " de cargos pendientes de pago</b> a Mercado Libre", "Con las percepciones, el total adeudado aproximado es " ~ (rs.adeudado|plata) ~ ".", "Ver qué falta", "#estado-factura", "btn-secondary") }}
 {% endif %}
 
 <!-- ── 2. NÚMEROS ─────────────────────────────────────────────────────── -->

@@ -65,7 +65,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 
 33. [A·S] **El hero primero, para todos;** el checklist «Completá tu perfil» se pliega solo cuando lo que falta es opcional, y tiene «Más tarde» que se recuerda por persona.
 34. [A·S] **HECHO (2026-10-13: solo la primera acción de la cola lleva el botón violeta; las demás, secundario; la urgencia está en la tarjeta) · «Lo que tenés que hacer hoy» pinta botones de tres colores** (naranja, gris, violeta) sin criterio → un solo botón principal (el de más valor); el resto secundarios. El color de urgencia va en el borde de la tarjeta, no en el botón.
-35. [A·M] **Cada pendiente con su plata en juego:** «68,7 % sin costo» → «tu ganancia puede estar inflada en ~$X»; ordenar por esa cifra.
+35. [A·M] **HECHO (cubierto): el aviso de costos ya se mide por plata** (`costos.cobertura_de_costos`: «al X % de lo que facturaste le falta el costo») en Dashboard, Métricas y Costos. **Cada pendiente con su plata en juego:** «68,7 % sin costo» → «tu ganancia puede estar inflada en ~$X»; ordenar por esa cifra.
 36. [M·M] **Reordenar los paneles** (arrastrar) y guardar el orden por cuenta; hoy «Personalizar» solo muestra u oculta.
 37. [M·M] **El hero cuenta solo el total del día** → una minilínea por hora comparando hoy contra ayer (y contra el promedio), para ver si el ritmo es bueno.
 38. [M·S] **El gráfico de proyección del mes termina en el día 28** y el futuro queda en blanco → el mes completo con lo que falta sombreado y la línea del mes anterior punteada (ya está).
@@ -109,7 +109,7 @@ Otros hallazgos medidos: **0** regiones `aria-live` (los avisos no se anuncian a
 67. [M·S] **Selector de período** con «Este mes», «Mes pasado», «Este año» y «comparar con el anterior» activables (`PM#208`), aplicado al elegir, sin botón «Ver período».
 68. [M·S] **«Distribución de márgenes»** («10 a 20 %: 5 % (1)») no se puede tocar → cada fila abre qué modelos son.
 69. [M·S] **La curva de Pareto** tiene los nombres rotados e ilegibles → barras horizontales con el nombre completo recortado y su tooltip.
-70. [M·S] **Facturación: «Tenés $105.618 de cargos pendientes de pago»** es un aviso sin salida → «Ver qué debés» con el detalle y la fecha límite.
+70. [M·S] **HECHO (2026-10-14) · Facturación: «Tenés $105.618 de cargos pendientes de pago»** era un aviso sin salida → el aviso tiene el botón «Ver qué falta» que baja a «Lo acreditado y lo que falta de esta factura» (con la deuda cerrada y su fecha de vencimiento cuando MeLi la informa).
 71. [M·S] **Nombres técnicos en los KPI de Facturación** («Ganancia bruta real», «Percepciones (aprox.)», «Pagos cobrados −$388.898» con signo negativo) → palabras del dueño del negocio: «Lo que te queda de Mercado Libre», «Impuestos retenidos», «Lo que ya te descontaron».
 72. [M·M] **Cobros:** un calendario semanal con barras por día de acreditación y el acumulado, en lugar de una lista.
 73. [M·M] **Reporte fiscal:** vista previa tipo hoja del contador, descarga en Excel y PDF con un clic, y un sello «costo estimado» donde corresponde.

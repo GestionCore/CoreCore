@@ -69,7 +69,7 @@
             <div style="margin-top:4px; font-size:0.9em;">
                 {% if p.variante and p.variante != 'Única' %}<b>{{ p.variante }}</b> · {% endif %}<b>{{ p.cantidad }} u.</b>
                 {% if p.comprador_nombre %} · {{ p.comprador_nombre }}{% endif %}
-                {% if p.comprador_nickname %} · <span class="text-muted" title="Usuario de MeLi">@{{ p.comprador_nickname }}</span>{% endif %}
+                {% if p.comprador_nickname %} · <span class="text-muted" style="overflow-wrap:anywhere;" title="Usuario de MeLi">@{{ p.comprador_nickname }}</span>{% endif %}
             </div>
             <div class="flex-gap" style="margin-top:6px; gap:6px;">
                 <span class="ux-pill {{ 'ux-info' if p.tipo_envio == 'Flex' else 'ux-neutral ux-pill-suave' }}">{{ p.tipo_envio }}</span>

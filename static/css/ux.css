@@ -514,7 +514,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 }
 
 /* ---------- Calculadora: datos a la izquierda, resultado a la derecha (se apilan en celular) ---------- */
-.ux-calc { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 20px; align-items: start; margin-bottom: 8px; }
+.ux-calc { display: grid; grid-template-columns: minmax(min(300px, 100%), 420px) 1fr; gap: 20px; align-items: start; margin-bottom: 8px; }
 .ux-calc > .panel { position: sticky; top: calc(var(--topbar-h, 58px) + 56px); max-height: calc(100vh - var(--topbar-h, 58px) - 76px); overflow-y: auto; }      /* con muchos campos, el panel se desplaza adentro en vez de quedar cortado */
 .calc-elegido { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .calc-elegido .ux-pill { min-width: 0; max-width: 100%; }
@@ -555,7 +555,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-embudo-tasa { font-size: 0.82em; color: var(--text-secondary); padding-left: 18px; }
 .ux-embudo-tasa b { color: var(--text-primary); }
 
-.ux-dos-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 18px; }
+.ux-dos-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px; margin-top: 18px; }
 .ux-dos-col > .panel { margin: 0; }
 .ux-donut-fila { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
 .ux-donut-caja { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
@@ -591,7 +591,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
     .ux-rank-roas { min-width: 0; }
 }
 
-.ux-camp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.ux-camp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 14px; }
 .ux-camp-card { background: var(--glass-bg); border: 1px solid var(--border-soft); border-top: 3px solid var(--ux-c); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .ux-camp-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .ux-camp-nombre { font-weight: 800; line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
@@ -703,7 +703,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 
 .flex-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .flex-titulo-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 10px; }
-.flex-umbrales { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 14px; }
+.flex-umbrales { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(310px, 100%), 1fr)); gap: 14px; }
 .flex-card { background: var(--glass-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .flex-card-resto { border-color: color-mix(in srgb, var(--accent-primary) 45%, transparent); }
 .flex-card-cab { display: flex; align-items: center; gap: 8px; }

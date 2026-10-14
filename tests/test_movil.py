@@ -6,6 +6,7 @@ Ola 2 del plan de UX (PLAN_UX_200.md): la app en el celular.
   · el checklist «Completá tu perfil» arranca plegado en el celular (abierto ocupaba toda la primera pantalla y empujaba la ganancia de hoy).
 La lógica de JS se ejecuta de verdad con node; los estilos se revisan en el texto (el recorrido en un navegador de 375 px se hizo a mano el 2026-10-12).
 """
+import glob
 import json
 import os
 import re
@@ -293,3 +294,17 @@ def test_el_boton_del_chat_es_mas_chico_solo_en_celular():
 def test_el_checklist_de_perfil_arranca_plegado_en_el_celular():
     html = _leer("templates", "dashboard_personalizable.html")
     assert "d.completos / d.total >= 0.5 || window.innerWidth <= 720" in html
+
+
+# ── Celulares chicos (320 px) ───────────────────────────────────────────────────────────────────────────────────────────────
+
+def test_ninguna_grilla_exige_una_columna_mas_ancha_que_un_celular_de_320_px():
+    """El contenido de un celular de 320 px mide 288 px: `minmax(300px, …)` a secas lo desbordaba (se midió en /metricas, /publicidad, /calculadora y Costos). Hay que escribir `minmax(min(300px, 100%), …)`."""
+    malas = []
+    for archivo in sorted(glob.glob(os.path.join(RAIZ, "static", "css", "*.css")) + glob.glob(os.path.join(RAIZ, "templates", "**", "*.html"), recursive=True)):
+        fuente = open(archivo, encoding="utf-8").read()
+        for n, linea in enumerate(fuente.splitlines(), 1):
+            for m in re.finditer(r"minmax\((\d+)px", linea):                                  # `minmax(min(…` no coincide: después del paréntesis va «min», no un número
+                if int(m.group(1)) > 288:
+                    malas.append(f"{os.path.relpath(archivo, RAIZ)}:{n} minmax({m.group(1)}px …)")
+    assert not malas, "Columnas mínimas más anchas que un celular de 320 px:\n" + "\n".join(malas)
