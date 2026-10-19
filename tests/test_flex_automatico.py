@@ -51,35 +51,36 @@ def test_los_tres_anillos_salen_de_lo_que_informa_mercado_libre_de_cada_envio():
     envios = ([_e("berazategui", 4491)] * 2 + [_e("quilmes", 6291)] * 3 + [_e("caba", 8091)] * 10 + [_e("la matanza", 8091)] * 2 + [_e("la matanza", 6291)]
               + [_e("caba", 0, None)] + [_e(None, 8091)])
     p = flex.armar_propuesta(envios, ZONAS)
-    assert [(u["nombre"], u["precio"], u["envios"]) for u in p["umbrales"]] == [("Zonas cercanas", 4990, 2), ("Distancia media", 6990, 4), ("Zonas lejanas", 8990, 13)]    # 8.091 ÷ 0,9 = 8.990
+    assert [(u["nombre"], u["envios"]) for u in p["umbrales"]] == [("Zonas cercanas", 2), ("Distancia media", 4), ("Zonas lejanas", 13)]            # los grupos salen de 4.491 < 6.291 < 8.091: de menor a mayor costo
+    assert all("precio" not in u for u in p["umbrales"]) and "precio_del_resto" not in p and "$" not in json.dumps(p)                                  # NO se propone ningún precio: lo pone la persona
     assert p["umbrales"][0]["zonas"] == ["Berazategui"] and p["umbrales"][1]["zonas"] == ["Quilmes"]
     assert p["umbrales"][2]["zonas"] == ["CABA", "La_Matanza_1", "La_Matanza_2"]                           # La Matanza: sus dos zonas son una familia; tuvo más envíos a $8.990
     assert "Almirante_Brown" not in json.dumps(p["umbrales"])                                              # una zona sin envíos queda en «resto»: no se inventa su precio
-    assert p["precio_del_resto"] == 8990 and p["reintegro_pct"] == 10.0
+    assert p["reintegro_pct"] == 10.0
     assert p["envios_analizados"] == 20 and p["envios_con_costo"] == 19 and p["envios_sin_costo"] == 1 and p["envios_sin_ubicar"] == 1
     assert p["zonas_en_dos_anillos"] == [{"zona": "La Matanza", "reparto": {"6990": 1, "8990": 2}, "quedo_en": 8990}]
 
 
 def test_la_bonificacion_de_la_cuenta_se_detecta_y_cambia_los_precios():
     p = flex.armar_propuesta([_e("caba", 4250, 0.15)] * 3 + [_e("quilmes", 5950, 0.15)], ZONAS)             # 15 %: 4.250 ÷ 0,85 = 5.000 y 5.950 ÷ 0,85 = 7.000
-    assert p["reintegro_pct"] == 15.0 and [u["precio"] for u in p["umbrales"]] == [5000, 7000] and [u["nombre"] for u in p["umbrales"]] == ["Zonas cercanas", "Zonas lejanas"]
+    assert p["reintegro_pct"] == 15.0 and [u["nombre"] for u in p["umbrales"]] == ["Zonas cercanas", "Zonas lejanas"] and [u["zonas"] for u in p["umbrales"]] == [["CABA"], ["Quilmes"]]
 
 
 def test_sin_datos_de_bonificacion_se_usa_la_de_la_cuenta():
     p = flex.armar_propuesta([_e("caba", 8091, None)], ZONAS, reintegro_actual=0.10)
-    assert p["reintegro_pct"] == 10.0 and p["umbrales"][0]["precio"] == 8990 and p["umbrales"][0]["nombre"] == "Todas tus zonas con costo"
-    assert flex.armar_propuesta([_e("caba", 4000, None)], ZONAS, reintegro_actual=0.20)["umbrales"][0]["precio"] == 5000
+    assert p["reintegro_pct"] == 10.0 and p["umbrales"][0]["nombre"] == "Todas tus zonas con costo"
+    assert flex.armar_propuesta([_e("caba", 4000, None)], ZONAS, reintegro_actual=0.20)["reintegro_pct"] == 20.0
 
 
 def test_si_ninguno_tuvo_costo_no_hay_anillos_que_proponer():
     p = flex.armar_propuesta([_e("caba", 0, None)] * 4, ZONAS)
-    assert p["umbrales"] == [] and p["precio_del_resto"] is None and p["envios_sin_costo"] == 4 and p["envios_con_costo"] == 0
+    assert p["umbrales"] == [] and p["envios_sin_costo"] == 4 and p["envios_con_costo"] == 0
 
 
 def test_una_zona_con_empate_va_al_anillo_mas_caro_por_prudencia():
     p = flex.armar_propuesta([_e("caba", 4491), _e("caba", 8091), _e("quilmes", 6291)], ZONAS)
     caba = next(u for u in p["umbrales"] if "CABA" in u["zonas"])
-    assert caba["precio"] == 8990
+    assert caba["nombre"] == "Zonas lejanas"                                                                 # el anillo de 8.091, no el de 4.491
 
 
 # ── Lo ya consultado a Mercado Libre se guarda y no se repite ───────────────────────────────────────────────────────────────────────────

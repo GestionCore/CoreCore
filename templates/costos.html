@@ -708,7 +708,7 @@
     function pintarResultadoDeteccionFlex(p) {
         const caja = document.getElementById('flex-deteccion');
         if (!caja) return;
-        const anillos = p.umbrales.map(u => `<li><b>${UX.esc(u.nombre)}</b>: ${UX.plata(u.precio)} · ${u.envios} envío${u.envios === 1 ? '' : 's'} · ${u.zonas.length} zona${u.zonas.length === 1 ? '' : 's'}</li>`).join('');
+        const anillos = p.umbrales.map(u => `<li><b>${UX.esc(u.nombre)}</b>: ${u.zonas.length} zona${u.zonas.length === 1 ? '' : 's'} · ${u.envios} envío${u.envios === 1 ? '' : 's'}</li>`).join('');
         const mixtas = (p.zonas_en_dos_anillos || []).length
             ? `<div class="text-muted" style="font-size:0.85em; margin-top:6px;">Tuvieron envíos en dos precios y quedaron en el de más envíos: ${p.zonas_en_dos_anillos.map(z => UX.esc(z.zona)).join(', ')}.</div>` : '';
         const sinUbicar = p.envios_sin_ubicar ? `<div class="text-muted" style="font-size:0.85em; margin-top:6px;">${p.envios_sin_ubicar} envío${p.envios_sin_ubicar === 1 ? '' : 's'} no se pudo${p.envios_sin_ubicar === 1 ? '' : 'ieron'} ubicar en una zona y cuenta${p.envios_sin_ubicar === 1 ? '' : 'n'} en «Resto de las zonas».</div>` : '';
@@ -716,7 +716,7 @@
             <div style="font-weight:800; margin-bottom:6px;">Miré tus últimos ${p.envios_analizados} envíos Flex</div>
             <ul style="margin:0 0 6px 18px; line-height:1.6;">${anillos}</ul>
             <div style="font-size:0.9em; line-height:1.55;"><b>${p.envios_sin_costo}</b> envío${p.envios_sin_costo === 1 ? '' : 's'} no te costaron nada (los paga el comprador o los cubre Mercado Libre) y la bonificación de Mercado Libre es del <b>${p.reintegro_pct}%</b>.</div>
-            <div style="font-size:0.9em; line-height:1.55; margin-top:6px;"><b>Revisá los precios:</b> son los que Mercado Libre informa en tus envíos. Si tu logística te cobra otro monto, cambialo en la tarjeta. Cuando esté bien, tocá <b>«Guardar y ver qué envíos resuelve»</b>.</div>
+            <div style="font-size:0.9em; line-height:1.55; margin-top:6px;"><b>Ahora cargá vos el precio de cada grupo</b> (lo que te cobra tu logística) en las tarjetas de abajo, y tocá <b>«Guardar y ver qué envíos resuelve»</b>. Si querés, podés mover zonas de un grupo a otro.</div>
             ${mixtas}${sinUbicar}
         </div>`;
     }
@@ -724,7 +724,7 @@
     async function detectarFlex() {
         const boton = document.getElementById('btn-flex-detectar');
         if (flexUmbrales.some(u => u.precio !== null && u.precio !== undefined && !isNaN(Number(u.precio)))
-            && !(await confirmarDecision('¿Reemplazar los precios que cargaste?', 'Detectar de todos modos', 'Se van a cambiar los umbrales de abajo por los que informa Mercado Libre. No se guarda nada hasta que toques «Guardar».'))) return;
+            && !(await confirmarDecision('¿Reemplazar tus umbrales?', 'Detectar de todos modos', 'Se van a reemplazar los grupos de zonas de abajo (y los precios que cargaste) por los que detecta tu historial de envíos, SIN precios. No se guarda nada hasta que toques «Guardar».'))) return;
         boton.disabled = true;
         const original = boton.innerHTML;
         boton.textContent = 'Mirando tus envíos…';
@@ -732,10 +732,9 @@
             const d = await (await fetch('/api/flex/detectar', { method: 'POST' })).json();
             if (!d.ok) { mostrarToast(d.error || 'No pude detectar tus zonas.', 'error'); return; }
             const p = d.propuesta;
-            if (!p.umbrales.length) { mostrarToast('Ninguno de tus últimos envíos te costó algo: no hay precios para proponer.', 'info'); return; }
-            const resto = flexUmbrales.find(u => u.resto) || { id: 1, nombre: null, precio: null, zonas: [], resto: true };
-            resto.precio = p.precio_del_resto;
-            flexUmbrales = [resto, ...p.umbrales.map(u => ({ id: null, nombre: u.nombre, precio: u.precio, zonas: u.zonas, resto: false }))];
+            if (!p.umbrales.length) { mostrarToast('Ninguno de tus últimos envíos te costó algo: no hay grupos de zonas para proponer.', 'info'); return; }
+            const resto = { ...(flexUmbrales.find(u => u.resto) || { id: 1, nombre: null, zonas: [], resto: true }), precio: null };
+            flexUmbrales = [resto, ...p.umbrales.map(u => ({ id: null, nombre: u.nombre, precio: null, zonas: u.zonas, resto: false }))];
             REINTEGRO = p.reintegro_pct / 100; _pintarReintegro();
             pintarUmbralesFlex(); _marcarCambiosFlex(true); pintarResultadoDeteccionFlex(p);
         } catch (e) { mostrarToast('No pude conectar — probá de nuevo.', 'error'); }

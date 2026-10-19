@@ -377,8 +377,9 @@ def costos_meli(cursor, cuenta_id, access_token, shipment_ids):
 
 def armar_propuesta(envios, zonas, reintegro_actual=REINTEGRO_MELI):
     """
-    De envíos Flex reales ([{"familia", "costo", "tasa"}]: lo que Mercado Libre le imputó al vendedor por cada uno) arma los anillos de precio que hay en su cuenta: los envíos con costo se agrupan por
-    el precio de la logística (costo ÷ (1 − bonificación)), de menor a mayor, y cada zona va al anillo donde más envíos tuvo. Los de costo $0 (paga el comprador o lo cubre Mercado Libre) no forman anillos.
+    De envíos Flex reales ([{"familia", "costo", "tasa"}]: lo que Mercado Libre le imputó al vendedor por cada uno) arma los anillos que hay en su cuenta: los envíos con costo se agrupan por
+    lo que cuestan (costo ÷ (1 − bonificación)), de menor a mayor, y cada zona va al anillo donde más envíos tuvo. Los de costo $0 (paga el comprador o lo cubre Mercado Libre) no forman anillos.
+    Solo propone QUÉ ZONAS van juntas: NO devuelve ningún precio (lo que cobra la logística lo carga siempre la persona).
     `zonas` es [{"id", "nombre"}] de la cuenta. Devuelve la propuesta que la persona revisa y guarda ella: nada de esto toca una venta.
     """
     pagados = [e for e in envios if e["costo"] and e["costo"] > 0]
@@ -409,9 +410,9 @@ def armar_propuesta(envios, zonas, reintegro_actual=REINTEGRO_MELI):
     for nombre, bruto in zip(nombres, precios):
         familias = sorted(f for f, p in elegido.items() if p == bruto)
         ids = [z["id"] for z in zonas if fz.familia_de_zona(z["id"]) in familias]
-        umbrales.append({"nombre": nombre, "precio": bruto, "zonas": ids, "envios": len(por_precio[bruto])})
+        umbrales.append({"nombre": nombre, "zonas": ids, "envios": len(por_precio[bruto])})          # SIN precio: el de la logística lo pone siempre la persona
     return {
-        "reintegro_pct": round(tasa * 100, 2), "umbrales": umbrales, "precio_del_resto": precios[-1] if precios else None, "envios_analizados": len(envios), "envios_con_costo": len(pagados),
+        "reintegro_pct": round(tasa * 100, 2), "umbrales": umbrales, "envios_analizados": len(envios), "envios_con_costo": len(pagados),
         "envios_sin_costo": len(envios) - len(pagados), "envios_sin_ubicar": sum(1 for e in pagados if not e.get("familia")), "zonas_en_dos_anillos": mixtas,
     }
 
