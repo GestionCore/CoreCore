@@ -248,11 +248,15 @@
                 <div style="font-weight:800; font-size:1.05em;">Cargá lo que te cobra tu logística por entrega</div>
                 <div class="text-muted" style="font-size:0.88em; line-height:1.55; margin-top:4px;">Las zonas las define Mercado Libre según tu domicilio. Vos solo ponés el precio de cada umbral y qué zonas cubre: <b>lo que no muevas cae en "Resto de las zonas"</b>. Se suma al costo de envío de cada venta en Ganancia Real.</div>
             </div>
-            <button type="button" class="btn btn-secondary" id="btn-flex-sync" data-click="sincronizarFlex"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Sincronizar zonas con MeLi</button>
+            <div class="flex-gap" style="flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary" id="btn-flex-detectar" data-click="detectarFlex"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-search"/></svg> Detectar mis zonas y precios</button>
+                <button type="button" class="btn btn-secondary" id="btn-flex-sync" data-click="sincronizarFlex"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Sincronizar zonas con MeLi</button>
+            </div>
         </div>
         <div id="flex-origen" class="text-muted" style="font-size:0.85em; margin:10px 0 4px;"></div>
+        <div id="flex-deteccion"></div>
         <div class="ux-banner ux-info" style="display:block; margin:12px 0;">
-            <b>Mercado Libre te reintegra el <span id="flex-reintegro-pct">10</span>% del envío.</b> Por eso en tu ganancia se descuenta el precio de tu logística <b>menos ese reintegro</b>: así ves lo que de verdad te cuesta cada entrega.
+            <b>Mercado Libre te bonifica el <input type="number" id="flex-reintegro-input" min="0" max="50" step="0.5" inputmode="decimal" value="{{ flex_data.reintegro_pct }}" aria-label="Bonificación de Mercado Libre sobre el envío, en porcentaje" style="width:72px; text-align:center;">% del envío.</b> Por eso en tu ganancia se descuenta el precio de tu logística <b>menos esa bonificación</b>: así ves lo que de verdad te cuesta cada entrega. Si no es la tuya, cambiala.
         </div>
 
         <div class="flex-titulo-fila"><div style="font-weight:800;">Tus umbrales</div><button type="button" class="btn btn-secondary" data-click="nuevoUmbralFlex" id="btn-flex-nuevo"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-plus"/></svg> Nuevo umbral</button></div>
@@ -546,7 +550,11 @@
     let flexUmbrales = JSON.parse(JSON.stringify(FLEX.umbrales));
     let flexZonas = FLEX.zonas || [];
     let flexOrigen = FLEX.origen || null;
-    const REINTEGRO = (FLEX.reintegro_pct || 10) / 100;
+    let REINTEGRO = (FLEX.reintegro_pct ?? 10) / 100;
+    function _pintarReintegro() {
+        const campo = document.getElementById('flex-reintegro-input');
+        if (campo && document.activeElement !== campo) campo.value = Math.round(REINTEGRO * 10000) / 100;
+    }
 
     const _zonaPorId = id => flexZonas.find(z => z.id === id);
     const _nombreZona = id => (_zonaPorId(id) || { nombre: id }).nombre;
@@ -636,6 +644,11 @@
         pintarOrigenFlex(); pintarUmbralesFlex(); pintarVistaPreviaFlex(FLEX.vista_previa);
         const cont = document.getElementById('flex-umbrales');
         if (!cont) return;
+        document.getElementById('flex-reintegro-input')?.addEventListener('input', (ev) => {
+            const v = parseFloat(ev.target.value);
+            if (isNaN(v) || v < 0 || v > 50) return;
+            REINTEGRO = v / 100; pintarUmbralesFlex(); _marcarCambiosFlex(true);
+        });
         cont.addEventListener('input', (ev) => {
             const campo = ev.target.dataset.campo, i = ev.target.dataset.i;
             if (!campo) return;
@@ -671,6 +684,7 @@
         caja.innerHTML = `<div class="ux-banner ux-accion" style="display:block; margin-top:16px;">
             <div style="font-weight:800; margin-bottom:6px;">${vp.ordenes ? `Con tus umbrales se resuelven ${vp.ordenes} envío${vp.ordenes === 1 ? '' : 's'} Flex` : 'Todavía no hay envíos para resolver'}</div>
             ${filas}
+            ${vp.sin_costo_meli ? `<div class="flex-prev-fila"><div><b>Sin costo para vos</b> <span class="text-muted">· ${vp.sin_costo_meli} envío${vp.sin_costo_meli === 1 ? '' : 's'} · los paga el comprador o los cubre Mercado Libre</span></div><div><b>${UX.plata(0)}</b></div></div>` : ''}
             ${vp.ordenes ? `<div class="flex-prev-fila flex-prev-total"><div><b>Costo de entrega que se suma a tu ganancia</b> <span class="text-muted" style="font-size:0.85em;">(ya con el reintegro de MeLi)</span></div><div style="font-size:1.15em;"><b>${UX.plata(vp.costo_total)}</b></div></div>` : ''}
             ${aviso}
             <label class="flex-incluir"><input type="checkbox" id="flex-incluir" ${incluir ? 'checked' : ''} data-change="refrescarVistaPreviaFlex"> Incluir también los envíos que ya tienen costo cargado (se recalculan con estos precios; los que elegiste a mano no se tocan)</label>
@@ -686,7 +700,46 @@
     function _recibirConfigFlex(d) {
         flexUmbrales = d.umbrales.map(u => ({ id: u.id, nombre: u.nombre, precio: u.precio, zonas: u.zonas, resto: u.resto }));
         if (d.zonas && d.zonas.length) flexZonas = d.zonas; if (d.origen) flexOrigen = d.origen;
+        if (d.reintegro_pct !== undefined) { REINTEGRO = d.reintegro_pct / 100; _pintarReintegro(); }
         pintarOrigenFlex(); pintarUmbralesFlex(); _marcarCambiosFlex(false);
+    }
+
+    // Lo que encontró «Detectar»: se muestra para que la persona lo revise. Nada se guarda hasta que toca «Guardar».
+    function pintarResultadoDeteccionFlex(p) {
+        const caja = document.getElementById('flex-deteccion');
+        if (!caja) return;
+        const anillos = p.umbrales.map(u => `<li><b>${UX.esc(u.nombre)}</b>: ${UX.plata(u.precio)} · ${u.envios} envío${u.envios === 1 ? '' : 's'} · ${u.zonas.length} zona${u.zonas.length === 1 ? '' : 's'}</li>`).join('');
+        const mixtas = (p.zonas_en_dos_anillos || []).length
+            ? `<div class="text-muted" style="font-size:0.85em; margin-top:6px;">Tuvieron envíos en dos precios y quedaron en el de más envíos: ${p.zonas_en_dos_anillos.map(z => UX.esc(z.zona)).join(', ')}.</div>` : '';
+        const sinUbicar = p.envios_sin_ubicar ? `<div class="text-muted" style="font-size:0.85em; margin-top:6px;">${p.envios_sin_ubicar} envío${p.envios_sin_ubicar === 1 ? '' : 's'} no se pudo${p.envios_sin_ubicar === 1 ? '' : 'ieron'} ubicar en una zona y cuenta${p.envios_sin_ubicar === 1 ? '' : 'n'} en «Resto de las zonas».</div>` : '';
+        caja.innerHTML = `<div class="ux-banner ux-accion" style="display:block; margin:12px 0;">
+            <div style="font-weight:800; margin-bottom:6px;">Miré tus últimos ${p.envios_analizados} envíos Flex</div>
+            <ul style="margin:0 0 6px 18px; line-height:1.6;">${anillos}</ul>
+            <div style="font-size:0.9em; line-height:1.55;"><b>${p.envios_sin_costo}</b> envío${p.envios_sin_costo === 1 ? '' : 's'} no te costaron nada (los paga el comprador o los cubre Mercado Libre) y la bonificación de Mercado Libre es del <b>${p.reintegro_pct}%</b>.</div>
+            <div style="font-size:0.9em; line-height:1.55; margin-top:6px;"><b>Revisá los precios:</b> son los que Mercado Libre informa en tus envíos. Si tu logística te cobra otro monto, cambialo en la tarjeta. Cuando esté bien, tocá <b>«Guardar y ver qué envíos resuelve»</b>.</div>
+            ${mixtas}${sinUbicar}
+        </div>`;
+    }
+
+    async function detectarFlex() {
+        const boton = document.getElementById('btn-flex-detectar');
+        if (flexUmbrales.some(u => u.precio !== null && u.precio !== undefined && !isNaN(Number(u.precio)))
+            && !(await confirmarDecision('¿Reemplazar los precios que cargaste?', 'Detectar de todos modos', 'Se van a cambiar los umbrales de abajo por los que informa Mercado Libre. No se guarda nada hasta que toques «Guardar».'))) return;
+        boton.disabled = true;
+        const original = boton.innerHTML;
+        boton.textContent = 'Mirando tus envíos…';
+        try {
+            const d = await (await fetch('/api/flex/detectar', { method: 'POST' })).json();
+            if (!d.ok) { mostrarToast(d.error || 'No pude detectar tus zonas.', 'error'); return; }
+            const p = d.propuesta;
+            if (!p.umbrales.length) { mostrarToast('Ninguno de tus últimos envíos te costó algo: no hay precios para proponer.', 'info'); return; }
+            const resto = flexUmbrales.find(u => u.resto) || { id: 1, nombre: null, precio: null, zonas: [], resto: true };
+            resto.precio = p.precio_del_resto;
+            flexUmbrales = [resto, ...p.umbrales.map(u => ({ id: null, nombre: u.nombre, precio: u.precio, zonas: u.zonas, resto: false }))];
+            REINTEGRO = p.reintegro_pct / 100; _pintarReintegro();
+            pintarUmbralesFlex(); _marcarCambiosFlex(true); pintarResultadoDeteccionFlex(p);
+        } catch (e) { mostrarToast('No pude conectar — probá de nuevo.', 'error'); }
+        finally { boton.disabled = false; boton.innerHTML = original; }
     }
 
     async function sincronizarFlex() {
@@ -706,7 +759,7 @@
         boton.disabled = true;
         try {
             const resp = await fetch('/api/flex/umbrales', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ umbrales: flexUmbrales, incluir_valuadas: document.getElementById('flex-incluir')?.checked || false }) });
+                body: JSON.stringify({ umbrales: flexUmbrales, reintegro_pct: Math.round(REINTEGRO * 10000) / 100, incluir_valuadas: document.getElementById('flex-incluir')?.checked || false }) });
             const d = await resp.json();
             if (!d.ok) { mostrarToast(d.error || 'No se pudo guardar.', 'error'); return; }
             _recibirConfigFlex(d); pintarVistaPreviaFlex(d.vista_previa);

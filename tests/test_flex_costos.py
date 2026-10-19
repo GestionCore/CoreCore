@@ -10,6 +10,12 @@ import pytest
 import flex
 
 
+@pytest.fixture(autouse=True)
+def sin_lo_consultado_a_mercado_libre(monkeypatch):
+    """Estas pruebas miden los precios por zona: no pueden depender de lo que Mercado Libre informó (y quedó guardado) de los envíos reales de la cuenta. Eso se prueba en test_flex_automatico.py."""
+    monkeypatch.setattr(flex, "costos_meli", lambda *a, **k: {})
+
+
 class _Revertir(Exception):
     pass
 

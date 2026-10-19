@@ -1275,10 +1275,11 @@ def metricas_vista():
         print(f"[Métricas] ⚠️ Error calculando evolución mensual: {e}")
 
     # Envíos Flex del período: los que siguen sin zona no tienen su costo de entrega en la ganancia.
-    flex_resumen = None
+    flex_resumen, flex_reintegro = None, flex.REINTEGRO_MELI
     try:
         with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
             flex_resumen = flex.resumen_periodo(conexion.cursor(), g.cuenta_id, fecha_desde, fecha_hasta)
+            flex_reintegro = flex.reintegro_de(flex.obtener_config(conexion.cursor(), g.cuenta_id)["info"])
     except Exception as e:
         print(f"[Métricas] ⚠️ Error resumiendo envíos Flex: {e}")
 
@@ -1357,7 +1358,7 @@ def metricas_vista():
         punto_equilibrio=punto_equilibrio, canales_envio=canales_envio,
         factura_meli=factura_meli, evolucion_mensual=evolucion_mensual,
         total_unidades_periodo=total_unidades_periodo, ganancia_por_unidad=ganancia_por_unidad,
-        analitica_clientes=analitica_clientes, pareto_ganancia=pareto_ganancia, flex_resumen=flex_resumen, flex_reintegro=flex.REINTEGRO_MELI,
+        analitica_clientes=analitica_clientes, pareto_ganancia=pareto_ganancia, flex_resumen=flex_resumen, flex_reintegro=flex_reintegro,
         top_facturacion=top_facturacion, top_unidades=top_unidades, distribucion_margenes=distribucion_margenes, modelos_pierden=modelos_pierden,
         active_nav="metricas"
     )
@@ -2213,7 +2214,7 @@ def facturacion_vista():
 
     facturado_bruto = 0.0
     gastos_periodo = 0.0
-    flex_neto = 0.0
+    flex_neto, flex_reintegro = 0.0, flex.REINTEGRO_MELI
     hay_fechas = False
     if periodo_actual:
         fecha_desde_periodo = periodo_actual.get("period", {}).get("date_from")
@@ -2227,10 +2228,11 @@ def facturacion_vista():
                 cursor.execute("SELECT COALESCE(SUM(monto),0) FROM gastos_operativos WHERE fecha BETWEEN %s AND %s", (fecha_desde_periodo, fecha_hasta_periodo))
                 gastos_periodo = float(cursor.fetchone()[0] or 0.0)
                 flex_neto = flex.resumen_periodo(cursor, g.cuenta_id, fecha_desde_periodo, fecha_hasta_periodo)["costo"]
+                flex_reintegro = flex.reintegro_de(flex.obtener_config(cursor, g.cuenta_id)["info"])
 
     # La factura agrupada por lo que es cada cargo (no por el grupo que informa Mercado Libre, que llama «envíos full» al almacenamiento). Los envíos Flex de tu
     # propia logística no están en la factura de Mercado Libre pero sí te cuestan: entran en «Cargos por envíos» marcados aparte, con su reintegro en bonificaciones.
-    agrupacion = facturacion.agrupar_factura(resumen, flex_neto, flex.REINTEGRO_MELI)
+    agrupacion = facturacion.agrupar_factura(resumen, flex_neto, flex_reintegro)
     filas_factura = agrupacion["filas"]
     total_cargos = agrupacion["total_factura"]                      # lo que dice Mercado Libre, sin Flex
 
@@ -2324,7 +2326,7 @@ def costos_vista():
     except Exception as e:
         print(f"[Costos] ⚠️ No se pudo leer la cotización del dólar: {e}")
     flex_data = {"umbrales": flex.umbrales_para_vista(flex_config), "zonas": (flex_config["info"] or {}).get("zonas", []),
-                 "origen": (flex_config["info"] or {}).get("origen"), "reintegro_pct": int(round(flex.REINTEGRO_MELI * 100)),
+                 "origen": (flex_config["info"] or {}).get("origen"), "reintegro_pct": round(flex.reintegro_de(flex_config["info"]) * 100, 2),
                  "vista_previa": flex_vista_previa}
     return render_template("costos.html", gastos=gastos, stats=stats, productos=productos, modelos=modelos, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta,
                            flex_data=flex_data, flex_pendientes_n=flex_pendientes_n, flex_perdidas=flex_perdidas, dolar_activo=dolar_activo, hay_flex=hay_flex, active_nav="costos")
@@ -2332,7 +2334,16 @@ def costos_vista():
 
 def _config_flex_json(cursor):
     config = flex.obtener_config(cursor, g.cuenta_id)
-    return {"umbrales": flex.umbrales_para_vista(config), "zonas": (config["info"] or {}).get("zonas", []), "origen": (config["info"] or {}).get("origen")}
+    return {"umbrales": flex.umbrales_para_vista(config), "zonas": (config["info"] or {}).get("zonas", []), "origen": (config["info"] or {}).get("origen"),
+            "reintegro_pct": round(flex.reintegro_de(config["info"]) * 100, 2)}
+
+
+def _token_o_none():
+    """El token de Mercado Libre de la cuenta, o None si está desconectada (las vistas previas de Flex siguen con lo ya consultado)."""
+    try:
+        return token_manager.asegurar_token_valido(g.cuenta_id)
+    except token_manager.CuentaDesconectada:
+        return None
 
 
 @app.route("/api/flex/sincronizar", methods=["POST"])
@@ -2349,7 +2360,24 @@ def api_flex_sincronizar():
         ok, error = flex.sincronizar_con_meli(cursor, g.cuenta_id, access_token, cursor.fetchone()[0])
         if not ok:
             return jsonify({"ok": False, "error": error}), 400
-        return jsonify({"ok": True, **_config_flex_json(cursor), "vista_previa": flex.vista_previa(cursor, g.cuenta_id)})
+        return jsonify({"ok": True, **_config_flex_json(cursor), "vista_previa": flex.vista_previa(cursor, g.cuenta_id, access_token=access_token)})
+
+
+@app.route("/api/flex/detectar", methods=["POST"])
+@login_requerido
+def api_flex_detectar():
+    """
+    Mira los últimos envíos Flex y le pregunta a Mercado Libre cuánto le imputó a la persona por cada uno: arma los anillos de precio (cercanas / media / lejanas), qué zonas van en cada uno y la
+    bonificación de Mercado Libre. Solo LEE y propone: no guarda nada ni toca ninguna venta; la persona revisa los precios (los pone ella) y los guarda con «Guardar».
+    """
+    token = _token_o_none()
+    if not token:
+        return jsonify({"ok": False, "error": "Tu cuenta de Mercado Libre está desconectada. Reconectala para seguir."}), 401
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        propuesta, error = flex.detectar_desde_meli(conexion.cursor(), g.cuenta_id, token)
+    if error:
+        return jsonify({"ok": False, "error": error}), 400
+    return jsonify({"ok": True, "propuesta": propuesta})
 
 
 @app.route("/api/flex/umbrales", methods=["POST"])
@@ -2361,16 +2389,18 @@ def api_flex_umbrales():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         ok, error = flex.guardar_umbrales(cursor, g.cuenta_id, datos.get("umbrales"))
+        if ok and datos.get("reintegro_pct") is not None:
+            ok, error = flex.guardar_reintegro(cursor, g.cuenta_id, datos.get("reintegro_pct"))
         if not ok:
             return jsonify({"ok": False, "error": error}), 400
-        return jsonify({"ok": True, **_config_flex_json(cursor), "vista_previa": flex.vista_previa(cursor, g.cuenta_id, bool(datos.get("incluir_valuadas")))})
+        return jsonify({"ok": True, **_config_flex_json(cursor), "vista_previa": flex.vista_previa(cursor, g.cuenta_id, bool(datos.get("incluir_valuadas")), access_token=_token_o_none())})
 
 
 @app.route("/api/flex/vista_previa")
 @login_requerido
 def api_flex_vista_previa():
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        return jsonify(flex.vista_previa(conexion.cursor(), g.cuenta_id, request.args.get("incluir_valuadas") == "1"))
+        return jsonify(flex.vista_previa(conexion.cursor(), g.cuenta_id, request.args.get("incluir_valuadas") == "1", access_token=_token_o_none()))
 
 
 @app.route("/api/flex/aplicar", methods=["POST"])
@@ -2380,7 +2410,7 @@ def api_flex_aplicar():
     """Aplica los umbrales a los envíos Flex (los sin costo cargado y, si el usuario lo pide, también los ya valuados). Lo confirma el usuario tras ver la vista previa."""
     datos = request.get_json(silent=True) or {}
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        aplicadas = flex.aplicar_automatico(conexion.cursor(), g.cuenta_id, bool(datos.get("incluir_valuadas")))
+        aplicadas = flex.aplicar_automatico(conexion.cursor(), g.cuenta_id, bool(datos.get("incluir_valuadas")), access_token=_token_o_none())
     return jsonify({"ok": True, "aplicadas": aplicadas})
 
 

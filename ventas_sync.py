@@ -842,7 +842,7 @@ def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
                 cursor.execute("SELECT COUNT(*) FROM ventas WHERE cuenta_id = %s AND tipo_logistica = 'self_service'", (cuenta_id,))
                 if (cursor.fetchone()[0] or 0) > 0:
                     flex.sincronizar_con_meli(cursor, cuenta_id, access_token, seller_id)
-            aplicadas = flex.aplicar_automatico(cursor, cuenta_id)
+            aplicadas = flex.aplicar_automatico(cursor, cuenta_id, access_token=access_token)
         if aplicadas:
             print(f"[VentasSync] 🚚 Cuenta {cuenta_id}: {aplicadas} envío(s) Flex con su costo de entrega aplicado.")
     except Exception as e:
