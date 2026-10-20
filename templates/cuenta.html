@@ -26,15 +26,19 @@
     {% for c in cuentas_disponibles %}
     <div class="cuenta-fila">
         <div>
-            <div style="font-weight:700;">{{ c.nombre_negocio or c.nickname|capitalize }}{% if cuenta_actual and c.id == cuenta_actual.id %} <span class="ux-pill ux-ok ux-pill-suave">la que estás viendo</span>{% endif %}</div>
+            <div style="font-weight:700;">{{ c.nombre_negocio or c.nickname|capitalize }}{% if cuenta_actual and c.id == cuenta_actual.id %} <span class="ux-pill ux-ok ux-pill-suave">Estás en esta cuenta</span>{% endif %}</div>
             <div class="text-muted" style="font-size:0.85em;">{{ c.nickname }}</div>
         </div>
         {% if not cuenta_actual or c.id != cuenta_actual.id %}
-        <form method="POST" action="/cambiar_cuenta" style="margin:0;"><input type="hidden" name="cuenta_id" value="{{ c.id }}"><button type="submit" class="btn btn-secondary">Ver esta cuenta</button></form>
+        <form method="POST" action="{{ url_for('cambiar_cuenta', cuenta_id=c.id) }}" style="margin:0;"><button type="submit" class="btn btn-secondary">Cambiar a esta cuenta</button></form>
         {% endif %}
     </div>
     {% endfor %}
+    {% if puede_agregar_cuenta is not false %}
     <div style="margin-top:14px;"><a class="btn btn-secondary" href="/conectar_otra_cuenta">Agregar otra cuenta</a></div>
+    {% else %}
+    <div class="text-muted" style="font-size:0.85em; margin-top:14px;">Ya tenés conectadas las {{ max_cuentas }} cuentas de Mercado Libre que incluye el Plan Elite.</div>
+    {% endif %}
 </div>
 
 <!-- ── 2b. CONDICIÓN FISCAL ─────────────────────────────────────────────── -->
@@ -83,7 +87,7 @@
     </div>
     <div class="ux-periodo-botones" id="dolar-modo" role="group" aria-label="Qué cotización usar">
         <button type="button" class="btn btn-secondary {{ 'active' if not dolar or dolar.modo == 'automatico' else '' }}" data-modo="automatico">Cotización automática (MEP)</button>
-        <button type="button" class="btn btn-secondary {{ 'active' if dolar and dolar.modo == 'manual' else '' }}" data-modo="manual">Dólar manual</button>
+        <button type="button" class="btn btn-secondary {{ 'active' if dolar and dolar.modo == 'manual' else '' }}" data-modo="manual">Cambiar valor</button>
     </div>
     <div class="flex-gap" id="dolar-manual-caja" style="align-items:center; margin-top:12px;{% if not dolar or dolar.modo != 'manual' %} display:none;{% endif %}">
         <span style="font-weight:700;">$</span>
@@ -93,7 +97,7 @@
     <div class="flex-gap" style="align-items:center; margin-top:12px;">
         <button type="button" class="btn btn-secondary" id="btn-guardar-dolar">Guardar</button>
         <span class="text-muted" id="dolar-ayuda" style="font-size:0.85em;">
-            {% if dolar and dolar.valor %}Hoy usás <b>{{ dolar.valor|plata }}</b> ({{ 'tu dólar manual' if dolar.modo == 'manual' else 'el MEP automático' }}).{% else %}Todavía no hay una cotización para usar.{% endif %}
+            {% if dolar and dolar.valor %}Hoy usás <b>{{ dolar.valor|plata }}</b> ({{ 'el valor que fijaste' if dolar.modo == 'manual' else 'el MEP automático' }}).{% else %}Todavía no hay una cotización para usar.{% endif %}
         </span>
     </div>
 </div>
@@ -203,7 +207,7 @@ if (document.getElementById('btn-guardar-flex-corte')) {
             const d = await r.json();
             if (d.ok) {
                 const a = d.dolar;
-                ayuda.innerHTML = a.valor ? `Hoy usás <b>${UX.esc(UX.plata(a.valor))}</b> (${a.modo === 'manual' ? 'tu dólar manual' : 'el MEP automático'}).` : 'Todavía no hay una cotización para usar.';
+                ayuda.innerHTML = a.valor ? `Hoy usás <b>${UX.esc(UX.plata(a.valor))}</b> (${a.modo === 'manual' ? 'el valor que fijaste' : 'el MEP automático'}).` : 'Todavía no hay una cotización para usar.';
                 if (a.modo === 'manual' && a.manual) entrada.value = a.manual;
                 mostrarToast(d.detalle || 'Guardado.', 'success');
             } else mostrarToast(d.detalle || 'No se pudo guardar.', 'error');

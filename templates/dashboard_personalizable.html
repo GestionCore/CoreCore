@@ -567,8 +567,8 @@
                     prioridad: 'importante', categoria: 'financiero',
                     titulo: sinNada ? 'Tu ganancia no descuenta el costo de fabricación' : `Al ${pct}% de lo que facturaste le falta el costo de fabricación`,
                     detalle: sinNada
-                        ? 'Todavía no cargaste lo que te cuesta fabricar tus productos, así que la ganancia que ves es más alta que la real.'
-                        : `${cob.publicaciones} publicación${cob.publicaciones === 1 ? '' : 'es'} sin costo cargado: la ganancia que ves es más alta que la real.`,
+                        ? 'Todavía no cargaste lo que te cuesta fabricar tus productos, así que la ganancia que se muestra es más alta que la real.'
+                        : `${cob.publicaciones} publicación${cob.publicaciones === 1 ? '' : 'es'} sin costo cargado: la ganancia que se muestra es más alta que la real.`,
                     link: '/costos', link_texto: 'Cargar costos',
                 }].concat(d.acciones || []);
                 d.total = (d.total || 0) + 1;
@@ -830,7 +830,7 @@
             // Resultado de los últimos 14 días
             const p = d.periodo_14d;
             if (p.facturado > 0 && p.costo_fabricacion === 0) {
-                document.getElementById('hero-nota').innerHTML = '<b style="color:var(--semantic-warning);">Ojo:</b> todavía no cargaste el costo de fabricación, así que la ganancia real es <b>menor</b> a la que ves. <a href="/costos"><b>Cargalo ahora</b></a>.';
+                document.getElementById('hero-nota').innerHTML = '<b style="color:var(--semantic-warning);">Atención:</b> todavía no cargaste el costo de fabricación, así que la ganancia real es <b>menor</b> a la que se muestra. <a href="/costos"><b>Cargalo ahora</b></a>.';
             }
             set('pl-facturado', p.facturado_f);
             set('pl-costos', p.costos_totales_f);

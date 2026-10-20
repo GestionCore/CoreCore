@@ -88,6 +88,13 @@ MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET", "")
 
 DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
+# Cuántas cuentas de Mercado Libre puede tener vinculadas una persona con el plan Elite (el Base trae una). Para permitir más: subir este número (o MAX_CUENTAS_ELITE en el entorno);
+# la pantalla, el menú, la landing y el control del servidor lo leen de acá.
+try:
+    MAX_CUENTAS_ELITE = max(1, int(os.getenv("MAX_CUENTAS_ELITE", "2")))
+except ValueError:
+    MAX_CUENTAS_ELITE = 2
+
 # Panel de administración — email del dueño de CoreLux. Agregar a .env:
 #   ADMIN_EMAIL=tu@email.com            (varios: ADMIN_EMAIL=uno@x.com,otro@y.com)
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")

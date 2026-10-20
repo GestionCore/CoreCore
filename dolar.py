@@ -170,8 +170,8 @@ def guardar_modo(cursor, cuenta_id, modo, valor=None):
         if manual is None:
             return False, f"Escribí cuánto pagás el dólar, por ejemplo 1480 (entre ${MANUAL_MINIMO} y ${MANUAL_MAXIMO:,}).".replace(",", ".")
         cursor.execute("UPDATE cuentas_meli SET dolar_manual = %s WHERE id = %s", (manual, cuenta_id))
-        return True, "Guardamos tu dólar manual."
-    return False, "Elegí la cotización automática o un dólar manual."
+        return True, "Guardamos el valor que elegiste."
+    return False, "Elegí la cotización automática o indicá tu propio valor."
 
 
 def actualizar(cursor, hoy=None, get=None):

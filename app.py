@@ -215,6 +215,7 @@ def _inyectar_cuentas_usuario():
     if fiscal.capacidad_monotributo(condicion) is not None:
         caps["monotributo"] = fiscal.capacidad_monotributo(condicion)
     return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual, "capacidades": caps, "condicion_fiscal": condicion,
+            "puede_agregar_cuenta": len(cuentas) < config.MAX_CUENTAS_ELITE, "max_cuentas": config.MAX_CUENTAS_ELITE,
             "vocab": _vocabulario_de_la_cuenta(g.usuario_id, g.cuenta_id), "margen_minimo": _margen_minimo_de_la_cuenta(g.usuario_id, g.cuenta_id)}
 
 
@@ -297,6 +298,9 @@ app.register_blueprint(salud_sistema.bp)
 
 import costos_importar
 app.register_blueprint(costos_importar.bp)
+
+
+app.jinja_env.globals["MAX_CUENTAS_ELITE"] = config.MAX_CUENTAS_ELITE        # lo usan los textos del plan Elite (planes, landing): un solo número para cambiar
 
 
 def _con_aviso(ruta, mensaje, tipo="success"):
@@ -495,6 +499,8 @@ def conectar_otra_cuenta():
     if not fila or fila[0] != "elite":
         from urllib.parse import urlencode
         return redirect(f"/planes?{urlencode({'msg': 'Conectar más de una cuenta es una función del Plan Elite.', 'tipo': 'info'})}")
+    if len(registro.obtener_cuentas_de_usuario(g.usuario_id)) >= config.MAX_CUENTAS_ELITE:
+        return redirect(_con_aviso("/cuenta", f"Ya tenés las {config.MAX_CUENTAS_ELITE} cuentas de Mercado Libre que incluye el Plan Elite.", "info"))
 
     state = oauth_meli.generar_state()
     session["oauth_state"] = state
@@ -515,6 +521,7 @@ MOTIVO_INTENTO_VENCIDO = "intento_vencido"
 MOTIVO_GENERICO = "generico"
 MOTIVO_CUENTA_YA_VINCULADA = "cuenta_ya_vinculada"
 MOTIVO_ENLACE_AJENO = "enlace_ajeno"
+MOTIVO_LIMITE_CUENTAS = "limite_cuentas"
 
 
 def _completar_vinculacion(usuario_id_actual, datos_meli, tokens, iniciar):
@@ -528,6 +535,9 @@ def _completar_vinculacion(usuario_id_actual, datos_meli, tokens, iniciar):
     if resultado_vinculo == "ya_de_otro_usuario":
         app.logger.warning("Callback OAuth: intento de vincular meli_user_id=%s, ya pertenece a otro usuario.", datos_meli.get("meli_user_id"))
         return render_template("error_conexion.html", motivo=MOTIVO_CUENTA_YA_VINCULADA)
+    if resultado_vinculo == "limite":
+        app.logger.warning("Callback OAuth: el usuario %s ya tiene el máximo de cuentas (%s).", usuario_id_actual, config.MAX_CUENTAS_ELITE)
+        return render_template("error_conexion.html", motivo=MOTIVO_LIMITE_CUENTAS, max_cuentas=config.MAX_CUENTAS_ELITE)
 
     token_manager.guardar_tokens(cuenta_id, tokens["access_token"], tokens["refresh_token"], tokens["expires_in"])
     auditoria.registrar("cuenta_vincular", {"resultado": resultado_vinculo, "desde_este_navegador": bool(iniciar)}, usuario_id=usuario_id_actual, cuenta_id=cuenta_id)
@@ -2169,6 +2179,11 @@ def api_chat_ia():
     """
     datos = request.get_json(silent=True) or {}
     pregunta = datos.get("pregunta") or ""
+    # La cuenta con la que el navegador cree estar hablando. La sesión es una sola por navegador: si en otra pestaña se cambió de cuenta, esta conversación (con cifras de la anterior) ya no corresponde
+    # y mejor frenar que contestar sobre una cuenta distinta a la que se ve en pantalla.
+    cuenta_del_chat = datos.get("cuenta")
+    if cuenta_del_chat is not None and str(cuenta_del_chat) != str(g.cuenta_id):
+        return jsonify({"respuesta": "Cambiaste de cuenta en otra pestaña o ventana. Recargá esta página para consultar la cuenta que está activa ahora.", "botones": [], "recargar": True}), 409
     try:
         # El historial y la pantalla actual los manda el navegador: el asistente los valida (roles, largo, pantalla conocida) antes de usarlos
         resultado = chat_ia.responder_pregunta(g.usuario_id, pregunta, g.cuenta_id, historial=datos.get("historial"), ruta_actual=datos.get("ruta"))

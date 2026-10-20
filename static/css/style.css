@@ -571,6 +571,8 @@ select option { background: #14162a; color: var(--text-primary); }
 .chat-window { position: fixed; bottom: 94px; right: 26px; width: 390px; height: 510px; background: var(--glass-bg-alt); border: 1px solid var(--glass-border); backdrop-filter: blur(18px); border-radius: var(--radius-md); box-shadow: var(--shadow-elevated); display: none; flex-direction: column; z-index: 100; overflow: hidden; }
 .chat-window.open { display: flex; animation: fadeInUp 0.2s ease; }
 .chat-header { padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--glass-border); font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+.chat-titulo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.chat-cuenta { font-weight: 500; font-size: 0.78rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-body { flex: 1; padding: 16px; overflow-y: auto; font-size: 0.9em; display: flex; flex-direction: column; gap: 12px; }
 .chat-msg-bot { background: rgba(255,255,255,0.04); padding: 11px 15px; border-radius: 10px; border-left: 3px solid var(--accent-primary); }
 .chat-sugerencias { display: flex; flex-wrap: wrap; gap: 6px; }

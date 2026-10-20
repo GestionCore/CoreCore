@@ -4,6 +4,7 @@ La conversación del asistente sobrevive al cambio de pantalla (un botón «Ir a
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 
@@ -78,6 +79,50 @@ console.log(JSON.stringify(_chatHistorialParaElServidor()));
     assert r.returncode == 0, r.stderr
     enviado = json.loads(r.stdout.strip().splitlines()[-1])
     assert len(enviado) == 10 and [m["role"] for m in enviado] == ["user", "assistant"] * 5 and enviado[-1]["content"] == "t11" and enviado[0]["content"] == "t2"
+
+
+@CON_NODE
+def test_el_hilo_se_guarda_por_cuenta_y_la_otra_cuenta_empieza_limpia():
+    """Al cambiar de cuenta de Mercado Libre la conversación (con cifras de la cuenta anterior) no puede volver a pantalla ni viajar como contexto: cada cuenta guarda la suya."""
+    fuente = _js()
+    base = re.search(r"const _CHAT_GUARDADO_BASE = '[^']+';", fuente).group(0)
+    programa = f"""
+const _CHAT_MAX_MENSAJES = 24;
+{base}
+const almacen = {{}};
+const sessionStorage = {{ getItem: k => (k in almacen ? almacen[k] : null), setItem: (k, v) => {{ almacen[k] = String(v); }}, removeItem: k => {{ delete almacen[k]; }} }};
+const document = {{ body: {{ dataset: {{ cuenta: '11' }} }} }};
+let _chatMensajes = [{{ rol: 'user', texto: 'ventas de la cuenta 11', botones: [] }}];
+{_funcion(fuente, '_chatCuenta')}
+{_funcion(fuente, '_chatClaveGuardado')}
+{_funcion(fuente, '_chatGuardar')}
+_chatGuardar();
+const clave11 = _chatClaveGuardado();
+document.body.dataset.cuenta = '22';
+const clave22 = _chatClaveGuardado();
+console.log(JSON.stringify({{ clave11, clave22, guardadoEnLa22: almacen[clave22] || null, guardadoEnLa11: JSON.parse(almacen[clave11])[0].texto }}));
+"""
+    r = subprocess.run(["node", "-e", programa], capture_output=True, text=True, encoding="utf-8", timeout=20)
+    assert r.returncode == 0, r.stderr
+    salida = json.loads(r.stdout.strip().splitlines()[-1])
+    assert salida["clave11"] != salida["clave22"] and salida["clave11"].endswith("_11") and salida["clave22"].endswith("_22")
+    assert salida["guardadoEnLa22"] is None and salida["guardadoEnLa11"] == "ventas de la cuenta 11"
+
+
+def test_el_chat_restaura_solo_lo_de_su_cuenta_y_manda_con_que_cuenta_habla():
+    js = _js()
+    restaurar = _funcion(js, "_chatRestaurar")
+    assert "getItem(_chatClaveGuardado())" in restaurar and "removeItem(_CHAT_GUARDADO_BASE)" in restaurar            # lee la de esta cuenta y descarta la clave vieja, que no distinguía cuentas
+    enviar = _funcion(js, "enviarMensajeIA")
+    assert "cuenta: Number(_chatCuenta()) || null" in enviar and "data.recargar" in enviar                             # el servidor sabe con qué cuenta cree hablar la pestaña, y un aviso de cuenta cambiada no entra al hilo
+    assert "sessionStorage.getItem(_CHAT_GUARDADO)" not in js and "_CHAT_GUARDADO," not in js
+
+
+def test_las_pestanas_de_ux_no_mueven_la_pagina():
+    """Ganancia Real abría ya bajada hasta «Evolución mensual»: las pestañas llamaban scrollIntoView() al armarse, que también desplaza la página hacia abajo. Solo se desliza la barra de costado."""
+    ux = open(os.path.join(RAIZ, "static", "js", "ux.js"), encoding="utf-8").read()
+    mostrar = ux[ux.index("const mostrar = (i"):ux.index("const indiceDe")]
+    assert ".scrollIntoView(" not in mostrar and "scrollLeft" in mostrar and "preventScroll: true" in mostrar
 
 
 def test_la_bienvenida_ofrece_preguntas_de_ejemplo_y_la_pantalla_restaura_la_conversacion():

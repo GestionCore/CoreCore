@@ -14,6 +14,7 @@ de Row Level Security lo acepten (probado contra Postgres real):
 import secrets
 from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row
+import config
 import db
 
 SUFIJO_EMAIL_PENDIENTE = "@pendiente.corelux.app"
@@ -193,6 +194,9 @@ def vincular_cuenta_adicional(usuario_id, datos_meli):
       "reconectada"      — la cuenta de MeLi ya era de este mismo usuario (re-autorización).
       "ya_de_otro_usuario" — la cuenta de MeLi ya está conectada a OTRO usuario de
                               CoreLux; no se toca nada (cuenta_id viene None).
+      "limite"          — el usuario ya tiene todas las cuentas que permite el plan
+                              (config.MAX_CUENTAS_ELITE); no se crea nada (cuenta_id viene None).
+                              Volver a autorizar una cuenta que ya era suya ("reconectada") nunca cuenta contra el tope.
     """
     meli_user_id = datos_meli["meli_user_id"]
 
@@ -219,12 +223,16 @@ def vincular_cuenta_adicional(usuario_id, datos_meli):
         try:
             with db.conexion_usuario(usuario_id) as conexion:
                 cursor = conexion.cursor(row_factory=dict_row)
+                # El tope de cuentas se controla en la MISMA sentencia que inserta (no mirar y después insertar): sin cupo no se inserta nada.
                 cursor.execute(
                     """INSERT INTO cuentas_meli (usuario_id, meli_user_id, nickname, site_id)
-                       VALUES (%s, %s, %s, %s) RETURNING id""",
-                    (usuario_id, meli_user_id, datos_meli.get("nickname"), datos_meli.get("site_id", "MLA"))
+                       SELECT %s, %s, %s, %s WHERE (SELECT COUNT(*) FROM cuentas_meli WHERE usuario_id = %s) < %s RETURNING id""",
+                    (usuario_id, meli_user_id, datos_meli.get("nickname"), datos_meli.get("site_id", "MLA"), usuario_id, config.MAX_CUENTAS_ELITE)
                 )
-                cuenta_id = cursor.fetchone()["id"]
+                fila = cursor.fetchone()
+                if fila is None:
+                    return None, "limite"
+                cuenta_id = fila["id"]
             return cuenta_id, "vinculada"
         except UniqueViolation:
             continue

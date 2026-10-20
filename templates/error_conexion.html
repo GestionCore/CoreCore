@@ -41,13 +41,19 @@
                 El intento de conexión venció — por seguridad, estos enlaces duran poco. Solo hace falta volver a intentarlo.
             {% elif motivo == 'enlace_ajeno' %}
                 Este enlace de conexión lo generó otra persona de CoreLux, y en este navegador hay una sesión distinta. Por seguridad no lo usamos: quien lo generó tiene que abrirlo desde su propio navegador, o pedir uno nuevo.
+            {% elif motivo == 'limite_cuentas' %}
+                Ya tenés conectadas las {{ max_cuentas }} cuentas de Mercado Libre que incluye tu plan. Para sumar una distinta, primero hay que desconectar una de las actuales.
             {% elif motivo == 'cuenta_ya_vinculada' %}
                 Esa cuenta de Mercado Libre ya está conectada a otro login de CoreLux. Para usarla acá, primero hay que desconectarla del otro login.
             {% else %}
                 Puede pasar por muchos motivos y suele resolverse solo. Probá de nuevo en un momento — si sigue sin andar, escribinos y lo vemos juntos.
             {% endif %}
         </div>
+        {% if motivo == 'limite_cuentas' %}
+        <a href="/cuenta" class="btn btn-primary btn-block">Ir a Preferencias</a>
+        {% else %}
         <a href="{{ url_for('conectar') }}" class="btn btn-primary btn-block">Reintentar conexión</a>
+        {% endif %}
     </div>
 </div>
 </body>

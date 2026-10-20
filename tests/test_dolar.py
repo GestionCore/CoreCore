@@ -118,7 +118,7 @@ def test_guardar_actualiza_el_dia_y_la_cotizacion_activa_prefiere_el_manual_y_si
             cur.execute("UPDATE cuentas_meli SET dolar_manual = NULL WHERE id = %s", (cuenta,))
             auto = dolar.cotizacion_activa(cur, cuenta, hoy)
             assert (auto["modo"], auto["valor"], auto["manual"]) == ("automatico", 1600.0, None)                   # sin dólar manual, el MEP
-            assert dolar.guardar_modo(cur, cuenta, "manual", "1.480,50") == (True, "Guardamos tu dólar manual.")
+            assert dolar.guardar_modo(cur, cuenta, "manual", "1.480,50") == (True, "Guardamos el valor que elegiste.")
             man = dolar.cotizacion_activa(cur, cuenta, hoy)
             assert (man["modo"], man["valor"], man["manual"], man["mep"]["valor"]) == ("manual", 1480.5, 1480.5, 1600.0)       # con dólar manual, ese (y se sigue sabiendo el MEP)
             assert dolar.guardar_modo(cur, cuenta, "manual", "1.48")[0] is False and dolar.guardar_modo(cur, cuenta, "manual", "")[0] is False

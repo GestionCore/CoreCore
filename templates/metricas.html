@@ -98,14 +98,14 @@
 
 <!-- ── 2. QUÉ REVISAR: avisos que cambian cómo leer el número ──────────────── -->
 {% if falta_costo %}
-{{ banner("warn", "alert", "<b>Falta cargar el costo de fabricación</b> — la ganancia real es menor a la que ves", "Sin ese dato, cada venta parece tener el 100% de margen sobre el producto.", "Cargar costos", "/costos", "btn-secondary") }}
+{{ banner("warn", "alert", "<b>Falta cargar el costo de fabricación</b> — la ganancia real es menor a la que se muestra", "Sin ese dato, cada venta parece tener el 100% de margen sobre el producto.", "Cargar costos", "/costos", "btn-secondary") }}
 {% elif cobertura_costos and cobertura_costos.avisar %}
-{{ banner("warn", "alert", "<b>Al " ~ (cobertura_costos.pct_sin_costo|string|replace('.0', '')|replace('.', ',')) ~ "% de lo que facturaste</b> le falta el costo de fabricación — la ganancia real es menor a la que ves", (cobertura_costos.publicaciones|string) ~ " publicación" ~ ("es" if cobertura_costos.publicaciones != 1) ~ " sin costo cargado. Esas ventas cuentan como si fabricarlas fuera gratis.", "Cargar costos", "/costos", "btn-secondary") }}
+{{ banner("warn", "alert", "<b>Al " ~ (cobertura_costos.pct_sin_costo|string|replace('.0', '')|replace('.', ',')) ~ "% de lo que facturaste</b> le falta el costo de fabricación — la ganancia real es menor a la que se muestra", (cobertura_costos.publicaciones|string) ~ " publicación" ~ ("es" if cobertura_costos.publicaciones != 1) ~ " sin costo cargado. Esas ventas cuentan como si fabricarlas fuera gratis.", "Cargar costos", "/costos", "btn-secondary") }}
 {% endif %}
 {% if not ads_disponible %}
 {{ banner("info", "percent", "<b>No vemos gasto de publicidad</b> en este período", "Revisá que hayas dado acceso a tus campañas de Ads, o que tengas campañas activas.") }}
 {% elif ads_incompleto %}
-{{ banner("warn", "alert", "<b>No pudimos leer la publicidad de " ~ ads_incompleto|plural("publicación", "publicaciones") ~ "</b> — la ganancia puede ser menor a la que ves", "Mercado Libre no respondió: esas publicaciones cuentan por ahora sin gasto de publicidad. Probá de nuevo en unos minutos.") }}
+{{ banner("warn", "alert", "<b>No pudimos leer la publicidad de " ~ ads_incompleto|plural("publicación", "publicaciones") ~ "</b> — la ganancia puede ser menor a la que se muestra", "Mercado Libre no respondió: esas publicaciones cuentan por ahora sin gasto de publicidad. Probá de nuevo en unos minutos.") }}
 {% endif %}
 {# Solo un reclamo real puede afectar la reputación: va en rojo. Una devolución es gestión normal del día a día: aviso más suave #}
 {% set hay_retenido = posventa.dinero_retenido not in ('0,00', '0', 0) %}

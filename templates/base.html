@@ -217,7 +217,7 @@
 
 <button type="button" class="chat-fab" data-click="toggleChat" title="Consultar con Asistente IA" aria-label="Consultar con Asistente IA"><svg class="icon" style="width:22px;height:22px;" aria-hidden="true"><use href="#icon-chat"/></svg></button>
 <div class="chat-window" id="chat-window">
-    <div class="chat-header"><span>Asistente de Operaciones</span><button type="button" style="background:none;border:none;cursor:pointer;color:inherit;padding:2px;display:inline-flex;" data-click="toggleChat" title="Cerrar" aria-label="Cerrar chat"><svg class="icon" style="width:15px;height:15px;" aria-hidden="true"><use href="#icon-x"/></svg></button></div>
+    <div class="chat-header"><span class="chat-titulo">Asistente de Operaciones{% if cuentas_disponibles and cuentas_disponibles|length > 1 %}<small class="chat-cuenta">Consultando: {{ _nombre_cuenta|title }}</small>{% endif %}</span><button type="button" style="background:none;border:none;cursor:pointer;color:inherit;padding:2px;display:inline-flex;" data-click="toggleChat" title="Cerrar" aria-label="Cerrar chat"><svg class="icon" style="width:15px;height:15px;" aria-hidden="true"><use href="#icon-x"/></svg></button></div>
     <div class="chat-body" id="chat-body"><div class="chat-msg-bot">¡Hola! Te ayudo con tu cuenta de Mercado Libre: preguntame por tus ventas, qué producto te deja más, tu publicidad, tus precios, el stock, los cobros o cómo usar la página, y te llevo a la pantalla que necesites.</div>
         <div class="chat-sugerencias" id="chat-sugerencias">
             <button type="button" class="btn btn-secondary" data-click="preguntarAlAsistente" data-click-args='["¿Cuánto gané esta semana?"]'>¿Cuánto gané esta semana?</button>
@@ -317,10 +317,12 @@
                 <span>Referidos</span>
             </a>
             {% endif %}
+            {% if puede_agregar_cuenta is not false %}
             <a href="/conectar_otra_cuenta" class="menu-lateral-item">
                 <svg class="icon" style="width:18px;height:18px;"><use href="#icon-plus"/></svg>
                 <span>Agregar otra cuenta</span>
             </a>
+            {% endif %}
         </div>
 
         <div class="menu-lateral-section">

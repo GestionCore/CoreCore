@@ -284,7 +284,7 @@ function ejecutarSincronizarTodo(btn, alTerminar) {
         .catch(() => { liberar(); mostrarToast('Error al iniciar sincronización.', 'error'); });
 }
 
-// "Traer ventas nuevas" (Despacho): sincroniza y recarga la página cuando termina
+// «Actualizar» (Despacho): sincroniza y recarga la página cuando termina
 function sincronizarYRecargar(btn) { ejecutarSincronizarTodo(btn, () => window.location.reload()); }
 
 function mostrarPanelConAnimacion(elemento) {
@@ -1515,8 +1515,12 @@ function formatearMarkdownSeguro(texto) {
 // ── Asistente de IA ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 // La conversación vive en ESTA pestaña (sessionStorage): así no se pierde cuando un botón «Ir a …» lleva a otra pantalla. Se manda el final del hilo para que el asistente entienda
 // «¿y el mes pasado?»; el servidor lo valida (roles, largo) antes de usarlo. Lo guardado se valida igual que lo que llega: solo texto y links internos.
-const _CHAT_GUARDADO = 'corelux_chat_v1';
+// El hilo se guarda POR CUENTA (como los avisos): al cambiar a otra cuenta de Mercado Libre empieza limpio, y al volver a la primera se retoma. Sin esto, las respuestas con cifras de la cuenta anterior
+// seguían en pantalla y viajaban como contexto, y el asistente parecía contestar con los datos de la cuenta de antes.
+const _CHAT_GUARDADO_BASE = 'corelux_chat_v1';
 const _CHAT_ABIERTO = 'corelux_chat_abierto';
+function _chatCuenta() { return document.body.dataset.cuenta || ''; }
+function _chatClaveGuardado() { return _CHAT_GUARDADO_BASE + '_' + _chatCuenta(); }
 const _CHAT_MAX_MENSAJES = 24;
 let _chatMensajes = [];          // [{ rol: 'user' | 'bot', texto, botones: [{ texto, url }] }]
 let _chatEsperando = false;
@@ -1536,7 +1540,7 @@ function _chatHistorialParaElServidor() {
 }
 
 function _chatGuardar() {
-    try { sessionStorage.setItem(_CHAT_GUARDADO, JSON.stringify(_chatMensajes.slice(-_CHAT_MAX_MENSAJES))); } catch (e) { /* sin almacenamiento: el chat sigue andando, solo no se recuerda al cambiar de pantalla */ }
+    try { sessionStorage.setItem(_chatClaveGuardado(), JSON.stringify(_chatMensajes.slice(-_CHAT_MAX_MENSAJES))); } catch (e) { /* sin almacenamiento: el chat sigue andando, solo no se recuerda al cambiar de pantalla */ }
 }
 
 // Los botones «Ir a …» que sugiere el asistente: el servidor manda solo links de pantallas de CoreLux (lista cerrada); igual acá se exige un camino interno.
@@ -1572,7 +1576,8 @@ function _chatOcultarSugerencias() {
 function _chatRestaurar() {
     if (!document.getElementById('chat-body')) return;
     let guardado = [];
-    try { guardado = _chatLimpiarMensajes(JSON.parse(sessionStorage.getItem(_CHAT_GUARDADO) || '[]')); } catch (e) { guardado = []; }
+    try { sessionStorage.removeItem(_CHAT_GUARDADO_BASE); } catch (e) { /* idem */ }              // la clave de antes, sin cuenta: su contenido puede ser de otra
+    try { guardado = _chatLimpiarMensajes(JSON.parse(sessionStorage.getItem(_chatClaveGuardado()) || '[]')); } catch (e) { guardado = []; }
     if (!guardado.length) return;
     _chatMensajes = guardado;
     _chatOcultarSugerencias();
@@ -1609,14 +1614,17 @@ async function enviarMensajeIA() {
     const historial = _chatHistorialParaElServidor();
 
     try {
-        const res = await fetch('/api/chat_ia', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ pregunta: texto, historial, ruta: window.location.pathname }) });
+        const res = await fetch('/api/chat_ia', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ pregunta: texto, historial, ruta: window.location.pathname, cuenta: Number(_chatCuenta()) || null }) });
         const data = await res.json();
         const respuesta = _chatLimpiarMensajes([{ rol: 'bot', texto: String(data.respuesta || ''), botones: data.botones }])[0];
         typing.remove();
         if (respuesta) {
             _chatPintarMensaje(respuesta);
-            _chatMensajes.push({ rol: 'user', texto, botones: [] }, respuesta);
-            _chatGuardar();
+            // Si el servidor avisa que la cuenta activa cambió en otra pestaña, ese aviso no es parte de la conversación: no se guarda (ni la pregunta, que no se respondió)
+            if (!data.recargar) {
+                _chatMensajes.push({ rol: 'user', texto, botones: [] }, respuesta);
+                _chatGuardar();
+            }
         }
     } catch(e) {
         typing.innerHTML = '<span class="text-danger">Error de comunicación.</span>';

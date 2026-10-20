@@ -176,8 +176,12 @@ const UX = (() => {
                 b.tabIndex = activa ? 0 : -1;
                 paneles[j].hidden = !activa;
             });
-            if (enfocar) pestanas[i].focus();
-            pestanas[i].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            if (enfocar) pestanas[i].focus({ preventScroll: true });
+            // Solo se desliza la BARRA de costado, para que la pestaña activa no quede cortada en el celular. Nunca la página: con scrollIntoView() la pantalla abría ya bajada hasta las pestañas
+            // (Ganancia Real arrancaba en «Evolución mensual» y no arriba, al entrar y al cambiar de período).
+            const rb = barra.getBoundingClientRect(), rp = pestanas[i].getBoundingClientRect();
+            if (rp.left < rb.left) barra.scrollLeft += rp.left - rb.left - 8;
+            else if (rp.right > rb.right) barra.scrollLeft += rp.right - rb.right + 8;
             paneles[i].dispatchEvent(new CustomEvent('ux:tab-visible', { bubbles: false }));
         };
         const indiceDe = (elemento) => paneles.findIndex(p => p === elemento || p.contains(elemento));

@@ -140,7 +140,10 @@ def test_promociones_sigue_andando_si_mercado_libre_no_contesta_las_campanas(mon
 def test_competencia_sin_catalogo_lo_dice_y_con_catalogo_separa_las_que_compiten(monkeypatch):
     _con_cursor(monkeypatch)
     monkeypatch.setattr(herr.catalogo_mod, "obtener", lambda cursor, cuenta: None)
-    assert herr.ejecutar("competencia", "{}", _ctx())["datos"]["tiene_publicaciones_de_catalogo"] is False
+    monkeypatch.setattr(herr.espia_competencia, "obtener_panorama_competencia", lambda cursor, cuenta: [])
+    sin_nada = herr.ejecutar("competencia", "{}", _ctx())["datos"]
+    assert sin_nada["tiene_publicaciones_de_catalogo"] is False and sin_nada["productos_que_sigue"] == []
+    assert "Tampoco sigue ningún producto" in sin_nada["mensaje"]                                              # le dice qué hacer para tener datos, no solo que no hay
     items = [{"titulo": "Celu A", "estado": "competing", "precio": 100000.0, "para_ganar": 95000.0, "diferencia_pct": 5.0, "neto_para_ganar": 12000.0, "conviene": True, "texto": "Hay un precio mejor",
               "condiciones": [{"descripcion": "Envío gratis"}, {"descripcion": None}]},
              {"titulo": "Celu B", "estado": "winning", "precio": 1.0, "para_ganar": None, "diferencia_pct": None, "neto_para_ganar": None, "conviene": None, "texto": "Ganando", "condiciones": []}]
@@ -149,6 +152,89 @@ def test_competencia_sin_catalogo_lo_dice_y_con_catalogo_separa_las_que_compiten
     assert d["ganando_el_puesto_principal"] == 1 and d["compitiendo"] == 1 and len(d["las_que_compiten"]) == 1
     assert d["las_que_compiten"][0] == {"publicacion": "Celu A", "tu_precio": 100000.0, "precio_para_ganar": 95000.0, "diferencia_pct": 5.0, "ganancia_por_unidad_a_ese_precio": 12000.0,
                                         "conviene": True, "estado": "Hay un precio mejor", "condiciones": ["Envío gratis"]}
+
+
+def test_competencia_sin_catalogo_igual_devuelve_los_productos_que_la_persona_sigue(monkeypatch):
+    _con_cursor(monkeypatch)
+    monkeypatch.setattr(herr.catalogo_mod, "obtener", lambda cursor, cuenta: None)
+    historial = [{"fecha": "2030-03-30", "precio_min": 90000.0, "precio_mediano": 100000.0, "precio_max": 130000.0, "ofertas": 14, "vendedores": 9, "pct_full": 60.0},
+                 {"fecha": "2030-03-20", "precio_min": 100000.0, "precio_mediano": 105000.0, "precio_max": 130000.0, "ofertas": 12, "vendedores": 8, "pct_full": 50.0}]
+    monkeypatch.setattr(herr.espia_competencia, "obtener_panorama_competencia", lambda cursor, cuenta: [
+        {"id_producto": "MLA1", "alias": "Celu A", "titulo_actual": "Celu A 128 GB", "historial": historial, "tendencia_precio": "bajó"},
+        {"id_producto": "MLA2", "alias": None, "titulo_actual": "Termo X", "historial": [], "tendencia_precio": None}])
+    d = herr.ejecutar("competencia", "{}", _ctx())["datos"]
+    assert d["tiene_publicaciones_de_catalogo"] is False and "mensaje" in d and "Tampoco" not in d["mensaje"]          # sigue productos: no se le pide que siga uno
+    assert d["productos_que_sigue"][0] == {"producto": "Celu A", "precio_mas_bajo": 90000.0, "precio_mediano": 100000.0, "ofertas": 14, "vendedores": 9, "ofertas_con_full_pct": 60.0,
+                                           "como_se_movio_el_precio_mas_bajo": "bajó", "variacion_del_precio_mas_bajo_pct": -10.0, "dias_con_datos": 2, "ultima_medicion": "2030-03-30"}
+    assert d["productos_que_sigue"][1]["producto"] == "Termo X" and d["productos_que_sigue"][1]["precio_mas_bajo"] is None and d["productos_que_sigue"][1]["variacion_del_precio_mas_bajo_pct"] is None
+
+
+def _busqueda(texto, puesto, publicaciones, categoria="Camperas", movimiento=("sube", "Subió 3 puestos en la semana"), racha=4):
+    return {"texto": texto, "posicion": puesto, "categoria_nombre": categoria, "movimiento": movimiento, "tus_publicaciones": publicaciones, "racha": racha, "mejor_posicion": 1, "entiende": ["Mujer"]}
+
+
+def test_mercado_cuenta_en_el_servidor_cuales_busquedas_no_cubre_y_trae_la_ficha_de_la_categoria(monkeypatch):
+    _con_cursor(monkeypatch)
+    muestra = {"vacia": False, "precio_p25": 40000, "precio_p50": 55000, "precio_p75": 70000, "pct_full": 62.5, "pct_envio_gratis": 91.0, "concentracion": ("baja", "Repartida entre muchos vendedores"), "alcance": "categoria"}
+    monkeypatch.setattr(herr.mercado_mod, "armar_pantalla", lambda cursor, cuenta: {
+        "cobertura": {"dias": 12, "categorias": 3},
+        "busquedas_tuyas": [_busqueda("campera jean", 1, 0), _busqueda("campera negra", 2, 3), _busqueda("campera de abrigo", 5, 0)],
+        "sin_relevar": [{"nombre": "Zapatillas"}],
+        "ficha": {"nombre": "Camperas", "publicaciones": 90000, "variacion_7": {"pct": 1.5}, "variacion_30": {"pct": -2.0}, "muestra": muestra}})
+    d = herr.ejecutar("mercado", "{}", _ctx())["datos"]
+    assert d["resumen"]["busquedas_en_alza_en_tus_categorias"] == 3 and d["resumen"]["que_ya_cubris_con_alguna_publicacion"] == 1 and d["resumen"]["sin_ninguna_publicacion_tuya"] == 2
+    assert d["resumen"]["las_mejor_posicionadas_que_no_cubris"][0] == {"busqueda": "campera jean", "puesto": 1, "categoria": "Camperas"}
+    assert d["busquedas_en_alza_en_tus_categorias"][0]["dias_seguidos_en_la_lista"] == 4 and d["busquedas_en_alza_en_tus_categorias"][0]["que_entiende_mercado_libre"] == ["Mujer"]
+    assert d["categorias_sin_relevar_todavia"] == ["Zapatillas"]
+    ficha = d["categoria_destacada"]
+    assert ficha["precio_mediano"] == 55000.0 and ficha["rango_de_precios_habitual"] == [40000.0, 70000.0] and ficha["ofertas_con_full_pct"] == 62.5 and ficha["variacion_30_dias_pct"] == -2.0
+    assert ficha["oferta"] == "Repartida entre muchos vendedores" and ficha["la_muestra_es_de"] == "esa categoría"
+    monkeypatch.setattr(herr.mercado_mod, "armar_pantalla", lambda cursor, cuenta: {"cobertura": {"dias": 1, "categorias": 1}, "busquedas_tuyas": [], "sin_relevar": [],
+                                                                                    "ficha": {"nombre": "Ropa", "publicaciones": 5, "variacion_7": None, "variacion_30": None, "muestra": dict(muestra, vacia=True)}})
+    sin_muestra = herr.ejecutar("mercado", "{}", _ctx())["datos"]["categoria_destacada"]
+    assert sin_muestra["precio_mediano"] is None and sin_muestra["rango_de_precios_habitual"] is None and sin_muestra["la_muestra_es_de"] is None      # sin muestra no se inventa ningún precio
+
+
+def _preparar_tendencias(monkeypatch, categorias, en_cache=None, ml=None):
+    cursor = _con_cursor(monkeypatch, [(cid, f"Categoría {cid}") for cid, _ in categorias])
+    monkeypatch.setattr(herr.tendencias_mod, "categorias_del_catalogo", lambda cur, maximo=3: categorias)
+    monkeypatch.setattr(herr.cache_db, "leer", lambda *a, **k: (en_cache is not None, en_cache))
+    pedidos = []
+    monkeypatch.setattr(herr, "_token", lambda ctx: pedidos.append("token") or "token")
+    monkeypatch.setattr(herr.tendencias_mod, "obtener_tendencias", lambda token, site_id="MLA", category_id=None, palabras_del_rubro=None: (ml or {}).get(category_id, []))
+
+    def cruzar(lista, cur):
+        for t in lista:
+            t["cubierta"] = t["keyword"] in ("campera negra",)
+    monkeypatch.setattr(herr.tendencias_mod, "cruzar_tendencias_con_catalogo", cruzar)
+    monkeypatch.setattr(herr.tendencias_mod, "listar_seguimientos_con_historial", lambda cur, cuenta: [
+        {"tipo": "categoria", "etiqueta": "Camperas", "valor": "MLA1", "tendencia_pct": 12.5, "serie": [1, 2, 3], "tiene_historial_suficiente": True},
+        {"tipo": "categoria", "etiqueta": "Nuevo", "valor": "MLA9", "tendencia_pct": None, "serie": [1], "tiene_historial_suficiente": False}])
+    monkeypatch.setattr(herr.tendencias_mod, "obtener_calendario_estacional", lambda: [{"nombre": "Black Friday", "dias_faltantes": 40, "categoria_sugerida": "todo el catálogo"}, {"nombre": "Navidad", "dias_faltantes": 66, "categoria_sugerida": "regalos"}])
+    return cursor, pedidos
+
+
+def test_tendencias_marca_cuales_busquedas_ya_estan_en_un_titulo_y_nunca_escribe(monkeypatch):
+    _, pedidos = _preparar_tendencias(monkeypatch, [("MLA1", 20), ("MLA2", 5)], ml={
+        "MLA1": [{"keyword": "campera negra"}, {"keyword": "campera jean"}, {"keyword": "campera de abrigo"}], "MLA2": [{"keyword": "buzo oversize"}]})
+    d = herr.ejecutar("tendencias", "{}", _ctx())["datos"]
+    assert pedidos == ["token"]                                                                                # sin caché de la pantalla se pide a Mercado Libre
+    assert d["hay_tendencias"] is True and [c["categoria"] for c in d["categorias_analizadas"]] == ["Categoría MLA1", "Categoría MLA2"]
+    assert d["resumen"]["busquedas_en_tendencia"] == 4 and d["resumen"]["ya_estan_en_algun_titulo_tuyo"] == 1 and d["resumen"]["sin_cubrir"] == 3
+    assert [b["busqueda"] for b in d["resumen"]["las_mejor_posicionadas_sin_cubrir"]] == ["buzo oversize", "campera jean", "campera de abrigo"]          # las categorías se intercalan de a una por turno (mezclar_tendencias)
+    assert d["busquedas_en_tendencia"][0] == {"puesto": 1, "busqueda": "campera negra", "categoria": "Categoría MLA1", "ya_esta_en_un_titulo_tuyo": True}
+    assert d["fechas_comerciales_proximas"][0] == {"fecha": "Black Friday", "en_dias": 40, "rubros_que_se_mueven": "todo el catálogo"}
+    assert d["categorias_que_sigue"] == [{"categoria": "Camperas", "variacion_de_la_oferta_pct": 12.5, "dias_de_historia": 3}]       # sin historial suficiente no se informa una variación
+
+
+def test_tendencias_usa_la_cache_de_la_pantalla_y_avisa_si_no_hay_nada(monkeypatch):
+    _, pedidos = _preparar_tendencias(monkeypatch, [("MLA1", 20)], en_cache={"lista": [{"keyword": "campera jean", "posicion": 1, "categoria_id": "MLA1"}], "categorias": []})
+    d = herr.ejecutar("tendencias", "{}", _ctx())["datos"]
+    assert pedidos == [] and d["busquedas_en_tendencia"][0]["busqueda"] == "campera jean"                       # la caché evita la llamada (y el token)
+    _preparar_tendencias(monkeypatch, [("MLA1", 20)], ml={})
+    assert herr.ejecutar("tendencias", "{}", _ctx())["datos"]["hay_tendencias"] is False                       # Mercado Libre sin respuesta: se dice, no se inventa
+    _preparar_tendencias(monkeypatch, [])
+    assert herr.ejecutar("tendencias", "{}", _ctx())["datos"]["hay_tendencias"] is False                       # sin categorías guardadas tampoco
 
 
 def test_opiniones_no_incluye_los_comentarios_de_la_gente(monkeypatch):

@@ -101,7 +101,7 @@
 </div>
 <div class="text-muted" style="font-size:0.88em; margin:-6px 0 6px;" id="nota-dolar-costos">
     Podés cargar cada costo en <b>pesos ($)</b> o en <b>dólares (US$)</b>: los dólares se llevan a pesos con tu cotización
-    {% if dolar_activo and dolar_activo.valor %}(<b>{{ dolar_activo.valor|plata }}</b>, {{ 'tu dólar manual' if dolar_activo.modo == 'manual' else 'el dólar MEP automático' }}) y se actualizan solos cuando el dólar cambia{% else %}(todavía no hay una: elegila en <a href="/cuenta#dolar"><b>Mi cuenta</b></a>){% endif %}.
+    {% if dolar_activo and dolar_activo.valor %}(<b>{{ dolar_activo.valor|plata }}</b>, {{ 'el valor que fijaste' if dolar_activo.modo == 'manual' else 'el dólar MEP automático' }}) y se actualizan solos cuando el dólar cambia{% else %}(todavía no hay una: elegila en <a href="/cuenta#dolar"><b>Mi cuenta</b></a>){% endif %}.
     <a href="/cuenta#dolar">Cambiar el dólar</a>
 </div>
 <div class="text-muted" style="font-size:0.88em; margin:0 0 14px;">Escribí lo que te cuesta cada unidad y tocá <b>Aplicar</b>: se carga a todo el modelo de una vez. Si el costo cambia de una variante a otra, ajustalo en esa variante{% if usa_talles %} (y por {{ u1 }} solo si de verdad cambia){% endif %}. Ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>

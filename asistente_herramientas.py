@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 
 import analisis_stock
+import cache_db
 import calidad as calidad_mod
 import catalogo_ganar as catalogo_mod
 import chat_ia
@@ -21,6 +22,7 @@ import dashboard as dashboard_mod
 import db
 import dolar as dolar_mod
 import embudo_conversion as embudo_mod
+import espia_competencia
 import facturacion as facturacion_mod
 import fiscal
 import flex as flex_mod
@@ -36,6 +38,7 @@ import promociones as promociones_mod
 import publicidad as publicidad_mod
 import reputacion as reputacion_mod
 import salud_cuenta
+import tendencias as tendencias_mod
 import tiempo_respuesta as tiempo_respuesta_mod
 from auth import token_manager
 from utils import SQL_RECLAMO_AFECTA, hoy_argentina, limpiar_titulo_modelo, prorratear_mensual, rotulo_variante, sql_momento_argentina, sql_variante_de_venta
@@ -312,18 +315,68 @@ def _mercado(ctx):
     with _conexion(ctx) as conexion:
         d = mercado_mod.armar_pantalla(conexion.cursor(), ctx.cuenta_id)
     ficha = d["ficha"]
+    todas = d["busquedas_tuyas"]
+    sin_cubrir = [b for b in todas if not b["tus_publicaciones"]]
     datos = {
         "dias_de_historia": d["cobertura"]["dias"], "categorias_seguidas": d["cobertura"]["categorias"],
+        # Las cuentas las hace el servidor: el modelo no cuenta ni compara a ojo
+        "resumen": {"busquedas_en_alza_en_tus_categorias": len(todas), "que_ya_cubris_con_alguna_publicacion": len(todas) - len(sin_cubrir), "sin_ninguna_publicacion_tuya": len(sin_cubrir),
+                    "las_mejor_posicionadas_que_no_cubris": [{"busqueda": b["texto"][:80], "puesto": b["posicion"], "categoria": b["categoria_nombre"]} for b in sin_cubrir[:3]]},
         "busquedas_en_alza_en_tus_categorias": [
-            {"busqueda": b["texto"], "categoria": b["categoria_nombre"], "puesto": b["posicion"], "movimiento": b["movimiento"][1] if b["movimiento"] else None, "tus_publicaciones_con_esa_busqueda": b["tus_publicaciones"]}
-            for b in d["busquedas_tuyas"][:10]],
-        "aclaracion": "Mercado Libre informa el puesto de cada búsqueda, no cuántas veces se busca ni cuánto vende cada competidor.", "origen": "pantalla Mercado",
+            {"busqueda": b["texto"][:80], "categoria": b["categoria_nombre"], "puesto": b["posicion"], "movimiento": b["movimiento"][1] if b["movimiento"] else None, "tus_publicaciones_con_esa_busqueda": b["tus_publicaciones"],
+             "dias_seguidos_en_la_lista": b["racha"], "mejor_puesto_alcanzado": b["mejor_posicion"], "que_entiende_mercado_libre": b["entiende"]}
+            for b in todas[:12]],
+        "categorias_sin_relevar_todavia": [c["nombre"] for c in d["sin_relevar"]][:5],
+        "aclaracion": "Mercado Libre informa el puesto de cada búsqueda en alza y cuántas publicaciones tiene cada categoría; no informa el volumen de búsquedas ni las ventas de otros vendedores.", "origen": "pantalla Mercado",
     }
     if ficha:
-        datos["categoria_destacada"] = {"nombre": ficha["nombre"], "publicaciones_en_el_mercado": ficha["publicaciones"],
-                                        "variacion_7_dias_pct": ficha["variacion_7"]["pct"] if ficha["variacion_7"] else None,
-                                        "precio_mediano": float(ficha["muestra"]["precio_p50"]) if ficha["muestra"] and not ficha["muestra"]["vacia"] and ficha["muestra"]["precio_p50"] else None}
+        muestra = ficha["muestra"] if ficha["muestra"] and not ficha["muestra"]["vacia"] else None
+        datos["categoria_destacada"] = {
+            "nombre": ficha["nombre"], "publicaciones_en_el_mercado": ficha["publicaciones"], "variacion_7_dias_pct": ficha["variacion_7"]["pct"] if ficha["variacion_7"] else None,
+            "variacion_30_dias_pct": ficha["variacion_30"]["pct"] if ficha["variacion_30"] else None,
+            "precio_mediano": float(muestra["precio_p50"]) if muestra and muestra["precio_p50"] else None,
+            "rango_de_precios_habitual": [float(muestra["precio_p25"]), float(muestra["precio_p75"])] if muestra and muestra["precio_p25"] and muestra["precio_p75"] else None,
+            "ofertas_con_full_pct": float(muestra["pct_full"]) if muestra and muestra["pct_full"] is not None else None,
+            "ofertas_con_envio_gratis_pct": float(muestra["pct_envio_gratis"]) if muestra and muestra["pct_envio_gratis"] is not None else None,
+            "oferta": muestra["concentracion"][1] if muestra and muestra["concentracion"] else None,
+            "la_muestra_es_de": "esa categoría" if muestra and muestra.get("alcance") != "dominio" else ("todo el rubro (la categoría tiene pocas ofertas de catálogo)" if muestra else None)}
     return datos
+
+
+def _tendencias(ctx):
+    """Lo que muestra la pantalla Tendencias, SOLO LEYENDO: las búsquedas en tendencia de las categorías donde vende la persona, cuáles ya están en algún título suyo, las fechas comerciales que vienen y
+    cómo se mueve la oferta de las categorías que sigue. No guarda nada (la pantalla sí guarda seguimientos y la caché; acá una transacción de solo lectura lo impediría)."""
+    with _conexion(ctx) as conexion:
+        cursor = conexion.cursor()
+        categorias = tendencias_mod.categorias_del_catalogo(cursor)
+        if not categorias:
+            return {"hay_tendencias": False, "mensaje": "Todavía no hay categorías guardadas de las publicaciones de esta cuenta, así que no se pueden armar tendencias de su rubro.", "origen": "pantalla Tendencias"}
+        cursor.execute("SELECT category_id, nombre FROM mercado_categorias WHERE category_id = ANY(%s)", ([c for c, _ in categorias],))
+        nombres = dict(cursor.fetchall())
+        hit, guardado = cache_db.leer(cursor, ctx.cuenta_id, tendencias_mod.CLAVE_TENDENCIAS, ",".join(c for c, _ in categorias), tendencias_mod.TTL_TENDENCIAS_SEGUNDOS, ttl_fallido=600)
+    lista = (guardado or {}).get("lista") if hit else None
+    if not lista:
+        token = _token(ctx)                                                       # la caché de la pantalla no sirve (venció o nunca se abrió): se pide a Mercado Libre, sin guardar nada
+        lista = tendencias_mod.mezclar_tendencias([(cid, tendencias_mod.obtener_tendencias(token, category_id=cid)) for cid, _ in categorias])
+    if not lista:
+        return {"hay_tendencias": False, "mensaje": "Mercado Libre no devolvió tendencias ahora mismo para las categorías de esta cuenta.", "origen": "pantalla Tendencias"}
+
+    with _conexion(ctx) as conexion:
+        cursor = conexion.cursor()
+        tendencias_mod.cruzar_tendencias_con_catalogo(lista, cursor)             # marca en cada una si ya está en algún título (no escribe)
+        seguimientos = tendencias_mod.listar_seguimientos_con_historial(cursor, ctx.cuenta_id)
+    sin_cubrir = [t for t in lista if not t.get("cubierta")]
+    return {
+        "hay_tendencias": True,
+        "categorias_analizadas": [{"categoria": nombres.get(cid) or cid, "tus_publicaciones_activas": cantidad} for cid, cantidad in categorias],
+        "resumen": {"busquedas_en_tendencia": len(lista), "ya_estan_en_algun_titulo_tuyo": len(lista) - len(sin_cubrir), "sin_cubrir": len(sin_cubrir),
+                    "las_mejor_posicionadas_sin_cubrir": [{"busqueda": str(t.get("keyword") or "")[:80], "puesto": t.get("posicion")} for t in sin_cubrir[:3]]},
+        "busquedas_en_tendencia": [{"puesto": t.get("posicion"), "busqueda": str(t.get("keyword") or "")[:80], "categoria": nombres.get(t.get("categoria_id")) or t.get("categoria_id"), "ya_esta_en_un_titulo_tuyo": bool(t.get("cubierta"))} for t in lista[:12]],
+        "fechas_comerciales_proximas": [{"fecha": e["nombre"], "en_dias": e["dias_faltantes"], "rubros_que_se_mueven": e["categoria_sugerida"]} for e in tendencias_mod.obtener_calendario_estacional()[:3]],
+        "categorias_que_sigue": [{"categoria": str(s["etiqueta"] or s["valor"])[:80], "variacion_de_la_oferta_pct": s["tendencia_pct"], "dias_de_historia": len(s["serie"])} for s in seguimientos if s["tipo"] == "categoria" and s["tiene_historial_suficiente"]][:5],
+        "aclaracion": "Mercado Libre informa qué búsquedas están en tendencia y su puesto de hoy; no informa cuántas veces se busca cada una. «Ya está en un título tuyo» significa que la palabra aparece en el título de alguna de sus publicaciones activas.",
+        "origen": "pantalla Tendencias",
+    }
 
 
 def _cobros(ctx):
@@ -717,19 +770,39 @@ def _promociones(ctx):
 
 
 def _competencia(ctx):
-    """Publicaciones de catálogo: si están ganando el puesto principal y a qué precio se ganaría (cruzado con el precio mínimo). Solo las publicaciones de catálogo."""
+    """Las dos fuentes de la pantalla Competencia: las publicaciones de catálogo de la cuenta (si ganan el puesto principal y a qué precio se ganaría, cruzado con el precio mínimo) y los productos
+    de catálogo que la persona sigue (precio más bajo, cantidad de ofertas y vendedores, cómo se movió). Las dos solo se leen."""
     with _conexion(ctx) as conexion:
-        d = catalogo_mod.obtener(conexion.cursor(), ctx.cuenta_id)
+        cursor = conexion.cursor()
+        d = catalogo_mod.obtener(cursor, ctx.cuenta_id)
+        seguidos = espia_competencia.obtener_panorama_competencia(cursor, ctx.cuenta_id)
+    resultado = {"origen": "pantalla Competencia", "tiene_publicaciones_de_catalogo": bool(d)}
+    resultado["productos_que_sigue"] = [_producto_seguido(p) for p in seguidos[:6]]
     if not d:
-        return {"tiene_publicaciones_de_catalogo": False, "mensaje": "Esta cuenta no tiene publicaciones de catálogo con datos de competencia todavía: no hay precios de competidores para comparar.", "origen": "pantalla Competencia"}
+        resultado["mensaje"] = ("Esta cuenta no tiene publicaciones de catálogo con datos de competencia todavía, así que no hay un precio para ganar que comparar."
+                                + ("" if seguidos else " Tampoco sigue ningún producto de catálogo: pegando el link de una ficha en la pantalla Competencia se empieza a ver cuántos vendedores la ofrecen y a qué precio."))
+        return resultado
     accionables = [i for i in d["items"] if i["estado"] == "competing"]
-    return {
-        "tiene_publicaciones_de_catalogo": True, "ganando_el_puesto_principal": d["ganando"], "compitiendo": d["perdiendo"], "conviene_bajar_el_precio": d["conviene_bajar"],
+    resultado.update({
+        "ganando_el_puesto_principal": d["ganando"], "compitiendo": d["perdiendo"], "conviene_bajar_el_precio": d["conviene_bajar"],
         "las_que_compiten": [{"publicacion": i["titulo"], "tu_precio": _plata(i["precio"]), "precio_para_ganar": i["para_ganar"], "diferencia_pct": i["diferencia_pct"],
                               "ganancia_por_unidad_a_ese_precio": i["neto_para_ganar"], "conviene": i["conviene"], "estado": i["texto"], "condiciones": [c["descripcion"] for c in i["condiciones"] if c.get("descripcion")][:3]}
                              for i in accionables[:8]],
-        "aclaracion": "«Conviene» significa que a ese precio todavía queda ganancia, con la comisión, el envío y el costo reales. Mercado Libre no informa cuánto vende cada competidor.", "origen": "pantalla Competencia",
-    }
+        "aclaracion": "«Conviene» significa que a ese precio todavía queda ganancia, con la comisión, el envío y el costo reales. Mercado Libre informa los precios y la cantidad de ofertas, no cuánto vende cada competidor.",
+    })
+    return resultado
+
+
+def _producto_seguido(p):
+    """Un producto de catálogo que la persona sigue, resumido con lo último que se midió y cómo cambió el precio más bajo en el historial guardado."""
+    historial = p["historial"]
+    hoy = historial[0] if historial else {}
+    primero = historial[-1] if len(historial) > 1 else {}
+    variacion = None
+    if hoy.get("precio_min") and primero.get("precio_min"):
+        variacion = round((hoy["precio_min"] - primero["precio_min"]) / primero["precio_min"] * 100, 1)
+    return {"producto": str(p["alias"] or p["titulo_actual"] or p["id_producto"])[:80], "precio_mas_bajo": hoy.get("precio_min"), "precio_mediano": hoy.get("precio_mediano"), "ofertas": hoy.get("ofertas"), "vendedores": hoy.get("vendedores"),
+            "ofertas_con_full_pct": hoy.get("pct_full"), "como_se_movio_el_precio_mas_bajo": p["tendencia_precio"], "variacion_del_precio_mas_bajo_pct": variacion, "dias_con_datos": len(historial), "ultima_medicion": hoy.get("fecha")}
 
 
 def _opiniones(ctx):
@@ -922,7 +995,11 @@ HERRAMIENTAS = {
                      "parametros": dict(_PERIODO), "funcion": _devoluciones},
     "promociones": {"descripcion": "Promociones y descuentos: qué pasó con las ventas en las últimas promociones, cupones que paga la persona, stock que rota lento (candidato a promoción) y campañas de Mercado Libre disponibles.",
                     "parametros": {}, "funcion": _promociones},
-    "competencia": {"descripcion": "Publicaciones de catálogo: cuáles ganan el puesto principal, a qué precio se ganaría y si a ese precio todavía queda ganancia. Solo sirve si la cuenta tiene publicaciones de catálogo.",
+    "tendencias": {"descripcion": ("Las búsquedas en tendencia de Mercado Libre en las categorías donde vende la persona, cuáles de ellas YA están en un título suyo y cuáles no (oportunidades), las fechas comerciales que se vienen y cómo se mueve la oferta de las categorías que sigue. "
+                                   "Usala junto con «mercado» y «competencia» para preguntas de qué se busca, qué viene o qué conviene publicar."),
+                   "parametros": {}, "funcion": _tendencias},
+    "competencia": {"descripcion": ("Competencia en catálogo: las publicaciones de la cuenta que ganan o no el puesto principal (a qué precio se ganaría y si a ese precio todavía queda ganancia) y los productos de catálogo que la persona sigue "
+                                    "(precio más bajo, cantidad de ofertas y vendedores, y cómo se movió). Si la cuenta no tiene publicaciones de catálogo igual devuelve lo que sigue."),
                     "parametros": {}, "funcion": _competencia},
     "opiniones": {"descripcion": "Lo que dicen las opiniones de los productos: calificación promedio, porcentaje de críticas, los modelos para revisar y el resumen que arma Mercado Libre de cada uno. No incluye los comentarios.",
                   "parametros": {}, "funcion": _opiniones},

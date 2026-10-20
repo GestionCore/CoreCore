@@ -196,9 +196,9 @@
     </div>
     {% if coincide_con_competencia %}
     <div class="alert alert-warning" style="margin-top:16px;">
-        <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-alert"/></svg><strong>Ojo con estas:</strong>
+        <svg class="icon" style="vertical-align:middle;margin-right:6px;"><use href="#icon-alert"/></svg><strong>Atención con estas:</strong>
         {% for c in coincide_con_competencia %}"{{ c.keyword }}" (ya la usa {{ c.rivales|join(', ') }}){% if not loop.last %}, {% endif %}{% endfor %}
-        — tu competencia ya la tiene y vos no.
+        — tu competencia ya la tiene y vos todavía no.
     </div>
     {% endif %}
 </div>

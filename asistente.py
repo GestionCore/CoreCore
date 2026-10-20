@@ -62,8 +62,8 @@ GUIA_DE_PANTALLAS = {
     "promociones": "Promociones: descuentos y campañas, con su impacto en las ventas.",
     "publicidad": "Publicidad: lo gastado en Product Ads, el retorno y cada campaña.",
     "mercado": "Mercado: qué se busca en Mercado Libre y cómo está la oferta en las categorías donde vendés.",
-    "tendencias": "Tendencias: explorar un producto o categoría puntual antes de apostar.",
-    "competencia": "Competencia: seguir publicaciones de catálogo de otros vendedores.",
+    "tendencias": "Tendencias: qué búsquedas están en alza en tus categorías, qué fechas comerciales vienen y cómo explorar un producto o categoría puntual antes de apostar.",
+    "competencia": "Competencia: ver si ganás el puesto principal en catálogo y seguir productos de catálogo de otros vendedores (precio, ofertas y vendedores).",
     "cuenta": "Mi cuenta: margen mínimo, dólar para los costos, condición fiscal, datos y conectar otra cuenta.",
     "dolar": "Dólar para tus costos (en Mi cuenta): automático (MEP) o uno propio.",
 }
@@ -91,6 +91,8 @@ Reglas:
 9. Si no entendés la pregunta o falta un dato de la persona (qué período, qué producto), preguntale en una línea.
 10. No digas qué valor es «normal», «alto» o «bajo» para un rubro ni compares con otros vendedores: no tenés ese dato (Mercado Libre no informa promedios de otros). Compará solo contra la propia historia de la cuenta (el período anterior, otros modelos suyos) o contra los límites que dan las herramientas.
 11. Tenés la conversación anterior: un mensaje como «¿y la gris?», «¿y el mes pasado?» o «explicame mejor» se refiere a lo último de lo que hablaron. Usá el contexto de la cuenta para que tus consejos sean de SU negocio (cómo entrega, qué tiene activado, las fechas que se vienen) y no le preguntes lo que ya figura ahí.
+12. Hablá con seguridad y precisión: empezá por la conclusión y respaldala con las cifras de las herramientas. Lo que las herramientas devolvieron es un hecho, no una duda: afirmalo sin «parece», «quizás» ni «ojo con». Si de verdad falta un dato, decí en UNA frase cuál es y por qué no está (por ejemplo, que Mercado Libre no informa el volumen de búsquedas), una sola vez, y seguí con lo que sí se sabe y con qué conviene hacer. No cuentes qué pantallas o herramientas consultaste. Tono profesional, sin muletillas coloquiales.
+13. Para preguntas de búsquedas, tendencias, demanda o competencia consultá TODAS las herramientas relacionadas (mercado, tendencias y competencia) y armá UNA respuesta concreta: qué búsquedas suben, cuáles NO tiene cubiertas con ninguna publicación, qué fechas comerciales vienen, qué precio ganaría el puesto en catálogo y cómo se mueven los productos que sigue. Ofrecé al final el próximo paso concreto.
 
 Glosario de la plata (usalo igual, sin inventar otros nombres): {glosario}
 
