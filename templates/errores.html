@@ -14,6 +14,8 @@
     .codigo { font-size: 3.4rem; font-weight: 800; color: var(--acento); line-height: 1; margin-bottom: 10px; }
     h1 { font-size: 1.35rem; margin: 0 0 10px; text-wrap: balance; }
     p { color: var(--suave); line-height: 1.55; margin: 0 0 24px; }
+    .incidente { font-size: 0.85rem; margin: -10px 0 24px; }
+    .incidente b { color: var(--texto); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
     .acciones { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
     a { display: inline-block; padding: 11px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; }
     .primario { background: var(--acento); color: #fff; }
@@ -25,6 +27,7 @@
     <div class="codigo">{{ codigo }}</div>
     <h1>{{ titulo }}</h1>
     <p>{{ detalle }}</p>
+    {% if incidente %}<p class="incidente">Si nos escribís, pasanos este código: <b>{{ incidente }}</b></p>{% endif %}
     <div class="acciones">
         <a class="primario" href="/">{{ 'Ir al inicio' if logueado else 'Volver a CoreLux' }}</a>
         <a class="secundario" href="#" data-click="history.back" data-prevenir>Volver atrás</a>

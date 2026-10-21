@@ -85,7 +85,7 @@
                 <td class="num"><b>${{ p.precio_formateado }}</b></td>
                 <td class="num" data-orden="{{ p.descuento_pct }}"><span class="ux-pill ux-ok">-{{ p.descuento_pct }}%</span></td>
                 <td>
-                    <form action="/promociones/eliminar_descuento/{{ p.id }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Quitar el descuento de esta publicación?", "$form", "Quitar descuento"]' data-prevenir>
+                    <form action="/promociones/eliminar_descuento/{{ p.id }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Quitar el descuento de esta publicación?", "$form", "Quitar descuento", "", true]' data-prevenir>
                         <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Quitar</button>
                     </form>
                 </td>

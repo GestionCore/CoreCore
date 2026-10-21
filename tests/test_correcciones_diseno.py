@@ -46,3 +46,12 @@ def test_la_pagina_de_error_carga_la_tipografia_de_la_marca():
     r = modulo_app.app.test_client().get("/esta-pagina-no-existe-123")
     assert r.status_code == 404
     assert "/static/css/fonts.css?v=" in r.get_data(as_text=True)
+
+
+def test_los_chips_y_botones_chicos_del_celular_miden_44_px():
+    """D49/D50: medido en un navegador a 375 px, estos medían 37 (chips de Día a día), 32 (búsquedas de Tendencias), 29 (series del Monitor) y 20 px (ordenar tablas)."""
+    css = _leer("static", "css", "movil.css")
+    regla = re.search(r"([^{}]+)\{\s*min-height:\s*44px;\s*display:\s*inline-flex;\s*align-items:\s*center;\s*\}", css)
+    assert regla, "falta la regla de 44 px para los chips"
+    for selector in (".dia-resumen-item", ".ux-chip-serie", "button.badge", ".th-orden"):
+        assert selector in regla.group(1), selector

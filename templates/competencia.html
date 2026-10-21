@@ -86,7 +86,7 @@
             {% if p.tendencia_precio == 'bajó' %}<span class="badge badge-danger">Precio más bajo: bajó</span>
             {% elif p.tendencia_precio == 'subió' %}<span class="badge badge-success">Precio más bajo: subió</span>{% endif %}
         </span>
-        <form action="/competencia/eliminar/{{ p.id_producto }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Dejar de seguir este producto?", "$form", "Dejar de seguir"]' data-prevenir style="display:inline;">
+        <form action="/competencia/eliminar/{{ p.id_producto }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Dejar de seguir este producto?", "$form", "Dejar de seguir", "", true]' data-prevenir style="display:inline;">
             <button type="submit" class="btn btn-danger">Dejar de seguir</button>
         </form>
     </div>

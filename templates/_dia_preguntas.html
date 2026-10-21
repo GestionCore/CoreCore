@@ -279,7 +279,7 @@ async function yaRespondida(qid, card, boton) {
 }
 
 async function borrarPregunta(qid, card, boton) {
-    if (!(await confirmarDecision('¿Borrar esta pregunta?', 'Borrar', 'Se borra también en Mercado Libre y no se puede deshacer. Si solo no querés responderla, usá «Ignorar»: sale de la lista y no se toca nada en Mercado Libre.'))) return;
+    if (!(await confirmarDecision('¿Borrar esta pregunta?', 'Borrar', 'Se borra también en Mercado Libre y no se puede deshacer. Si solo no querés responderla, usá «Ignorar»: sale de la lista y no se toca nada en Mercado Libre.', true))) return;
     await conTarjetaOcupada(card, boton, 'Borrando…', async () => {
         const d = await (await fetch('/api/preguntas/borrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question_id: qid }) })).json();
         if (d.ok) { mostrarToast(d.detalle || 'Pregunta borrada', d.oculta ? 'warning' : 'success'); sacarTarjeta(qid, card); return true; }

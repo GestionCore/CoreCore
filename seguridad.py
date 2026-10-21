@@ -176,6 +176,13 @@ def iniciar(app):
     def _nonce_del_pedido():
         g.csp_nonce = secrets.token_urlsafe(16)        # uno por pedido: lo llevan los <script> inline de la página y la cabecera de la política
         g.inicio_pedido = time.perf_counter()
+        # Código corto para ubicar un error: sale en la página de error («me dio error» pasa a ser «me dio el A3F9C1»), en el log y como etiqueta de Sentry
+        g.id_incidente = secrets.token_hex(3).upper()
+        try:
+            import sentry_sdk
+            sentry_sdk.set_tag("incidente", g.id_incidente)
+        except Exception:               # sin Sentry (o sin DSN) no pasa nada
+            pass
 
     @app.context_processor
     def _nonce_para_plantillas():
@@ -286,6 +293,13 @@ def _ocupado():
 
 def _error(codigo, titulo, detalle):
     g.mostrando_error = True            # ver app._inyectar_cuentas_usuario: armar una página de error no puede tocar la base
+    # Solo un error del lado nuestro (500 o más) lleva código de incidente: un 404 o un 403 no es algo que haya que ubicar en los registros
+    incidente = g.get("id_incidente") if codigo >= 500 else None
+    if incidente:
+        log.error("[Incidente %s] %s %s -> %s", incidente, request.method, request.path, codigo)
     if request.path.startswith("/api/") or request.is_json or "application/json" in (request.headers.get("Accept") or ""):
-        return jsonify({"ok": False, "detalle": titulo + ". " + detalle}), codigo
-    return render_template("errores.html", codigo=codigo, titulo=titulo, detalle=detalle, logueado=bool(request.cookies.get("session"))), codigo
+        cuerpo = {"ok": False, "detalle": titulo + ". " + detalle + (f" Código: {incidente}." if incidente else "")}      # la pantalla muestra el detalle: el código viaja ahí
+        if incidente:
+            cuerpo["incidente"] = incidente
+        return jsonify(cuerpo), codigo
+    return render_template("errores.html", codigo=codigo, titulo=titulo, detalle=detalle, incidente=incidente, logueado=bool(request.cookies.get("session"))), codigo

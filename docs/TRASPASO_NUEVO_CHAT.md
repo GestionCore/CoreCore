@@ -5,8 +5,8 @@
 
 ## 1. Dónde estamos
 - Repo `main` sincronizado con GitHub. Último código: el commit de la auditoría de diseño (después de `3bb9e24`).
-- **Producción corre `f126954`** (el dueño la desplegó con `python desplegar.py` y `/healthz` informó `f1269545cbaa`). Subido a git y **NO desplegado**: `f33af4d`, `b471100`, `3bb9e24` y lo de esta noche (§3b). No hay migraciones nuevas. Lo despliega el dueño con `python desplegar.py` desde `CoreLux-SaaS`.
-- 1.723 pruebas pasan (con y sin Redis). Ruff limpio.
+- **Producción corre `f126954`** (el dueño la desplegó con `python desplegar.py` y `/healthz` informó `f1269545cbaa`). Subido a git y **NO desplegado**: `f33af4d`, `b471100`, `3bb9e24`, `428385e` y lo de esta noche (§3b). No hay migraciones nuevas. Lo despliega el dueño con `python desplegar.py` desde `CoreLux-SaaS`.
+- 1.740 pruebas pasan (con y sin Redis). Ruff limpio.
 - El dueño es **Diego** (usuario 3, cuentas de Mercado Libre `2` = DIEGOARIELSANTIAGO y `7` = NOENOEINDUMENTARIA, plan Elite). Mercado Pago corre con credenciales de PRODUCCIÓN y un precio de prueba de $100 para UN mail (`MP_EMAIL_DE_PRUEBA` + `MP_PRECIO_DE_PRUEBA`), sin cobro real todavía.
 
 ## 2. Cómo trabaja el dueño (no negociable)
@@ -29,7 +29,7 @@ Detalle en `PENDIENTES.md` §0f. Resumen:
 
 ## 3b. Lo hecho la noche del 2026-10-21 (el dueño dormía y pidió una sesión larga sin preguntas)
 - Dos auditorías de 100 puntos con evidencia y estado: `docs/AUDITORIA_TECNICA_100.md` y `docs/AUDITORIA_DISENO_100.md`. Cada una abre con cómo se verificó, qué se descartó y «si solo se hacen 10». Son propuestas: el dueño elige.
-- Arreglos reales (con prueba): ventanas de tiempo completas (alerta de caída, salud, promociones, visitas, proyección del mes), no crear una 2.ª suscripción si la vieja no se cancela, órdenes rechazadas ya no adelantan la marca del sync, agregar gasto con montos argentinos, `parsear_monto("1e3")`, Sentry con usuario/versión, cachés de Ganancia Real (de 20 s a 0,4 s en evolución mensual), herramienta `despacho` del asistente (31.ª), modo privacidad 57/57, «Ventas hoy» vs. ayer a la misma hora, Calidad sin «100/100» falso, Planes con la cuenta en la barra.
+- Arreglos reales (con prueba): ventanas de tiempo completas (alerta de caída, salud, promociones, visitas, proyección del mes), no crear una 2.ª suscripción si la vieja no se cancela, órdenes rechazadas ya no adelantan la marca del sync, agregar gasto con montos argentinos, `parsear_monto("1e3")`, Sentry con usuario/versión, cachés de Ganancia Real (de 20 s a 0,4 s en evolución mensual), herramienta `despacho` del asistente (31.ª), modo privacidad 57/57, «Ventas hoy» vs. ayer a la misma hora, Calidad sin «100/100» falso, Planes con la cuenta en la barra, confirmaciones violetas (rojo solo si destruye), chips de celular de 44 px, código de incidente en los errores, movimiento reducido también en JavaScript, miniaturas guardadas con https.
 - Las dos decisiones de identidad visual que necesitan al dueño: D15 (violeta más oscuro solo para fondos con texto blanco) y D46 (dorado de la marca en tema claro).
 
 ## 4. Lo que falta

@@ -22,6 +22,10 @@
     /* Los enlaces chicos de la cabecera de un panel («Ver todas →») ganan zona de toque hacia arriba y abajo sin mover nada */
     .ux-panel-cab a { padding: 12px 6px; margin: -12px -6px; }
     .ux-periodo-botones .btn { padding: 10px 14px; }
+    /* Lo que medía menos de 40 px en el celular (auditoría de diseño D49/D50): los tres chips de arriba de Día a día (37), las búsquedas de Tendencias (32), los chips de series del
+       Monitor (29), los botones de ordenar las tablas (20) y el link «Orden #…» de Cobros (17: la zona de toque crece hacia arriba y abajo sin mover nada) */
+    .dia-resumen-item, .ux-chip-serie, button.badge, .th-orden { min-height: 44px; display: inline-flex; align-items: center; }
+    .ux-rank-titulo a { display: inline-block; padding: 10px 0; margin: -10px 0; }
 
     /* Casillas y selectores: más grandes para tocarlas, y 16 px de letra en los campos (con menos, iPhone hace zoom al enfocarlos) */
     input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; flex: 0 0 22px; }

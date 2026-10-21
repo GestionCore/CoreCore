@@ -14,7 +14,7 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 **Se descartaron con evidencia** (no están en la lista): (1) capturas que mostraban una pantalla «en blanco» o «apagada» justo después de cargar: era la animación de entrada (`fadeInUp`, 0,45 s); con el DOM, a los 2 s todos los elementos estaban con opacidad 1 (pasó con Mercado, Cuenta, Planes, Stock masivo, Ventas manuales, Monitor y el checklist del Dashboard en tema claro); (2) «blanco sobre botón violeta 1,01:1» en el tema claro y «RECOMENDADO 1,04:1» en Planes: el fondo es un degradé que la medición no ve; (3) «los avisos no se anuncian a lectores de pantalla»: sí se anuncian (`role="alert"` / `role="status"` en cada aviso); (4) «Salud de la cuenta 67 en verde está mal»: el umbral de «Bien» es 65; (5) «campos sin etiqueta»: **0 de 11 pantallas** tienen un campo sin nombre accesible (218 en Costos); (6) scroll horizontal: **0 en las 18 pantallas de celular**; (7) peso de los estáticos: ya salen con Brotli y `immutable` (el CSS de 71 KB viaja en 20 KB).
 **Lo que está bien y no hay que tocar:** la landing (clara, con datos de ejemplo rotulados), las cifras con dígitos tabulares, las fuentes propias, la animación de la barra del mes, las tarjetas de «Lo que tenés que hacer hoy» (la mejor pieza de la app), el tema claro (pasa el contraste), el trabajo de celular de las olas anteriores (letra ≥ 12 px en 15 de 18 pantallas) y la estabilidad al cargar (CLS ≈ 0 salvo el hero del Dashboard).
 
-**Lo ya hecho esta noche** (once correcciones hechas al mirar las pantallas y el código, cada uno con su prueba): D1 a D4, D19, D40, D41, D47, D60, D77 y D78. Se suman los commits `3bb9e24` y el siguiente. Sin desplegar: lo hace el dueño con `python desplegar.py`.
+**Lo ya hecho esta noche** (catorce correcciones hechas al mirar las pantallas y el código, cada uno con su prueba): D1 a D4, D19, D40, D41, D47, D49, D50, D60, D70, D77 y D78. Se suman los commits `3bb9e24` y el siguiente. Sin desplegar: lo hace el dueño con `python desplegar.py`.
 
 ### Si solo se hacen 10 (en este orden)
 1. **D13** los campos casi no se ven (borde 1,03–1,08:1 contra el fondo).
@@ -26,7 +26,7 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 7. **D29** las tarjetas de números que quedan «huérfanas» entre 1024 y 1280 px.
 8. **D61** Promociones: 7 filas casi iguales → una por modelo.
 9. **D7** el modo privacidad no tapa los gráficos.
-10. **D70** el botón rojo «Confirmar» sale en toda confirmación, aunque no destruya nada.
+10. **D31** el botón violeta «Actualizar» fijo en la barra compite con el principal de cada pantalla.
 
 ---
 
@@ -92,8 +92,8 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 ## E. Celular y app instalable (8)
 
 48. ⏳ [A·M] **Páginas muy largas en celular:** Ganancia Real 9.006 px (12,2 pantallas de scroll), Dashboard 6.176 (8,3), Costos 6.109 (8,3), Mercado 5.540 (7,5), Día a día 4.957 (6,7), Opiniones 4.457 (6). → pestañas «Hoy · Este mes · 14 días» en el Dashboard, «Ver 10 más» en Mercado, y los bloques de menor valor plegados (UX200#42/#65).
-49. ⏳ [M·S] **Áreas táctiles menores de 40 px en celular:** los tres chips de arriba de Día a día (37 px), las insignias de búsqueda de Tendencias (32 px), los chips de series del Monitor (29 px), los links «Orden #…» de Cobros (17 px) y «(Cambiar)» (57×15). → 44 px con relleno invisible.
-50. ⏳ [M·S] **Los botones de ordenar las tablas (`th-orden`) miden 19–20 px de alto** en Ganancia Real (también en celular) y en Stock (escritorio). → 36 px como mínimo.
+49. ✅ [M·S] **Áreas táctiles menores de 40 px en celular:** los tres chips de arriba de Día a día (37 px), las insignias de búsqueda de Tendencias (32 px), los chips de series del Monitor (29 px) y el link «Orden #…» de Cobros (17 px). Ahora miden 44 px (el link de Cobros, 39 px, con la zona de toque extendida sin mover nada), medido a 375 px sin desborde horizontal (`movil.css`). Queda «(Cambiar)» (un link dentro de una frase, que las normas dejan afuera).
+50. ✅ [M·S] **Los botones de ordenar las tablas (`th-orden`) medían 19–20 px de alto** en Ganancia Real (también en celular) y en Stock. En celular ahora 44 px (`movil.css`); en escritorio quedan como estaban.
 51. ⏳ [M·S] **78 `title="…"` (tooltips) que en celular no se ven:** varios son lo único que dice el nombre completo de un título cortado. → tocar para expandir.
 52. ⏳ [B·S] **Landing en 375 px: la tarjeta flotante «2 publicaciones venden a pérdida» tapa parte de la maqueta del producto** (el encabezado «Ganancia Real · últimos 30 días» queda cortado).
 53. ⏳ [M·M] **No hay `service worker`:** sin conexión se ve la pantalla de error del navegador, aunque la app se instala (`manifest.json`, `display: standalone`). → una página «Sin conexión: mostrando lo último que viste» y la caché de lo estático (UX200#151).
@@ -125,7 +125,7 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 
 ## I. Estados y respuesta: carga, error, deshacer (5)
 
-70. ⏳ [M·S] **La confirmación siempre tiene el botón rojo «Confirmar»**, aunque guarde 12 costos y no destruya nada (`btn btn-danger` fijo en `modal-confirmar-ok`; `confirmarDecision` no recibe un tono). El rojo deja de significar peligro. → `confirmarDecision(mensaje, etiqueta, sub, {peligro: true})`: rojo solo si destruye; si no, el violeta de acción.
+70. ✅ [M·S] **La confirmación tenía siempre el botón rojo «Confirmar»**, aunque guardara 12 costos y no destruyera nada (`btn btn-danger` fijo): el rojo dejaba de significar peligro. Ahora el botón es violeta (acción) y rojo solo si se pide `peligro` (`confirmarDecision(mensaje, etiqueta, sub, true)`, 5.º parámetro de `confirmarAccion`): lo piden borrar una pregunta, eliminar un gasto o una venta, quitar un descuento, dejar de seguir un producto, desactivar un usuario y reemplazar los umbrales Flex. Verificado en el navegador con los dos tonos. `tests/test_confirmacion_tono.py` (la lógica corre con node; una guarda lista las destructivas y otra impide un rojo en «guardar/cambiar/aplicar»).
 71. ⏳ [M·S] **Las dos píldoras de la barra dicen «Cargando…» en cada pantalla** (≈ 0,9 s en mis mediciones locales; menos en Fly) y cambian de ancho al llegar el dato. → guardar el último valor en `cache_db` y escribirlo ya en el HTML, y actualizar encima.
 72. ⏳ [M·S] **El hero del Dashboard salta al cargar:** CLS 0,094 (el límite «bueno» es 0,1): 0,076 de un solo salto a los 3 s cuando llega la ganancia. Las otras 7 pantallas medidas dan ≈ 0. → reservar el alto del hero con un esqueleto.
 73. ⏳ [M·M] **No existe «Deshacer» en ninguna parte** (0 usos en plantillas y scripts): despachar, ocultar, borrar un gasto, cambiar un costo. → un aviso de 8 s con «Deshacer» para lo reversible (UX200#116).

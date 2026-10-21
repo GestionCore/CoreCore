@@ -167,6 +167,17 @@ def _consultar_stock_convivencia(user_product_id, headers):
         return None, None
 
 
+def miniatura_https(p):
+    """
+    La miniatura de la publicación, SIEMPRE con https. Mercado Libre manda `thumbnail` con `http://` y hoy las 275 miniaturas guardadas lo eran: la página (https) las pedía por http y dependía de que el
+    navegador las subiera solo (y de que la política de contenido deje pasar `http:`). El upsert reescribe la miniatura en cada sincronización: las que quedaron con http se corrigen solas.
+    """
+    url = p.get("secure_thumbnail") or p.get("thumbnail") or None
+    if url and url.startswith("http://"):
+        url = "https://" + url[len("http://"):]
+    return url
+
+
 def _escribir_item_en_db(cuenta_id, datos, cursor, contexto=None):
     id_item = datos["id_item"]
     p = datos["detalle"]
@@ -180,7 +191,7 @@ def _escribir_item_en_db(cuenta_id, datos, cursor, contexto=None):
     distintivos = variantes.atributos_distintivos(mapas_familia, dimensiones_cat.get("variacion", [])) if len(mapas_familia) >= 2 else []
     atributos_clave = variantes.mapa_clave(p.get("attributes"), ocultos)
     nuevo_estado = p.get("status")
-    thumbnail = p.get("secure_thumbnail") or p.get("thumbnail")
+    thumbnail = miniatura_https(p)
     precio_actual = p.get("price")
 
     cuotas = p.get("installments") or {}

@@ -151,7 +151,7 @@ async function extenderPrueba(uid) {
 async function toggleActivo(uid, btn) {
     const esActivo = btn.textContent.trim() === 'Activo';
     const accion = esActivo ? 'desactivar' : 'activar';
-    if (!(await confirmarDecision(`¿Querés ${accion} al usuario ${uid}?`, esActivo ? 'Desactivar' : 'Activar'))) return;
+    if (!(await confirmarDecision(`¿Querés ${accion} al usuario ${uid}?`, esActivo ? 'Desactivar' : 'Activar', '', esActivo))) return;
     try {
         const r = await fetch(`/admin/usuario/${uid}/toggle_activo`, {method: 'POST'});
         const d = await r.json();

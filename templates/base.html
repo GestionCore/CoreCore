@@ -238,7 +238,7 @@
         <div id="modal-confirmar-sub" style="font-size:0.86em; color:var(--text-secondary); margin-bottom:22px; line-height:1.5;"></div>
         <div style="display:flex; gap:12px; justify-content:flex-end;">
             <button type="button" class="btn btn-secondary" data-click="cerrarModalConfirmar">Cancelar</button>
-            <button type="button" class="btn btn-danger" id="modal-confirmar-ok">Confirmar</button>
+            <button type="button" class="btn btn-primary" id="modal-confirmar-ok">Confirmar</button>
         </div>
     </div>
 </div>
@@ -247,14 +247,15 @@
     let _pendingForm = null;
     let _pendingResolve = null;
     // Versión con promesa, para acciones que no son un formulario: `if (await confirmarDecision('...', 'Guardar', 'detalle')) { ... }`
-    window.confirmarDecision = function (mensaje, etiquetaOk, sub) {
+    // El botón es violeta (acción); rojo SOLO si `peligro` es true (borrar, quitar, desactivar: algo que no se deshace): el rojo deja de significar peligro si sale en todo.
+    window.confirmarDecision = function (mensaje, etiquetaOk, sub, peligro) {
         return new Promise(function (resolve) {
-            window.confirmarAccion(mensaje, null, etiquetaOk, sub);
+            window.confirmarAccion(mensaje, null, etiquetaOk, sub, peligro);
             _pendingResolve = resolve;
         });
     };
     let _focoPrevio = null;           // quién tenía el foco al abrir: vuelve ahí al cerrar (teclado y lectores de pantalla)
-    window.confirmarAccion = function (mensaje, form, etiquetaOk, sub) {
+    window.confirmarAccion = function (mensaje, form, etiquetaOk, sub, peligro) {
         _pendingForm = form;
         const modal = document.getElementById('modal-confirmar');
         if (modal.style.display === 'none') _focoPrevio = document.activeElement;
@@ -262,6 +263,7 @@
         document.getElementById('modal-confirmar-sub').textContent = sub || '';
         const ok = document.getElementById('modal-confirmar-ok');
         ok.textContent = etiquetaOk || 'Confirmar';
+        ok.className = 'btn ' + (peligro ? 'btn-danger' : 'btn-primary');
         modal.style.display = 'flex';
         ok.focus();
     };

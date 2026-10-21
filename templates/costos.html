@@ -371,7 +371,7 @@
                 <td><span class="ux-pill {{ 'ux-accion ux-pill-suave' if g.categoria == 'fijo' else 'ux-warn ux-pill-suave' }}">{{ g.categoria|capitalize }}</span></td>
                 <td class="num"><b>${{ g.monto_formateado }}</b></td>
                 <td>
-                    <form action="/eliminar_gasto/{{ g.id }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Eliminar este gasto?", "$form", "Eliminar"]' data-prevenir style="display:inline;">
+                    <form action="/eliminar_gasto/{{ g.id }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Eliminar este gasto?", "$form", "Eliminar", "", true]' data-prevenir style="display:inline;">
                         <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
                         <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
                         <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Borrar</button>
@@ -724,7 +724,7 @@
     async function detectarFlex() {
         const boton = document.getElementById('btn-flex-detectar');
         if (flexUmbrales.some(u => u.precio !== null && u.precio !== undefined && !isNaN(Number(u.precio)))
-            && !(await confirmarDecision('¿Reemplazar tus umbrales?', 'Detectar de todos modos', 'Se van a reemplazar los grupos de zonas de abajo (y los precios que cargaste) por los que detecta tu historial de envíos, SIN precios. No se guarda nada hasta que toques «Guardar».'))) return;
+            && !(await confirmarDecision('¿Reemplazar tus umbrales?', 'Detectar de todos modos', 'Se van a reemplazar los grupos de zonas de abajo (y los precios que cargaste) por los que detecta tu historial de envíos, SIN precios. No se guarda nada hasta que toques «Guardar».', true))) return;
         boton.disabled = true;
         const original = boton.innerHTML;
         boton.textContent = 'Mirando tus envíos…';
