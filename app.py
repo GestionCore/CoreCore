@@ -1230,7 +1230,8 @@ def metricas_vista():
     fecha_hasta = request.args.get("fecha_hasta") or hoy_argentina().strftime("%Y-%m-%d")
     fecha_desde = request.args.get("fecha_desde") or (hoy_argentina() - timedelta(days=30)).strftime("%Y-%m-%d")
 
-    datos = metricas_mod.calcular_ganancia_real(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
+    with seguridad.parte("ganancia real (todo)"):
+        datos = metricas_mod.calcular_ganancia_real(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
 
     cobertura_costos = None
     try:
@@ -1245,7 +1246,8 @@ def metricas_vista():
     # falla — mismo criterio que ya se usa con Ads más arriba.
     punto_equilibrio = None
     try:
-        _, stats_gastos, _ = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta, g.cuenta_id)
+        with seguridad.parte("gastos (equilibrio)"):
+            _, stats_gastos, _ = costos_mod.obtener_datos_costos(g.usuario_id, fecha_desde, fecha_hasta, g.cuenta_id)
         # Los cargos mensuales de Mercado Libre (eShop, FULL…) son costos fijos: suman a los gastos fijos y NO restan del margen de contribución
         costos_fijos = stats_gastos["fijos_raw"] + datos["resumen"]["raw"]["cargos_fuera_de_ventas"]
         facturado_raw = datos["resumen"]["raw"]["facturado"]
@@ -1266,21 +1268,24 @@ def metricas_vista():
     # Reemplaza a la página aparte "Propia vs FULL" (retirada del menú).
     canales_envio = None
     try:
-        canales_envio, _ = comparador_logistica_mod.calcular_comparacion(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
+        with seguridad.parte("canales de envio"):
+            canales_envio, _ = comparador_logistica_mod.calcular_comparacion(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
     except Exception as e:
         print(f"[Métricas] ⚠️ Error calculando margen por canal: {e}")
 
     # Factura MeLi del período de facturación en curso (B3).
     factura_meli = None
     try:
-        factura_meli = facturacion.resumen_condensado_periodo_actual(access_token, g.cuenta_id)
+        with seguridad.parte("factura MeLi"):
+            factura_meli = facturacion.resumen_condensado_periodo_actual(access_token, g.cuenta_id)
     except Exception as e:
         print(f"[Métricas] ⚠️ Error trayendo la factura MeLi: {e}")
 
     # Evolución mensual, últimos 6 meses (B4).
     evolucion_mensual = []
     try:
-        evolucion_mensual = metricas_mod.obtener_evolucion_mensual(g.usuario_id, g.cuenta_id, access_token, meses=6)
+        with seguridad.parte("evolucion mensual"):
+            evolucion_mensual = metricas_mod.obtener_evolucion_mensual(g.usuario_id, g.cuenta_id, access_token, meses=6)
     except Exception as e:
         print(f"[Métricas] ⚠️ Error calculando evolución mensual: {e}")
 

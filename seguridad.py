@@ -14,6 +14,7 @@ import os
 import secrets
 import threading
 import time
+from contextlib import contextmanager
 from datetime import timedelta
 from urllib.parse import urlparse
 from flask import g, request, jsonify, render_template, session, make_response
@@ -71,9 +72,32 @@ def _registrar_si_fue_lento(resp):
             return
         duracion = time.perf_counter() - inicio
         if duracion >= SEGUNDOS_PEDIDO_LENTO:
-            log.warning("[Lento] %s %s %s %.1fs", request.method, request.path, resp.status_code, duracion)
+            log.warning("[Lento] %s %s %s %.1fs%s", request.method, request.path, resp.status_code, duracion, _texto_de_partes())
     except Exception:
         pass                      # medir nunca puede romper una respuesta
+
+
+@contextmanager
+def parte(nombre):
+    """
+    Mide un tramo de un pedido: `with seguridad.parte("ads"): …`. Si el pedido resulta lento, la línea de `[Lento]` lista los tramos que más tardaron (` | ads 1.2s, factura 0.4s`) para saber
+    DÓNDE se va el tiempo sin adivinar. Los nombres son constantes del código (nunca datos de la persona) y fuera de un pedido (scheduler, pruebas) no hace nada.
+    """
+    inicio = time.perf_counter()
+    try:
+        yield
+    finally:
+        try:
+            partes = g.setdefault("partes_del_pedido", {})
+            partes[nombre] = partes.get(nombre, 0.0) + (time.perf_counter() - inicio)
+        except RuntimeError:
+            pass                  # sin pedido en curso
+
+
+def _texto_de_partes():
+    """` | ads 1.2s, factura 0.4s` con los tramos de más de 0,3 s (los 6 mayores), o vacío."""
+    partes = sorted(((n, s) for n, s in (g.get("partes_del_pedido") or {}).items() if s >= 0.3), key=lambda x: -x[1])[:6]
+    return " | " + ", ".join(f"{n} {s:.1f}s" for n, s in partes) if partes else ""
 
 
 def ip_del_cliente():

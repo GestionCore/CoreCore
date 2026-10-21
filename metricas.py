@@ -11,6 +11,7 @@ import db
 import ads
 import costos_moneda
 import facturacion
+import seguridad
 from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina, sql_momento_argentina, limpiar_titulo_modelo, normalizar_talle, nombre_tipo_publicacion
 
 _NOMBRES_MES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -316,13 +317,14 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
     ads_incompleto = 0                      # publicaciones cuyo costo de publicidad Mercado Libre no pudo informar (la ganancia podría estar sobrestimada)
     gasto_ads_total_periodo = None
     try:
-        advertiser_id = ads.obtener_advertiser_id(access_token, cuenta_id)
-        if advertiser_id:
-            ids_con_ventas = list(unidades_por_item.keys())
-            costos = ads.obtener_costos_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_hasta, ids_con_ventas)
-            gasto_ads_total_periodo = ads.obtener_gasto_ads_total_periodo(access_token, advertiser_id, fecha_desde, fecha_hasta)
-            costos_ads_por_item, ads_incompleto = costos, int(getattr(costos, "incompleto", 0) or 0)
-            ads_disponible = True           # recién acá: si algo de lo anterior falla NO se dice «disponible» con $0 de gasto
+        with seguridad.parte("publicidad"):
+            advertiser_id = ads.obtener_advertiser_id(access_token, cuenta_id)
+            if advertiser_id:
+                ids_con_ventas = list(unidades_por_item.keys())
+                costos = ads.obtener_costos_ads_por_item(access_token, advertiser_id, fecha_desde, fecha_hasta, ids_con_ventas)
+                gasto_ads_total_periodo = ads.obtener_gasto_ads_total_periodo(access_token, advertiser_id, fecha_desde, fecha_hasta)
+                costos_ads_por_item, ads_incompleto = costos, int(getattr(costos, "incompleto", 0) or 0)
+                ads_disponible = True           # recién acá: si algo de lo anterior falla NO se dice «disponible» con $0 de gasto
     except Exception as e:
         print(f"[Metricas] ⚠️ Error consultando Ads: {e}")
 
@@ -410,7 +412,8 @@ def calcular_ganancia_real(usuario_id, cuenta_id, access_token, fecha_desde, fec
     # pantalla sigue con las ventas y lo avisa (`completo`), nunca se rompe.
     cargos_fuera_de_ventas = {"total": 0.0, "items": [], "completo": False}
     try:
-        cargos_fuera_de_ventas = facturacion.cargos_fuera_de_ventas(usuario_id, cuenta_id, access_token, fecha_desde, fecha_hasta)
+        with seguridad.parte("cargos mensuales"):
+            cargos_fuera_de_ventas = facturacion.cargos_fuera_de_ventas(usuario_id, cuenta_id, access_token, fecha_desde, fecha_hasta)
     except Exception as e:
         print(f"[Metricas] ⚠️ No se pudieron traer los cargos mensuales de Mercado Libre: {e}")
     total_fijos_meli = float(cargos_fuera_de_ventas["total"])
