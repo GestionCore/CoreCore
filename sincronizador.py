@@ -19,6 +19,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 import cache_db
 import meli_http
+import meli_items
 import mercado_categorias
 import monitoreo
 import validacion_meli
@@ -27,8 +28,6 @@ import db
 import ventas_sync
 import capacidades
 import enriquecimiento
-
-LOTE_MULTIGET_MELI = 20
 
 # Stock de convivencia (depósito propio + FULL de una misma publicación): una llamada por publicación en CADA ciclo de 4 minutos era lo que más
 # pesaba (41 de ~95 llamadas por cuenta). Casi nunca cambia entre un ciclo y el siguiente, así que solo se vuelve a pedir si la publicación se
@@ -444,34 +443,27 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
 
         items_procesados = []
         pendientes_convivencia = []  # (índice en items_procesados, user_product_id, id_item, firma de movimiento)
-        # MeLi limita GET /items?ids= a 20 ids por pedido (con más responde 400 "only allows 20 elements"). Con lotes de 50 el sync
-        # de catálogo fallaba entero y en silencio: no se actualizaba ningún precio, stock ni estado ("0/83 ítems sincronizados").
-        lote_size = LOTE_MULTIGET_MELI
+        # El multiget (de a 20 ids: con más responde 400 «only allows 20 elements» y el sync fallaba entero y en silencio, «0/83 ítems sincronizados») pasa por `meli_items`,
+        # que usa /items/bulk y vuelve al viejo /items?ids= (Mercado Libre lo retira el 25/10/2026) si el nuevo no responde como se espera.
+        elementos, fallos = meli_items.traer_items(lista_ids, headers)
+        for cantidad, estado, texto in fallos:
+            print(f"[Sincronizador] ⚠️ Cuenta {cuenta_id}: MeLi rechazó un lote de {cantidad} ítems ({estado}): {texto}")
 
-        for i in range(0, len(lista_ids), lote_size):
-            lote = lista_ids[i:i + lote_size]
-            ids_param = ",".join(lote)
+        for res in elementos:
+            if res["status_code"] == 200 and res["body"]:
+                p = res["body"]
+                tipo_logistica = validacion_meli.campo_seguro(p, "shipping.logistic_type", default=None, tipo_esperado=str, contexto=f"item {p.get('id')}")
+                shipping_tags = validacion_meli.campo_seguro(p, "shipping.tags", default=[], tipo_esperado=list, contexto=f"item {p.get('id')}")
+                es_convivencia = (tipo_logistica == "fulfillment") and "self_service_in" in shipping_tags
 
-            resp_batch = meli_http.get(f"https://api.mercadolibre.com/items?ids={ids_param}", headers=headers, timeout=10)
-            if resp_batch.status_code != 200:
-                print(f"[Sincronizador] ⚠️ Cuenta {cuenta_id}: MeLi rechazó un lote de {len(lote)} ítems ({resp_batch.status_code}): {resp_batch.text[:160]}")
-                continue
-
-            for res in resp_batch.json():
-                if res.get("code") == 200 and "body" in res:
-                    p = res["body"]
-                    tipo_logistica = validacion_meli.campo_seguro(p, "shipping.logistic_type", default=None, tipo_esperado=str, contexto=f"item {p.get('id')}")
-                    shipping_tags = validacion_meli.campo_seguro(p, "shipping.tags", default=[], tipo_esperado=list, contexto=f"item {p.get('id')}")
-                    es_convivencia = (tipo_logistica == "fulfillment") and "self_service_in" in shipping_tags
-
-                    items_procesados.append({
-                        "id_item": p.get("id"), "detalle": p, "precio_original": p.get("original_price"),
-                        "recibis_estimado": None, "stock_convivencia": None
-                    })
-                    if es_convivencia:
-                        user_product_id = validacion_meli.campo_seguro(p, "user_product_id", default=None, tipo_esperado=str, contexto=f"item {p.get('id')}")
-                        if user_product_id:
-                            pendientes_convivencia.append((len(items_procesados) - 1, user_product_id, p.get("id"), firma_de_movimiento(p)))
+                items_procesados.append({
+                    "id_item": p.get("id"), "detalle": p, "precio_original": p.get("original_price"),
+                    "recibis_estimado": None, "stock_convivencia": None
+                })
+                if es_convivencia:
+                    user_product_id = validacion_meli.campo_seguro(p, "user_product_id", default=None, tipo_esperado=str, contexto=f"item {p.get('id')}")
+                    if user_product_id:
+                        pendientes_convivencia.append((len(items_procesados) - 1, user_product_id, p.get("id"), firma_de_movimiento(p)))
 
         # Las consultas de stock de convivencia son independientes entre
         # sí — se resuelven todas en paralelo al final en vez de una por

@@ -15,6 +15,7 @@ el esquema existente.
 """
 import re
 import meli_http
+import meli_items
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from utils import ARGENTINA, hoy_argentina, percentil
@@ -182,14 +183,16 @@ def sugerir_productos_propios(access_token, ids_propios, ya_seguidos):
     if not ids_propios:
         return []
     headers = {"Authorization": f"Bearer {access_token}"}
-    estado, data = _get_json("https://api.mercadolibre.com/items", headers, {"ids": ",".join(ids_propios), "attributes": "id,title,catalog_product_id"})
-    if estado != 200 or not isinstance(data, list):
+    try:
+        elementos, _ = meli_items.traer_items(ids_propios, headers, atributos=("id", "title", "catalog_product_id"))       # de a 20 (Mercado Libre no acepta más) y con /items/bulk
+    except Exception as e:
+        print(f"[Espía Competencia] ⚠️ Error de conexión al leer las publicaciones propias: {e}")
         return []
 
     por_producto = {}
-    for fila in data:
+    for fila in elementos:
         cuerpo = fila.get("body") or {}
-        pid = cuerpo.get("catalog_product_id") if fila.get("code") == 200 else None
+        pid = cuerpo.get("catalog_product_id") if fila.get("status_code") == 200 else None
         if not pid or pid in ya_seguidos:
             continue
         item = por_producto.setdefault(pid, {"id_producto": pid, "titulo": cuerpo.get("title"), "publicaciones_propias": 0})

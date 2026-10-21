@@ -290,6 +290,7 @@ scopeado por cuenta_id antes de confiar en él.
   `utils.sql_momento_argentina()`: da lo mismo para filas viejas y nuevas, así el código es
   correcto antes y después de normalizar. NO volver a sumar "+1 hora" a mano en una consulta.
   Lo que agrupa por `fecha_venta` (ventas del día) solo se corrige con el script.
+- **Multiget de publicaciones = `meli_items.traer_items` (2026-10-21)**: Mercado Libre retira `GET /items?ids=` y `/users?ids=` el 25/10/2026 (reemplazo `/items/bulk`, `/users/bulk`: `code`→`status_code`, `id` en la raíz, atributos con prefijo `body.`; página «Ítems y búsquedas» del 10/09/2026). Toda consulta de varias publicaciones pasa por ese módulo (de a 20, bulk con respaldo al viejo, un lote caído no corta a los demás); una prueba prohíbe llamar al viejo por fuera. Antes de dar por buena una migración así, mirar en los logs de Fly `grep ItemsBulk` (dice cuál endpoint se usa). `/users/bulk` no se usa en el código. Las páginas oficiales de developers.mercadolibre.com.ar bloquean la consulta automática: se leen con el navegador del panel (`javascript_tool`) y traen avisos de deprecación con fecha: mirarlas de vez en cuando (`docs/PLAN_INTELIGENCIA_MERCADO.md` §3.6).
 - **Trabajo en segundo plano: `app._en_segundo_plano`** (Celery si hay Redis, si no
   un hilo). Producción NO tiene Redis: antes cada `.delay()` tardaba ~0,7 s en
   fallar y el webhook de MeLi (`POST /notificaciones_meli`, ya está recibiendo

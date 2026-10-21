@@ -6,7 +6,7 @@ Hecho el 2026-10-14. Están en el orden en que conviene hacerlos. Cada uno dice 
 
 | # | Qué | Tiempo | Por qué importa |
 |---|---|---|---|
-| 0 | Desplegar lo nuevo | 5 min | Todo lo hecho hoy (IA nueva, celular, accesibilidad) todavía no está en corelux.app |
+| 0 | **Desplegar antes del domingo 25/10** | 5 min | Mercado Libre retira un endpoint que usa el sincronizador de publicaciones: sin este deploy, el catálogo deja de actualizarse |
 | 1 | Costo de entrega Flex | 10 min | Tu ganancia real hoy sale **inflada** (190 envíos sin costo) |
 | 2 | Costos de fabricación que faltan | 5 min | Sin costo, la ganancia es mentira |
 | 3 | Que exista `soporte@corelux.app` | 10 min | Está publicado en la web: si nadie lo recibe, un cliente se pierde |
@@ -21,9 +21,9 @@ Hecho el 2026-10-14. Están en el orden en que conviene hacerlos. Cada uno dice 
 
 ---
 
-## 0. Desplegar lo nuevo (5 minutos)
+## 0. Desplegar antes del domingo 25/10 (5 minutos)
 
-Hay 16 cambios hechos y subidos a git que **todavía no están en producción**. No hay migraciones nuevas (la última sigue siendo la 0050).
+**Por qué es urgente:** Mercado Libre retira el 25/10/2026 el pedido `/items?ids=` (traer varias publicaciones juntas), que usa el sincronizador de catálogo. El cambio ya está hecho y probado (usa el pedido nuevo `/items/bulk` y, si Mercado Libre contestara algo inesperado, vuelve al viejo). **Todavía no está en producción.** No hay migraciones nuevas (la última sigue siendo la 0050).
 
 1. Abrí una terminal en la carpeta del proyecto (`CoreLux-SaaS`, la de siempre).
 2. Escribí:
@@ -33,10 +33,15 @@ python desplegar.py
 ```
 
 3. Tarda unos 5 minutos: primero corre todas las pruebas (si algo falla, **no sube nada**) y después despliega.
-4. **Cómo sé que salió bien:** al final dice la versión nueva. Abrí `https://corelux.app/healthz` (tiene que decir `ok` y mostrar esa versión), entrá a la página y abrí el chat con una pregunta, por ejemplo «¿cómo voy?».
-5. **Si falla:** el script vuelve solo a la versión anterior. Pegame el mensaje.
+4. **Cómo sé que salió bien:** al final dice la versión nueva. Abrí `https://corelux.app/healthz` (tiene que decir `ok` y mostrar esa versión) y entrá a la página.
+5. **Confirmar que usa el pedido nuevo** (a los 5 minutos de abrir la app, o después de «Actualizar»):
 
-Lo que se activa con este deploy: la IA con 29 herramientas y límite de temas, el contexto del negocio, Publicidad corregida (el presupuesto de campaña es diario), pantallas sin desborde en celulares de 320 px, campos con etiqueta para lectores de pantalla y la corrección de velocidad para cuentas con muchas ventas.
+```bash
+fly logs -a corecore | grep ItemsBulk
+```
+
+   Tiene que aparecer **«se usa /items/bulk»**. Si dice «se usa el endpoint viejo», pegame esa línea completa: significa que Mercado Libre contestó otra cosa de lo que dice su documentación y hay que ajustarlo antes del 25.
+6. **Si falla el deploy:** el script vuelve solo a la versión anterior. Pegame el mensaje.
 
 ---
 
@@ -134,7 +139,7 @@ fly secrets set SENTRY_DSN=PEGÁ_EL_DSN -a corecore
 
 ## 8. Avisos en vivo de Mercado Libre (10 minutos)
 
-La dirección ya está cargada (producción recibe avisos). Falta confirmar que estén **tildados los temas que la app usa**.
+La dirección ya está cargada (producción recibe avisos) y, en una captura del 21/10 (de baja resolución) los temas parecen estar tildados (Orders, Items, Questions, Shipments, Post-purchase y más). Queda como referencia de qué tiene que estar tildado.
 
 1. `developers.mercadolibre.com.ar` → **Mis aplicaciones** → tu aplicación → **Notificaciones**.
 2. URL: `https://corelux.app/notificaciones_meli`.
