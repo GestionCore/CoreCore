@@ -829,6 +829,7 @@ function formatearNumeroAR(valor, conDecimales) {
 // en el HTML al cargar la página, así que animarContadoresEnPagina() no lo
 // puede tomar solo) — from 0 hasta valorFinal, formateado con `formatearFn`.
 function animarNumeroHasta(el, valorFinal, formatearFn, duracionMs = 650) {
+    if (UX.prefiereMenosMovimiento()) { el.textContent = formatearFn(valorFinal); return; }          // movimiento reducido: el número final de una vez, sin contar
     const t0 = performance.now();
     function frame(t) {
         const progreso = Math.min((t - t0) / duracionMs, 1);

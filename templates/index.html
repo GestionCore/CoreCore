@@ -327,7 +327,7 @@ async function reactivarAplicar() {
         ['active', 'paused', 'closed'].forEach(e => { estadosVisibles[e] = e === 'active'; });
         restaurarFiltrosGuardados();
         toggleSolo('sinStock', true);
-        document.getElementById('tabla-productos').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('tabla-productos').scrollIntoView({ behavior: UX.comportamientoDeScroll(), block: 'start' });
     }
     const btnVerSinStock = document.getElementById('btn-ver-sin-stock');
     if (btnVerSinStock) btnVerSinStock.addEventListener('click', verSoloSinStock);

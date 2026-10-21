@@ -188,20 +188,24 @@ def _inyectar_cuentas_usuario():
     if getattr(g, "mostrando_error", False):
         # Una página de error NUNCA puede consultar la base: el error suele ser justamente que la base no responde o no hay conexiones libres
         return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO, "condicion_fiscal": None}
-    if not getattr(g, "usuario_id", None):
-        # Rutas públicas (/planes, /suscripcion/retorno...): base.html igual arma el menú si hay sesión y llama capacidades.get(...)
+    # Las rutas públicas (/planes, /suscripcion/retorno…) no pasan por login_requerido y no tienen g.usuario_id: si hay sesión se usan sus ids, para que la barra y el menú muestren la cuenta
+    # (antes /planes decía «Mi cuenta» con la inicial «M» y armaba el menú sin las capacidades de la cuenta). La sesión va firmada; sin sesión no hay nada que mostrar.
+    usuario_id = getattr(g, "usuario_id", None) or session.get("usuario_id")
+    cuenta_id = getattr(g, "cuenta_id", None) or session.get("cuenta_id")
+    if not usuario_id or not cuenta_id:
+        # Sin sesión: base.html igual arma el menú y llama capacidades.get(...)
         return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO, "condicion_fiscal": None}
     # Se pedía a la base en CADA página; cambia muy poco (al vincular una cuenta o refrescar capacidades): 60 s de caché, con el usuario en la clave
-    clave_cuentas = construir_key("cuentas_usuario", g.usuario_id)
+    clave_cuentas = construir_key("cuentas_usuario", usuario_id)
     cuentas = cache_leer(clave_cuentas)
     if cuentas is None:
         try:
-            cuentas = registro.obtener_cuentas_de_usuario(g.usuario_id)
+            cuentas = registro.obtener_cuentas_de_usuario(usuario_id)
         except Exception as e:                      # la base no responde: la página se arma igual, sin selector de cuentas
             print(f"[Contexto] ⚠️ No se pudo leer la lista de cuentas: {e}")
             return {"capacidades": {}, "cuentas_disponibles": [], "cuenta_actual": None, "vocab": utils.vocabulario(True), "margen_minimo": preferencias.MARGEN_MINIMO_DEFECTO, "condicion_fiscal": None}
         cache_guardar(clave_cuentas, cuentas, timeout=60)
-    cuenta_actual = next((c for c in cuentas if c["id"] == g.cuenta_id), None)
+    cuenta_actual = next((c for c in cuentas if c["id"] == cuenta_id), None)
     # Qué usa esta cuenta (ads, flex, full, catalogo): las pantallas esconden solo lo que se confirmó que no aplica (ver capacidades.py).
     # Monotributo se esconde solo si la persona declaró OTRA condición fiscal: sin declarar no se supone nada (ver fiscal.py)
     caps = dict((cuenta_actual or {}).get("capacidades") or {})
@@ -210,7 +214,7 @@ def _inyectar_cuentas_usuario():
         caps["monotributo"] = fiscal.capacidad_monotributo(condicion)
     return {"cuentas_disponibles": cuentas, "cuenta_actual": cuenta_actual, "capacidades": caps, "condicion_fiscal": condicion,
             "puede_agregar_cuenta": len(cuentas) < config.MAX_CUENTAS_ELITE, "max_cuentas": config.MAX_CUENTAS_ELITE,
-            "vocab": _vocabulario_de_la_cuenta(g.usuario_id, g.cuenta_id), "margen_minimo": _margen_minimo_de_la_cuenta(g.usuario_id, g.cuenta_id)}
+            "vocab": _vocabulario_de_la_cuenta(usuario_id, cuenta_id), "margen_minimo": _margen_minimo_de_la_cuenta(usuario_id, cuenta_id)}
 
 
 def _margen_minimo_de_la_cuenta(usuario_id, cuenta_id):

@@ -612,7 +612,7 @@
 
         if (resumen.status === 'fulfilled' && resumen.value) {
             const d = resumen.value;
-            const vs = (d.variacion_pct !== null && d.variacion_pct !== undefined) ? ' ' + UX.delta(d.variacion_pct) + ' <span style="font-size:0.9em;">vs. ayer</span>' : '';
+            const vs = (d.variacion_pct !== null && d.variacion_pct !== undefined) ? ' ' + UX.delta(d.variacion_pct) + ' <span style="font-size:0.9em;">vs. ayer a esta hora</span>' : '';
             const top = d.modelo_top ? (d.modelo_top.length > 26 ? d.modelo_top.slice(0, 26) + '…' : d.modelo_top) : '—';
             _resumenDelDia = { vs, top, modeloTop: d.modelo_top || '' };
         }

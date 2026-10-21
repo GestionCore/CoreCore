@@ -85,3 +85,15 @@ def test_la_pantalla_muestra_una_fila_por_modelo_y_talle_con_el_detalle_de_cada_
     assert "1 modelo y talle" in html or "1 modelo y variante" in html
     # el desplegable lo maneja la pieza compartida, no un script de esta pantalla
     assert "ux-toggle-variantes" in html and "alternarDetalle" not in html
+
+
+@pytest.mark.parametrize("puntajes, esperado", [
+    ([100] * 13 + [99] * 2, 99),        # promedio 99,87: antes salía «100 / 100» con «2 tienen mejoras pendientes» justo debajo
+    ([100, 100, 100], 100),             # todas al 100: ahí sí
+    ([100, 99], 99),                    # 99,5 redondea a 100 y no es cierto
+    ([90, 80], 85),                     # lejos de 100 no cambia nada
+    ([95], 95),
+    ([], None),                         # sin datos no es 0 ni 100
+])
+def test_el_promedio_de_calidad_nunca_dice_100_si_alguna_no_llego(puntajes, esperado):
+    assert c.promedio_de_puntajes(puntajes) == esperado

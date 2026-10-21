@@ -39,7 +39,7 @@ Regla de la casa: ~25 % de lo que sale de una auditoría automática es falso. S
 11. ✅ [A·S] **Una página de órdenes que Mercado Libre rechaza con 4xx se tomaba como «no hay más» y el sync avanzaba su marca de tiempo**: lo no traído se perdía al pasar el colchón de 2 h. Ahora corta con un error (ya lo reporta `sincronizar_todo`) y la marca queda donde estaba. `ventas_sync.PaginaDeOrdenesRechazada`. `tests/test_ventas_sync_paginas.py`.
 12. ✅ [B·S] **Quedaba un «Ojo:» coloquial en Ganancia Real** (el dueño había pedido «Atención:»).
 13. ⏳ [M·M] **El costo de una VARIANTE solo lo leen Ganancia Real, evolución, reporte fiscal, cobertura y comparador; Precios, Promociones, el margen del Dashboard y Stock usan el de la publicación.** Dos pantallas pueden mostrar márgenes distintos para lo mismo (está documentado en `CLAUDE.md`, pero sigue abierto). Llevar `costos_moneda.sql_costo_de_venta` a esas pantallas.
-14. ⏳ [B·S] **`resumen_semanal.generar_resumen_periodo(dias=7)` tiene una rama de 7 días con ventana 8 contra 7, pero solo se usa con `dias=1`.** Borrar la rama o corregirla antes de que alguien la use.
+14. ✅ [B·S] **`resumen_semanal.generar_resumen_periodo(dias=7)` tenía una rama de 7 días con ventana 8 contra 7, y solo se usaba con `dias=1`**; ese día comparaba lo vendido HOY hasta ahora contra AYER ENTERO (la tarjeta «Ventas hoy» decía «▼ 86 % vs. ayer» en rojo a las 6 de la mañana). Se borró la rama y ahora es `generar_resumen_dia`: hoy contra ayer a la misma hora. `tests/test_resumen_del_dia.py` (ver también D2 de `AUDITORIA_DISENO_100.md`).
 
 ## B. Dinero y suscripciones (8)
 

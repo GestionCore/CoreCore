@@ -296,7 +296,7 @@ const urlSegura = u => (typeof u === 'string' && /^https:\/\//i.test(u)) ? u : n
     const btn = document.getElementById('btn-analizar-mi-categoria');
     if (!btn) return;
     btn.addEventListener('click', () => {
-        document.getElementById('panel-explorador').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('panel-explorador').scrollIntoView({ behavior: UX.comportamientoDeScroll(), block: 'start' });
         buscarDemanda({ categoryId: btn.dataset.catId, etiqueta: btn.dataset.catNombre, tipo: 'categoria' });
     });
 })();

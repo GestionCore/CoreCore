@@ -1,38 +1,34 @@
-"""Resumen de período estructurado — portado de Santi Mens (solo la parte de datos, sin el texto libre de IA que no se usa en el widget del dashboard)."""
+"""Resumen del día estructurado — portado de Santi Mens (solo la parte de datos, sin el texto libre de IA que no se usa en el widget del dashboard)."""
 from datetime import datetime, timedelta
 import analisis_stock
-from utils import formatear_moneda, SQL_RECLAMO_AFECTA, ARGENTINA
+from utils import formatear_moneda, SQL_RECLAMO_AFECTA, ARGENTINA, sql_momento_argentina
 
 
-def generar_resumen_periodo(cursor, dias=7):
-    hoy = datetime.now(ARGENTINA)
-    hoy_str = hoy.strftime("%Y-%m-%d")
-    ayer_str = (hoy - timedelta(days=1)).strftime("%Y-%m-%d")
+def generar_resumen_dia(cursor, ahora=None):
+    """
+    Lo de hoy contra AYER A ESTA MISMA HORA. Antes se comparaba lo facturado hoy hasta ahora con el día de ayer ENTERO: a las 6 de la mañana la tarjeta «Ventas hoy» decía
+    «▼ 86 % vs. ayer» en rojo sin que hubiera pasado nada (el mismo criterio que ya usa el hero: `dashboard.ganancia_de_ayer_hasta_la_hora`). `ahora` es la hora argentina (para probar).
+    """
+    ahora = ahora or datetime.now(ARGENTINA)
+    hoy_str = ahora.strftime("%Y-%m-%d")
+    corte_ayer = (ahora - timedelta(days=1)).replace(tzinfo=None)                  # ayer a esta hora
+    inicio_ayer = corte_ayer.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    if dias == 1:
-        hace_dias = hoy_str
-        hace_2x_dias = ayer_str
-        hace_dias_mas_1 = ayer_str
-    else:
-        hace_dias = (hoy - timedelta(days=dias)).strftime("%Y-%m-%d")
-        hace_2x_dias = (hoy - timedelta(days=dias * 2)).strftime("%Y-%m-%d")
-        hace_dias_mas_1 = (hoy - timedelta(days=dias + 1)).strftime("%Y-%m-%d")
+    cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0), COUNT(DISTINCT id_orden), COALESCE(SUM(cantidad),0) FROM ventas WHERE fecha_venta = %s", (hoy_str,))
+    fact_hoy, ordenes_hoy, unidades_hoy = cursor.fetchone()
+    fact_hoy = float(fact_hoy or 0.0)
 
-    cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0), COUNT(DISTINCT id_orden), COALESCE(SUM(cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (hace_dias, hoy_str))
-    fact_periodo, ordenes_periodo, unidades_periodo = cursor.fetchone()
-    fact_periodo = float(fact_periodo or 0.0)
-
-    cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (hace_2x_dias, hace_dias_mas_1))
-    fact_periodo_anterior = float(cursor.fetchone()[0] or 0.0)
+    cursor.execute(f"SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE {sql_momento_argentina()} BETWEEN %s AND %s", (inicio_ayer, corte_ayer))
+    fact_ayer_hasta_ahora = float(cursor.fetchone()[0] or 0.0)
 
     variacion_pct = None
-    if fact_periodo_anterior > 0:
-        variacion_pct = round(((fact_periodo - fact_periodo_anterior) / fact_periodo_anterior) * 100, 1)
+    if fact_ayer_hasta_ahora > 0:
+        variacion_pct = round(((fact_hoy - fact_ayer_hasta_ahora) / fact_ayer_hasta_ahora) * 100, 1)
 
     cursor.execute("""
-        SELECT titulo, SUM(cantidad) as total FROM ventas WHERE fecha_venta BETWEEN %s AND %s
+        SELECT titulo, SUM(cantidad) as total FROM ventas WHERE fecha_venta = %s
         GROUP BY id_meli, titulo ORDER BY total DESC LIMIT 1
-    """, (hace_dias, hoy_str))
+    """, (hoy_str,))
     fila_top = cursor.fetchone()
     modelo_top = fila_top[0] if fila_top else None
 
@@ -48,18 +44,18 @@ def generar_resumen_periodo(cursor, dias=7):
     incidencias_abiertas = cursor.fetchone()[0] or 0
 
     return {
-        "facturado_semana": fact_periodo, "ordenes_semana": ordenes_periodo, "unidades_semana": unidades_periodo,
+        "facturado_dia": fact_hoy, "ordenes_dia": ordenes_hoy, "unidades_dia": unidades_hoy,
         "variacion_pct": variacion_pct, "modelo_top": modelo_top,
         "variantes_clave_agotadas": variantes_clave_agotadas, "en_riesgo_stock": en_riesgo_stock,
         "incidencias_abiertas": incidencias_abiertas,
     }
 
 
-def obtener_datos_resumen_diario(cursor):
-    datos = generar_resumen_periodo(cursor, dias=1)
+def obtener_datos_resumen_diario(cursor, ahora=None):
+    datos = generar_resumen_dia(cursor, ahora)
     return {
-        "facturado_formateado": formatear_moneda(datos["facturado_semana"]),
-        "ordenes": datos["ordenes_semana"], "unidades": datos["unidades_semana"], "modelo_top": datos["modelo_top"],
+        "facturado_formateado": formatear_moneda(datos["facturado_dia"]),
+        "ordenes": datos["ordenes_dia"], "unidades": datos["unidades_dia"], "modelo_top": datos["modelo_top"],
         "variacion_pct": datos["variacion_pct"], "variantes_clave_agotadas": datos["variantes_clave_agotadas"],
         "en_riesgo_stock": datos["en_riesgo_stock"], "incidencias_abiertas": datos["incidencias_abiertas"],
     }

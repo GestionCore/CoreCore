@@ -229,7 +229,7 @@
         document.getElementById('precios-barra').hidden = true;
         document.getElementById('precios-lista').hidden = true;
         const rev = document.getElementById('precios-revision'); rev.hidden = false;
-        rev.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        rev.scrollIntoView({ behavior: UX.comportamientoDeScroll(), block: 'start' });
     };
     window.preciosAplicar = async function () {
         const boton = document.getElementById('btn-precios-confirmar');

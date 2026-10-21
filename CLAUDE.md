@@ -1,6 +1,6 @@
 # CoreLux — contexto de traspaso para Claude Code
 
-> 🔁 **Retomando en un chat nuevo: leer antes [`docs/TRASPASO_NUEVO_CHAT.md`](docs/TRASPASO_NUEVO_CHAT.md)** (estado, qué está desplegado, pendientes y trampas, 2026-10-20).
+> 🔁 **Retomando en un chat nuevo: leer antes [`docs/TRASPASO_NUEVO_CHAT.md`](docs/TRASPASO_NUEVO_CHAT.md)** (estado, qué está desplegado, pendientes y trampas, 2026-10-21; las dos auditorías de 100 puntos están en `docs/AUDITORIA_TECNICA_100.md` y `docs/AUDITORIA_DISENO_100.md`).
 >
 > ⚠️ **LEER PRIMERO: [`PENDIENTES.md`](PENDIENTES.md)** — lista viva de lo que falta: los 52 puntos de la 3.ª auditoría externa + la extensión de los puntos 53–78 (Fase 1 «Integración con Mercado Libre» es la que sigue, fase por fase), el estado de cada uno
 > (✅ hecho / ❌ rechazado con evidencia / ⏳ pendiente), lo que quedó de sesiones anteriores y lo que es del dueño. Regla: verificar cada punto de una auditoría contra código/base/navegador antes de tocarlo (~25 % son falsos).

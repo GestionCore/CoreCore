@@ -161,7 +161,6 @@
     --shadow-glow-brand: 0 0 20px -4px var(--accent-brand-glow);
 }
 :root[data-theme="light"] { color-scheme: light; }
-:root[data-theme="light"] #fondo-particulas { display: none; }
 :root[data-theme="light"] body {
     background-image:
         radial-gradient(circle at 12% -8%, rgba(139, 63, 252, 0.05) 0%, transparent 42%),
@@ -193,12 +192,6 @@ body {
     -webkit-font-smoothing: antialiased;
     min-height: 100vh;
     position: relative;
-}
-
-/* ---------- Fondo de partículas (Tron / vaporwave) ---------- */
-#fondo-particulas {
-    position: fixed; inset: 0; z-index: -1; pointer-events: none;
-    width: 100%; height: 100%;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -591,6 +584,7 @@ tr:hover .thumb-sm, .thumb-sm:hover { transform: scale(1.5); position: relative;
 .filter-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
 .flex-gap { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .text-muted { color: var(--text-secondary); }
+.btn .text-muted { color: inherit; }                    /* un contador dentro de un botón (p. ej. «Todos 2» en el chip activo) toma el color del botón: el gris apagado sobre violeta medía 1,65:1 */
 .text-danger { color: var(--danger); }
 .text-success { color: var(--success); }
 
@@ -767,7 +761,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
     display: flex; align-items: center; gap: 14px;
     background: var(--glass-bg); border: 1px solid var(--glass-border);
     border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 10px;
-    transition: all 0.2s;
+    transition: background-color 0.2s, border-color 0.2s;
 }
 .despacho-item.despachado { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.4); }
 .despacho-item .thumb-sm { border-radius: 8px; flex-shrink: 0; }
@@ -775,7 +769,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 .despacho-check {
     width: 34px; height: 34px; min-width: 34px; border-radius: 50%;
     border: 2px solid var(--text-faint); display: flex; align-items: center; justify-content: center;
-    font-size: 1.2em; color: var(--success); cursor: pointer; transition: all 0.2s;
+    font-size: 1.2em; color: var(--success); cursor: pointer; transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
 }
 .despacho-item.despachado .despacho-check { border-color: var(--success); background: rgba(16,185,129,0.15); animation: despachoCheckPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes despachoCheckPop { 0% { transform: scale(0.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
@@ -943,12 +937,12 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 .tour-mascara {
     position: fixed; background: rgba(5, 6, 10, 0.55);
     backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-    transition: all 0.25s cubic-bezier(0.16,1,0.3,1); pointer-events: auto;
+    transition: top 0.25s cubic-bezier(0.16,1,0.3,1), left 0.25s cubic-bezier(0.16,1,0.3,1), width 0.25s cubic-bezier(0.16,1,0.3,1), height 0.25s cubic-bezier(0.16,1,0.3,1); pointer-events: auto;
 }
 .tour-anillo {
     position: fixed; border: 2px solid var(--accent-primary); border-radius: 10px;
     box-shadow: 0 0 0 4px rgba(139,92,246,0.18), 0 0 24px rgba(139,92,246,0.35);
-    transition: all 0.25s cubic-bezier(0.16,1,0.3,1); pointer-events: none;
+    transition: top 0.25s cubic-bezier(0.16,1,0.3,1), left 0.25s cubic-bezier(0.16,1,0.3,1), width 0.25s cubic-bezier(0.16,1,0.3,1), height 0.25s cubic-bezier(0.16,1,0.3,1); pointer-events: none;
 }
 .tour-tarjeta {
     position: fixed; width: 320px; z-index: 9001; padding: 20px 22px; border-radius: var(--radius-md);
@@ -974,7 +968,6 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
     .chat-fab,
 .chat-window,
 #toast-container,
-#fondo-particulas,
 .no-imprimir { display: none !important; }
     body { background: #fff !important; color: #111 !important; }
     .page-container { max-width: none; padding: 0; animation: none; }

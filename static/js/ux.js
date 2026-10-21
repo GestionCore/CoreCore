@@ -76,6 +76,11 @@ const UX = (() => {
     return { esc, plata, plataEje, pct, num, icono, delta, banner, kpi, accion };
 })();
 
+// Movimiento reducido (preferencia del sistema): el CSS ya apaga todas las animaciones (style.css), pero lo que se mueve desde JavaScript —el conteo de números y el
+// desplazamiento suave— tiene que mirar la preferencia por su cuenta. Para scrollIntoView: `behavior: UX.comportamientoDeScroll()`.
+UX.prefiereMenosMovimiento = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+UX.comportamientoDeScroll = () => (UX.prefiereMenosMovimiento() ? 'auto' : 'smooth');
+
 /**
  * Eventos sin `onclick=` en el HTML (paso previo a sacar 'unsafe-inline' del script-src de la CSP: un manejador escrito en el atributo es código inline).
  *
@@ -202,7 +207,7 @@ const UX = (() => {
             const i = objetivo ? indiceDe(objetivo) : -1;
             if (i < 0) return false;
             mostrar(i);
-            requestAnimationFrame(() => objetivo.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+            requestAnimationFrame(() => objetivo.scrollIntoView({ block: 'start', behavior: UX.comportamientoDeScroll() }));
             return true;
         };
         window.addEventListener('hashchange', irAlHash);

@@ -1,12 +1,12 @@
-# Traspaso para un chat nuevo (2026-10-20)
+# Traspaso para un chat nuevo (2026-10-21)
 
 > Leer en este orden: este archivo → `CLAUDE.md` (se carga solo) → `PENDIENTES.md` (§0f es lo último) → `docs/TUS_PENDIENTES.md` (lo que le toca al dueño, paso a paso).
 > La memoria del proyecto (`~/.claude/projects/…/memory/MEMORY.md`) también se carga sola.
 
 ## 1. Dónde estamos
-- Repo `main` sincronizado con GitHub. Último código: commit `4f5db00` (más este archivo).
-- **Producción corre `2021da8`.** Todo lo posterior está subido a git pero **NO desplegado**: `1797011` y `3864f87` (Flex automático), `ec97ed6` (plan de WhatsApp), `4f5db00` (lo de abajo, §3). Lo despliega el dueño con `python desplegar.py` desde `CoreLux-SaaS`. No hay migraciones nuevas.
-- 1.582 pruebas pasan (también sin Redis). Ruff limpio.
+- Repo `main` sincronizado con GitHub. Último código: el commit de la auditoría de diseño (después de `3bb9e24`).
+- **Producción corre `f126954`** (el dueño la desplegó con `python desplegar.py` y `/healthz` informó `f1269545cbaa`). Subido a git y **NO desplegado**: `f33af4d`, `b471100`, `3bb9e24` y lo de esta noche (§3b). No hay migraciones nuevas. Lo despliega el dueño con `python desplegar.py` desde `CoreLux-SaaS`.
+- 1.723 pruebas pasan (con y sin Redis). Ruff limpio.
 - El dueño es **Diego** (usuario 3, cuentas de Mercado Libre `2` = DIEGOARIELSANTIAGO y `7` = NOENOEINDUMENTARIA, plan Elite). Mercado Pago corre con credenciales de PRODUCCIÓN y un precio de prueba de $100 para UN mail (`MP_EMAIL_DE_PRUEBA` + `MP_PRECIO_DE_PRUEBA`), sin cobro real todavía.
 
 ## 2. Cómo trabaja el dueño (no negociable)
@@ -27,6 +27,11 @@ Detalle en `PENDIENTES.md` §0f. Resumen:
 4. Ganancia Real ya no abre bajada hasta «Evolución mensual» (`ux.js`: las pestañas usaban `scrollIntoView`).
 5. Tope de cuentas `config.MAX_CUENTAS_ELITE = 2` hecho cumplir en el servidor (no existía) y sin botón «Agregar otra cuenta» cuando ya están. Bug 404 del botón «Ver esta cuenta» arreglado.
 
+## 3b. Lo hecho la noche del 2026-10-21 (el dueño dormía y pidió una sesión larga sin preguntas)
+- Dos auditorías de 100 puntos con evidencia y estado: `docs/AUDITORIA_TECNICA_100.md` y `docs/AUDITORIA_DISENO_100.md`. Cada una abre con cómo se verificó, qué se descartó y «si solo se hacen 10». Son propuestas: el dueño elige.
+- Arreglos reales (con prueba): ventanas de tiempo completas (alerta de caída, salud, promociones, visitas, proyección del mes), no crear una 2.ª suscripción si la vieja no se cancela, órdenes rechazadas ya no adelantan la marca del sync, agregar gasto con montos argentinos, `parsear_monto("1e3")`, Sentry con usuario/versión, cachés de Ganancia Real (de 20 s a 0,4 s en evolución mensual), herramienta `despacho` del asistente (31.ª), modo privacidad 57/57, «Ventas hoy» vs. ayer a la misma hora, Calidad sin «100/100» falso, Planes con la cuenta en la barra.
+- Las dos decisiones de identidad visual que necesitan al dueño: D15 (violeta más oscuro solo para fondos con texto blanco) y D46 (dorado de la marca en tema claro).
+
 ## 4. Lo que falta
 **Del dueño** (detalle paso a paso en `docs/TUS_PENDIENTES.md`)
 - Desplegar. Cargar los 3 precios Flex (Costos → Entrega Flex → Detectar → precios → Guardar → confirmar la vista previa): hoy su ganancia neta real sale inflada (~190 envíos Flex sin costo). Cargar el costo de fabricación de 17 de 71 publicaciones de la cuenta 7.
@@ -37,7 +42,6 @@ Detalle en `PENDIENTES.md` §0f. Resumen:
 
 **Míos**
 - WhatsApp cuando decida: Fase 1 avisos (vinculación por OTP, webhook firmado, plantillas, topes) → Fase 2 IA por WhatsApp → Fase 3 acciones con confirmación.
-- Herramienta de Despacho para la IA (hay que separar leer de escribir en `despacho.obtener_paquetes_del_dia`).
 - Reconciliar MargenFull ($378.250) contra Flex ($326.110) con el dato por envío nuevo.
 - Pulido: Ganancia Real es una página de ~17.000 px (aliviar), velocidad de `/dia`, Stock con cuentas enormes, ítems de `PLAN_UX_200.md` (6, 99, 91, 163, 79/141, 80, 86, 33, 42, 46, 194, 20/25/30, 38, 135), sacar los `style=` de las plantillas (120), eliminar las columnas `talle`/`color`, tablas ordenables que faltan, decisión de costo por variación dentro de una publicación, «pedir seguimiento» de categorías desde la pantalla Mercado.
 

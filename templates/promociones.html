@@ -214,7 +214,7 @@ Precio con descuento: ${UX.plata(precio)}`);
 
     document.querySelectorAll('[data-promocionar]').forEach(b => b.addEventListener('click', () => {
         $sel.value = b.dataset.promocionar;
-        document.getElementById('form-crear-descuento-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('form-crear-descuento-panel').scrollIntoView({ behavior: UX.comportamientoDeScroll(), block: 'center' });
         $deal.focus();
         programarSim();
     }));

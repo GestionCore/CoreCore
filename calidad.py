@@ -20,6 +20,17 @@ def _tono(score):
     return "ok" if score >= UMBRAL_BIEN else ("warn" if score >= UMBRAL_JUSTO else "danger")
 
 
+def promedio_de_puntajes(puntajes):
+    """
+    Promedio redondeado de los puntajes, pero NUNCA 100 si alguna publicación no llegó a 100: con 13 en 100 y 2 en 99 el promedio es 99,87 y salía «100 / 100»
+    en grande con «2 tienen mejoras pendientes» justo debajo (parecía un error). None si no hay puntajes.
+    """
+    if not puntajes:
+        return None
+    promedio = round(sum(puntajes) / len(puntajes))
+    return 99 if promedio >= 100 and min(puntajes) < 100 else promedio
+
+
 def obtener_datos(cursor, cuenta_id):
     cursor.execute("""
         SELECT p.id_meli, p.titulo, p.thumbnail, p.permalink, p.calidad_score, p.calidad_nivel, p.calidad_acciones,
@@ -53,7 +64,7 @@ def obtener_datos(cursor, cuenta_id):
     grupos = agrupar_publicaciones(items)
 
     con_dato = [i for i in items if i["score"] is not None]
-    promedio = round(sum(i["score"] for i in con_dato) / len(con_dato)) if con_dato else None
+    promedio = promedio_de_puntajes([i["score"] for i in con_dato])
     al_cien = sum(1 for i in con_dato if i["score"] >= 100)
     con_mejoras = [i for i in items if i["acciones"]]
 

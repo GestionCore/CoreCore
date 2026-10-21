@@ -524,6 +524,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .calc-elegido .titulo-1l { max-width: 100%; }
 .ux-merma-frase { margin-top: 16px; padding: 12px 14px; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--ux-c, var(--accent-primary)) 10%, transparent); font-weight: 600; line-height: 1.45; }
 .ux-input-grande { font-size: 1.5em !important; font-weight: 800; padding: 14px 16px !important; }
+.ux-input-grande::placeholder { font-weight: 400; }        /* el valor de ejemplo no puede verse como uno cargado: en negrita 800 y 21 px lo parecía */
 .ux-lista-opciones { margin-top: 4px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); max-height: 220px; overflow-y: auto; background: var(--glass-bg-alt); box-shadow: var(--shadow-elevated); }
 .ux-opcion { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--border-soft); background: transparent; color: var(--text-primary); font-family: var(--font-ui); font-size: 0.88em; text-align: left; cursor: pointer; }
 .ux-opcion:hover, .ux-opcion:focus-visible { background: color-mix(in srgb, var(--accent-primary) 14%, transparent); }
