@@ -1,0 +1,152 @@
+# 100 hallazgos y mejoras técnicas (2026-10-21)
+
+Hecho de noche, sin el dueño, recorriendo el código, la base real (solo lectura), los logs de producción y un navegador. **Cada punto trae su evidencia** (archivo, medición o comando) y su estado:
+✅ **hecho** en esta tanda (con prueba) · ⏳ **pendiente** (propuesta concreta) · 👤 **del dueño** (no se puede hacer desde el código).
+Prioridad **A** conviene primero · **M** medio · **B** más adelante. Esfuerzo **S** horas · **M** 1-2 días · **L** más.
+
+## Cómo se verificó (y qué se descartó)
+
+Regla de la casa: ~25 % de lo que sale de una auditoría automática es falso. Se corrió `ruff` con 12 familias de reglas extra (608 avisos), tres recorridos estáticos propios (rutas, código sin uso, front), consultas de solo lectura a la base real, `fly logs`, un cronómetro por tramos puesto en producción (`[Lento]`) y un navegador contra los datos reales. **Se descartaron con evidencia** (no están en la lista): llamadas sin `timeout` en `token_manager` (sí lo tiene, por `kwargs.setdefault`), `datetime.now()` sin zona en `tendencias.py` (solo toma el timestamp), «los estáticos no se cachean» (el HTML ya trae `?v=` y `immutable`), un `id` repetido en `costos.html` (están en ramas `if/elif`), `suscripcion_iniciar` «sin auditar» (audita a mano), 49 «inyecciones SQL» de `ruff` (se revisaron 8: solo interpolan constantes del proyecto) y un contraste de 1,04:1 en «RECOMENDADO» de Planes (el fondo es un degradé que la medición no ve).
+
+**Lo ya hecho esta noche** (commits `b471100`, `f126954`, `f33af4d` y los de esta tanda): 1.664 pruebas bien con y sin Redis, `ruff` limpio, sin desplegar lo último (lo hace el dueño con `python desplegar.py`).
+
+### Si solo se hacen 10 (en este orden)
+1. **T26** el refresco del token mantiene una conexión de administración mientras espera a Mercado Libre (el pool admin es de 2).
+2. **T22** una llamada a Mercado Libre puede tardar hasta ~70 s y gunicorn corta a los 60 s.
+3. **T25** una sola pantalla cargaba 20 s por cachés que viven por proceso (4 procesos): quedan Publicidad, Logística y Tendencias.
+4. **T17** cancelar la suscripción quita el plan al instante aunque el mes esté pagado.
+5. **T27** cada pedido consulta y descifra el token, aunque la pantalla no use Mercado Libre.
+6. **T49** `statement_timeout`: una consulta colgada ocupa 1 de las 3 conexiones del proceso.
+7. **T60** Docker corre como root.
+8. **T74** pruebas contra la base de producción (una mala puede dañar datos o agotar el pooler).
+9. **T93** respuestas de error con tres formas distintas de JSON.
+10. **T79** `Cache-Control: private, no-store` en las pantallas con plata.
+
+---
+
+## A. Exactitud de los números (14)
+
+1. ✅ [A·S] **«Facturación cayó N %» y el puntaje de Salud comparaban dos tramos de 8 días que se pisaban en un día, con hoy a medias.** A la mañana daba una caída falsa de ~11 % (el umbral es 20 %). `logros.py`, `salud_cuenta.py` → ahora 7 días completos contra 7 (`utils.semanas_completas`). `tests/test_ventanas_de_tiempo.py`.
+2. ✅ [M·S] **Promociones: el «ritmo de antes» sumaba 8 días y dividía por 7, y el «durante» dividía por los días de diferencia (uno menos de los que contaba).** Desviaba el % de impacto y disparaba de más la misión «promoción sin efecto». `promociones.py`.
+3. ✅ [B·S] **Candidatos a promoción: 15 días ÷ 14.** `promociones.sugerir_candidatos_promocion`.
+4. ✅ [M·S] **Visitas «de 14 días»: eran 15 contra 13 anteriores** (corte en «hace 14 días» sobre `last=28`). Inflaba ~15 % la tendencia de visitas. `enriquecimiento.visitas_por_tramo`.
+5. ✅ [M·S] **Proyección del mes: el día 3 a la mañana dividía por 3 días con 2,4 transcurridos** → subestimaba ~30 %. `dashboard.dias_transcurridos_del_mes`.
+6. ✅ [B·S] **Provincias y «cuándo compran» cortaban el período con la hora UTC** (después de las 21 h el día de corte se corría). `dashboard.py`.
+7. ✅ [M·S] **«Evolución mensual»: los meses de más de 89 días mostraban $0 de publicidad** (Mercado Libre solo guarda ~90 días) y su resultado salía inflado. Ahora llevan `*` y una nota; desde ahora cada mes se guarda mientras todavía se puede pedir. `metricas.obtener_evolucion_mensual`.
+8. ✅ [A·S] **Cargar un gasto: «150.000» se guardaba como $150 y «1.500,50» daba error 500; categoría y fecha no se validaban y el período volvía como «None».** `app.agregar_gasto` ahora lee montos en formato argentino y avisa con un cartel. `tests/test_agregar_gasto.py`.
+9. ✅ [M·S] **Importar costos y gastos: «1e3» se leía como 13** (el parser le sacaba la letra; un campo numérico del navegador y Excel usan esa notación). `costos_importar.parsear_monto`.
+10. ✅ [M·S] **Costos por chat: al confirmar no se validaba que el monto fuera finito y positivo, ni el concepto, ni que la fecha de fin fuera posterior.** `costos_chat.confirmar_y_guardar`.
+11. ✅ [A·S] **Una página de órdenes que Mercado Libre rechaza con 4xx se tomaba como «no hay más» y el sync avanzaba su marca de tiempo**: lo no traído se perdía al pasar el colchón de 2 h. Ahora corta con un error (ya lo reporta `sincronizar_todo`) y la marca queda donde estaba. `ventas_sync.PaginaDeOrdenesRechazada`. `tests/test_ventas_sync_paginas.py`.
+12. ✅ [B·S] **Quedaba un «Ojo:» coloquial en Ganancia Real** (el dueño había pedido «Atención:»).
+13. ⏳ [M·M] **El costo de una VARIANTE solo lo leen Ganancia Real, evolución, reporte fiscal, cobertura y comparador; Precios, Promociones, el margen del Dashboard y Stock usan el de la publicación.** Dos pantallas pueden mostrar márgenes distintos para lo mismo (está documentado en `CLAUDE.md`, pero sigue abierto). Llevar `costos_moneda.sql_costo_de_venta` a esas pantallas.
+14. ⏳ [B·S] **`resumen_semanal.generar_resumen_periodo(dias=7)` tiene una rama de 7 días con ventana 8 contra 7, pero solo se usa con `dias=1`.** Borrar la rama o corregirla antes de que alguien la use.
+
+## B. Dinero y suscripciones (8)
+
+15. ✅ [A·S] **Al cambiar de plan, `suscripcion_iniciar` ignoraba el resultado de cancelar la suscripción vieja** (`cancelar_suscripcion` devuelve `False` ante cualquier respuesta que no sea 200) y armaba una nueva → **dos suscripciones cobrando**. Ahora, si no se pudo cancelar, no se arma nada. `legal.cuenta_eliminar` ya lo hacía bien; era la única ruta que no.
+16. ✅ [M·S] **La tarea de renovaciones daba de baja el plan aunque la cancelación en Mercado Pago hubiera devuelto `False`**: MP podía seguir cobrando sin que nadie se enterara. Ahora se cuenta (`cancelacion_pendiente`), se escribe en el log y va a Sentry. `renovaciones_mp.py`.
+17. ⏳ [M·S] **Cancelar la suscripción pone `plan = 'cancelado'` al instante**: pierde lo que ya pagó del mes. `app.suscripcion_cancelar`. Mantener el acceso hasta `mp_proximo_cobro` y recién ahí cortar (la tarea diaria ya existe).
+18. ⏳ [M·S] **`suscripcion_iniciar` cancela la suscripción vieja ANTES de tener la nueva**: si crear el link falla, la persona queda sin suscripción viva con el plan en la base. Crear la nueva primero y cancelar la vieja cuando la nueva se autoriza (el webhook ya conoce las dos).
+19. ⏳ [M·S] **Los precios $40.000 y $99.000 están escritos a mano en `pagos.py` (2), `landing.html` (2) y `planes.html` (6 o más).** Cambiar un precio exige tocar tres archivos y es fácil que la landing diga una cosa y el cobro otra. Un solo origen (`pagos.PRECIOS_PLAN`) pasado a las plantillas.
+20. ⏳ [B·S] **`pagos.firma_valida` devuelve `True` si no hay `MP_WEBHOOK_SECRET`** (hoy está cargado). En producción debería fallar cerrado.
+21. ⏳ [B·S] **En el camino «nueva», si Mercado Pago no responde al consultar la suscripción vieja (`None`), se arma otra igual.** En «cambiar» sí se frena. Tratarlo igual.
+22. ⏳ [B·S] **La prueba de 14 días está fija en `auth/registro.py` y repetida en textos de la landing y los planes.** Una constante de `config.py` (`DIAS_DE_PRUEBA`) que lean todos.
+
+## C. Mercado Libre, sincronización y rendimiento percibido (13)
+
+23. ⏳ [A·S] **Una llamada GET a Mercado Libre puede tardar hasta ~70 s dentro de un pedido web** (`Retry(total=3, backoff 1,5)` × `timeout=15` + esperas) y gunicorn mata el pedido a los 60 s. `meli_http.py`, `Dockerfile` (`--timeout 60`). Un presupuesto de tiempo por pedido (p. ej. 12 s en total, `Retry(total=1)` y `timeout=(3, 8)`) para las pantallas; los trabajos de fondo pueden seguir con reintentos largos.
+24. ⏳ [M·S] **La pausa global de 20 s tras un rechazo (`_respetar_pausa`) también hace dormir a los pedidos de pantalla antes de enviar nada.** En una racha de 429 cada página queda colgada 20 s. Que las pantallas fallen rápido (mensaje «Mercado Libre está lento, probá en un momento») y solo los trabajos de fondo esperen.
+25. ✅/⏳ [A·M] **Cachés en memoria de cada proceso (hay 4): 3 de cada 4 visitas arrancaban «en frío».** Medido en producción: `/metricas` 31,8 s = evolución mensual 20,2 s + factura 9,5 s. Ya pasaron a la caché compartida (`cache_db`) la publicidad por mes, la factura y el almacenamiento de FULL: la evolución mensual bajó a 0,4 s (medido); la factura y el almacenamiento quedaron desplegados y falta medirlos. **Quedan** `ads._anuncios_cache`/`_costos_cache`, `logistica._cache_flex_habilitado`, `embudo_conversion._cache_embudo`, `tendencias.*` y `ventas_sync._cache_*` (estos últimos son por id global y están bien).
+26. ⏳ [A·M] **El refresco del token mantiene abierta una conexión de administración y una transacción con el candado mientras espera la respuesta de `oauth/token` (hasta 15 s).** El pool admin es de 2 (`DB_POOL_ADMIN_MAX`). Con dos refrescos de cuentas distintas a la vez, todas las lecturas de token del proceso esperan. `auth/token_manager._refrescar_de_a_uno`. Pedir el refresh fuera de la transacción (tomar el candado, leer, soltar, pedir, volver a tomar y guardar) o subir el pool admin.
+27. ⏳ [M·S] **`asegurar_token_valido` hace una consulta al pool admin y descifra el token en CADA pedido que lo necesita**, incluso pantallas que casi no usan Mercado Libre (`/metricas` lo pide primero). Un caché por proceso con el token descifrado y su vencimiento (se invalida al refrescar o ante un 401) ahorra 1 consulta y 1 descifrado por pedido.
+28. ⏳ [M·S] **El scheduler retiene 1 de las 2 conexiones del pool admin de ese proceso para siempre** (candado de sesión): en ese proceso las lecturas de token quedan serializadas en una sola conexión. `scheduler._tiene_el_lock_del_scheduler`. Darle su propia conexión fuera del pool o subir `DB_POOL_ADMIN_MAX` a 3.
+29. ⏳ [M·S] **El listado de anuncios de Product Ads se guarda solo en memoria del proceso (300 s)** y un pedido tardó 18,9 s una vez, mientras otros de la misma pantalla tardaban 1 s. `ads.obtener_anuncios_con_metricas` → `cache_db` por cuenta y período (el cronómetro de tramos ya está puesto para ver si se repite).
+30. ⏳ [B·S] **`ventas_sync._obtener_costo_envio` devuelve `0.0` ante cualquier error**, a diferencia de `_costo_envio_vendedor` (devuelve `None`): hasta que el envío se completa, `ventas.costo_envio` queda con lo que paga el comprador (0 si es gratis) y la ganancia sale inflada. El relleno es de 40 por pasada (540 días): con muchas ventas viejas tarda. Subir el tope por pasada cuando el sync anterior no encontró nada nuevo.
+31. ⏳ [M·S] **Los webhooks que llegan hoy (`shipments`, `items_prices`, `public_offers`) no tienen una tabla de «qué se hace con cada tema»**; `public_offers` se ignora en silencio. Una lista explícita en `sincronizador.procesar_notificacion_webhook` con un registro de los temas que llegan y no se usan, para decidir con datos.
+32. ⏳ [B·S] **`login_requerido` consulta onboarding, sincronización y plan en CADA pedido, incluidas las ~12 llamadas `/api/*` que dispara el Dashboard.** Guardar en la sesión «todo en orden hasta <hora>» por 60 s (solo el estado positivo; invalidar al cancelar la suscripción). `auth/middleware.py`.
+33. ⏳ [M·S] **El ticker (`/api/ticker`) corre cada 60 s por pestaña y recalcula el puntaje de salud completo (cobertura de variantes incluida) cada vez.** Calcular salud y avisos cada 5 min en `cache_db` y dejar para el minuto solo las ventas de hoy y los cobros. `dashboard.obtener_ticker`.
+34. ⏳ [B·S] **Las ~12 llamadas del Dashboard abren una conexión cada una.** Un endpoint único para las tarjetas de la parte de arriba (PM#48 ya lo anotaba): menos viajes y menos conexiones del pooler (12 en total).
+35. ⏳ [B·M] **`obtener_logros` (≈12 consultas y un UPSERT por misión en `logros_historial`) corre en cada carga del Dashboard y de «Día a día» y escribe en un GET.** Cachearlo 60 s por cuenta y mover la escritura a la sincronización.
+
+## D. Base de datos y datos (11)
+
+36. ⏳ [M·S] **Ninguna conexión de la app fija `statement_timeout`.** Una consulta colgada ocupa una de las 3 conexiones del proceso (12 del proyecto) hasta que alguien mate el proceso. `db._dejar_lista_para_rls`: `set_config('statement_timeout', '30000', true)` para pedidos web (los trabajos de fondo, sin límite o más largo).
+37. ⏳ [B·S] **`ConnectionPool` sin `check=`** (psycopg_pool 3.3.3 lo soporta): después de un reinicio del pooler el primer pedido recibe una conexión muerta y falla. `db.py`: `check=ConnectionPool.check_connection`.
+38. ⏳ [M·S] **Tablas que solo crecen, sin purga:** `auditoria`, `tendencias_snapshots`, `competencia_historial`, `historial_precios`, `preguntas_pendientes` (las respondidas), `alertas_usuario`, `logros_historial`, `ventas_retiradas`, `mercado_*_diaria`. Hoy son chicas (`ventas`: 2.851 filas, 14 MB) pero con cientos de cuentas pesan. Definir retención por tabla en `scheduler._tarea_limpiar_soft_deletes`.
+39. ⏳ [M·S] **`ventas.comprador_nickname` y `comprador_nombre` se guardan para siempre.** El nickname sirve para contar compradores únicos y repetidos (`ventas_hoy.py`, `metricas.obtener_analitica_clientes`); el nombre completo, solo para Despacho y las ventas manuales. Son datos personales de terceros: contar con un hash en lugar del nickname y borrar el nombre a los 60 días de entregado. Conviene decirlo en la Política de Privacidad.
+40. ⏳ [B·S] **Borrar la cuenta borra todo en cascada, pero el respaldo semanal (`respaldo.py`) conserva esos datos en la PC del dueño.** Decirlo en la política («las copias de respaldo se eliminan en N días») o purgar respaldos viejos.
+41. ⏳ [B·S] **`cuentas_meli` recibió 5,7 millones de lecturas secuenciales con 2 filas** (las políticas RLS la consultan en cada consulta). Con 2 filas no cuesta; con miles de cuentas hay que confirmar con `EXPLAIN` que usa el índice (se midió a otra escala el 14/10 y se decidió no reescribir las políticas: reabrir solo si aparece en `[Lento]`).
+42. ⏳ [B·S] **Tuplas muertas altas en tablas de pocas filas** (`usuarios` 49 muertas por 1 viva, `cuentas_meli` 40 por 2, `gastos_operativos` 24 por 1): se actualizan en cada ciclo. Sin problema hoy; revisar `autovacuum_vacuum_scale_factor` en `cuentas_meli` y `usuarios` si crecen.
+43. ⏳ [B·S] **`ventas_retiradas` guarda la fila completa en JSON**: sirve para deshacer, pero no hay pantalla para restaurar (PM#46 lo anotaba). Una vista en «Ventas reembolsadas» con «restaurar».
+44. ⏳ [M·S] **`pg_stat_statements` está instalada, pero el rol de la app no puede leerla** (`permission denied for schema extensions`): no hay forma de ver las consultas más lentas de producción. Dar `pg_read_all_stats` a un rol de solo lectura para el panel `/admin/salud`.
+45. ⏳ [B·S] **Los índices de claves foráneas sin uso** (`idx_feedback_usuario`, `idx_historial_precios_cuenta`…) NO se deben borrar: una prueba exige un índice por FK y hoy están sin uso solo porque las tablas son chicas. Documentarlo junto al índice para que nadie los «limpie».
+46. ⏳ [M·M] **Sin copia de lectura/replica ni restauración probada.** Hay backups diarios de Supabase y el respaldo propio, pero nunca se probó restaurar uno. Un ensayo trimestral de restauración en un proyecto aparte.
+
+## E. Seguridad y privacidad (14)
+
+47. ✅ [A·S] **Quedaba un manejador `onmouseenter`/`onmouseleave` escrito en el HTML** (la píldora de ventas de la barra superior): la política estricta de scripts lo habría bloqueado cuando el dueño la active. La prueba que lo debía impedir tenía una lista fija de eventos que no incluía esos dos; ahora detecta cualquier `on…=`. `templates/base.html`, `global.js`, `tests/test_correcciones_frontend.py`.
+48. ⏳ [A·S] **La política de contenido sigue permitiendo scripts inline (`'unsafe-inline'`); la estricta corre solo en modo informe.** 👤 Mirar `fly logs -a corecore | grep "\[CSP\]"` con uso real y pasar `CSP_MODO=estricta` (ver `docs/TUS_PENDIENTES.md` §10).
+49. ⏳ [M·S] **La política de imágenes permite `http:`** (`img-src … https: http:`). Las miniaturas de Mercado Libre ya se fuerzan a `https`. Sacar `http:`.
+50. ⏳ [M·S] **El contenedor corre como root** (el `Dockerfile` no tiene `USER`). Un usuario sin privilegios (`useradd`, `chown /app`) limita el daño de cualquier fuga.
+51. ⏳ [B·S] **`.dockerignore` no excluye los `.md` de la raíz** (`CLAUDE.md`, `PENDIENTES.md`, `PLAN_*.md`, `AUDITORIA_*.md`): viajan dentro de la imagen de producción. No son secretos, pero son notas internas.
+52. ⏳ [M·S] **Las pantallas con plata no llevan `Cache-Control: private, no-store`.** Solo los estáticos tienen cabecera (`seguridad.py`). En una computadora compartida, «Atrás» después de cerrar sesión puede mostrar la página de ganancias guardada por el navegador. Ponerla en `_cabeceras` para todo lo que no sea `/static`.
+53. ⏳ [B·S] **`Vary: Cookie` también sale en los archivos estáticos** (el limitador lee `session` en cada pedido, también el de `/static`): impide que un caché compartido reutilice los archivos. Saltear el limitador (y la lectura de sesión) para `/static/`.
+54. ⏳ [B·S] **HSTS sin `includeSubDomains` ni `preload`** (`max-age=31536000`). Con el dominio propio y Cloudflare, sumarlos cuando se confirme que no hay subdominios sin HTTPS.
+55. ⏳ [B·S] **`oauth_meli.construir_url_autorizacion` arma la URL con un f-string sin codificar** `redirect_uri` ni `state`. Hoy no tienen caracteres especiales; usar `urlencode` evita un error el día que los tengan.
+56. ⏳ [M·S] **La cookie de sesión dura 14 días y no se puede revocar desde el servidor** (cerrar sesión solo borra la del navegador): si alguien roba la cookie, vale hasta que venza. Un `version_de_sesion` por usuario que se incremente al cerrar sesión «en todos lados» (PM#19 lo anotaba).
+57. ⏳ [B·S] **Los límites de pedidos son por proceso** (4 copias): el límite efectivo es hasta 4 veces el configurado. Pasarlos a `cache_db` o a un contador compartido para las reglas de IA y OAuth.
+58. ⏳ [B·S] **`pagos.py` usa `requests` directo (sin `meli_http`) y sin reintentos en las consultas de estado**: una falla puntual de Mercado Pago se ve como «no responde». Reintentar una vez las lecturas (nunca el POST).
+59. ⏳ [M·S] **El webhook de Mercado Libre todavía procesa avisos con `application_id` ausente** (se anota en los logs, pero se procesan). 👤 Cuando los logs confirmen que Mercado Libre siempre lo manda, rechazar los que no lo traen (`CLAUDE.md`, «Fase 4»).
+60. ✅ [B·S] **`exportador_redes` descargaba la foto con `requests.get` sin límite ni esquema y dejaba un archivo por exportación en `exports/` para siempre.** Ahora la imagen se arma en memoria, solo por `https` (las miniaturas viejas con `http` se suben a `https`) y con tope de 8 MB. `tests/test_exportador_redes.py`.
+
+## F. Operación, despliegue y entorno (11)
+
+61. ⏳ [A·S] **Una versión se desplegó sin `desplegar.py` (la v75) y producción quedó con `version: "desconocida"`**: no se podía saber qué código corría. 👤 Desplegar siempre con `python desplegar.py`. Que el `fly deploy` a mano falle: un `ARG GIT_SHA` sin valor por defecto en el `Dockerfile` hace que construir sin el parámetro dé error.
+62. ⏳ [B·S] **El `Dockerfile` explica una decisión que ya no existe** (que la app usa `datetime.now()` sin zona; hoy usa `utils.ARGENTINA`). Actualizar el comentario para que no confunda a quien lo lea.
+63. ⏳ [B·S] **`gunicorn.conf.py` dice `timeout = 120` («para syncs largos»), pero la línea de comandos del `Dockerfile` lo pisa con `--timeout 60`.** Dejar uno solo y escribir por qué.
+64. ⏳ [B·S] **`.env.example` no tiene** `CORREO_*`, `MP_*`, `DB_POOL_*`, `SEGUNDOS_PEDIDO_LENTO`, `CSP_MODO`, `APP_URL`, `CORELUX_URL`, `GUNICORN_*` ni `CACHE_*`. Completarlo (y que una prueba compare las variables que lee el código con las del ejemplo).
+65. ⏳ [M·S] **Producción dejó una máquina de migraciones apagada (v76) cuando un deploy se cortó a medias.** `desplegar.py` podría limpiar `fly_app_release_command` sobrantes al empezar (solo si están `stopped` y son de una release fallida).
+66. ⏳ [M·M] **No hay entorno de ensayo (staging)**: cada deploy va directo a producción (con prueba previa y vuelta atrás automática). Una app `corecore-staging` en Fly con la misma imagen y una base de pruebas para ensayar migraciones y el flujo de pago.
+67. ⏳ [B·S] **`requirements.txt` usa rangos, sin archivo de versiones exactas**: dos construcciones del mismo commit pueden instalar versiones distintas. Un `requirements.lock` (con `pip-compile --generate-hashes`) usado por el `Dockerfile`, y el rango se queda para actualizar.
+68. ⏳ [B·S] **`Pillow>=12.0.0` es la única dependencia sin tope superior.** `Pillow>=12.0.0,<13`.
+69. ⏳ [B·S] **`redis` y `Flask-Caching` solo sirven en la PC del dueño** (Fly no tiene Redis): se instalan, se importan y se prueban dos caminos. Si el dueño ya no usa Redis, sacarlos y dejar un solo camino (PM#235/236).
+70. ⏳ [M·S] **El deploy no prueba una pantalla CON sesión.** `desplegar.probar_rutas` mira 7 rutas sin iniciar sesión; un error de plantilla en el Dashboard pasa. Una cuenta sintética de ensayo en la base y un pedido con sesión firmada a `/dashboard`, `/dia` y `/metricas`.
+71. ⏳ [M·S] **El panel `/admin/salud` no muestra los tiempos por pantalla.** El cronómetro `[Lento]` ya los saca por tramos; guardar los últimos 200 pedidos lentos (ruta, duración, tramos) en memoria y mostrarlos ahí.
+
+## G. Calidad del código y pruebas (13)
+
+72. ⏳ [M·S] **440 `print()` contra 21 llamadas a `logging`.** Sin niveles ni campos (cuenta, ruta), hay que adivinar en `fly logs` qué es un error. Un módulo `registro.py` con `log.info/warning/error` que agregue `cuenta_id` y versión, y migrar por módulos (los de sincronización primero).
+73. ⏳ [M·M] **252 `except Exception`; 15 son `except … : pass` mudos** (en `app.py`, `asistente_herramientas.py`, `logros.py`, `seguridad.py`, `desplegar.py`, `migrate.py`, `predeploy.py`, `verificar_dependencias.py`). Los que tragan datos de negocio tienen que registrar; los de «medir nunca rompe nada» están bien (documentarlos con un comentario fijo).
+74. ⏳ [A·M] **Las pruebas con base corren contra la base de producción** (dentro de transacciones que se revierten) y `predeploy.py` las corre dos veces (9 minutos). Una prueba mal escrita puede escribir de verdad o agotar el pooler de 15 conexiones (ya pasó). Un proyecto de Supabase aparte (o una rama) para las pruebas.
+75. ⏳ [M·S] **El CI de GitHub no corre las pruebas con base** (se omiten sin `DATABASE_URL`): las más importantes (RLS, dinero) solo corren en la PC antes de desplegar. Un servicio Postgres en el CI con las migraciones y el rol `app_backend` (PM#13).
+76. ⏳ [M·L] **Funciones muy largas:** `calcular_ganancia_real` 268 líneas, `explorar_mercado` 183, `calcular_datos_publicidad` 166, `_detectar_misiones_base` 158, `metricas_vista` 155. Dividirlas en pasos con nombre (la fórmula de plata es la que más conviene dejar en funciones chicas, con pruebas por paso).
+77. ⏳ [B·M] **`app.py` tiene ~4.300 líneas y 148 rutas** (`legal.py` ya es un Blueprint). Seguir sacando por áreas (suscripción, costos, despacho) con Blueprints; cada paso con las pruebas de rutas actuales como red.
+78. ⏳ [B·S] **`ruff` corre solo con las reglas por defecto.** Con `B`, `S`, `BLE`, `PERF`, `RUF` salen 608 avisos; los accionables son pocos (`B904` 9, `S110` 7, `PLW0603` 5). Activar por etapas, empezando por `B` y `S`.
+79. ⏳ [B·S] **Un solo patrón para respuestas de error JSON:** hoy hay `{ok:false, detalle}` (52 rutas), `{error}` (25), `{ok:false, error}` (16) y `{ok:false, mensaje}` (1), y `global.js` lee `d.error`, `data.detalle` o `d.mensaje` según la pantalla. Un `responder_error(codigo, texto)` en `seguridad.py` y un lector único en `ux.js`.
+80. ⏳ [B·S] **Cuando el servidor devuelve 429 o 500 al guardar desde el panel de publicación, el JS muestra «No se pudo conectar»** (`resp.json()` falla con una página HTML). Mirar `resp.status` y decir «Hiciste muchas acciones seguidas, esperá un momento» o «Algo falló de nuestro lado».
+81. ⏳ [B·S] **`monitor_en_vivo._falta_la_tabla` no se usa en ningún lado y no tiene pruebas** (el escaneo de código sin uso devolvió solo 6 funciones en todo el proyecto: el código está limpio). Borrarla.
+82. ⏳ [B·S] **Hay 7 funciones que convierten texto a número con reglas distintas** (`meli_http._numero`, `envio_gratis._numero`, `publicacion_edicion._a_numero`, `costos_moneda.normalizar_monto`, `costos_importar.parsear_monto`, `dolar.normalizar_manual`, `preferencias.normalizar_margen`). Un `utils.numero` con la regla argentina y pruebas, usado por todos (el bug 8 y el 9 salieron de esto).
+83. ⏳ [B·S] **Una guarda para los `f"…"` dentro de `cursor.execute`:** hay 49 y se revisaron 8 (solo interpolan constantes). Una prueba que exija que cada interpolación venga de una constante del módulo o de una función de `utils` (hoy lo cuida la revisión a ojo).
+84. ⏳ [B·M] **Pruebas visuales automáticas de las pantallas principales** (PM#153): una captura por pantalla con datos de ejemplo y una comparación; hoy los defectos visuales (como el `onmouseenter`) los encuentra una persona.
+
+## H. Observabilidad (6)
+
+85. ✅ [M·S] **Sentry no sabía de quién era cada error:** el gancho `before_request` leía `g.usuario_id`, que todavía no existe en ese momento, así que ningún evento llevaba usuario ni cuenta. Ahora `login_requerido` los informa. `tests/test_sentry_contexto.py`.
+86. ✅ [B·S] **Sentry no tenía `release` ni `environment`:** no se podía ver «este error empezó en tal versión». Ahora usa `CORELUX_VERSION` y distingue producción de local.
+87. ⏳ [M·S] **No hay un identificador de incidente en las páginas de error:** la persona dice «me dio error» y no hay forma de ubicarlo. Un `request_id` corto en el cuerpo de la página de error, en el log y en Sentry.
+88. ⏳ [B·S] **El estado de salud de los trabajos programados no está en `/admin/salud`:** si el relevamiento de mercado, el dólar o las renovaciones dejan de correr, se nota por un efecto. Una tabla `tareas_programadas` (nombre, última vez, resultado) y una fila por trabajo.
+89. ⏳ [B·S] **`/healthz/db` es público** (exento del limitador): sirve para el monitor, pero expone si la base responde. Un token chico en la cabecera para el monitor del dueño.
+90. ⏳ [B·M] **Sin métricas de negocio técnicas** (cuentas activas hoy, sincronizaciones que fallaron, tiempo medio de sync): `admin_usuarios` ya tiene activos en 7 días; sumar el resultado de la última sincronización por cuenta.
+
+## I. Producto (agregar, sacar o hacer distinto) (10)
+
+91. ⏳ [M·M] **Aviso de «tu plata cambió» cuando una pantalla usa un costo en dólares y el dólar se movió más de X %:** hoy se recalcula en silencio. Un aviso en la campana («tu costo en dólares ahora equivale a $X: +8 %»).
+92. ⏳ [M·S] **Mostrar de dónde sale cada número** (el sello «Real» / «Calculado» que ya tiene Mercado) en Ganancia Real, Precios y el Dashboard: es lo que más confianza da y el dato ya existe en las funciones.
+93. ⏳ [M·S] **Borrar un gasto es definitivo** (`/eliminar_gasto` hace un `DELETE` físico; la pantalla ya pide confirmar, pero un clic equivocado no se puede deshacer). La columna `eliminado_en` y la tarea de purga de las 03:30 ya existen (migración 0002), pero las consultas de gastos (`app.py`, `costos.py`, `reporte_fiscal.py`, `asistente_herramientas.py`) no filtran por ella: habría que sumar `eliminado_en IS NULL` en esas cuatro, marcar en vez de borrar y ofrecer «Deshacer» 8 segundos. Igual para «dejar de seguir» un competidor.
+94. ⏳ [M·M] **Un modo «prueba con datos de ejemplo» para cuentas nuevas sin ventas** (PM#127/PX#178): hoy una cuenta recién conectada ve pantallas vacías hasta la primera sincronización.
+95. ⏳ [B·M] **Exportar a Excel con un solo formato:** Métricas, Stock, Reporte fiscal y Cobros exportan con columnas y formatos de número distintos. Una función común (`utils_excel`) con formato argentino.
+96. ⏳ [M·S] **Los rankings por modelo usan `limpiar_titulo_modelo` y la familia de Mercado Libre:** unificar en un solo `modelo_de(titulo, family_id)` para que Dashboard, Costos, Stock y Ganancia Real agrupen idéntico (ya hubo una copia que se desfasó, ver `CLAUDE.md`).
+97. ⏳ [B·S] **«Clientes que repiten» hoy se calcula con el nickname completo del comprador.** Si algún día se muestra al vendedor, mostrarlo siempre como conteo («3 compradores compraron 2 veces») y nunca como lista de nicknames, y guardar un hash en lugar del dato crudo (ver 39).
+98. ⏳ [M·S] **El asistente de IA no tiene un botón de «esto estuvo mal»:** hoy no hay forma de enterarse de las respuestas equivocadas. Un 👎 que guarde la pregunta y las herramientas usadas (sin datos del comprador) para revisar.
+99. ⏳ [B·M] **WhatsApp:** la Epic del plan Elite está en `docs/PLAN_WHATSAPP.md` §9; antes de construir, reutilizar `auditoria` y hacer un ejecutor de acciones con confirmación de un solo uso (ver §9, puntos 3 a 6).
+100. ⏳ [B·S] **Un registro de decisiones técnicas (`docs/DECISIONES.md`):** hoy están repartidas entre `CLAUDE.md` (que ya pasó los 650 líneas), `PENDIENTES.md` y los comentarios. Una línea por decisión con fecha, motivo y qué la revertiría.

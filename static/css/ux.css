@@ -56,6 +56,9 @@
 .ux-hero-nota { font-size: 0.8em; color: var(--text-secondary); margin-top: 4px; }
 html.modo-privacidad .ux-hero-numero, html.modo-privacidad .ux-kpi-valor { filter: blur(8px); transition: filter 0.2s; }
 html.modo-privacidad .ux-hero-numero:hover, html.modo-privacidad .ux-kpi-valor:hover { filter: none; }
+/* Todo elemento que static/js/privacidad.js encontró con un monto en pesos (la lista de arriba era fija y dejaba a la vista la mayoría) */
+html.modo-privacidad .monto-oculto { filter: blur(6px); transition: filter 0.2s; }
+html.modo-privacidad .monto-oculto:hover { filter: none; }
 /* También los montos de rankings, distribuciones, precios y el resumen de cobros */
 html.modo-privacidad .ux-rank-valor, html.modo-privacidad .ux-dist-val, html.modo-privacidad .ux-precio-actual, html.modo-privacidad .ux-precio-estado b,
 html.modo-privacidad .ux-regla-etiquetas b { filter: blur(6px); transition: filter 0.2s; }

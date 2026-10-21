@@ -18,6 +18,21 @@ except ImportError:
     pass
 
 
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _sin_usuario_pegado_en_sentry():
+    """`login_requerido` informa el usuario a Sentry. En producción cada pedido tiene su propio contexto; en las pruebas todas comparten el proceso, así que lo que una puso se ve en la siguiente."""
+    yield
+    try:
+        import sentry_sdk
+        sentry_sdk.get_isolation_scope().clear()
+        sentry_sdk.get_current_scope().clear()
+    except Exception:
+        pass
+
+
 class _TransaccionFalsa:
     def __enter__(self):
         return self

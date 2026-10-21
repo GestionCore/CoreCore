@@ -32,6 +32,16 @@ _PERMITIDAS_SIN_SUSCRIPCION = {
 MINUTOS_REINTENTO_RACHA = 5
 
 
+def _avisar_a_sentry(usuario_id, cuenta_id):
+    """Quién es la persona y la cuenta de este pedido, para que un error en Sentry se pueda ubicar. Va acá y no en un before_request: g.usuario_id recién existe cuando corre este decorador (el gancho de antes no veía nunca a nadie). Sin Sentry no hace nada."""
+    try:
+        import sentry_sdk
+        sentry_sdk.set_user({"id": str(usuario_id)})
+        sentry_sdk.set_tag("cuenta_id", str(cuenta_id))
+    except Exception:
+        pass
+
+
 def login_requerido(vista):
     @wraps(vista)
     def envoltorio(*args, **kwargs):
@@ -41,6 +51,7 @@ def login_requerido(vista):
             return redirect(url_for("landing"))
         g.usuario_id = usuario_id
         g.cuenta_id = cuenta_id
+        _avisar_a_sentry(usuario_id, cuenta_id)
 
         necesita_onboarding = request.endpoint not in _PERMITIDAS_DURANTE_ONBOARDING
         necesita_sync = request.endpoint not in _PERMITIDAS_DURANTE_SINCRONIZACION

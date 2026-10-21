@@ -112,19 +112,13 @@ if _dsn_sentry:
         sentry_sdk.init(
             dsn=_dsn_sentry,
             integrations=[FlaskIntegration()],
+            release=os.getenv("CORELUX_VERSION") or None,                       # el commit desplegado (lo pone desplegar.py): así Sentry dice en qué versión empezó cada error
+            environment="produccion" if os.getenv("FLY_APP_NAME") else "local",
             traces_sample_rate=0.1,  # 10% de requests trazados para performance
             profiles_sample_rate=0.1,
             send_default_pii=False,  # No enviar cookies ni IP por defecto
         )
-        # Añadir contexto de usuario a cada evento para poder filtrar errores
-        # por usuario específico en el dashboard de Sentry.
-        from flask import g as _g
-        import sentry_sdk as _sdk
-
-        @app.before_request
-        def _sentry_set_user():
-            if getattr(_g, "usuario_id", None):
-                _sdk.set_user({"id": str(_g.usuario_id)})
+        # El usuario y la cuenta de cada evento los pone auth.middleware.login_requerido (acá g.usuario_id todavía no existe: este gancho nunca veía a nadie).
     except Exception as _e:
         print(f"[Sentry] ❌ SENTRY_DSN no es válida ({_e}): la app arranca igual, pero sin monitoreo de errores. Debe tener la forma https://<clave>@<algo>.ingest.sentry.io/<número>.")
 
@@ -2489,15 +2483,38 @@ def ventas_manuales_eliminar(id_venta):
 @auditar("gasto_agregar")
 def agregar_gasto():
     import db
-    concepto = request.form.get("concepto", "").strip()
+    concepto = request.form.get("concepto", "").strip()[:200]
     categoria = request.form.get("categoria")
-    monto = float(request.form.get("monto", 0.0))
-    fecha = request.form.get("fecha") or hoy_argentina().strftime("%Y-%m-%d")
-    if concepto and monto > 0:
-        with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-            cursor = conexion.cursor()
-            cursor.execute("INSERT INTO gastos_operativos (cuenta_id, concepto, categoria, monto, fecha) VALUES (%s, %s, %s, %s, %s)", (g.cuenta_id, concepto, categoria, monto, fecha))
-    return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}")
+    # El monto se lee como lo escribe una persona en Argentina («150.000», «1.500,50»): antes float() daba error 500 con «1.500,50» y guardaba «150.000» como $150
+    monto = costos_importar.parsear_monto(request.form.get("monto"))
+    fecha = (request.form.get("fecha") or hoy_argentina().strftime("%Y-%m-%d")).strip()
+    periodo = {}                                         # el período que se estaba mirando vuelve igual; si no es una fecha válida, se descarta (antes viajaba tal cual, hasta como «None»)
+    for clave in ("fecha_desde", "fecha_hasta"):
+        try:
+            datetime.strptime(request.form.get(clave) or "", "%Y-%m-%d")
+            periodo[clave] = request.form.get(clave)
+        except ValueError:
+            pass
+    try:
+        datetime.strptime(fecha, "%Y-%m-%d")
+        fecha_valida = True
+    except ValueError:
+        fecha_valida = False
+    problema = None
+    if not concepto:
+        problema = "Escribí en qué fue el gasto."
+    elif monto is None or not 0 < monto < 1e12:
+        problema = "El monto tiene que ser un número mayor que cero."
+    elif categoria not in ("fijo", "variable"):
+        problema = "Elegí si el gasto es fijo o variable."
+    elif not fecha_valida:
+        problema = "La fecha del gasto no es válida."
+    if problema:
+        return redirect("/costos?" + urlencode({**periodo, "msg": problema, "tipo": "error"}))
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("INSERT INTO gastos_operativos (cuenta_id, concepto, categoria, monto, fecha) VALUES (%s, %s, %s, %s, %s)", (g.cuenta_id, concepto, categoria, round(monto, 2), fecha))
+    return redirect("/costos?" + urlencode(periodo)) if periodo else redirect("/costos")
 
 
 @app.route("/guardar_costos_masivo", methods=["POST"])

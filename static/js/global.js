@@ -73,8 +73,7 @@ function revisarMensajeEnURL() {
 
 // ---------- Modo Privacidad ----------
 function alternarModoPrivacidad() {
-    document.documentElement.classList.toggle('modo-privacidad');
-    localStorage.setItem('modo_privacidad', document.documentElement.classList.contains('modo-privacidad') ? '1' : '0');
+    Privacidad.alternar();          // static/js/privacidad.js: prende o apaga el modo y desenfoca cualquier monto de la página, también los que se arman después
 }
 
 // ---------- Tema claro/oscuro ----------
@@ -1700,6 +1699,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logueado) cargarOportunidadesSeo();
     inicializarSidebar();
     inicializarProtectorInactividad();
+    // El detalle de las ventas de hoy aparece al pasar el mouse por la píldora de la barra (antes eran manejadores onmouseenter/onmouseleave escritos en el HTML, que la política estricta bloquea)
+    const pildoraVentas = document.getElementById('ticker-ventas-pill');
+    if (pildoraVentas) {
+        pildoraVentas.addEventListener('mouseenter', () => mostrarTooltipVentas(pildoraVentas));
+        pildoraVentas.addEventListener('mouseleave', ocultarTooltipTicker);
+    }
     if (logueado) {
         // El ticker (varias consultas a la base) se actualiza cada 60 s y SOLO con la pestaña a la vista; al volver a mirarla se refresca enseguida.
         setInterval(() => { if (!document.hidden) actualizarTicker(); }, 60000);

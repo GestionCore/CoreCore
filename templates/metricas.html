@@ -86,7 +86,7 @@
     <div class="ux-hero-nota" style="margin-top:14px;"><b>Ya está descontado</b> lo que Mercado Libre te factura aparte de cada venta, repartido por día: {% for c in cargos_fuera_de_ventas['items'] %}{{ c.label }} ({{ c.monto|plata }}){{ ' · ' if not loop.last else '.' }}{% endfor %} Mercado Libre no te lo acredita: lo descuenta de lo que te deposita.</div>
     {% endif %}
     {% if cargos_fuera_de_ventas and not cargos_fuera_de_ventas.completo %}
-    <div class="ux-hero-nota" style="margin-top:8px;"><b style="color:var(--semantic-warning);">Ojo:</b> no pudimos traer todas las facturas de Mercado Libre de este período, así que algún cargo mensual (eShop, FULL…) puede faltar y la ganancia real ser algo menor.</div>
+    <div class="ux-hero-nota" style="margin-top:8px;"><b style="color:var(--semantic-warning);">Atención:</b> no pudimos traer todas las facturas de Mercado Libre de este período, así que algún cargo mensual (eShop, FULL…) puede faltar y la ganancia real ser algo menor.</div>
     {% endif %}
     {% if rs.retenciones %}
     <div class="ux-hero-nota" style="margin-top:14px;">Además, Mercado Libre te retuvo <b>{{ rs.retenciones|plata }}</b> en impuestos (IIBB y otras retenciones). <b>No están descontadas de tu ganancia</b>: son un pago anticipado de tus impuestos.</div>

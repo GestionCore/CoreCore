@@ -31,6 +31,13 @@ def parsear_monto(valor):
         return None
     if isinstance(valor, (int, float)):
         return float(valor) if valor >= 0 else None
+    # Notación científica («1e3», «1E+05»: un campo numérico del navegador y Excel la usan): antes se le sacaban las letras y «1e3» quedaba como 13
+    if re.fullmatch(r"\s*[+-]?\d+(\.\d+)?[eE][+-]?\d+\s*", str(valor)):
+        try:
+            n = float(str(valor).strip())
+        except ValueError:
+            return None
+        return n if 0 <= n < float("inf") else None
     s = re.sub(r"[^\d.,-]", "", str(valor))
     if not s or s in ("-", ".", ","):
         return None

@@ -8,6 +8,7 @@ from tests.conftest import CursorFalso
 @pytest.mark.parametrize("crudo, esperado", [
     ("12.500,50", 12500.5), ("12500.5", 12500.5), ("$ 12.500", 12500.0), ("12.000", 12000.0), (12000, 12000.0),
     ("1.234.567", 1234567.0), ("8,5", 8.5), ("0", 0.0), ("abc", None), ("", None), (None, None), (-5, None), ("-3", None),
+    ("1e3", 1000.0), ("1E+05", 100000.0), ("2.5e2", 250.0), ("1e15", 1e15), ("1e-2", 0.01), ("-1e3", None),     # notación científica: antes se le sacaban las letras y «1e3» quedaba como 13
 ])
 def test_parsear_monto(crudo, esperado):
     assert ci.parsear_monto(crudo) == esperado

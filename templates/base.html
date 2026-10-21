@@ -128,7 +128,7 @@
     </button>
     <div class="topbar-espacio"></div>
     <div class="topbar-estado" id="tour-estado">
-        <span class="ticker-pill" id="ticker-ventas-pill" onmouseenter="mostrarTooltipVentas(this)" onmouseleave="ocultarTooltipTicker()"><span class="ticker-dot dot-emerald"></span><span id="ticker-ventas" class="skeleton">Cargando…</span></span>
+        <span class="ticker-pill" id="ticker-ventas-pill"><span class="ticker-dot dot-emerald"></span><span id="ticker-ventas" class="skeleton">Cargando…</span></span>
         <span class="ticker-pill ticker-pill-secundario"><span class="ticker-dot dot-blue"></span><span id="ticker-liberacion" class="skeleton">Cargando…</span></span>
     </div>
     <!-- Campana: lo que hay para mirar ya (reclamos, preguntas, publicaciones sin stock, devoluciones). Se arma en global.js con los datos de /api/ticker -->
@@ -504,6 +504,7 @@ document.addEventListener('keydown', e => {
 </script>
 
 <script nonce="{{ csp_nonce }}">window.CAPACIDADES = {{ (capacidades or {})|tojson }}; window.MARGEN_MINIMO = {{ (margen_minimo if margen_minimo is defined else 15)|tojson }};</script>
+<script src="{{ url_for('static', filename='js/privacidad.js') }}?v={{ static_v('js/privacidad.js') }}"></script>
 <script src="{{ url_for('static', filename='js/global.js') }}?v={{ static_v('js/global.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tablas.js') }}?v={{ static_v('js/tablas.js') }}"></script>
 

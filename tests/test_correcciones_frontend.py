@@ -16,7 +16,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CON_BASE = pytest.mark.skipif(not os.getenv("DATABASE_URL"), reason="Sin DATABASE_URL: se omiten las pruebas con la app real")
 CON_NODE = pytest.mark.skipif(shutil.which("node") is None, reason="node no está instalado")
 PLANTILLAS = sorted(glob.glob(os.path.join(RAIZ, "templates", "*.html")))
-INLINE = re.compile(r"\son(?:click|change|input|keyup|keydown|submit|mouseover|mouseout|focus|blur|load|error)=[\"']")
+INLINE = re.compile(r"\son[a-z]+=[\"']")          # CUALQUIER manejador on…= (antes una lista fija que no incluía onmouseenter/onmouseleave: uno quedó en la barra superior y la política estricta lo habría bloqueado)
 
 # Ninguna pantalla puede tener un manejador escrito en el HTML (onclick=…): es código inline y bloquea sacar 'unsafe-inline' del script-src. Se usa el despachador de ux.js (data-click, data-submit…).
 PRESUPUESTO_INLINE = 0
