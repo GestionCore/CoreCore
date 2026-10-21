@@ -12,15 +12,15 @@ Regla de la casa: ~25 % de lo que sale de una auditoría automática es falso. S
 
 ### Si solo se hacen 10 (en este orden)
 1. **T26** el refresco del token mantiene una conexión de administración mientras espera a Mercado Libre (el pool admin es de 2).
-2. **T22** una llamada a Mercado Libre puede tardar hasta ~70 s y gunicorn corta a los 60 s.
+2. ~~**T23** una llamada a Mercado Libre puede tardar hasta ~70 s y gunicorn corta a los 60 s.~~ ✅ Hecho (presupuesto de 45 s por pedido web).
 3. **T25** una sola pantalla cargaba 20 s por cachés que viven por proceso (4 procesos): quedan Publicidad, Logística y Tendencias.
 4. **T17** cancelar la suscripción quita el plan al instante aunque el mes esté pagado.
 5. **T27** cada pedido consulta y descifra el token, aunque la pantalla no use Mercado Libre.
-6. **T49** `statement_timeout`: una consulta colgada ocupa 1 de las 3 conexiones del proceso.
-7. **T60** Docker corre como root.
+6. **T36** `statement_timeout`: una consulta colgada ocupa 1 de las 3 conexiones del proceso.
+7. **T50** Docker corre como root.
 8. **T74** pruebas contra la base de producción (una mala puede dañar datos o agotar el pooler).
-9. **T93** respuestas de error con tres formas distintas de JSON.
-10. **T79** `Cache-Control: private, no-store` en las pantallas con plata.
+9. **T79** respuestas de error con tres formas distintas de JSON.
+10. **T52** `Cache-Control: private, no-store` en las pantallas con plata.
 
 ---
 
@@ -54,8 +54,8 @@ Regla de la casa: ~25 % de lo que sale de una auditoría automática es falso. S
 
 ## C. Mercado Libre, sincronización y rendimiento percibido (13)
 
-23. ⏳ [A·S] **Una llamada GET a Mercado Libre puede tardar hasta ~70 s dentro de un pedido web** (`Retry(total=3, backoff 1,5)` × `timeout=15` + esperas) y gunicorn mata el pedido a los 60 s. `meli_http.py`, `Dockerfile` (`--timeout 60`). Un presupuesto de tiempo por pedido (p. ej. 12 s en total, `Retry(total=1)` y `timeout=(3, 8)`) para las pantallas; los trabajos de fondo pueden seguir con reintentos largos.
-24. ⏳ [M·S] **La pausa global de 20 s tras un rechazo (`_respetar_pausa`) también hace dormir a los pedidos de pantalla antes de enviar nada.** En una racha de 429 cada página queda colgada 20 s. Que las pantallas fallen rápido (mensaje «Mercado Libre está lento, probá en un momento») y solo los trabajos de fondo esperen.
+23. ✅ [A·S] **Una llamada GET a Mercado Libre podía tardar hasta ~70 s dentro de un pedido web** (`Retry(total=3, backoff 1,5)` × `timeout=15` + esperas) y gunicorn mata el pedido a los 60 s. Ahora un pedido web tiene un **presupuesto de 45 s** (`MELI_PRESUPUESTO_PEDIDO_WEB`): cada llamada recorta su timeout a lo que queda (con holgura, un cuarto por intento; con menos de 12 s, un solo intento sin reintentos) y agotado falla enseguida con `Timeout` sin llamar a Mercado Libre (quien llama ya trata ese error como «no sé», nunca como $0). Vale también para `token_manager.llamar_api_meli`. Las sincronizaciones y tareas (sin pedido web) no tienen tope. `meli_http.presupuesto_restante/ajustar_timeout`, `tests/test_presupuesto_meli.py`. Los hilos que lanza un pedido (`flex.costos_meli`, en paralelo) no heredan el presupuesto: ahí el tope sigue siendo el de cada llamada.
+24. ⏳ [M·S] **La pausa global de 20 s tras un rechazo (`_respetar_pausa`) también hace dormir a los pedidos de pantalla antes de enviar nada.** Ya no se come el presupuesto (en un pedido web la pausa se recorta a un tercio de lo que queda: `tests/test_presupuesto_meli.py`), pero sigue habiendo espera. Falta que las pantallas fallen rápido (mensaje «Mercado Libre está lento, probá en un momento») y solo los trabajos de fondo esperen.
 25. ✅/⏳ [A·M] **Cachés en memoria de cada proceso (hay 4): 3 de cada 4 visitas arrancaban «en frío».** Medido en producción: `/metricas` 31,8 s = evolución mensual 20,2 s + factura 9,5 s. Ya pasaron a la caché compartida (`cache_db`) la publicidad por mes, la factura y el almacenamiento de FULL: la evolución mensual bajó a 0,4 s (medido); la factura y el almacenamiento quedaron desplegados y falta medirlos. **Quedan** `ads._anuncios_cache`/`_costos_cache`, `logistica._cache_flex_habilitado`, `embudo_conversion._cache_embudo`, `tendencias.*` y `ventas_sync._cache_*` (estos últimos son por id global y están bien).
 26. ⏳ [A·M] **El refresco del token mantiene abierta una conexión de administración y una transacción con el candado mientras espera la respuesta de `oauth/token` (hasta 15 s).** El pool admin es de 2 (`DB_POOL_ADMIN_MAX`). Con dos refrescos de cuentas distintas a la vez, todas las lecturas de token del proceso esperan. `auth/token_manager._refrescar_de_a_uno`. Pedir el refresh fuera de la transacción (tomar el candado, leer, soltar, pedir, volver a tomar y guardar) o subir el pool admin.
 27. ⏳ [M·S] **`asegurar_token_valido` hace una consulta al pool admin y descifra el token en CADA pedido que lo necesita**, incluso pantallas que casi no usan Mercado Libre (`/metricas` lo pide primero). Un caché por proceso con el token descifrado y su vencimiento (se invalida al refrescar o ante un 401) ahorra 1 consulta y 1 descifrado por pedido.

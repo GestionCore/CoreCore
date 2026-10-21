@@ -15,6 +15,7 @@ Dos reglas de seguridad:
     (PAUSA_TRAS_RECHAZO) en vez de que cada uno siga golpeando por su cuenta. No hay un límite de pedidos por segundo inventado: las medidas
     reales muestran que MeLi acepta el ritmo de una sincronización (unos 12 pedidos por segundo por cuenta) sin rechazar.
 """
+import os
 import threading
 import time
 
@@ -59,9 +60,49 @@ _pausa = {"hasta": 0.0}
 _candado = threading.Lock()
 
 
+# Presupuesto de un pedido WEB. gunicorn corta un pedido a los 60 s (Dockerfile `--timeout 60`) y un GET con reintentos (3 intentos con espera de 1,5 + 3 + 6 s, cada uno con su timeout de 15 s) podía tardar
+# hasta ~70 s: el pedido moría con un error en vez de mostrar «Mercado Libre no respondió». Dentro de un pedido web, cada llamada recorta su timeout a lo que queda del presupuesto, no reintenta
+# si queda poco y, agotado, falla enseguida sin llamar. Las sincronizaciones y las tareas (sin pedido web) no tienen tope.
+PRESUPUESTO_PEDIDO_WEB = float(os.getenv("MELI_PRESUPUESTO_PEDIDO_WEB", "45"))
+MARGEN_MINIMO = 2.0                 # menos que esto: ni se intenta
+RESERVA_PARA_REINTENTOS = 12.0      # con menos que esto, una sola vez y sin reintentos (las esperas de los reintentos suman ~10 s)
+
+
+def presupuesto_restante():
+    """Segundos que le quedan a ESTE pedido web, o None si no se está atendiendo un pedido web (sincronizaciones, tareas en segundo plano)."""
+    try:
+        from flask import g, has_request_context
+        if has_request_context():
+            inicio = g.get("inicio_pedido")
+            if inicio:
+                return PRESUPUESTO_PEDIDO_WEB - (time.perf_counter() - inicio)
+    except Exception:
+        pass
+    return None
+
+
+def ajustar_timeout(timeout):
+    """
+    El timeout por intento, recortado al presupuesto del pedido web. Si ya no queda nada, levanta Timeout SIN llamar a Mercado Libre (quien llama ya trata un error de Mercado Libre como «no sé», nunca como $0).
+    Fuera de un pedido web devuelve el mismo timeout.
+    """
+    resto = presupuesto_restante()
+    if resto is None:
+        return timeout
+    if resto <= MARGEN_MINIMO:
+        raise requests.exceptions.Timeout(f"Se agotó el tiempo del pedido ({PRESUPUESTO_PEDIDO_WEB:.0f} s): no se pidió a Mercado Libre")
+    tope = resto if resto < RESERVA_PARA_REINTENTOS else resto / 4          # con holgura, hasta 4 intentos caben; con poca, uno solo que use lo que queda
+    if isinstance(timeout, (tuple, list)):
+        return tuple(min(t, tope) for t in timeout)
+    return min(timeout, tope)
+
+
 def _respetar_pausa():
     espera = _pausa["hasta"] - time.monotonic()
     if espera > 0:
+        resto = presupuesto_restante()
+        if resto is not None:
+            espera = min(espera, max(resto / 3, 0.0))          # en un pedido web, la pausa no se come el presupuesto
         time.sleep(min(espera, PAUSA_TRAS_RECHAZO))
 
 
@@ -104,11 +145,17 @@ def frenar_segun_cabeceras(resp):
     return resp
 
 
+_sesion_sin_reintentos = requests.Session()
+
+
 def _pedir(metodo, url, kwargs):
     kwargs.setdefault("timeout", 15)
     _respetar_pausa()
+    kwargs["timeout"] = ajustar_timeout(kwargs["timeout"])
+    resto = presupuesto_restante()
+    sesion = _sesion_sin_reintentos if resto is not None and resto < RESERVA_PARA_REINTENTOS else _sesion        # con poco presupuesto no se reintenta
     try:
-        return frenar_segun_cabeceras(getattr(_sesion, metodo)(url, **kwargs))
+        return frenar_segun_cabeceras(getattr(sesion, metodo)(url, **kwargs))
     except requests.exceptions.RetryError:
         with _candado:
             _pausa["hasta"] = time.monotonic() + PAUSA_TRAS_RECHAZO

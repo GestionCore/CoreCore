@@ -14,7 +14,7 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 **Se descartaron con evidencia** (no están en la lista): (1) capturas que mostraban una pantalla «en blanco» o «apagada» justo después de cargar: era la animación de entrada (`fadeInUp`, 0,45 s); con el DOM, a los 2 s todos los elementos estaban con opacidad 1 (pasó con Mercado, Cuenta, Planes, Stock masivo, Ventas manuales, Monitor y el checklist del Dashboard en tema claro); (2) «blanco sobre botón violeta 1,01:1» en el tema claro y «RECOMENDADO 1,04:1» en Planes: el fondo es un degradé que la medición no ve; (3) «los avisos no se anuncian a lectores de pantalla»: sí se anuncian (`role="alert"` / `role="status"` en cada aviso); (4) «Salud de la cuenta 67 en verde está mal»: el umbral de «Bien» es 65; (5) «campos sin etiqueta»: **0 de 11 pantallas** tienen un campo sin nombre accesible (218 en Costos); (6) scroll horizontal: **0 en las 18 pantallas de celular**; (7) peso de los estáticos: ya salen con Brotli y `immutable` (el CSS de 71 KB viaja en 20 KB).
 **Lo que está bien y no hay que tocar:** la landing (clara, con datos de ejemplo rotulados), las cifras con dígitos tabulares, las fuentes propias, la animación de la barra del mes, las tarjetas de «Lo que tenés que hacer hoy» (la mejor pieza de la app), el tema claro (pasa el contraste), el trabajo de celular de las olas anteriores (letra ≥ 12 px en 15 de 18 pantallas) y la estabilidad al cargar (CLS ≈ 0 salvo el hero del Dashboard).
 
-**Lo ya hecho esta noche** (catorce correcciones hechas al mirar las pantallas y el código, cada uno con su prueba): D1 a D4, D19, D40, D41, D47, D49, D50, D60, D70, D77 y D78. Se suman los commits `3bb9e24` y el siguiente. Sin desplegar: lo hace el dueño con `python desplegar.py`.
+**Lo ya hecho esta noche** (catorce correcciones hechas al mirar las pantallas y el código, cada una con su prueba): D1 a D4, D19, D40, D41, D47, D49, D50, D60, D70, D77 y D78. Commits: `428385e` y `66c102c` (y los que siguen). Sin desplegar: lo hace el dueño con `python desplegar.py`.
 
 ### Si solo se hacen 10 (en este orden)
 1. **D13** los campos casi no se ven (borde 1,03–1,08:1 contra el fondo).
@@ -26,7 +26,7 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 7. **D29** las tarjetas de números que quedan «huérfanas» entre 1024 y 1280 px.
 8. **D61** Promociones: 7 filas casi iguales → una por modelo.
 9. **D7** el modo privacidad no tapa los gráficos.
-10. **D31** el botón violeta «Actualizar» fijo en la barra compite con el principal de cada pantalla.
+10. **D32** el botón violeta «Actualizar» fijo en la barra compite con el principal de cada pantalla.
 
 ---
 

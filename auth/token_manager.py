@@ -182,12 +182,14 @@ def llamar_api_meli(cuenta_id, metodo, url, **kwargs):
 
     # Freno compartido con meli_http: si MeLi pidió esperar (429 / cabeceras de límite), todos esperan antes de volver a pedir
     meli_http.respetar_pausa()
+    kwargs["timeout"] = meli_http.ajustar_timeout(kwargs["timeout"])          # dentro de un pedido web, nunca más de lo que le queda del presupuesto (ver meli_http)
     resp = meli_http.frenar_segun_cabeceras(requests.request(metodo, url, headers=headers, **kwargs))
 
     if resp.status_code == 401:
         access_token = refrescar_token_rechazado(cuenta_id, access_token)
         headers["Authorization"] = f"Bearer {access_token}"
         meli_http.respetar_pausa()
+        kwargs["timeout"] = meli_http.ajustar_timeout(kwargs["timeout"])
         resp = meli_http.frenar_segun_cabeceras(requests.request(metodo, url, headers=headers, **kwargs))
 
     return resp
