@@ -5,7 +5,7 @@
 
 ## 1. Dónde estamos
 - Repo `main` sincronizado con GitHub. Último código: el commit de la auditoría de diseño (después de `3bb9e24`).
-- **Producción corre `f126954`** (el dueño la desplegó con `python desplegar.py` y `/healthz` informó `f1269545cbaa`). Subido a git y **NO desplegado**: `f33af4d`, `b471100`, `3bb9e24`, `428385e`, `66c102c` y lo de esta noche (§3b). No hay migraciones nuevas. Lo despliega el dueño con `python desplegar.py` desde `CoreLux-SaaS`.
+- **Producción corre `ac3b5c5`** (el dueño la desplegó con `python desplegar.py` el 2026-10-21 a las 11:51 ART; `/healthz` informa `ac3b5c5a5f05`). Está desplegado TODO lo de la noche del 21/10 (§3b). Sin migraciones nuevas. Pendiente de comprobar tras la próxima sincronización: que `productos_padre.thumbnail` quede sin `http:` (hoy 275 de 275); después se puede sacar `http:` de la política de imágenes (`seguridad._BASE_CSP`).
 - 1.753 pruebas pasan (con y sin Redis). Ruff limpio.
 - El dueño es **Diego** (usuario 3, cuentas de Mercado Libre `2` = DIEGOARIELSANTIAGO y `7` = NOENOEINDUMENTARIA, plan Elite). Mercado Pago corre con credenciales de PRODUCCIÓN y un precio de prueba de $100 para UN mail (`MP_EMAIL_DE_PRUEBA` + `MP_PRECIO_DE_PRUEBA`), sin cobro real todavía.
 
