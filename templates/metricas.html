@@ -329,7 +329,8 @@
 
 {% if evolucion_mensual %}
 <div class="ux-seccion ux-ok">Evolución mensual <span class="text-muted" style="font-weight:600; font-size:0.8em;">costos vs. resultado neto · últimos {{ evolucion_mensual|length }} meses</span></div>
-<div class="panel"><div style="position:relative; height:260px;"><canvas id="canvas-evolucion-mensual" role="img" aria-label="Costos y resultado neto por mes"></canvas></div></div>
+<div class="panel"><div style="position:relative; height:260px;"><canvas id="canvas-evolucion-mensual" role="img" aria-label="Costos y resultado neto por mes"></canvas></div>
+{% if evolucion_mensual | selectattr('sin_publicidad') | list %}<p class="text-muted" style="margin:10px 0 0; font-size:0.85em;"><b>*</b> Mercado Libre ya no informa la publicidad de ese mes (solo guarda los últimos 90 días): sus costos y su resultado no la descuentan.</p>{% endif %}</div>
 {% endif %}
 
 <!-- ── 8. DETALLE: plegado para no abrumar ──────────────────────────────── -->
@@ -575,7 +576,7 @@ function _iniciarChartEvolucionMensual() {
     const e = _estiloGrafico();
     new Chart(canvas, {
         type: 'bar',
-        data: { labels: serie.map(m => m.mes_label), datasets: [
+        data: { labels: serie.map(m => m.mes_label + (m.sin_publicidad ? '*' : '')), datasets: [
             { label: 'Costos', data: serie.map(m => m.costos), backgroundColor: e.danger, borderRadius: 4 },
             { label: 'Resultado neto', data: serie.map(m => m.resultado_neto), backgroundColor: e.success, borderRadius: 4 },
         ] },

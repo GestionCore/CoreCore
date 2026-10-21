@@ -9,11 +9,14 @@ from concurrent.futures import ThreadPoolExecutor
 from psycopg.rows import dict_row
 import db
 import ads
+import cache_db
 import costos_moneda
 import facturacion
 import seguridad
 from utils import formatear_moneda, formatear_estado_incidencia, hoy_argentina, sql_momento_argentina, limpiar_titulo_modelo, normalizar_talle, nombre_tipo_publicacion
 
+TTL_MES_CERRADO = 180 * 24 * 3600        # la publicidad de un mes que ya terminó no cambia; guardada, sigue disponible aunque Mercado Libre ya no la informe (solo guarda ~90 días)
+TTL_MES_EN_CURSO = 15 * 60
 _NOMBRES_MES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
 
@@ -52,27 +55,59 @@ def obtener_evolucion_mensual(usuario_id, cuenta_id, access_token, meses=6):
         """, (inicios_mes[0].strftime("%Y-%m-%d"), hoy.strftime("%Y-%m-%d")))
         por_mes = {f["mes"]: f for f in cursor.fetchall()}
 
-    gasto_ads_por_mes = {}
+    # Publicidad de cada mes. Es lo único que se pide a Mercado Libre (una llamada por mes) y tarda: medido en producción, 20 s con la máquina fría. Un mes CERRADO no
+    # cambia, así que se guarda en la caché compartida (todas las máquinas y procesos) y el mes en curso se renueva cada 15 min. Solo se guarda lo que Mercado Libre contestó:
+    # un error nunca se guarda como «$0 de publicidad».
+    gasto_ads_por_mes, sin_dato_ads = {}, set()
     try:
         advertiser_id = ads.obtener_advertiser_id(access_token, cuenta_id)
         if advertiser_id:
-            # Las 6 llamadas a Ads son independientes entre sí (un mes no
-            # depende del otro) — pedirlas en paralelo en vez de una por
-            # una es la diferencia entre ~6 x 300ms y ~300ms totales.
-            # Mismo patrón que ya usa ads.obtener_serie_diaria_ads.
-            def _gasto_del_mes(inicio):
-                fin = min((inicio.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1), hoy)
-                etiqueta = inicio.strftime("%Y-%m")
-                gasto = ads.obtener_gasto_ads_total_periodo(
-                    access_token, advertiser_id, inicio.strftime("%Y-%m-%d"), fin.strftime("%Y-%m-%d")
-                )
-                return etiqueta, (gasto or 0.0)
+            en_curso = hoy.strftime("%Y-%m")
 
-            with ThreadPoolExecutor(max_workers=6) as pool:
-                for etiqueta, gasto in pool.map(_gasto_del_mes, inicios_mes):
-                    gasto_ads_por_mes[etiqueta] = gasto
+            def _fin_de_mes(inicio):
+                return min((inicio.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1), hoy)
+
+            guardados = {}
+            try:
+                with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+                    cursor = conexion.cursor()
+                    for inicio in inicios_mes:
+                        etiqueta = inicio.strftime("%Y-%m")
+                        abierto = etiqueta == en_curso
+                        hit, valor = cache_db.leer(cursor, cuenta_id, f"ads_gasto_mes:{etiqueta}", "abierto" if abierto else "cerrado", ttl_segundos=TTL_MES_EN_CURSO if abierto else TTL_MES_CERRADO)
+                        if hit and valor is not None:
+                            guardados[etiqueta] = float(valor)
+            except Exception as e:
+                print(f"[Metricas] ℹ️ No se pudo leer la publicidad guardada de cada mes: {e}")
+            gasto_ads_por_mes.update(guardados)
+
+            # Las llamadas a Ads son independientes entre sí (un mes no depende del otro): en paralelo, y solo las de los meses que faltan.
+            def _gasto_del_mes(inicio):
+                etiqueta = inicio.strftime("%Y-%m")
+                return etiqueta, ads.obtener_gasto_ads_total_periodo(access_token, advertiser_id, inicio.strftime("%Y-%m-%d"), _fin_de_mes(inicio).strftime("%Y-%m-%d"))
+
+            faltan = [i for i in inicios_mes if i.strftime("%Y-%m") not in guardados]
+            nuevos = {}
+            if faltan:
+                with ThreadPoolExecutor(max_workers=6) as pool:
+                    for etiqueta, gasto in pool.map(_gasto_del_mes, faltan):
+                        if gasto is None:
+                            sin_dato_ads.add(etiqueta)            # Mercado Libre no lo informa (solo guarda ~90 días) o no contestó: no es «$0»
+                        else:
+                            gasto_ads_por_mes[etiqueta] = nuevos[etiqueta] = gasto
+            if nuevos:
+                try:
+                    with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+                        cursor = conexion.cursor()
+                        for etiqueta, gasto in nuevos.items():
+                            cache_db.guardar(cursor, cuenta_id, f"ads_gasto_mes:{etiqueta}", gasto, "abierto" if etiqueta == en_curso else "cerrado")      # lo guardado a mitad de mes no vale como mes cerrado
+                except Exception as e:
+                    print(f"[Metricas] ℹ️ No se pudo guardar la publicidad de cada mes: {e}")
+        else:
+            sin_dato_ads = {i.strftime("%Y-%m") for i in inicios_mes}
     except Exception as e:
         print(f"[Metricas] ⚠️ Error trayendo evolución de Ads: {e}")
+        sin_dato_ads = {i.strftime("%Y-%m") for i in inicios_mes} - set(gasto_ads_por_mes)
 
     serie = []
     for inicio in inicios_mes:
@@ -87,6 +122,7 @@ def obtener_evolucion_mensual(usuario_id, cuenta_id, access_token, meses=6):
             "mes": etiqueta, "mes_label": _NOMBRES_MES_CORTOS[inicio.month - 1],
             "facturado": round(facturado, 2), "costos": costos_totales,
             "resultado_neto": round(facturado - costos_totales, 2),
+            "sin_publicidad": etiqueta in sin_dato_ads,            # el costo de publicidad de ese mes no está (Mercado Libre no lo informa): sus costos y su resultado no la descuentan
         })
     return serie
 

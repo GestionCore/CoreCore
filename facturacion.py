@@ -317,6 +317,34 @@ def agrupar_factura(resumen, flex_neto=0.0, flex_reintegro=0.0):
     return {"filas": filas, "total_factura": total_factura, "total": round(sum(f["monto"] for f in filas), 2), "flex_neto": round(flex_neto or 0.0, 2)}
 
 
+TTL_CONDENSADO = 10 * 60
+
+
+def resumen_condensado_con_cache(usuario_id, cuenta_id, access_token):
+    """
+    resumen_condensado_periodo_actual guardado 10 min en la caché compartida (todas las máquinas y procesos). La memoria de cada proceso no alcanzaba: con 2 máquinas × 2 procesos, casi cada
+    visita a Ganancia Real arrancaba en frío y esperaba ~9,5 s a Mercado Libre (medido en producción). Un resultado vacío o un error NO se guarda: se vuelve a intentar en la próxima visita.
+    """
+    import cache_db
+    import db
+    clave = "factura_condensada"
+    try:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            hit, valor = cache_db.leer(conexion.cursor(), cuenta_id, clave, ttl_segundos=TTL_CONDENSADO)
+        if hit and valor:
+            return valor
+    except Exception as e:
+        print(f"[Facturacion] ℹ️ No se pudo leer la factura guardada: {e}")
+    resumen = resumen_condensado_periodo_actual(access_token, cuenta_id)
+    if resumen:
+        try:
+            with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+                cache_db.guardar(conexion.cursor(), cuenta_id, clave, resumen)
+        except Exception as e:
+            print(f"[Facturacion] ℹ️ No se pudo guardar la factura: {e}")
+    return resumen
+
+
 def resumen_condensado_periodo_actual(access_token, cuenta_id, group="ML"):
     """
     Versión liviana de obtener_resumen_periodo pensada para paneles que

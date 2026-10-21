@@ -1277,7 +1277,7 @@ def metricas_vista():
     factura_meli = None
     try:
         with seguridad.parte("factura MeLi"):
-            factura_meli = facturacion.resumen_condensado_periodo_actual(access_token, g.cuenta_id)
+            factura_meli = facturacion.resumen_condensado_con_cache(g.usuario_id, g.cuenta_id, access_token)
     except Exception as e:
         print(f"[Métricas] ⚠️ Error trayendo la factura MeLi: {e}")
 
