@@ -32,6 +32,7 @@
        loaders, líneas de tendencia). Es el color que más se ve. ---------- */
     --accent-primary: #8b5cf6;
     --accent-primary-dim: #7c3aed;
+    --accent-solid: #8652f3;             /* el violeta de los FONDOS con texto blanco (botones, chips activos, contadores): el #8b5cf6 daba 4,23:1; este da 4,65:1 (AA pide 4,5:1) y se ve igual de violeta */
     --accent-primary-glow: rgba(139, 92, 246, 0.35);
     --accent-cyan: #38bdf8;              /* uso puntual en gráficos (una serie más, no identidad) */
     --accent-cyan-glow: rgba(56, 189, 248, 0.25);
@@ -125,6 +126,7 @@
        lee mal; su versión más oscura y saturada sí funciona. */
     --accent-primary: #8b3ffc;
     --accent-primary-dim: #6d28d9;
+    --accent-solid: var(--accent-primary);   /* en el tema claro el violeta ya llega a 4,98:1 con texto blanco */
     --accent-primary-glow: rgba(139, 63, 252, 0.22);
     --accent-cyan: #0891b2;
     --accent-cyan-glow: rgba(8, 145, 178, 0.2);
@@ -433,7 +435,7 @@ input[type="text"].ficha-atributo-input:focus { border-color: var(--accent-brand
    y .btn-denim son ahora el mismo botón — antes .btn-primary era dorado,
    dejando el dorado (que se reserva para detalles premium: logo, badges
    VIP, hitos) haciendo de botón de uso diario en 15 pantallas distintas. */
-.btn-primary, .btn-denim { background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); color: #fff; box-shadow: 0 2px 14px -2px var(--accent-primary-glow); }
+.btn-primary, .btn-denim { background: linear-gradient(135deg, var(--accent-solid), var(--accent-primary-dim)); color: #fff; box-shadow: 0 2px 14px -2px var(--accent-primary-glow); }
 .btn-primary:hover, .btn-denim:hover { transform: translateY(-1px); box-shadow: 0 4px 22px -2px var(--accent-primary-glow); }
 .btn-secondary { background: rgba(255,255,255,0.05); border-color: var(--glass-border); color: var(--text-primary); }
 .btn-secondary:hover { border-color: var(--accent-primary); box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.25); }
@@ -559,7 +561,7 @@ select option { background: #14162a; color: var(--text-primary); }
 }
 
 /* Floating AI Chat Widget */
-.chat-fab { position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); color: #fff; border: 1px solid color-mix(in srgb, #fff 18%, transparent); cursor: pointer; box-shadow: 0 10px 28px -6px var(--accent-primary-glow), 0 2px 8px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 100; transition: transform var(--transition-fast), box-shadow var(--transition-fast); }
+.chat-fab { position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-solid), var(--accent-primary-dim)); color: #fff; border: 1px solid color-mix(in srgb, #fff 18%, transparent); cursor: pointer; box-shadow: 0 10px 28px -6px var(--accent-primary-glow), 0 2px 8px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 100; transition: transform var(--transition-fast), box-shadow var(--transition-fast); }
 .chat-fab:hover { transform: translateY(-2px); box-shadow: 0 14px 34px -6px var(--accent-primary-glow), 0 2px 8px rgba(0,0,0,0.35); }
 .chat-window { position: fixed; bottom: 94px; right: 26px; width: 390px; height: 510px; background: var(--glass-bg-alt); border: 1px solid var(--glass-border); backdrop-filter: blur(18px); border-radius: var(--radius-md); box-shadow: var(--shadow-elevated); display: none; flex-direction: column; z-index: 100; overflow: hidden; }
 .chat-window.open { display: flex; animation: fadeInUp 0.2s ease; }
@@ -572,7 +574,7 @@ select option { background: #14162a; color: var(--text-primary); }
 .chat-sugerencias .btn { padding: 6px 12px; font-size: 0.85em; text-align: left; }
 .chat-botones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .chat-botones .btn { padding: 6px 12px; font-size: 0.88em; }
-.chat-msg-user { background: var(--accent-denim); color: white; padding: 11px 15px; border-radius: 10px; align-self: flex-end; max-width: 85%; }
+.chat-msg-user { background: var(--accent-solid); color: white; padding: 11px 15px; border-radius: 10px; align-self: flex-end; max-width: 85%; }
 .chat-footer { padding: 12px; background: rgba(255,255,255,0.03); border-top: 1px solid var(--glass-border); display: flex; gap: 8px; }
 
 /* Utilidades y compatibilidad con templates más viejos */
@@ -744,7 +746,7 @@ input[type="text"], input[type="date"], select, textarea { font-family: var(--fo
 
 /* ---------- Estado "presionado" de botones filtro ---------- */
 .btn-secondary.active {
-    background: var(--accent-primary); color: #fff; border-color: var(--accent-primary);
+    background: var(--accent-solid); color: #fff; border-color: var(--accent-solid);
     box-shadow: 0 2px 12px -2px var(--accent-primary-glow);
 }
 
@@ -958,7 +960,7 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 .tour-btn-saltar { background: none; border: none; color: var(--text-faint); font-size: 0.82em; cursor: pointer; padding: 6px 4px; }
 .tour-btn-saltar:hover { color: var(--text-secondary); }
 .tour-btn-siguiente {
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); color: #fff;
+    background: linear-gradient(135deg, var(--accent-solid), var(--accent-primary-dim)); color: #fff;
     border: none; border-radius: var(--radius-sm); padding: 8px 18px; font-size: 0.85em; font-weight: 600; cursor: pointer;
 }
 
@@ -1055,5 +1057,5 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 .rf-vacio:hover { background: none; }
 .rf-hoy { box-shadow: inset 0 0 0 1px var(--accent-gold); }
 .rf-en-rango { background: rgba(139,92,246,0.15); border-radius: 0; color: var(--text-primary); }
-.rf-limite { background: var(--accent-primary); color: #fff; font-weight: 700; }
+.rf-limite { background: var(--accent-solid); color: #fff; font-weight: 700; }
 .rf-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-soft); text-align: center; font-size: 0.8em; color: var(--text-secondary); font-family: var(--font-data); }

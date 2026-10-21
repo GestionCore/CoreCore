@@ -6,7 +6,7 @@
 ## 1. Dónde estamos
 - Repo `main` sincronizado con GitHub. Último código: el commit de la auditoría de diseño (después de `3bb9e24`).
 - **Producción corre `f126954`** (el dueño la desplegó con `python desplegar.py` y `/healthz` informó `f1269545cbaa`). Subido a git y **NO desplegado**: `f33af4d`, `b471100`, `3bb9e24`, `428385e`, `66c102c` y lo de esta noche (§3b). No hay migraciones nuevas. Lo despliega el dueño con `python desplegar.py` desde `CoreLux-SaaS`.
-- 1.748 pruebas pasan (con y sin Redis). Ruff limpio.
+- 1.753 pruebas pasan (con y sin Redis). Ruff limpio.
 - El dueño es **Diego** (usuario 3, cuentas de Mercado Libre `2` = DIEGOARIELSANTIAGO y `7` = NOENOEINDUMENTARIA, plan Elite). Mercado Pago corre con credenciales de PRODUCCIÓN y un precio de prueba de $100 para UN mail (`MP_EMAIL_DE_PRUEBA` + `MP_PRECIO_DE_PRUEBA`), sin cobro real todavía.
 
 ## 2. Cómo trabaja el dueño (no negociable)
@@ -30,7 +30,7 @@ Detalle en `PENDIENTES.md` §0f. Resumen:
 ## 3b. Lo hecho la noche del 2026-10-21 (el dueño dormía y pidió una sesión larga sin preguntas)
 - Dos auditorías de 100 puntos con evidencia y estado: `docs/AUDITORIA_TECNICA_100.md` y `docs/AUDITORIA_DISENO_100.md`. Cada una abre con cómo se verificó, qué se descartó y «si solo se hacen 10». Son propuestas: el dueño elige.
 - Arreglos reales (con prueba): ventanas de tiempo completas (alerta de caída, salud, promociones, visitas, proyección del mes), no crear una 2.ª suscripción si la vieja no se cancela, órdenes rechazadas ya no adelantan la marca del sync, agregar gasto con montos argentinos, `parsear_monto("1e3")`, Sentry con usuario/versión, cachés de Ganancia Real (de 20 s a 0,4 s en evolución mensual), herramienta `despacho` del asistente (31.ª), modo privacidad 57/57, «Ventas hoy» vs. ayer a la misma hora, Calidad sin «100/100» falso, Planes con la cuenta en la barra, confirmaciones violetas (rojo solo si destruye), chips de celular de 44 px, código de incidente en los errores, movimiento reducido también en JavaScript, miniaturas guardadas con https, presupuesto de 45 s por pedido web para las llamadas a Mercado Libre (antes podían pasar los 60 s de gunicorn).
-- Las dos decisiones de identidad visual que necesitan al dueño: D15 (violeta más oscuro solo para fondos con texto blanco) y D46 (dorado de la marca en tema claro).
+- Las dos decisiones de identidad visual (D15 y D46) las **aprobó el dueño** y están hechas: `--accent-solid` (violeta de los fondos con texto blanco, 4,65:1 en oscuro y 4,98:1 en claro) y el dorado oscuro de la marca en el tema claro. Regla para el futuro: texto blanco sobre violeta = `--accent-solid`, nunca `--accent-primary` (lo exige `tests/test_violeta_solido.py`).
 
 ## 4. Lo que falta
 **Del dueño** (detalle paso a paso en `docs/TUS_PENDIENTES.md`)

@@ -12,6 +12,9 @@
 /* ── Marca ─────────────────────────────────────────────────── */
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1em; }
 .brand-mark { width: 14px; height: 14px; background: linear-gradient(135deg, var(--accent-brand), var(--accent-brand-dim)); border-radius: 5px; box-shadow: 0 0 10px var(--accent-brand-glow); flex-shrink: 0; }
+/* En el tema claro el dorado de TEXTO es un marrón ámbar (#92400e: así llega a 4,5:1 sobre sus fondos teñidos) y el logo salía marrón. La marca lleva su propio dorado oscuro, que sigue siendo dorado
+   y mantiene ≥ 3:1 contra el fondo claro (3,2:1 y 4,1:1 contra #f4f5f8). */
+:root[data-theme="light"] .brand-mark { background: linear-gradient(135deg, #b3810a, #9d6e07); box-shadow: 0 0 10px rgba(179, 129, 10, 0.35); }
 
 /* ── Menú lateral ──────────────────────────────────────────── */
 .sidebar {
@@ -115,7 +118,7 @@ a.aviso-fila:hover { background: rgba(255,255,255,0.05); }
 .avisos-vacio .icon { width: 18px; height: 18px; color: var(--success); flex-shrink: 0; }
 .cuenta-btn { display: inline-flex; align-items: center; gap: 9px; padding: 4px 12px 4px 4px; border-radius: var(--radius-pill); cursor: pointer; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-primary); font: inherit; font-size: 0.85em; font-weight: 600; max-width: 220px; }
 .cuenta-btn:hover { background: rgba(255,255,255,0.09); }
-.cuenta-inicial { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; font-weight: 800; font-size: 0.9em; color: #fff; background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); }
+.cuenta-inicial { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; font-weight: 800; font-size: 0.9em; color: #fff; background: linear-gradient(135deg, var(--accent-solid), var(--accent-primary-dim)); }
 .cuenta-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Pestañas de la sección ────────────────────────────────── */

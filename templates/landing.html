@@ -53,7 +53,7 @@
             text-decoration: none; white-space: nowrap; transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
         }
         .lp-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
-        .lp-btn-primario { color: #fff; background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-dim)); box-shadow: 0 10px 30px -10px var(--accent-primary-glow), inset 0 1px 0 rgba(255,255,255,0.18); }
+        .lp-btn-primario { color: #fff; background: linear-gradient(135deg, var(--accent-solid), var(--accent-primary-dim)); box-shadow: 0 10px 30px -10px var(--accent-primary-glow), inset 0 1px 0 rgba(255,255,255,0.18); }
         .lp-btn-primario:hover { transform: translateY(-1px); box-shadow: 0 14px 36px -10px var(--accent-primary-glow), inset 0 1px 0 rgba(255,255,255,0.18); }
         .lp-btn-sec { color: var(--text-primary); background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); }
         .lp-btn-sec:hover { border-color: color-mix(in srgb, var(--accent-primary) 60%, var(--glass-border)); }
@@ -196,7 +196,7 @@
         .lp-planes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; max-width: 980px; margin: 0 auto; align-items: stretch; }
         .lp-plan { position: relative; display: flex; flex-direction: column; padding: 32px 28px; border-radius: 20px; background: var(--glass-bg); border: 1px solid var(--glass-border); }
         .lp-plan.destacado { border-color: color-mix(in srgb, var(--accent-primary) 65%, transparent); background: radial-gradient(120% 80% at 50% 0%, rgba(139, 92, 246, 0.12), transparent 70%), var(--glass-bg); box-shadow: 0 30px 60px -30px var(--accent-primary-glow); }
-        .lp-plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent-primary); color: #fff; font-size: 0.8em; font-weight: 800; padding: 4px 14px; border-radius: 99px; white-space: nowrap; letter-spacing: 0.02em; }
+        .lp-plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent-solid); color: #fff; font-size: 0.8em; font-weight: 800; padding: 4px 14px; border-radius: 99px; white-space: nowrap; letter-spacing: 0.02em; }
         .lp-plan-nombre { font-size: 0.8em; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 14px; }
         .lp-plan-precio { font-weight: 800; font-size: 2.6em; letter-spacing: -0.035em; line-height: 1; font-variant-numeric: tabular-nums; }
         .lp-plan-precio small { font-size: 0.42em; color: var(--text-secondary); font-weight: 700; vertical-align: 0.95em; margin-right: 2px; }

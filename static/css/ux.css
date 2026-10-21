@@ -64,7 +64,7 @@ html.modo-privacidad .ux-rank-valor, html.modo-privacidad .ux-dist-val, html.mod
 html.modo-privacidad .ux-regla-etiquetas b { filter: blur(6px); transition: filter 0.2s; }
 html.modo-privacidad .ux-rank-valor:hover, html.modo-privacidad .ux-dist-val:hover, html.modo-privacidad .ux-precio-actual:hover { filter: none; }
 /* Saltar al contenido (teclado y lectores de pantalla): solo se ve al recibir el foco */
-.saltar-al-contenido { position: absolute; left: 12px; top: -48px; z-index: 10000; padding: 10px 16px; border-radius: 10px; background: var(--accent-primary); color: #fff; font-weight: 700; text-decoration: none; transition: top 0.15s; }
+.saltar-al-contenido { position: absolute; left: 12px; top: -48px; z-index: 10000; padding: 10px 16px; border-radius: 10px; background: var(--accent-solid); color: #fff; font-weight: 700; text-decoration: none; transition: top 0.15s; }
 .saltar-al-contenido:focus { top: 10px; }
 
 /* ---------- Pastilla de variación (▲ / ▼) ---------- */
@@ -120,7 +120,7 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
 
 /* ---------- Lo que tenés que hacer: cola de acciones ---------- */
 .ux-acciones-titulo { display: flex; align-items: center; gap: 10px; font-size: 1.12em; font-weight: 800; margin: 4px 0 12px; }
-.ux-acciones-titulo .ux-contador { background: var(--accent-primary); color: #fff; border-radius: var(--radius-pill); font-size: 0.8em; padding: 2px 10px; font-weight: 800; }
+.ux-acciones-titulo .ux-contador { background: var(--accent-solid); color: #fff; border-radius: var(--radius-pill); font-size: 0.8em; padding: 2px 10px; font-weight: 800; }
 .ux-lista-acciones { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
 .ux-item-accion {
     display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: var(--radius-md);
@@ -255,7 +255,7 @@ tr.ux-fila-ok td:first-child { box-shadow: inset 4px 0 0 var(--success); }
 .ux-periodo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--glass-bg); border: 1px solid var(--glass-border); }
 .ux-periodo-botones { display: flex; gap: 6px; }
 .ux-periodo-botones .btn { padding: 8px 14px; font-size: 0.85em; }
-.ux-periodo-botones .btn.active { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; box-shadow: 0 2px 14px -2px var(--accent-primary-glow); }
+.ux-periodo-botones .btn.active { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; box-shadow: 0 2px 14px -2px var(--accent-primary-glow); }
 .ux-periodo .rango-fechas-boton { min-width: 210px; }
 
 /* ---------- Reparto de lo facturado: una barra, cada color es un destino de la plata ---------- */
@@ -702,7 +702,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-zonas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .ux-zona { border: 1px solid var(--border-soft); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 5px 12px; font-size: 0.82em; font-weight: 700; font-family: var(--font-ui); cursor: pointer; }
 .ux-zona:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--text-primary); }
-.ux-zona.activa { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
+.ux-zona.activa { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; }
 .ux-zona:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .flex-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
