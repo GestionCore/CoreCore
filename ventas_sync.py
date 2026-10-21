@@ -37,6 +37,10 @@ VENTANA_MINIMA = timedelta(minutes=10)
 HILOS_COSTO_ENVIO = 8
 
 
+class PaginaDeOrdenesRechazada(Exception):
+    """Mercado Libre rechazó un pedido de órdenes (no fue un corte de red): lo que falta traer no se puede dar por traído."""
+
+
 def _iso(dt):
     # Siempre normalizamos a UTC antes de formatear: el sufijo "-00:00" de
     # abajo asume que los componentes (hora, minuto, ...) ya son UTC. Si
@@ -55,8 +59,10 @@ def _obtener_pagina_ordenes(access_token, seller_id, fecha_desde, fecha_hasta, o
     }
     resp = meli_http.get("https://api.mercadolibre.com/orders/search", headers=headers, params=params, timeout=15)
     if resp.status_code != 200:
+        # Antes devolvía «sin órdenes»: el sync tomaba la página rechazada como el final, avanzaba su marca de tiempo y lo que faltaba se perdía cuando pasaba el colchón de 2 horas.
+        # Ahora corta con un error (sincronizar_todo lo informa) y la marca queda donde estaba: la próxima pasada vuelve a pedir desde ahí (reprocesar es seguro: ON CONFLICT DO UPDATE).
         print(f"[VentasSync] ⚠️ Error trayendo órdenes: {resp.status_code} - {resp.text[:300]}")
-        return [], 0
+        raise PaginaDeOrdenesRechazada(f"Mercado Libre respondió {resp.status_code} al pedir las órdenes (desde {fecha_desde:%Y-%m-%d %H:%M}, offset {offset})")
     data = resp.json()
     return data.get("results", []), (data.get("paging", {}) or {}).get("total", 0)
 

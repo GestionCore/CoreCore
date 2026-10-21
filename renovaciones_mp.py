@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 import config
 import correos
 import db
+import monitoreo
 import pagos
 
 MARGEN_COBRO_PENDIENTE = timedelta(days=1)     # un cobro a las pocas horas de su hora no es «rechazado»: puede estar sin procesar. Recién al día siguiente se le avisa a la persona.
@@ -111,7 +112,7 @@ def chequear_renovaciones(ahora=None, obtener=None, cancelar=None, avisar=None):
     ahora = ahora or datetime.now(timezone.utc)
     obtener = obtener or pagos.obtener_estado_suscripcion
     cancelar = cancelar or pagos.cancelar_suscripcion
-    resumen = {"cobrado": 0, "cancelada": 0, "sin_cobro": 0, "esperar": 0, "errores": 0}
+    resumen = {"cobrado": 0, "cancelada": 0, "sin_cobro": 0, "esperar": 0, "errores": 0, "cancelacion_pendiente": 0}
 
     with db.conexion_admin() as conexion:
         pendientes = candidatos(conexion.cursor())
@@ -122,9 +123,15 @@ def chequear_renovaciones(ahora=None, obtener=None, cancelar=None, avisar=None):
             accion, proximo, motivo = pagos.evaluar_renovacion(info, vencia_en, ahora)
             if accion == "sin_cobro":
                 try:
-                    cancelar(mp_id)
+                    cancelada = cancelar(mp_id)
                 except Exception as e:     # el plan igual se da de baja: el aviso queda en el log para cancelarla a mano en Mercado Pago
                     print(f"[Renovaciones] ⚠️ Usuario {usuario_id}: no se pudo cancelar la suscripción {mp_id} en Mercado Pago ({e}).")
+                    cancelada = False
+                if not cancelada:
+                    # cancelar_suscripcion devuelve False ante cualquier respuesta que no sea 200 (antes eso pasaba sin que nadie se enterara): Mercado Pago podría seguir cobrando
+                    resumen["cancelacion_pendiente"] += 1
+                    print(f"[Renovaciones] ❌ Usuario {usuario_id}: Mercado Pago NO canceló la suscripción {mp_id} y el plan se da de baja: cancelarla a mano para que no siga cobrando.")
+                    monitoreo.reportar("renovaciones:cancelar", RuntimeError("Mercado Pago no canceló una suscripción dada de baja por falta de cobro"))
             with db.conexion_admin() as conexion:
                 aplicar(conexion.cursor(), usuario_id, accion, proximo)
         except Exception as e:

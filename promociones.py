@@ -23,9 +23,12 @@ def _a_fecha(valor):
 
 
 def registrar_inicio_promocion(cursor, cuenta_id, id_meli, titulo, precio_original, precio_promo, fecha_fin_planeada=None):
-    hoy = hoy_argentina().strftime("%Y-%m-%d")
-    hace_7 = (hoy_argentina() - timedelta(days=7)).strftime("%Y-%m-%d")
-    cursor.execute("SELECT COALESCE(SUM(cantidad),0) FROM ventas WHERE id_meli = %s AND fecha_venta BETWEEN %s AND %s", (id_meli, hace_7, hoy))
+    hoy_fecha = hoy_argentina()
+    hoy = hoy_fecha.strftime("%Y-%m-%d")
+    # El ritmo de ANTES son los 7 días completos anteriores a hoy (hoy ya es de la promoción y está a medias). Antes se sumaban 8 días (de hace 7 a hoy) y se dividía por 7.
+    desde_previo = (hoy_fecha - timedelta(days=7)).strftime("%Y-%m-%d")
+    hasta_previo = (hoy_fecha - timedelta(days=1)).strftime("%Y-%m-%d")
+    cursor.execute("SELECT COALESCE(SUM(cantidad),0) FROM ventas WHERE id_meli = %s AND fecha_venta BETWEEN %s AND %s", (id_meli, desde_previo, hasta_previo))
     unidades_previas = cursor.fetchone()[0] or 0
     promedio_diario_previo = round(unidades_previas / 7, 2)
 
@@ -68,27 +71,31 @@ def obtener_impacto_promociones(cursor):
 
     resultados = []
     for (id_hist, id_meli, titulo, precio_orig, precio_promo, fecha_inicio, fecha_fin, promedio_previo, activo, thumbnail), (fecha_inicio_dt, fecha_hasta_calculo_dt) in zip(filas, ventanas):
-        dias_transcurridos = max((fecha_hasta_calculo_dt - fecha_inicio_dt).days, 1)
+        unidades_durante = historial_precios.unidades_en_ventana(ventas, id_meli, fecha_inicio_dt.strftime("%Y-%m-%d"), fecha_hasta_calculo_dt.strftime("%Y-%m-%d"))      # lo vendido hasta ahora (incluye hoy)
 
-        unidades_durante = historial_precios.unidades_en_ventana(ventas, id_meli, fecha_inicio_dt.strftime("%Y-%m-%d"), fecha_hasta_calculo_dt.strftime("%Y-%m-%d"))
-        promedio_durante = round(unidades_durante / dias_transcurridos, 2)
+        # El ritmo se mide con días COMPLETOS: una promoción terminada, del primer al último día; una activa, hasta ayer (hoy está a medias y bajaba el promedio). Antes se
+        # dividía por los días "de diferencia" (uno menos que los días que se contaban), lo que inflaba el ritmo de una promoción de pocos días.
+        ultimo_dia_completo = _a_fecha(fecha_fin) if fecha_fin else hoy - timedelta(days=1)
+        dias_medidos = max((ultimo_dia_completo - fecha_inicio_dt).days + 1, 0)
+        unidades_medidas = historial_precios.unidades_en_ventana(ventas, id_meli, fecha_inicio_dt.strftime("%Y-%m-%d"), ultimo_dia_completo.strftime("%Y-%m-%d")) if dias_medidos else 0
+        promedio_durante = round(unidades_medidas / dias_medidos, 2) if dias_medidos else 0.0
 
-        variacion_pct = None
-        if promedio_previo and float(promedio_previo) > 0:
+        variacion_pct = None                                   # sin un día completo todavía (arrancó hoy) o sin ritmo de antes, no hay con qué comparar
+        if dias_medidos and promedio_previo and float(promedio_previo) > 0:
             variacion_pct = round(((promedio_durante - float(promedio_previo)) / float(promedio_previo)) * 100, 1)
 
         resultados.append({
             "id_meli": id_meli, "titulo": titulo, "thumbnail": thumbnail, "precio_original": precio_orig, "precio_promo": precio_promo,
             "fecha_inicio": fecha_inicio_dt.strftime("%Y-%m-%d"), "fecha_fin": _a_fecha(fecha_fin).strftime("%Y-%m-%d") if fecha_fin else None,
             "activo": bool(activo), "promedio_previo": float(promedio_previo or 0), "promedio_durante": promedio_durante,
-            "variacion_pct": variacion_pct, "unidades_durante": unidades_durante,
+            "variacion_pct": variacion_pct, "unidades_durante": unidades_durante, "dias_medidos": dias_medidos,
         })
     return resultados
 
 
 def sugerir_candidatos_promocion(cursor, umbral_dias_sin_rotar=20):
-    hoy = hoy_argentina().strftime("%Y-%m-%d")
-    hace_14 = (hoy_argentina() - timedelta(days=14)).strftime("%Y-%m-%d")
+    ayer = (hoy_argentina() - timedelta(days=1)).strftime("%Y-%m-%d")
+    hace_14 = (hoy_argentina() - timedelta(days=14)).strftime("%Y-%m-%d")        # 14 días completos: de hace 14 a ayer (antes eran 15 contando hoy a medias y se dividía por 14)
 
     cursor.execute("""
         SELECT p.id_meli, p.titulo, p.precio, p.precio_costo,
@@ -101,7 +108,7 @@ def sugerir_candidatos_promocion(cursor, umbral_dias_sin_rotar=20):
     """)
     candidatos_potenciales = cursor.fetchall()
 
-    cursor.execute("SELECT id_meli, COALESCE(SUM(cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s GROUP BY id_meli", (hace_14, hoy))
+    cursor.execute("SELECT id_meli, COALESCE(SUM(cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s GROUP BY id_meli", (hace_14, ayer))
     ventas_recientes = dict(cursor.fetchall())
 
     cursor.execute("SELECT id_meli FROM historial_promociones WHERE activo = true")

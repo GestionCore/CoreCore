@@ -152,3 +152,64 @@ def test_la_tarea_diaria_no_hace_nada_sin_cobro_habilitado(monkeypatch):
     monkeypatch.setattr(config, "PAGOS_HABILITADOS", False)
     monkeypatch.setattr(modulo, "chequear_renovaciones", lambda *a, **k: pytest.fail("no debe consultar nada en la beta gratuita"))
     scheduler._tarea_renovaciones_mp()
+
+
+# ── Si Mercado Pago no cancela, se nota ─────────────────────────────────────────────────────────────────────────────────────────
+
+def test_si_mercado_pago_no_cancela_una_suscripcion_dada_de_baja_se_cuenta_y_se_reporta(monkeypatch):
+    """El plan se da de baja igual (no hay cobro), pero Mercado Pago podría seguir cobrando: antes un `False` de cancelar_suscripcion pasaba sin que nadie se enterara."""
+    ahora = datetime(2030, 3, 20, 12, tzinfo=UTC)
+    vencia = ahora - timedelta(days=4)
+    escrituras, reportes = [], []
+
+    class _Cursor:
+        def execute(self, sql, params=None):
+            escrituras.append((" ".join(sql.split()), params))
+
+        def fetchall(self):
+            return [(7, "base", "mp-123", vencia)]
+
+    class _Conexion:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def cursor(self):
+            return _Cursor()
+    monkeypatch.setattr(renovaciones_mp.db, "conexion_admin", lambda: _Conexion())
+    monkeypatch.setattr(renovaciones_mp.monitoreo, "reportar", lambda fase, error, cuenta_id=None: reportes.append((fase, type(error).__name__)))
+    respuesta = {"status": "paused", "summarized": {"last_charged_date": (vencia - timedelta(days=30)).isoformat()}}
+    resumen = renovaciones_mp.chequear_renovaciones(ahora=ahora, obtener=lambda mp_id: respuesta, cancelar=lambda mp_id: False, avisar=lambda *a, **k: None)
+    assert resumen["sin_cobro"] == 1 and resumen["cancelacion_pendiente"] == 1 and resumen["errores"] == 0
+    assert any(sql.startswith("UPDATE usuarios SET plan = 'cancelado'") and params == (7,) for sql, params in escrituras)         # el plan sí se da de baja
+    assert reportes == [("renovaciones:cancelar", "RuntimeError")]
+
+
+def test_si_la_cancelacion_en_mercado_pago_sale_bien_no_se_reporta_nada(monkeypatch):
+    ahora = datetime(2030, 3, 20, 12, tzinfo=UTC)
+    vencia = ahora - timedelta(days=4)
+    reportes = []
+
+    class _Cursor:
+        def execute(self, sql, params=None):
+            pass
+
+        def fetchall(self):
+            return [(7, "base", "mp-123", vencia)]
+
+    class _Conexion:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def cursor(self):
+            return _Cursor()
+    monkeypatch.setattr(renovaciones_mp.db, "conexion_admin", lambda: _Conexion())
+    monkeypatch.setattr(renovaciones_mp.monitoreo, "reportar", lambda *a, **k: reportes.append(a))
+    respuesta = {"status": "paused", "summarized": {"last_charged_date": (vencia - timedelta(days=30)).isoformat()}}
+    resumen = renovaciones_mp.chequear_renovaciones(ahora=ahora, obtener=lambda mp_id: respuesta, cancelar=lambda mp_id: True, avisar=lambda *a, **k: None)
+    assert resumen["sin_cobro"] == 1 and resumen["cancelacion_pendiente"] == 0 and reportes == []

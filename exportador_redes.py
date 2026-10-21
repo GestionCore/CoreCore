@@ -8,6 +8,7 @@ import requests
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 
+MAX_BYTES_FOTO = 8 * 1024 * 1024
 TAMANO_LIENZO = 1080
 ALTO_BARRA_INFERIOR = 220
 FUENTE_BOLD = os.path.join(os.path.dirname(__file__), "static", "fonts", "DejaVuSans-Bold.ttf")
@@ -26,10 +27,19 @@ def generar_imagen_publicacion(url_foto, titulo, precio_formateado, marca="CoreL
     del archivo generado, o None si no se pudo descargar la foto.
     """
     try:
-        resp = requests.get(url_foto, timeout=10)
+        url_foto = str(url_foto)
+        if url_foto.startswith("http://"):                                  # algunas miniaturas guardadas vienen sin https
+            url_foto = "https://" + url_foto[len("http://"):]
+        if not url_foto.startswith("https://"):
+            return None
+        resp = requests.get(url_foto, timeout=10, stream=True)
         if resp.status_code != 200:
             return None
-        foto = Image.open(BytesIO(resp.content)).convert("RGB")
+        contenido = resp.raw.read(MAX_BYTES_FOTO + 1, decode_content=True)
+        if len(contenido) > MAX_BYTES_FOTO:                       # una foto de publicación pesa unos cientos de KB: algo más grande no es una foto de producto
+            print(f"[Exportador Redes] ⚠️ La foto pesa más de {MAX_BYTES_FOTO // (1024 * 1024)} MB: no se exporta.")
+            return None
+        foto = Image.open(BytesIO(contenido)).convert("RGB")
     except Exception as e:
         print(f"[Exportador Redes] ⚠️ Error descargando la foto: {e}")
         return None
@@ -70,7 +80,10 @@ def generar_imagen_publicacion(url_foto, titulo, precio_formateado, marca="CoreL
     draw.text((40, alto_foto_area + 65), f"${precio_formateado}", font=fuente_precio, fill=COLOR_TEXTO)
     draw.text((40, TAMANO_LIENZO - 55), marca.upper(), font=fuente_marca, fill=COLOR_ACENTO)
 
-    if not ruta_salida:
-        ruta_salida = "/tmp/export_red.png"
-    lienzo.save(ruta_salida, "PNG", quality=95)
+    if not ruta_salida:                    # sin ruta: la imagen queda en memoria (nada se escribe en disco ni se acumula)
+        salida = BytesIO()
+        lienzo.save(salida, "PNG")
+        salida.seek(0)
+        return salida
+    lienzo.save(ruta_salida, "PNG")
     return ruta_salida

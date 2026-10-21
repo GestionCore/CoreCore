@@ -11,7 +11,7 @@ import hashlib
 from datetime import timedelta
 import analisis_stock
 import embudo_conversion
-from utils import SQL_RECLAMO_AFECTA, corregir_plurales, cuenta_usa_talles, hoy_argentina, plural, vocabulario
+from utils import SQL_RECLAMO_AFECTA, corregir_plurales, cuenta_usa_talles, facturado_de_las_ultimas_semanas, hoy_argentina, plural, vocabulario
 import tendencias as tendencias_mod
 import promociones as promociones_mod
 import ia_asistente
@@ -38,6 +38,27 @@ def _rollback_seguro(cursor):
         cursor.connection.rollback()
     except Exception:
         pass
+
+
+UMBRAL_CAIDA_FACTURACION = -20          # % de caída de la última semana completa contra la anterior
+
+
+def _mision_facturacion_cae(cursor):
+    """La misión «Facturación cayó» (o None). Compara 7 días completos contra los 7 anteriores: hoy no entra (a la mañana tiene pocas ventas y daba caídas falsas)."""
+    semana_actual, semana_anterior = facturado_de_las_ultimas_semanas(cursor)
+    if semana_anterior <= 0:
+        return None
+    variacion = ((semana_actual - semana_anterior) / semana_anterior) * 100
+    if variacion > UMBRAL_CAIDA_FACTURACION:
+        return None
+    semana_actual_fmt = f"{semana_actual:,.0f}".replace(",", ".")
+    semana_anterior_fmt = f"{semana_anterior:,.0f}".replace(",", ".")
+    return {
+        "id": "facturacion_cae", "categoria": "financiero", "icono": "📉", "prioridad": "urgente",
+        "titulo": f"Facturación cayó {abs(round(variacion))}% en la última semana",
+        "descripcion": f"Pasaste de ${semana_anterior_fmt} a ${semana_actual_fmt} (7 días completos contra los 7 anteriores) — vale la pena revisar precios, stock y publicidad de tus modelos top.",
+        "link": "/metricas", "link_texto": "Ver Ganancia Real"
+    }
 
 
 def _detectar_misiones_base(cursor, cuenta_id):
@@ -135,24 +156,9 @@ def _detectar_misiones_base(cursor, cuenta_id):
         print(f"[Logros] ⚠️ Error detectando canibalismo: {e}")
         _rollback_seguro(cursor)
 
-    hoy = hoy_argentina().strftime("%Y-%m-%d")
-    hace_7 = (hoy_argentina() - timedelta(days=7)).strftime("%Y-%m-%d")
-    hace_14 = (hoy_argentina() - timedelta(days=14)).strftime("%Y-%m-%d")
-    cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (hace_7, hoy))
-    semana_actual = float(cursor.fetchone()[0] or 0.0)
-    cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (hace_14, hace_7))
-    semana_anterior = float(cursor.fetchone()[0] or 0.0)
-    if semana_anterior > 0:
-        variacion = ((semana_actual - semana_anterior) / semana_anterior) * 100
-        if variacion <= -20:
-            semana_actual_fmt = f"{semana_actual:,.0f}".replace(",", ".")
-            semana_anterior_fmt = f"{semana_anterior:,.0f}".replace(",", ".")
-            misiones.append({
-                "id": "facturacion_cae", "categoria": "financiero", "icono": "📉", "prioridad": "urgente",
-                "titulo": f"Facturación cayó {abs(round(variacion))}% esta semana",
-                "descripcion": f"Pasaste de ${semana_anterior_fmt} a ${semana_actual_fmt} — vale la pena revisar precios, stock y publicidad de tus modelos top.",
-                "link": "/metricas", "link_texto": "Ver Ganancia Real"
-            })
+    caida = _mision_facturacion_cae(cursor)
+    if caida:
+        misiones.append(caida)
 
     try:
         seo_scores = tendencias_mod.calcular_seo_scores_catalogo(cursor, [])

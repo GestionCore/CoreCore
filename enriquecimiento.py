@@ -90,27 +90,36 @@ def refrescar_calidad(usuario_id, cuenta_id, access_token, tope=TOPE["calidad"])
 
 # ── Visitas ────────────────────────────────────────────────────────────────
 
+def visitas_por_tramo(dias, hoy, tramo=14):
+    """
+    (visitas de los últimos `tramo` días, visitas de los `tramo` anteriores) a partir de lo que devuelve /visits/time_window (`[{"date", "total"}]`, `last=28`).
+    Cada tramo tiene exactamente `tramo` días: el último termina en el día más nuevo que informó Mercado Libre (hoy, o ayer si todavía no cuenta hoy) y nunca antes de ayer, por si la
+    respuesta salta días sin visitas. Antes el corte era «hace 14 días» y el tramo reciente quedaba de 15 días contra 13 del anterior, lo que inflaba la tendencia de visitas.
+    """
+    por_fecha = {}
+    for dia in dias:
+        fecha = datetime.fromisoformat(str(dia["date"]).replace("Z", "+00:00")).date()
+        por_fecha[fecha] = por_fecha.get(fecha, 0) + int(dia.get("total") or 0)
+    ancla = max([hoy - timedelta(days=1), *por_fecha])
+    corte = ancla - timedelta(days=tramo - 1)
+    recientes = sum(v for f, v in por_fecha.items() if f >= corte)
+    previas = sum(v for f, v in por_fecha.items() if f < corte and f >= corte - timedelta(days=tramo))
+    return recientes, previas
+
+
 def refrescar_visitas(usuario_id, cuenta_id, access_token, tope=TOPE["visitas"]):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         ids = [r[0] for r in _pendientes(conexion.cursor(), cuenta_id, "visitas_en", HORAS["visitas"], "", tope)]
     if not ids:
         return 0
     headers = {"Authorization": f"Bearer {access_token}"}
-    corte = hoy_argentina() - timedelta(days=14)
 
     def _uno(item_id):
         try:
             resp = meli_http.get(f"https://api.mercadolibre.com/items/{item_id}/visits/time_window?last=28&unit=day", headers=headers, timeout=10)
             if resp.status_code != 200:
                 return item_id, None
-            recientes = previas = 0
-            for dia in resp.json().get("results", []):
-                fecha = datetime.fromisoformat(str(dia["date"]).replace("Z", "+00:00")).date()
-                if fecha >= corte:
-                    recientes += int(dia.get("total") or 0)
-                else:
-                    previas += int(dia.get("total") or 0)
-            return item_id, (recientes, previas)
+            return item_id, visitas_por_tramo(resp.json().get("results", []), hoy_argentina())
         except Exception:
             return item_id, None
 

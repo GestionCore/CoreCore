@@ -1,7 +1,6 @@
 """Score de Salud de Cuenta — portado de Santi Mens."""
-from datetime import timedelta
 import analisis_stock
-from utils import SQL_RECLAMO_AFECTA, hoy_argentina, plural
+from utils import SQL_RECLAMO_AFECTA, facturado_de_las_ultimas_semanas, plural
 
 
 def calcular_score_salud(cursor):
@@ -44,14 +43,7 @@ def calcular_score_salud(cursor):
     except Exception as e:
         print(f"[Salud] ⚠️ No se pudo evaluar la cobertura de variantes clave: {e}")
 
-    hoy = hoy_argentina().strftime("%Y-%m-%d")
-    hace_7 = (hoy_argentina() - timedelta(days=7)).strftime("%Y-%m-%d")
-    hace_14 = (hoy_argentina() - timedelta(days=14)).strftime("%Y-%m-%d")
-
-    cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (hace_7, hoy))
-    ventas_ultima_semana = float(cursor.fetchone()[0] or 0.0)
-    cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (hace_14, hace_7))
-    ventas_semana_anterior = float(cursor.fetchone()[0] or 0.0)
+    ventas_ultima_semana, ventas_semana_anterior = facturado_de_las_ultimas_semanas(cursor)         # 7 días completos contra los 7 anteriores
 
     if ventas_semana_anterior > 0:
         variacion_pct = ((ventas_ultima_semana - ventas_semana_anterior) / ventas_semana_anterior) * 100

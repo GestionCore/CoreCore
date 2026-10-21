@@ -96,10 +96,11 @@ def test_el_impacto_de_promociones_en_lote_da_lo_mismo_que_consulta_por_consulta
                 _venta(cur, cuenta, n, id_meli, hoy - timedelta(days=dia), cant)
 
             nuevo = {r["id_meli"]: r for r in promociones.obtener_impacto_promociones(cur)}
-            # Referencia a mano: A (hace 12 → hace 5 días, ventas de hace 10 y 6 = 5 u.), B (hace 4 días → hoy, ventas de hace 3 y hoy = 8 u.)
-            assert nuevo[a]["unidades_durante"] == 5 and nuevo[a]["promedio_durante"] == round(5 / 7, 2)
-            assert nuevo[b]["unidades_durante"] == 8 and nuevo[b]["promedio_durante"] == round(8 / 4, 2)
-            assert nuevo[a]["variacion_pct"] == round((round(5 / 7, 2) - 1.5) / 1.5 * 100, 1) and nuevo[b]["variacion_pct"] is None      # B venía sin ventas previas: no hay porcentaje
+            # Referencia a mano: A (terminada: del día -12 al -5, 8 días contando los dos extremos; ventas de hace 10 y 6 días = 5 u.). B (activa desde hace 4 días: lo vendido hasta ahora
+            # son 8 u. con las 6 de hoy; el RITMO se mide con los 4 días completos, del -4 al -1, que traen 2 u.: hoy está a medias y no entra)
+            assert nuevo[a]["unidades_durante"] == 5 and nuevo[a]["dias_medidos"] == 8 and nuevo[a]["promedio_durante"] == round(5 / 8, 2)
+            assert nuevo[b]["unidades_durante"] == 8 and nuevo[b]["dias_medidos"] == 4 and nuevo[b]["promedio_durante"] == round(2 / 4, 2)
+            assert nuevo[a]["variacion_pct"] == round((round(5 / 8, 2) - 1.5) / 1.5 * 100, 1) and nuevo[b]["variacion_pct"] is None      # B venía sin ventas previas: no hay porcentaje
             raise _Revertir()
     except _Revertir:
         pass

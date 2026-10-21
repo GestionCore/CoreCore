@@ -144,6 +144,21 @@ def test_si_la_suscripcion_anterior_ya_no_esta_al_dia_se_cancela_y_se_arma_una_n
     assert llamadas["cambiadas"] == []
 
 
+def test_si_no_se_pudo_cancelar_la_vieja_no_se_arma_una_nueva_porque_quedarian_dos_cobrando(entorno, monkeypatch):
+    monkeypatch.setattr(pagos, "cancelar_suscripcion", lambda mp_id: False)               # Mercado Pago contestó con algo que no es 200
+    destino, llamadas = entorno("elite", "base", MP_ID, "paused")
+    assert destino.endswith("/planes?aviso=mp_error")
+    assert llamadas["creadas"] == [] and llamadas["escrituras"] == [] and llamadas["auditadas"] == []
+
+
+def test_si_la_cancelacion_de_la_vieja_falla_por_la_red_tampoco_se_arma_una_nueva(entorno, monkeypatch):
+    def _sin_red(mp_id):
+        raise ConnectionError("sin red")
+    monkeypatch.setattr(pagos, "cancelar_suscripcion", _sin_red)
+    destino, llamadas = entorno("elite", "base", MP_ID, "paused")
+    assert destino.endswith("/planes?aviso=mp_error") and llamadas["creadas"] == [] and llamadas["escrituras"] == []
+
+
 def test_si_mercado_pago_no_responde_no_se_arma_nada_porque_podrian_quedar_dos_cobrando(entorno):
     destino, llamadas = entorno("elite", "base", MP_ID, None)
     assert destino.endswith("/planes?aviso=mp_error")

@@ -250,14 +250,20 @@ def confirmar_y_guardar(usuario_id, cuenta_id, propuestas, costos_productos=None
             return False, "Faltan datos en la propuesta."
         if propuesta["categoria"] not in ("fijo", "variable"):
             return False, "Categoría inválida."
+        concepto = propuesta["concepto"].strip() if isinstance(propuesta["concepto"], str) else ""
+        if not concepto:
+            return False, "Falta el concepto del gasto."
         try:
             monto = float(propuesta["monto"])
-            datetime.strptime(propuesta["fecha_desde"], "%Y-%m-%d")
-            if propuesta.get("fecha_fin"):
-                datetime.strptime(propuesta["fecha_fin"], "%Y-%m-%d")
+            fecha_desde = datetime.strptime(propuesta["fecha_desde"], "%Y-%m-%d")
+            fecha_fin = datetime.strptime(propuesta["fecha_fin"], "%Y-%m-%d") if propuesta.get("fecha_fin") else None
         except (ValueError, TypeError):
             return False, "Monto o fecha con formato inválido."
-        filas.append((cuenta_id, propuesta["concepto"], propuesta["categoria"], monto,
+        if not (0 < monto < COSTO_MAXIMO):             # también deja afuera NaN e infinito, que romperían todas las sumas de gastos
+            return False, "El monto del gasto tiene que ser un número mayor que cero."
+        if fecha_fin and fecha_fin < fecha_desde:
+            return False, "La fecha de fin es anterior a la de inicio."
+        filas.append((cuenta_id, concepto[:200], propuesta["categoria"], monto,
                        propuesta["fecha_desde"], bool(propuesta["recurrente"]), propuesta.get("fecha_fin")))
 
     cargas_costo = []

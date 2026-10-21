@@ -54,6 +54,24 @@ def hoy_argentina():
     return datetime.now(ARGENTINA).date()
 
 
+def semanas_completas(hoy=None):
+    """
+    ((desde, hasta) de la última semana, (desde, hasta) de la anterior), cada una de 7 días COMPLETOS y sin pisarse: la última va de hace 7 días a ayer y la anterior de hace 14 a hace 8.
+    Hoy queda afuera a propósito: a la mañana tiene unas pocas ventas y compararlo con un día entero armaba «caídas» que no existían. (Antes eran dos tramos de 8 días que se pisaban en un día.)
+    """
+    hoy = hoy or hoy_argentina()
+    return ((hoy - timedelta(days=7), hoy - timedelta(days=1)), (hoy - timedelta(days=14), hoy - timedelta(days=8)))
+
+
+def facturado_de_las_ultimas_semanas(cursor, hoy=None):
+    """(facturado de la última semana completa, facturado de la anterior). Dos consultas, en ese orden."""
+    resultado = []
+    for desde, hasta in semanas_completas(hoy):
+        cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (desde, hasta))
+        resultado.append(float(cursor.fetchone()[0] or 0.0))
+    return resultado[0], resultado[1]
+
+
 ESTADOS_INCIDENCIA_LEGIBLES = {
     "open": "Abierto", "opened": "Abierto",
     "closed": "Cerrado",

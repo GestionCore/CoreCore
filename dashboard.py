@@ -5,7 +5,7 @@ porque en SQLite fecha_venta a veces llevaba el timestamp completo como
 texto. Acá fecha_venta es un DATE limpio (sin hora), así que un simple
 `= %s` alcanza y es más correcto.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import db
 import analisis_stock
 import salud_cuenta
@@ -100,7 +100,7 @@ def obtener_ventas_por_provincia(usuario_id, cuenta_id=None, dias=30):
     que se empezara a guardar este dato quedan afuera del ranking
     (NULL), no se cuentan como "Sin dato" para no inflar ninguna barra.
     """
-    desde = (datetime.now(timezone.utc) - timedelta(days=dias)).strftime("%Y-%m-%d")
+    desde = (hoy_argentina() - timedelta(days=dias)).strftime("%Y-%m-%d")                 # el día de Argentina: con la hora UTC, después de las 21 h el corte se corría un día
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
@@ -133,7 +133,7 @@ def obtener_cuando_compran(usuario_id, cuenta_id=None, dias=90):
     Cuándo te compran: ventas por día de la semana y por hora del día (hora argentina). Las ventas viejas guardan la hora de Mercado
     Libre en UTC-4 y las nuevas ya en hora argentina: utils.sql_momento_argentina las unifica. Devuelve None si hay muy pocas ventas.
     """
-    desde = (datetime.now(timezone.utc) - timedelta(days=dias)).strftime("%Y-%m-%d")
+    desde = (hoy_argentina() - timedelta(days=dias)).strftime("%Y-%m-%d")                 # el día de Argentina: con la hora UTC, después de las 21 h el corte se corría un día
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
@@ -191,13 +191,24 @@ def serie_acumulada(por_dia, inicio, hoy, inicio_anterior, fin_anterior):
     return {"actual": acumular(inicio, hoy), "anterior": acumular(inicio_anterior, fin_anterior)}
 
 
-def obtener_proyeccion_mes(usuario_id, cuenta_id=None, hoy=None):
+def dias_transcurridos_del_mes(hoy, ahora=None):
+    """
+    Días que lleva el mes, con hoy contado hasta ESTA hora: el día 3 a las 9 de la mañana lleva 2,375 días (2 enteros y 9/24), no 3. Dividir por 3 hacía que a principios de mes la proyección saliera
+    hasta un 30 % por debajo del ritmo real. Sin `ahora` (pruebas, o una fecha pedida a mano) hoy cuenta entero.
+    """
+    fraccion = (ahora.hour * 3600 + ahora.minute * 60 + ahora.second) / 86400 if ahora is not None else 1.0
+    return (hoy.day - 1) + fraccion
+
+
+def obtener_proyeccion_mes(usuario_id, cuenta_id=None, hoy=None, ahora=None):
     """
     Cómo viene el mes: lo facturado hasta hoy, a cuánto llegaría con el mismo ritmo y cómo se compara con el mes anterior (completo y
     en el mismo punto del mes). La proyección es lineal (ritmo diario actual x días del mes): un orden de magnitud, no una promesa.
     """
     import calendar
-    hoy = hoy or hoy_argentina()
+    if hoy is None:
+        ahora = ahora or datetime.now(ARGENTINA)
+        hoy = ahora.date()
     inicio = hoy.replace(day=1)
     dias_mes = calendar.monthrange(hoy.year, hoy.month)[1]
     fin_anterior = inicio - timedelta(days=1)
@@ -222,7 +233,7 @@ def obtener_proyeccion_mes(usuario_id, cuenta_id=None, hoy=None):
     facturado, anterior, anterior_mismo_punto = float(facturado), float(anterior), float(anterior_mismo_punto)
     if facturado <= 0 and anterior <= 0:
         return None
-    proyectado = facturado / hoy.day * dias_mes if hoy.day >= MIN_DIAS_PROYECCION else None
+    proyectado = facturado / dias_transcurridos_del_mes(hoy, ahora) * dias_mes if hoy.day >= MIN_DIAS_PROYECCION else None
 
     def variacion(a, b):
         return round((a - b) / b * 100, 1) if b > 0 else None

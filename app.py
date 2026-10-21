@@ -979,25 +979,6 @@ def api_dashboard_costos_resumen():
     return jsonify(dashboard_mod.obtener_costos_resumen(g.usuario_id, g.cuenta_id))
 
 
-@app.route("/api/dashboard/logro_top")
-@login_requerido
-def api_dashboard_logro_top():
-    import db
-    headers = None
-    try:
-        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
-        headers = {"Authorization": f"Bearer {access_token}"}
-    except token_manager.CuentaDesconectada:
-        pass
-    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
-        cursor = conexion.cursor()
-        resultado = logros_mod.obtener_logros(cursor, g.cuenta_id, headers)
-    if resultado["misiones"]:
-        m = resultado["misiones"][0]
-        return jsonify({"hay_mision": True, "titulo": m["titulo"], "descripcion": m["descripcion"], "prioridad": m["prioridad"], "link": m["link"]})
-    return jsonify({"hay_mision": False})
-
-
 @app.route("/api/dashboard/acciones_hoy")
 @login_requerido
 def api_dashboard_acciones_hoy():
@@ -2073,7 +2054,6 @@ def timeline_publicacion_vista(id_meli):
 @app.route("/publicacion/<id_meli>/exportar_red")
 @login_requerido
 def exportar_publicacion_red(id_meli):
-    import os
     import db
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -2101,9 +2081,7 @@ def exportar_publicacion_red(id_meli):
         return "Esta publicación no tiene foto disponible para exportar.", 400
 
     nombre_archivo = f"post_{id_meli}.png"
-    os.makedirs("exports", exist_ok=True)
-    ruta_salida = os.path.join("exports", nombre_archivo)
-    resultado = exportador_redes.generar_imagen_publicacion(url_foto, titulo, formatear_moneda(precio), ruta_salida=ruta_salida)
+    resultado = exportador_redes.generar_imagen_publicacion(url_foto, titulo, formatear_moneda(precio))              # en memoria: antes cada exportación dejaba un archivo en exports/ para siempre
 
     if not resultado:
         return "No se pudo generar la imagen — puede que la foto no se haya podido descargar.", 502
@@ -4150,7 +4128,15 @@ def suscripcion_iniciar():
                 _avisar_por_mail(g.usuario_id, email, "plan_cambiado", f"{mp_id_actual}:{plan}", plan_anterior=plan_actual, plan_nuevo=plan, proximo_cobro=pagos.proximo_cobro(info_actual))
                 return redirect(url_for("planes_vista", aviso="plan_cambiado"))
         if (info_actual or {}).get("status") not in (None, "cancelled"):
-            pagos.cancelar_suscripcion(mp_id_actual)
+            # Si la vieja no se pudo cancelar, armar la nueva dejaría DOS suscripciones cobrando: no se arma nada y se reintenta (cancelar_suscripcion devuelve False ante cualquier respuesta que no sea 200)
+            try:
+                cancelada = pagos.cancelar_suscripcion(mp_id_actual)
+            except Exception as e:
+                print(f"[Pagos] ❌ No se pudo cancelar la suscripción {mp_id_actual} del usuario {g.usuario_id} antes de armar la nueva: {e}")
+                cancelada = False
+            if not cancelada:
+                print(f"[Pagos] ⚠️ Mercado Pago no canceló la suscripción {mp_id_actual} del usuario {g.usuario_id}: no se arma una nueva para no cobrar dos veces.")
+                return redirect(url_for("planes_vista", aviso="mp_error"))
 
     back_url = url_for("suscripcion_retorno", _external=True)
     try:
