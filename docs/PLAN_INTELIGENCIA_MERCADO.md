@@ -102,8 +102,8 @@ La página pública de **Tendencias** de Mercado Libre muestra las búsquedas en
 | Interpretar una búsqueda | ✅ | `domain_discovery`: categoría, dominio, atributos (una vez por palabra) |
 | Productos de catálogo y sus ofertas | ✅ | `/products/search`, `/products/{id}/items`: precio, precio original, vendedor, FULL, envío gratis, tienda oficial, provincia, garantía, tipo de publicación. **Sin `sold_quantity` ni stock** |
 | Comisiones reales por categoría | ✅ | `/sites/MLA/listing_prices` |
-| Perfil y reputación de **cualquier** vendedor | ✅ (🔎 campos a verificar) | `/users/{id}`: nivel, medalla, `transactions.total/completed/canceled`, reclamos, demoras, cancelaciones. **Ya leemos `transactions.total` de vendedores ajenos** (`tendencias._perfil_vendedor`) |
-| Ventas de los últimos 60 días de un vendedor (`metrics.sales`) | ❓ | Documentado por Mercado Libre en la reputación; **no lo verificamos**: Anexo A, pregunta 1 |
+| Perfil y reputación de **cualquier** vendedor | ✅ lo básico · 🔎 el resto, según la IA oficial (2026-10-21) | `/users/{id}`: nivel, medalla, `transactions.total` (**ya lo leemos de vendedores ajenos**, `tendencias._perfil_vendedor`). Según la IA de Mercado Libre, el perfil público trae de las transacciones **solo `period` y `total`**: **no** `completed` ni `canceled`. Sin confirmar con token de aplicación ni la demora de actualización (ver 3.5) |
+| Ventas de los últimos 60 días de un vendedor (`metrics.sales`) | ⛔ probable (🔎) | La IA de Mercado Libre dice que **no es público**. Comprobarlo con 1 llamada (Anexo A, pregunta 1). Si se confirma, el KPI V7 se elimina y queda solo V3 (variación de `total` entre dos lecturas) |
 | Reseñas de una publicación ajena | ❓ | `/reviews/item/{id}` dio 404 para ids de catálogo; **no probado con ids de publicaciones ajenas**: Anexo A, pregunta 3 |
 | Preguntas públicas de una publicación ajena | ❓ | Anexo A, pregunta 4 |
 | `/items/{id}` ajeno, visitas ajenas, `/users/{x}/items/search`, `/sites/MLA/search`, `/highlights` | ⛔ | 403 con token de usuario **y** de aplicación |
@@ -118,7 +118,7 @@ La página pública de **Tendencias** de Mercado Libre muestra las búsquedas en
 Medido en nuestros 9 días de historia (38 categorías, 342 listas):
 - **92 % de los pares de días consecutivos son idénticos** (273 de 296). Cuando cambia, cambia un tercio de las palabras (distancia de Jaccard 0,33). Es una actualización **semanal**: contar «días en la lista» infla las rachas; hay que contar **semanas**.
 - En las 30 categorías con 45 o más palabras (240 pares de días), de las posiciones **1–10** sale de la lista el **7 %** por par de días; de las posiciones **11–30** y **31–50**, el **0,2 % y el 0,3 %**, y **casi ninguna cambia de tramo** (0–0,1 %).
-- Es lo que se espera si la lista es la concatenación de tres sublistas (🔎 UpSeller: 10 de crecimiento más rápido, 20 populares, 20 más deseadas tras buscar). **Es una hipótesis muy bien apoyada, no una verdad confirmada** (no pudimos leer la documentación oficial: el sitio de desarrolladores bloquea la consulta automática). Confirmarla es la pregunta 2 del Anexo A.
+- Es lo que se espera si la lista es la concatenación de tres sublistas (🔎 UpSeller: 10 de crecimiento más rápido, 20 populares, 20 más deseadas tras buscar). **Es una hipótesis muy bien apoyada, no una verdad confirmada** (no pudimos leer la documentación oficial: el sitio de desarrolladores bloquea la consulta automática). Confirmarla es la pregunta 2 del Anexo A. **Confirmada en lo grueso por la IA oficial de Mercado Libre el 2026-10-21** (ver 3.5): 10 de mayor crecimiento + 20 más deseadas + 20 más populares, solo `keyword` y `url`, actualización semanal; queda abierto el **orden** de los dos grupos de 20 y si la respuesta marca a qué grupo pertenece cada palabra.
 
 **Qué cambia en el producto:** cada palabra pasa a tener un **tipo de señal** (🔥 *Crece* · ⭐ *Popular* · 🔍 *Deseada tras buscar*), un **nivel de confianza** del tipo y **semanas** en lista. «Subió 3 puestos» deja de mostrarse al cruzar un tramo. Es un dato que ya tenemos y hoy tiramos: la señal de **demanda emergente** (tramo 1–10) es lo más parecido a «volumen» que Mercado Libre regala.
 
@@ -129,6 +129,57 @@ Medido en nuestros 9 días de historia (38 categorías, 342 listas):
 - **Preguntárselo a Mercado Libre** (soporte de desarrolladores o un contacto comercial): cuesta cero y es lo único que podría cambiar el panorama de fondo («¿existe acceso a datos agregados de mercado para herramientas de terceros?»). Es una gestión del dueño, no técnica.
 - **CACE** (Cámara Argentina de Comercio Electrónico, estudio anual con Kantar, por encuesta; 🔎 cifras de notas de prensa, no el PDF oficial): facturación total del e-commerce argentino (2025: **$35,3 billones, +60 % nominal**; unidades +28 %) y crecimiento por categoría (Infantiles, Materiales de construcción, Deportes…). Es de **todo** el comercio electrónico, anual y por encuesta: sirve de **contexto macro** en el Mapa de categorías, no para elegir un nicho.
 - **Ya usamos** el IPC del INDEC y las cotizaciones del dólar. **Google Trends** se menciona en blogs para validar si una tendencia dura; es relativo (sin volumen) y automatizarlo exige cuidado con sus condiciones: se evaluaría aparte.
+
+### 3.4 Condiciones legales de la API (✅ texto leído completo el 2026-10-21)
+
+Fuente: [Términos y Condiciones del Programa de Desarrolladores](https://developers.mercadolibre.com.ar/es_ar/es-ar-terminos-y-condiciones) (el sitio bloquea la consulta automática; se leyó en el navegador). **Esto es lo que dice el texto y cómo lo leo; no soy abogado.** Lo que es de interpretación lo confirma Mercado Libre (3.5 y Anexo C) y, para el resto, un abogado antes de la Fase B.
+
+| Cláusula | Qué dice (resumen) | A qué del plan le toca |
+|---|---|---|
+| **5.4** · Información derivada | Hace falta **autorización expresa de Mercado Libre (puede ser por correo)** para usar o publicar su contenido de forma que permita obtener: (1) cualquier estadística del Sitio o de la actividad en él; (2) tasas de aceptación de listados mejorados; (3) ventas de artículos o rendimiento del Sitio; (4) precio promedio de venta o **volumen vendido de una categoría**; (5) información de **un usuario específico** o de tipos de usuarios; (6) tasas de conversión, conclusión o éxito | Competidores, estimación de ventas de terceros, panel, estadísticas de categoría, benchmarks |
+| **5.2** · Exhibición | El contenido solo se muestra dentro de la app y **mientras siga disponible al público; si deja de estarlo, se elimina de la app**. No puede **confundirse ni combinarse con contenido de terceros**. Los datos no públicos de un usuario solo con su autorización expresa | Historia de datos públicos (el «foso»), mezcla con el panel y con estimaciones propias |
+| **2.2.1.3** · Copias | Solo una cantidad **limitada** de copias intermedias, lo necesario, y **borrarlas de forma irreversible** cuando ya no hacen falta | Ídem: acumular series diarias de datos públicos |
+| **5.3** · Antigüedad | Lo que se muestra se actualiza **al menos cada 24 h; cada 6 h si son listados de artículos**. La app debe **decir con qué frecuencia actualiza** | Muestras de precios de catálogo (hoy semanales), seguimiento de publicaciones |
+| **2.1 / 2.2.1.1 / 7.4** · Uso permitido | La API es para facilitar y mejorar el uso del Sitio y sus servicios por los usuarios de la app; **no** para desarrollar productos que compitan con los de Mercado Libre ni almacenar contenido para fines no permitidos | Argumento a favor: el módulo ayuda a vender **en** Mercado Libre. Conviene dejarlo escrito en la solicitud |
+| **2.1(f) / 7.2 / 7.3** | No divulgar lo obtenido a terceros que no sean usuarios de Mercado Libre; no distribuir el contenido fuera de la app ni enlazarlo desde otro origen | Landing pública (solo datos de ejemplo: bien), «Índice CoreLux» público (idea 12 de la sección 14): **condicionado** |
+| **7.6** | Prohibido scraping | Ya lo cumplimos: solo API |
+| **9 / 14** | Mercado Libre **monitorea** y puede **suspender o revocar el acceso a la API sin causa ni aviso**; al revocar hay que destruir las copias | **El riesgo no es solo el módulo: es el acceso a la API de toda la app** |
+| **10 / 6** | Proteger apodos, nombres y mails; el usuario es responsable del dato y el desarrollador su encargado | Apodos de competidores en pantalla y en la base |
+
+**Cómo toca a cada pieza del plan** (lectura literal; 🟢 bajo · 🟡 medio · 🔴 alto sin autorización):
+
+| Pieza | Cláusulas | Lectura | Riesgo |
+|---|---|---|---|
+| «Mi negocio»: números propios del vendedor con su OAuth | 5.2 (3.er párrafo), 6 | La persona lo autoriza; la lectura razonable es que 5.4 apunta al mercado y a terceros, **no** a mostrarle a cada uno lo suyo (si no, ninguna herramienta de gestión podría existir). Está sin confirmar por escrito | 🟢 |
+| Tamaño de oferta por categoría y búsquedas en alza (**hoy ya en producción**: Mercado, Tendencias) | 5.4.1 | «Estadística relativa al Sitio» | 🟡 |
+| Muestras de precios de catálogo por categoría (**hoy en producción**) | 5.4.4, 5.3 | Es precio de **publicación**, no de venta, pero se parece; y los listados piden 6 h | 🟡 |
+| Historia diaria guardada (rachas, semanas en lista, series de oferta) | 2.2.1.3, 5.2 | Un lector estricto exige borrar lo que ya no está público. Es **exactamente** el foso de la sección 4 | 🟡–🔴 |
+| Seguimiento de un competidor (perfil, precios, cambios) | 5.4.5, 5.3, 10 | «Información de un usuario específico» | 🔴 |
+| Estimación de órdenes/ventas de terceros (V3) | 5.4.3 | «Ventas de artículos» | 🔴 |
+| Panel CoreLux (ventas anonimizadas de clientes por categoría) | 5.4.1/.3/.4/.5, 5.2, 2.1(f) | Volumen vendido por categoría + combinar datos | 🔴 |
+| Índice público mensual (idea 12) | 7.2, 5.4 | Se publica fuera de la app | 🔴 |
+
+**Qué cambia en el plan por esto:**
+1. **El riesgo legal deja de ser «a revisar antes de la Fase E» y pasa a ser el camino crítico.** Primer paso: **pedirle a Mercado Libre por escrito la autorización de la cláusula 5.4** (la propia cláusula dice que puede ser por correo), describiendo qué mostramos, a quién, con qué frecuencia y por cuánto tiempo se guarda. Cuesta cero y, si la dan, queda todo blanqueado; si no la dan, nos ahorra construir lo que no se puede.
+2. **Hasta tener respuesta se congela el alcance** de lo de mercado: no pasar a «todas las hojas» (decisión 2), no construir seguimiento de competidores individuales, estimaciones de terceros ni panel (Fases B–F). Lo que ya corre desde el 2026-10-13 (relevamiento diario de 39 categorías) sigue como está; **decidirlo es del dueño** (ver sección 15, decisión 0).
+3. **El foso se redefine.** El foso defendible son los **datos propios de las cuentas de los clientes, con su autorización** (ventas, costos, conversión, publicidad: son de cada vendedor, cláusula 5.2) y **lo que CoreLux calcula con ellos**, no un espejo histórico del contenido público de Mercado Libre. El espejo es lo que choca con 5.2 y 2.2.1.3.
+4. **Regla de diseño nueva y barata:** toda pantalla de mercado dice **«Actualizado hace X · se actualiza cada Y»** (5.3 lo exige y, además, es la honestidad que ya queríamos).
+5. **El panel** (sección 5.4) pasa de «diferencial de largo plazo» a **opcional y condicionado**: depende de la autorización y de cómo la redacte Mercado Libre.
+
+### 3.5 Lo que contestó la IA oficial de Mercado Libre (2026-10-21)
+
+🔎 Respuestas del asistente de IA de Mercado Libre al prompt de la sección «Anexo C» (no es un compromiso de la empresa; sirve de pista y de dirección de qué confirmar). Se contestaron 1, 2 (en parte), 3, 4, 9 y 11–12.
+
+| # | Respuesta (resumen) | Qué cambia |
+|---|---|---|
+| 1 | **Parcial.** `/users/{id}` público trae de las transacciones solo `period` y `total`; no `completed`/`canceled` ni `metrics.sales` | V7 (ventas de 60 días) cae; V3 (variación de `total`) sigue posible pero sin verificar con token de aplicación |
+| 2 | La demora de actualización de esos contadores **quedó sin confirmar** | V3 necesita saberla para decidir cada cuánto leer |
+| 3 | **Sí.** `/trends`: 10 de mayor crecimiento + 20 más deseadas + 20 más populares; solo `keyword` y `url`; semanal; sin volumen | Confirma la hipótesis. **Ambiguo** el orden de los dos grupos de 20: no etiquetar «Popular» vs «Deseada» hasta resolverlo; sí «Crece» (posiciones 1–10) |
+| 4 | **Sí.** `children_categories[]` trae `total_items_in_this_category` de cada hijo | Una llamada por categoría padre da el tamaño de todos sus hijos: **baja el presupuesto** de «todas las hojas» |
+| 9 | **Sí.** El Developer Partner Program en Argentina pide **US$ 1.500.000 de GMV mensual** de los vendedores que usan la herramienta | Confirmado; no aplica todavía |
+| 11–12 | **Parcial.** Actualizar el contenido cada 24 h máx. (6 h para listados). Publicar estadísticas, ventas o volúmenes por categoría o información de usuarios exige **autorización expresa de Mercado Libre (cláusula 5.4)** | Confirmado leyendo el texto en 3.4. **Es el hallazgo más importante de la ronda** |
+
+**Sin respuesta todavía:** 5 (paginación de `/products/{id}/items`, ventas de ofertas ajenas), 6 (reseñas y preguntas ajenas), 7 (permiso o programa para `/sites/MLA/search`), 8 (programa o licencia de datos agregados), 10 (límites de pedidos del token de aplicación).
 
 ---
 
@@ -520,7 +571,7 @@ Esfuerzo relativo: **S** unas horas · **M** 1–2 días · **L** una semana o m
 | Estimación de órdenes (V3) falla la calibración | Media / Medio | Criterio de salida explícito; si no pasa, se queda V1–V2 y se dice por qué |
 | Sesgo del panel (pocos rubros, vendedores chicos) | Alta / Medio | Mostrar «de N vendedores», rangos, y nunca extrapolar a «el mercado» sin cobertura medida |
 | Expectativas puestas por los rivales («ventas exactas») | Alta / Medio | Posicionar con honestidad: «sabemos lo que dejás de ganar, no lo que ganan otros» |
-| Legal: términos de la API de Mercado Libre y Ley 25.326 | Media / Alto | Revisión legal antes de la Fase E; opt-in; sin datos personales; sin scraping |
+| **Legal: cláusula 5.4 de los Términos de la API** (estadísticas, ventas, volumen por categoría, información de usuarios específicos exigen autorización expresa de Mercado Libre; ver 3.4) y Ley 25.326 | **Alta / Muy alto** (Mercado Libre puede revocar el acceso a la API de **toda** la app, cláusula 14) | Pedir la autorización por escrito **antes** de las Fases B–F; congelar el alcance hasta tener respuesta; mostrar siempre la frecuencia de actualización; revisión de abogado; opt-in; sin datos personales; sin scraping |
 | Historia corta frente a competidores (2016 contra 2026) | Cierta / Medio | No competir en historia: competir en **margen real + datos propios**; acumular desde hoy |
 | Costo y límites de llamadas | Baja / Medio | Subir de a poco, medir, caché compartida, prioridad por interés |
 | Complejidad de la pantalla | Media / Medio | Tres modos, divulgación progresiva, un botón principal, prueba de 5 segundos con 5 personas |
@@ -571,7 +622,8 @@ Esfuerzo relativo: **S** unas horas · **M** 1–2 días · **L** una semana o m
 
 ## 15. Decisiones que necesito de vos
 
-1. **Sondeo 0b** (solo lectura, ~100 llamadas, en una máquina de Fly con el token de aplicación, sin tocar datos): ¿lo autorizás? Es el primer paso y define qué prometemos.
+0. **(Nueva, 2026-10-21) Autorización de Mercado Libre, cláusula 5.4** (ver 3.4): ¿pedimos por escrito la autorización antes de construir competidores, estimaciones y panel? Y mientras llega la respuesta, ¿**congelamos** el alcance (sin «todas las hojas», sin seguimiento de competidores individuales, sin panel) y dejamos el relevamiento diario de las 39 categorías como está? Recomiendo sí a las dos: el peor caso no es perder el módulo, es perder el acceso a la API de toda la app.
+1. **Sondeo 0b** (solo lectura, ~100 llamadas, en una máquina de Fly con el token de aplicación, sin tocar datos): ¿lo autorizás? Es el primer paso y define qué prometemos. *(Varias preguntas del Anexo A ya se contestaron en parte con la IA de Mercado Libre: 1, 2 y 12 cambian; ver 3.5.)*
 2. **Alcance del relevador**: ¿seguimos **todas las categorías hoja** (decenas de miles de llamadas por día como máximo, a medir en el sondeo) o solo las de tus clientes y las raíces? (Recomiendo todas, subiendo de a poco.)
 3. **Panel**: ¿aprobás el **Programa Pioneros** (20–30 vendedores con Elite gratis por 3 meses a cambio de aportar) y empezás con el abogado la actualización de Términos/Privacidad y la revisión de los términos de la API?
 4. **Regla del asistente**: cuando exista el panel, ¿permitimos comparar con otros vendedores **solo con datos del panel y diciendo de cuántos**?
@@ -607,6 +659,42 @@ Mismo método que la Fase 0 (`sondeo_meli.py`, token de aplicación, sin tokens 
 
 - ✅ **Verificado por nosotros:** todo lo marcado con ✅ en las secciones 1, 3 y 4 (base de datos real, código, sondeo del 2026-10-13, análisis de la historia del 2026-10-21).
 - 🔎 **De terceros (a tomar como pista):** descripciones de Nubimetrics, Real Trends y Crystal Zoom (sus propios sitios y comparativos con interés comercial); la composición 10 + 20 + 20 y la actualización semanal de las tendencias (documentación de UpSeller, **coherente** con nuestra medición); la presencia de `metrics.sales` y la composición exacta de la reputación (documentación de Mercado Libre que **no pudimos leer** por bloqueo de consulta automática: a confirmar con el sondeo).
-- ❓ **Sin verificar:** términos de la API de Mercado Libre sobre guardar y agregar datos; Ley 25.326 aplicada al panel; el origen de datos de Nubimetrics y Real Trends; precios de todas las herramientas.
+- ✅ **Leído (2026-10-21):** el texto completo de los Términos y Condiciones del Programa de Desarrolladores de Mercado Libre (3.4). Cómo se **interpretan** las cláusulas 5.2–5.4 para cada pieza del plan sigue siendo ❓ hasta que Mercado Libre lo confirme (Anexo C) y lo revise un abogado.
+- 🔎 **Dicho por la IA oficial de Mercado Libre (2026-10-21):** composición y frecuencia de `/trends`, campos públicos de `/users/{id}`, `children_categories`, umbral del programa de partners (3.5).
+- ❓ **Sin verificar:** Ley 25.326 aplicada al panel; el origen de datos de Real Trends; precios de todas las herramientas.
 
 Fuentes consultadas: [Nubimetrics](https://www.nubimetrics.com), [módulo Mercado de Nubimetrics](https://www.nubimetrics.com/mercado), [módulo Competencia de Nubimetrics](https://www.nubimetrics.com/competencia), [Real Trends en argentina.gob.ar](https://www.argentina.gob.ar/node/222220), [CrystalZoom](https://www.crystalzoom.com), [UpSeller: Tendencias de Mercado Libre](https://www.upseller.com/es/help-doc-article-515), [Jaguar Sheet: alternativas a Nubimetrics](https://jaguarsheet.com/es/alternativas/nubimetrics).
+
+---
+
+## Anexo C. Preguntas para Mercado Libre (canal oficial)
+
+**Ronda 1 (2026-10-21):** 12 preguntas en 5 bloques al asistente de IA de Mercado Libre; contestó 1, 2 (en parte), 3, 4, 9 y 11–12 (resumen en 3.5). El texto de la ronda 1 está en el historial de la conversación; los números 5–10 de esa ronda son los «sin respuesta» de 3.5.
+
+**Ronda 2 (preparada el 2026-10-21):** tres mensajes cortos (la IA se queda sin espacio con más de ~5 preguntas por mensaje). Se pegan de a uno, en este orden. Las respuestas se anotan en 3.5.
+
+**Mensaje 1 — la autorización (cláusulas 5.4 y 2.1)**
+1. Cláusula 5.4: ¿ante qué área, correo o formulario se solicita la «autorización expresa»? ¿Qué información piden (descripción de la app, qué datos, para qué, a quién se muestran, por cuánto tiempo se guardan)? ¿Cuánto suele demorar?
+2. ¿La 5.4 aplica cuando una app le muestra a un vendedor sus PROPIAS ventas, conversión y estadísticas, con el token OAuth de ese vendedor? ¿O apunta a estadísticas de mercado y de otros usuarios?
+3. ¿Mostrar dentro de la app, a los vendedores que la usan, el tamaño de una categoría (`total_items_in_this_category`) o las palabras de `/trends` entra en la 5.4.1 («estadística relativa al Sitio»)? ¿Hay estadísticas públicas que NO requieran autorización?
+4. ¿Mostrar el perfil público de un vendedor concreto (reputación, nivel, ofertas en un producto de catálogo) para que otro vendedor siga a su competencia entra en la 5.4.5? Con autorización, ¿se puede mostrar el apodo?
+5. ¿Un módulo de inteligencia de mercado para vendedores se considera un servicio que compite con los de Mercado Libre (cláusulas 2.1.b y 7.4)? ¿La autorización depende de ser Partner Certificado?
+
+**Mensaje 2 — guardar y mostrar (cláusulas 2.2.1.3, 5.2 y 5.3)**
+6. ¿Se pueden conservar series históricas de datos públicos de la API (p. ej. cantidad de publicaciones por categoría cada día, o la posición de una palabra de `/trends` semana a semana) aunque el dato ya no esté publicado? ¿Cambia si se guardan solo números agregados (conteos, medianas) y no el contenido de las publicaciones?
+7. Cláusula 5.3: ¿las 24 h (6 h para listados) aplican a un dato agregado, como la mediana de precios de una muestra de productos de catálogo? ¿Y a un dato que la API actualiza una vez por semana, como `/trends`? ¿Cómo se «explicita» la frecuencia (texto en pantalla)?
+8. Cláusula 5.2 («no podrá confundirse ni combinarse con contenido de terceros»): ¿se puede mostrar en la misma pantalla un dato de la API junto a un cálculo propio (p. ej. margen con los costos del vendedor) o junto a otras fuentes (dólar, IPC)?
+9. Con consentimiento de cada vendedor, ¿se pueden agregar y anonimizar ventas de varios vendedores de la app (grupos de 5 o más, sin datos individuales) y mostrarlas a los demás usuarios de la app? ¿O requiere la autorización de la 5.4 y qué condiciones suele poner?
+10. ¿Cuáles son los límites de pedidos del token de aplicación (por segundo y por día)? Pensamos en unos miles de llamadas por día a `/categories`, `/trends` y `/products/search`.
+
+**Mensaje 3 — los que quedaron pendientes y dos más**
+11. `GET /products/{id}/items`: ¿máximo de ofertas por respuesta y cómo se pagina? ¿Hay forma oficial de obtener unidades vendidas de ofertas de terceros?
+12. ¿`/reviews/item/{id}` y `/questions/search` funcionan para publicaciones de otros vendedores?
+13. `/sites/MLA/search` da 403 con token de aplicación: ¿hay permiso, scope o programa para búsquedas por categoría con fines de análisis?
+14. ¿Existe un programa, producto o licencia oficial de datos agregados de mercado (ventas, unidades o visitas por categoría) para herramientas de terceros? ¿Cómo se solicita?
+15. `GET /users/{id}` de otro vendedor con token de aplicación: ¿devuelve `seller_reputation.transactions.total`? ¿Cada cuánto se actualiza y incluye las canceladas?
+16. `/trends/MLA/{cat}`: ¿en qué orden vienen los tres grupos (10 crecimiento, 20 deseadas, 20 populares) y hay un campo que indique a qué grupo pertenece cada palabra?
+17. ¿Cómo se obtiene el `seller_id` a partir de un apodo o de la URL de una publicación, sin scraping?
+18. ¿Los beneficios del Developer Partner Program incluyen acceso a algún dato adicional o solo soporte e insignia?
+
+**Si la IA responde en general o remite a otro canal:** pedirle el nombre exacto del área y del correo, y armar con eso el mail de solicitud de autorización de la 5.4 (se prepara con las respuestas que haya dado).

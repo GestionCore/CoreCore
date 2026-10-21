@@ -34,6 +34,7 @@ Detalle en `PENDIENTES.md` §0f. Resumen:
 
 ## 3c. Plan de producto del módulo Mercado (2026-10-21, sin código)
 `docs/PLAN_INTELIGENCIA_MERCADO.md`: benchmark (Nubimetrics, Real Trends, Crystal Zoom), qué deja ver la API, cómo sortear la opacidad con un foso propio, KPIs exactos de nichos, competidores y categorías, UX por persona (Guía / Seguimiento / Analista), roadmap con criterios de salida y 8 decisiones del dueño. **No empezar a construir sin esas decisiones** (en especial el sondeo 0b).
+**Hallazgo legal del mismo día (§3.4–3.5 del plan):** la cláusula 5.4 de los Términos de la API exige autorización expresa de Mercado Libre (por correo alcanza) para estadísticas de mercado, ventas, volumen por categoría e información de usuarios específicos; las 5.2 y 2.2.1.3 chocan con guardar historia de datos públicos; la 5.3 pide refrescar cada 24 h/6 h y decir la frecuencia. Es el camino crítico antes de las Fases B–F (decisión 0). Preguntas de la 2.ª ronda para la IA de Mercado Libre: Anexo C.
 
 ## 4. Lo que falta
 **Del dueño** (detalle paso a paso en `docs/TUS_PENDIENTES.md`)
