@@ -62,6 +62,16 @@ Plataforma de Buenos Aires (2014; Argentina, Brasil y México), «**certificada 
 ### Gratis de Mercado Libre
 La página pública de **Tendencias** de Mercado Libre muestra las búsquedas en alza por país y categoría (🔎 según UpSeller: hasta 50 palabras, **actualizadas semanalmente**, compuestas por 10 de mayor crecimiento, 20 más populares y 20 más deseadas tras buscar; la herramienta de UpSeller que las muestra agrega un ranking de 3 meses). Es la misma fuente que usa nuestro `/trends`. **Cualquier herramienta que solo repita esto no tiene valor propio.**
 
+### De dónde sacan los datos (según los Términos y Condiciones de Nubimetrics, PDF de su sitio, ✅ leído completo)
+
+- Dicen que **analizan datos «puestos a disposición por Mercado Libre»** y que la información es **«estimativa»**: se limitan a dar «tendencias del mercado, no información exacta».
+- Cláusula 2.4: usan **información pública** («proveída por la propia API de Mercado Libre»: publicaciones, compras, ventas, calificaciones, búsquedas…) e **información privada** que cada usuario les da al **vincular su cuenta** (ventas, movimientos, productos vendidos, medios de pago, ubicación…).
+- Y agregan, textualmente en sustancia: pueden **compartir la información privada de todos los usuarios «únicamente de manera general, sin dar información particular»**. Es decir: **ya hacen un panel agregado de sus propios usuarios**, que es exactamente el modelo que propone la Fase E. Lo declaran en sus términos.
+- **Reciprocidad:** la información profunda de una categoría se habilita solo si el usuario **vendió ≥ 10 unidades en el último mes o US$ 300 en 3 meses** en esa categoría (más **una categoría por mes** de excepción). Quien contribuye más, ve más.
+- Límites del producto Competencia: hasta **10 competidores** y **100 publicaciones** por vez, y no se puede seguir a vendedores de **más de 50.000 publicaciones**.
+- **No explican cómo estiman las ventas o visitas de terceros.** Con la API que nosotros usamos eso da 403. Qué usan ellos para eso, no lo sabemos (hipótesis sin evidencia: historia acumulada desde que la API era más abierta —una presentación de 2014 ya mostraba la API como fuente con procesamiento diario—, acceso especial o el panel de sus usuarios).
+- **Exclusividad:** no encontramos ninguna señal. Hay otras herramientas «certificadas por Mercado Libre» (Real Trends) en el mismo terreno.
+
 ### Tabla comparativa
 
 | Capacidad | Nubimetrics (🔎) | Real Trends (🔎) | Crystal Zoom (🔎) | CoreLux hoy | CoreLux objetivo |
@@ -112,6 +122,14 @@ Medido en nuestros 9 días de historia (38 categorías, 342 listas):
 
 **Qué cambia en el producto:** cada palabra pasa a tener un **tipo de señal** (🔥 *Crece* · ⭐ *Popular* · 🔍 *Deseada tras buscar*), un **nivel de confianza** del tipo y **semanas** en lista. «Subió 3 puestos» deja de mostrarse al cruzar un tramo. Es un dato que ya tenemos y hoy tiramos: la señal de **demanda emergente** (tramo 1–10) es lo más parecido a «volumen» que Mercado Libre regala.
 
+### 3.3 ¿Hay una fuente «oficial» o ya establecida además de la API? (consultado el 2026-10-21)
+
+- **No encontramos una base de datos oficial de ventas del mercado** que se pueda usar o comprar. El camino oficial de datos **es la API** (la que ya usamos) y la página pública de Tendencias.
+- **Programa de Partners de Mercado Libre** («Developer Partner Program»; 🔎 resumen de buscador, **no pudimos abrir las páginas oficiales**: las bloquea a la consulta automática): niveles Certificado, Silver, Gold y Platinum; hay que postularse, pasar una **evaluación de seguridad** y demostrar un **volumen mínimo de ventas mensuales de los vendedores que usan la herramienta** (la página en portugués dice **US$ 1,5 millones por mes para Argentina**; puede estar desactualizado). Beneficios que aparecen: insignia, contacto con desarrolladores, soporte dedicado con respuesta rápida y plazos de atención para pedidos de funciones. **No encontramos que dé acceso a más datos de mercado.** Hoy estamos a la altura de **un centésimo** de ese umbral (a ojo: decenas de miles de dólares de ventas por mes entre las dos cuentas): no aplica todavía.
+- **Preguntárselo a Mercado Libre** (soporte de desarrolladores o un contacto comercial): cuesta cero y es lo único que podría cambiar el panorama de fondo («¿existe acceso a datos agregados de mercado para herramientas de terceros?»). Es una gestión del dueño, no técnica.
+- **CACE** (Cámara Argentina de Comercio Electrónico, estudio anual con Kantar, por encuesta; 🔎 cifras de notas de prensa, no el PDF oficial): facturación total del e-commerce argentino (2025: **$35,3 billones, +60 % nominal**; unidades +28 %) y crecimiento por categoría (Infantiles, Materiales de construcción, Deportes…). Es de **todo** el comercio electrónico, anual y por encuesta: sirve de **contexto macro** en el Mapa de categorías, no para elegir un nicho.
+- **Ya usamos** el IPC del INDEC y las cotizaciones del dólar. **Google Trends** se menciona en blogs para validar si una tendencia dura; es relativo (sin volumen) y automatizarlo exige cuidado con sus condiciones: se evaluaría aparte.
+
 ---
 
 ## 4. Estrategia: cómo sortear la opacidad con un foso propio
@@ -153,6 +171,7 @@ Medido en nuestros 9 días de historia (38 categorías, 342 listas):
 - **Anonimato escalonado** (💡): el panel muestra el nivel más fino que junte ≥ 5 aportantes y ≥ 30 órdenes en 4 semanas: **categoría hoja → dominio → rama → raíz**. Con pocos clientes se llega antes a «dominio» (p. ej. `MLA-JACKETS_AND_COATS`) que a una hoja.
 - **Programa Pioneros** (💡): invitar a 20–30 vendedores de 3 o 4 rubros distintos (indumentaria, tecnología, hogar, herramientas) con Elite gratis por 3 meses a cambio de activar el panel. Con 5 por rubro, cada rubro «se enciende».
 - **Mientras tanto, el módulo no puede depender del panel.** Todo lo que se construya primero tiene que valer con: búsquedas en alza, oferta, catálogo (Nivel A), vendedores observables y **las ventas propias de la cuenta** (que son datos reales de **tu** nicho).
+- **No es un invento nuestro:** Nubimetrics declara en sus Términos (cláusula 2.4) que comparte la información privada de todos sus usuarios «de manera general, sin dar información particular». Lo que sí es cierto es la objeción de **escala**: ellos tienen años y muchos usuarios; nosotros, 2 cuentas. Por eso el plan ya no hace depender de él ninguna fase anterior a la E (ver sección 15, punto 3).
 - **Privacidad:** consentimiento explícito (opt-in) en un apartado de Mi cuenta, con vista previa de qué se comparte, y **baja** que deja de aportar desde ese día. Sin nicknames, sin compradores, sin ids de órdenes; solo agregados por dominio y semana. Ley 25.326 de Protección de Datos Personales y términos de la API de Mercado Libre sobre guardar y agregar datos: **a revisar con el abogado antes de la Fase E** (pendiente del dueño, ya anotado). No vamos a leer el contenido de ninguna cuenta con `conexion_admin` desde la web.
 
 ### 4.5 Lo que NO vamos a hacer (y lo decimos)
