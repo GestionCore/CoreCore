@@ -152,3 +152,39 @@ def test_la_pantalla_marca_con_asterisco_el_mes_sin_publicidad():
     plantilla = Environment().from_string("{% if serie | selectattr('sin_publicidad') | list %}AVISO{% endif %}")
     assert plantilla.render(serie=[{"sin_publicidad": False}, {"sin_publicidad": True}]) == "AVISO"
     assert plantilla.render(serie=[{"sin_publicidad": False}]) == ""
+
+
+# ── El costo de almacenamiento en FULL (canales de envío) ─────────────────────────────────────────────────────────────────────────────────
+
+def test_el_almacenamiento_full_se_guarda_compartido_y_la_segunda_visita_no_llama_a_mercado_libre(monkeypatch):
+    import cache_db
+    import db
+    import facturacion
+    cache, llamadas = {}, []
+    monkeypatch.setattr(facturacion, "_costo_almacenamiento_full", lambda token, cuenta, key, group="ML": llamadas.append(key) or (1234.5, 2))
+    monkeypatch.setattr(db, "conexion_usuario", lambda u, c=None: _Prestada([]))
+    monkeypatch.setattr(cache_db, "leer", lambda cursor, cuenta, clave, firma="", ttl_segundos=3600, ttl_fallido=None: (True, cache[clave]) if clave in cache else (False, None))
+    monkeypatch.setattr(cache_db, "guardar", lambda cursor, cuenta, clave, valor, firma="": cache.__setitem__(clave, valor))
+    assert facturacion.obtener_costo_almacenamiento_full("token", 1, "2026-10-01", usuario_id=1) == (1234.5, 2)
+    assert facturacion.obtener_costo_almacenamiento_full("token", 1, "2026-10-01", usuario_id=1) == (1234.5, 2) and llamadas == ["2026-10-01"]
+    assert facturacion.obtener_costo_almacenamiento_full("token", 1, "2026-09-01", usuario_id=1) == (1234.5, 2) and llamadas == ["2026-10-01", "2026-09-01"]       # otro mes, otra clave
+
+
+def test_un_cero_real_se_guarda_pero_la_falta_de_datos_no(monkeypatch):
+    import cache_db
+    import db
+    import facturacion
+    cache = {}
+    monkeypatch.setattr(db, "conexion_usuario", lambda u, c=None: _Prestada([]))
+    monkeypatch.setattr(cache_db, "leer", lambda *a, **k: (False, None))
+    monkeypatch.setattr(cache_db, "guardar", lambda cursor, cuenta, clave, valor, firma="": cache.__setitem__(clave, valor))
+    monkeypatch.setattr(facturacion, "_costo_almacenamiento_full", lambda *a, **k: (None, 0))              # Mercado Libre no contestó
+    assert facturacion.obtener_costo_almacenamiento_full("token", 1, "2026-10-01", usuario_id=1) == (None, 0) and cache == {}
+    monkeypatch.setattr(facturacion, "_costo_almacenamiento_full", lambda *a, **k: (0.0, 0))               # contestó: este mes no hubo cargo
+    assert facturacion.obtener_costo_almacenamiento_full("token", 1, "2026-10-01", usuario_id=1) == (0.0, 0) and cache == {"almacenamiento_full:ML:2026-10-01": [0.0, 0]}
+
+
+def test_sin_usuario_se_sigue_usando_solo_la_memoria_del_proceso(monkeypatch):
+    import facturacion
+    monkeypatch.setattr(facturacion, "_costo_almacenamiento_full", lambda token, cuenta, key, group="ML": (5.0, 1))
+    assert facturacion.obtener_costo_almacenamiento_full("token", 1, "2026-10-01") == (5.0, 1)

@@ -63,7 +63,37 @@ def obtener_resumen_periodo(access_token, cuenta_id, key, group="ML"):
 _cache_almacenamiento = {}
 
 
-def obtener_costo_almacenamiento_full(access_token, cuenta_id, period_key, group="ML"):
+TTL_ALMACENAMIENTO_COMPARTIDO = 30 * 60
+
+
+def obtener_costo_almacenamiento_full(access_token, cuenta_id, period_key, group="ML", usuario_id=None):
+    """
+    (total, cantidad de cargos). Con `usuario_id` el resultado se guarda 30 min en la caché compartida (todas las máquinas y procesos): la factura de Mercado Libre tarda 3-10 s la
+    primera vez y Ganancia Real la pedía en frío en cada máquina (medido en producción: «canales de envío» 3,4 s a 10 s). Un resultado sin datos no se guarda.
+    """
+    if usuario_id is None:
+        return _costo_almacenamiento_full(access_token, cuenta_id, period_key, group)
+    import cache_db
+    import db
+    clave = f"almacenamiento_full:{group}:{period_key}"
+    try:
+        with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+            hit, valor = cache_db.leer(conexion.cursor(), cuenta_id, clave, ttl_segundos=TTL_ALMACENAMIENTO_COMPARTIDO)
+        if hit and isinstance(valor, list) and len(valor) == 2:
+            return float(valor[0]), int(valor[1])
+    except Exception as e:
+        print(f"[Facturacion] ℹ️ No se pudo leer el almacenamiento guardado: {e}")
+    total, cantidad = _costo_almacenamiento_full(access_token, cuenta_id, period_key, group)
+    if total is not None:
+        try:
+            with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
+                cache_db.guardar(conexion.cursor(), cuenta_id, clave, [total, cantidad])
+        except Exception as e:
+            print(f"[Facturacion] ℹ️ No se pudo guardar el almacenamiento: {e}")
+    return total, cantidad
+
+
+def _costo_almacenamiento_full(access_token, cuenta_id, period_key, group="ML"):
     """
     Busca cargos de almacenamiento prolongado en FULL dentro del detalle de
     conciliación de un período mensual. MeLi no documenta un código de
