@@ -102,8 +102,8 @@ La página pública de **Tendencias** de Mercado Libre muestra las búsquedas en
 | Interpretar una búsqueda | ✅ | `domain_discovery`: categoría, dominio, atributos (una vez por palabra) |
 | Productos de catálogo y sus ofertas | ✅ | `/products/search`, `/products/{id}/items`: precio, precio original, vendedor, FULL, envío gratis, tienda oficial, provincia, garantía, tipo de publicación. **Sin `sold_quantity` ni stock** |
 | Comisiones reales por categoría | ✅ | `/sites/MLA/listing_prices` |
-| Perfil y reputación de **cualquier** vendedor | ✅ lo básico · 🔎 el resto, según la IA oficial (2026-10-21) | `/users/{id}`: nivel, medalla, `transactions.total` (**ya lo leemos de vendedores ajenos**, `tendencias._perfil_vendedor`). Según la IA de Mercado Libre, el perfil público trae de las transacciones **solo `period` y `total`**: **no** `completed` ni `canceled`. Sin confirmar con token de aplicación ni la demora de actualización (ver 3.5) |
-| Ventas de los últimos 60 días de un vendedor (`metrics.sales`) | ⛔ probable (🔎) | La IA de Mercado Libre dice que **no es público**. Comprobarlo con 1 llamada (Anexo A, pregunta 1). Si se confirma, el KPI V7 se elimina y queda solo V3 (variación de `total` entre dos lecturas) |
+| Perfil y reputación de **cualquier** vendedor | ✅ lo básico · 🔎 el resto, según la IA oficial (2026-10-21) | `/users/{id}`: nivel, medalla, `transactions.total` (**ya lo leemos de vendedores ajenos**, `tendencias._perfil_vendedor`). Según la IA de Mercado Libre, el perfil público trae de las transacciones **solo `period` y `total`**; la página oficial de reputación (11/08/2025) muestra además `completed`, `canceled` y `ratings`. **Contradicción: se resuelve con una llamada** con el token de aplicación (3.6) |
+| Ventas de los últimos 60 días de un vendedor (`metrics.sales`) | ❓ contradictorio | La página oficial de reputación (11/08/2025) lo muestra dentro de `/users/{id}` (ventas completadas en 60 o 365 días); la IA de Mercado Libre dice que lo público no lo trae; sin token la API responde 403. **Una llamada con el token de aplicación lo resuelve** (Anexo A, pregunta 1). Si no está: V7 se elimina y queda V3 (variación de `total` entre dos lecturas) |
 | Reseñas de una publicación ajena | ❓ | `/reviews/item/{id}` dio 404 para ids de catálogo; **no probado con ids de publicaciones ajenas**: Anexo A, pregunta 3 |
 | Preguntas públicas de una publicación ajena | ❓ | Anexo A, pregunta 4 |
 | `/items/{id}` ajeno, visitas ajenas, `/users/{x}/items/search`, `/sites/MLA/search`, `/highlights` | ⛔ | 403 con token de usuario **y** de aplicación |
@@ -150,7 +150,7 @@ Fuente: [Términos y Condiciones del Programa de Desarrolladores](https://develo
 
 | Pieza | Cláusulas | Lectura | Riesgo |
 |---|---|---|---|
-| «Mi negocio»: números propios del vendedor con su OAuth | 5.2 (3.er párrafo), 6 | La persona lo autoriza; la lectura razonable es que 5.4 apunta al mercado y a terceros, **no** a mostrarle a cada uno lo suyo (si no, ninguna herramienta de gestión podría existir). Está sin confirmar por escrito | 🟢 |
+| «Mi negocio»: números propios del vendedor con su OAuth | 5.2 (3.er párrafo), 5.4, 6 | La persona lo autoriza. **La IA de Mercado Libre lee la 5.4 de forma literal también para lo propio** (ventas y conversión: 5.4.3 y 5.4.6). Mi lectura sigue siendo que apunta al mercado y a terceros (si no, ninguna herramienta de gestión podría existir), pero no hay nada escrito: la solicitud tiene que cubrirlo | 🟡 |
 | Tamaño de oferta por categoría y búsquedas en alza (**hoy ya en producción**: Mercado, Tendencias) | 5.4.1 | «Estadística relativa al Sitio» | 🟡 |
 | Muestras de precios de catálogo por categoría (**hoy en producción**) | 5.4.4, 5.3 | Es precio de **publicación**, no de venta, pero se parece; y los listados piden 6 h | 🟡 |
 | Historia diaria guardada (rachas, semanas en lista, series de oferta) | 2.2.1.3, 5.2 | Un lector estricto exige borrar lo que ya no está público. Es **exactamente** el foso de la sección 4 | 🟡–🔴 |
@@ -172,14 +172,59 @@ Fuente: [Términos y Condiciones del Programa de Desarrolladores](https://develo
 
 | # | Respuesta (resumen) | Qué cambia |
 |---|---|---|
-| 1 | **Parcial.** `/users/{id}` público trae de las transacciones solo `period` y `total`; no `completed`/`canceled` ni `metrics.sales` | V7 (ventas de 60 días) cae; V3 (variación de `total`) sigue posible pero sin verificar con token de aplicación |
+| 1 | **Parcial.** `/users/{id}` público trae de las transacciones solo `period` y `total`; no `completed`/`canceled` ni `metrics.sales` | V7 (ventas de 60 días) **en duda**: la página oficial de reputación lo muestra (ver 3.6, fila 6); V3 (variación de `total`) sigue posible pero sin verificar con token de aplicación |
 | 2 | La demora de actualización de esos contadores **quedó sin confirmar** | V3 necesita saberla para decidir cada cuánto leer |
 | 3 | **Sí.** `/trends`: 10 de mayor crecimiento + 20 más deseadas + 20 más populares; solo `keyword` y `url`; semanal; sin volumen | Confirma la hipótesis. **Ambiguo** el orden de los dos grupos de 20: no etiquetar «Popular» vs «Deseada» hasta resolverlo; sí «Crece» (posiciones 1–10) |
 | 4 | **Sí.** `children_categories[]` trae `total_items_in_this_category` de cada hijo | Una llamada por categoría padre da el tamaño de todos sus hijos: **baja el presupuesto** de «todas las hojas» |
 | 9 | **Sí.** El Developer Partner Program en Argentina pide **US$ 1.500.000 de GMV mensual** de los vendedores que usan la herramienta | Confirmado; no aplica todavía |
 | 11–12 | **Parcial.** Actualizar el contenido cada 24 h máx. (6 h para listados). Publicar estadísticas, ventas o volúmenes por categoría o información de usuarios exige **autorización expresa de Mercado Libre (cláusula 5.4)** | Confirmado leyendo el texto en 3.4. **Es el hallazgo más importante de la ronda** |
 
-**Sin respuesta todavía:** 5 (paginación de `/products/{id}/items`, ventas de ofertas ajenas), 6 (reseñas y preguntas ajenas), 7 (permiso o programa para `/sites/MLA/search`), 8 (programa o licencia de datos agregados), 10 (límites de pedidos del token de aplicación).
+**Sin respuesta todavía:** 5 (paginación de `/products/{id}/items`, ventas de ofertas ajenas), 6 (reseñas y preguntas ajenas), 7 (permiso o programa para `/sites/MLA/search`), 8 (programa o licencia de datos agregados), 10 (límites de pedidos del token de aplicación). *Las contestó la ronda 2, abajo.*
+
+**Ronda 2 (mismo día): 18 preguntas, todas contestadas** (🔎 el asistente lee los Términos y la documentación; muchas respuestas son «no encontré», que no prueba que no exista):
+
+| # | Respuesta (resumen) | Qué cambia |
+|---|---|---|
+| 1 | La 5.4 dice que la autorización puede darse por correo, pero **no define área, formulario, datos a presentar ni plazos**. Canal general: cláusula 16.4 (soporte del Programa) | Hay que armar la solicitud sin plantilla; ver 3.4 punto 1 |
+| 2 | **Sí aplica** si la app «permite obtener» ventas (5.4.3), conversión (5.4.6) o estadísticas (5.4.1), **aunque sean del propio vendedor con su token** | Lectura literal; por eso la solicitud debe cubrir también «Mi negocio» (ver 3.4) |
+| 3 | **Sí**: el tamaño de una categoría encaja en 5.4.4 y `/trends` en 5.4.1; la cláusula **no lista excepciones por ser datos públicos** | Mercado y Tendencias (hoy en producción) quedan dentro de la autorización a pedir |
+| 4 | **Sí**: perfilar a un vendedor concreto es 5.4.5. Sobre mostrar su apodo no hay permiso explícito, solo el deber de protegerlo (cl. 10) | Competidores: autorización + decidir si se muestra apodo |
+| 5 | Parcial: la prohibición de competir es 2.1(b) y 7.4; **la autorización no está condicionada a ser Partner Certificado** (la certificación es discrecional, cl. 3) | Se puede pedir ya, sin esperar a ser Partner |
+| 6 | **No**: lo que deja de estar público se elimina de la app (5.2); las series agregadas son información derivada y requieren autorización | **El «espejo histórico» no se puede sostener sin autorización** |
+| 7 | Parcial: la 5.3 no define «agregados» ni cómo tratar datos que la API actualiza una vez por semana; pide «explicitar» la frecuencia sin decir cómo | Texto en pantalla «Actualizado… · cada…» y preguntar a Mercado Libre en la solicitud |
+| 8 | Parcial: no se puede «confundir ni combinar» con contenido de terceros (5.2); cálculos propios bien si queda claramente separado | Mantener separadas las cifras de Mercado Libre y las propias (ya lo hacemos con Real / Calculado) |
+| 9 | **Sí, con doble requisito**: consentimiento de los vendedores **y** autorización de Mercado Libre (5.4.1/.3/.6); las «condiciones» no están detalladas | Panel: opcional y condicionado |
+| 10 | Parcial: hay una guía de errores 429 pero **no publican números** (ver 3.6) | El presupuesto de llamadas se mide, no se conoce |
+| 11 | Parcial: no hay documentación oficial de `GET /products/{id}/items` (máximo, paginación, unidades) | Se prueba |
+| 12 | Parcial: `/questions/search` permite buscar por ítem o `seller_id`, incluidas publicaciones ajenas; **no halló documentación de `/reviews/item/{id}`** | Preguntas ajenas: probar. Reseñas: ojo, **lo usamos hoy** (3.6) |
+| 13 | Parcial: `/sites/{site}/search` figura en la documentación (por categoría, `seller_id`, apodo) pero no hay nada sobre permisos para análisis ni sobre nuestro 403 | A preguntar con la guía de errores a mano (Anexo C, ronda 3) |
+| 14 | **No halló** un producto o licencia oficial de datos agregados de mercado | Coincide con 3.3 |
+| 15 | Sí el campo `seller_reputation.transactions.total`; no dice frecuencia ni si incluye canceladas | V3 sigue sin calibrar |
+| 16 | **No halló** documentación del orden de `/trends` | La página de Tendencias sí define los tres criterios (3.6) |
+| 17 | Sí: por apodo con `/sites/{site}/search?nickname=` (que a nosotros nos da 403) | No sirve hoy; sin solución para pasar de apodo a `seller_id` |
+| 18 | Sí: los beneficios del Programa de Partners son soporte con SLA, Slack, exposición y eventos; **no mencionan datos adicionales** | Ser Partner no abre datos |
+
+### 3.6 Lo que dicen las páginas oficiales (leídas por mí en el navegador, 2026-10-21)
+
+Leí las páginas de documentación que citó la IA y otras relacionadas. ✅ = lo que dice la página (con su fecha de «última actualización»); **lo que devuelve la API real para nuestra aplicación sigue ❓ hasta probarlo**. Sin token, `api.mercadolibre.com/users/{id}` responde 403 (probado hoy), así que desde esta PC no se puede comprobar nada: va al sondeo en Fly.
+
+| # | Qué dice | Qué cambia |
+|---|---|---|
+| 1 | **⚠️ URGENTE.** «Ítems y búsquedas» (10/09/2026): los multiget `/items?ids=` y `/users?ids=` **entran en deprecación; hay que migrar a `/items/bulk?ids=` y `/users/bulk?ids=` antes del 25/10/2026** (conviven hasta entonces). Cambios: `code` pasa a `status_code`, la respuesta trae `id` en la raíz y los campos se piden con prefijo `body.` | **Nosotros usamos `/items?ids=` en `sincronizador.py` (sync de catálogo; lee `res.get("code") == 200`) y en `espia_competencia.py`.** Si el viejo deja de responder, el catálogo deja de actualizarse. Los cambios obligatorios se adaptan en 15 días (Programa de Partners) |
+| 2 | **`/highlights` (Más vendidos) está documentado** (22/06/2026): top 20 por categoría **hoja** (mezcla ITEM, PRODUCT y USER_PRODUCT), filtro por marca (`attribute=BRAND&attributeValue`) y la **posición de un producto o de un ítem** en el ranking; 404 si la categoría no es hoja. Figura bajo el permiso funcional «Métricas del negocio» | Nuestras notas lo daban por cerrado (403). **Re-probar** con token de aplicación y de usuario, y mirar qué permisos tiene la app en DevCenter. Si anda, es el dato oficial más cercano a «qué se vende» por categoría y marca (ranking, no unidades) |
+| 3 | **`/trends`** (27/05/2025): tres criterios: **mayor crecimiento**; **más deseadas** (el mayor volumen de búsquedas de la última semana); **populares** (aumento de búsquedas frente a dos semanas atrás). Actualización semanal; 7 países. El texto de «crecimiento» habla de «ingresos» (ambiguo) | Si las «más deseadas» son las posiciones 11–30 (estables en nuestra medición), son una señal de **volumen** (sin cifra). A confirmar el orden |
+| 4 | **Stock de terceros en rangos**: en los recursos públicos `available_quantity` es referencial (1–50 → 1; 51–100 → 50; 101–150 → 100; …; 50.001–99.999 → 50.000) | Estimar ventas por baja de stock de un rival solo sirve con saltos de 50 unidades (alto movimiento, no precisión) |
+| 5 | **`/products/{id}` → `buy_box_winner`** (ejemplo en «Competencia», 21/07/2026): `seller_id`, `price`, `available_quantity`, `shipping`, `tier`, `inventory_id`, color de reputación y `buy_box_winner_price_range`. `price_to_win` (de lo propio) devuelve el `winner` con su `item_id`, precio y *boosts* | Si MLA lo trae así: quién gana cada producto y a qué precio, sin `/items`. Probar en MLA |
+| 6 | **Reputación** (11/08/2025): `/users/{id}` muestra `transactions` (total, completed, canceled, period, ratings) y `metrics.sales.completed` (ventas completadas: 60 días con ≥ 50 ventas en MLA; si no, 365), reclamos, demoras y cancelaciones | **Contradice** a la IA (que dijo «solo period y total»). Probar con el token de aplicación: define si V7 existe |
+| 7 | **Límites de pedidos** (05/05/2026): el control principal es **por Client ID (aplicación) y por endpoint**, no por IP ni por tamaño; **no publican números**; para más cuota hay que contactar a «integraciones comerciales» con evidencia de uso; `items/visits` acepta un solo ítem por consulta | El presupuesto del relevador se mide subiendo de a poco; pedir cuota requiere evidencia de uso |
+| 8 | **Programa de Partners** (14/10/2026): postulación revisada por trimestre; GMV mensual de Argentina **US$ 1.500.000 de usuarios activos de la herramienta (últimos 3 meses)**; evaluación de seguridad ≥ 65 %; iniciativas asignadas por un Integration Expert; cambios obligatorios en 15 días; Silver/Gold/Platinum: soporte con respuesta en 2 días/1 día/3 horas hábiles, Slack, exposición, eventos. Sin Partner: un bot 24/7 | Ningún beneficio de datos (coincide con la respuesta 18). No aplica todavía |
+| 9 | **Incidentes** («Gestión de incidentes», 06/04/2026): si involucra tokens o datos de vendedores/compradores, avisar a **security@mercadolibre.com** lo antes posible; los Términos fijan 24 h (cl. 10) | Falta ese contacto en `docs/RUNBOOK.md` |
+| 10 | **Error 403** (10/09/2026): causas: aplicación bloqueada, permisos/scopes insuficientes, usuario inactivo, **IP no permitida**, token que no es del dueño de la información, datos del usuario sin validar. La gestión de IP es exclusiva de integradores habilitados (30/12/2025) | Los 403 sobre datos ajenos cuadran con «el token tiene que ser del dueño»; no es nuestro caso lo de la IP |
+| 11 | «Ítems y búsquedas»: `/sites/{site}/search` por `seller_id` o apodo figura en la tabla de recursos (el de `seller_id` con reemplazo `/users/{id}/items/search`, el de apodo sin sustituto) | Documentado no es lo mismo que disponible para nuestra app (403) |
+
+**Páginas que no leí:** Consulta usuarios, Buscador de productos, Dominios y categorías, Preguntas y respuestas, Opiniones de productos y el «Mercado Libre MCP Server» que aparece en el menú.
+
+**Qué sigue (en orden):** (1) migrar `sincronizador.py` y `espia_competencia.py` a `/items/bulk` antes del 25/10 (código chico, tolerante a las dos formas de respuesta, con prueba); (2) el dueño mira los permisos funcionales de la aplicación en DevCenter; (3) sondeo 0b ampliado con `highlights`, `buy_box_winner`, `/users` de terceros, orden de `/trends` y `/items/bulk`; (4) ronda 3 de preguntas (Anexo C); (5) agregar `security@mercadolibre.com` al runbook; (6) solicitud de autorización de la 5.4 con todo lo anterior.
 
 ---
 
@@ -698,3 +743,56 @@ Fuentes consultadas: [Nubimetrics](https://www.nubimetrics.com), [módulo Mercad
 18. ¿Los beneficios del Developer Partner Program incluyen acceso a algún dato adicional o solo soporte e insignia?
 
 **Si la IA responde en general o remite a otro canal:** pedirle el nombre exacto del área y del correo, y armar con eso el mail de solicitud de autorización de la 5.4 (se prepara con las respuestas que haya dado).
+
+**Ronda 3 (preparada el 2026-10-21, después de leer yo las páginas oficiales — ver 3.6):** siete mensajes de cinco preguntas, pensados para que la IA conteste con la documentación y no en general. Orden sugerido: A (urgente) → D y E (lo que ya hacemos) → B y C (oportunidades) → F y G. Las respuestas se anotan en 3.5. Lo que se puede **probar** con la API real no se pregunta: va al sondeo 0b (lista al final).
+
+**Mensaje A — cambios en la API (urgente)**
+1. Deprecación de `/items?ids=` y `/users?ids=`: ¿qué pasa exactamente después del 25/10/2026? ¿Responden 404/410 o siguen funcionando? ¿Hay fecha de apagado definitiva?
+2. `/items/bulk?ids=`: ¿máximo de ids por pedido (hoy `/items?ids=` admite 20)? ¿Soporta `include_attributes=all`? ¿Con `attributes=body.id,body.price` los errores por ítem vienen con `status_code` y `body`?
+3. ¿Dónde se publican las novedades y los cambios que rompen compatibilidad (changelog, RSS, mail)? ¿Cómo se entera una app que no es Partner? ¿Qué plazo mínimo de aviso hay?
+4. ¿Hay una lista de recursos deprecados o en proceso de cierre (por ejemplo `/sites/{site}/search` o `/users/{id}/items/search` de otros vendedores)?
+5. ¿Mercado Libre garantiza compatibilidad de recursos que no figuran en la documentación? Usamos `GET /reviews/item/{id}` para las opiniones de nuestras propias publicaciones: ¿está soportado y es estable?
+
+**Mensaje B — más vendidos y tendencias**
+6. `GET /highlights/MLA/category/{id}`: ¿qué permiso funcional necesita (la página de permisos lo ubica en «Métricas del negocio»)? ¿Funciona con token de aplicación (client_credentials) o solo con token de usuario? Con token válido recibimos 403 `PA_UNAUTHORIZED_RESULT_FROM_POLICIES`: ¿qué política lo causa y cómo se habilita?
+7. En `/highlights`: ¿qué mide el ranking (unidades o ingresos), en qué período y cada cuánto se actualiza? ¿Cómo se obtienen los ids de marca para `attribute=BRAND&attributeValue`?
+8. ¿`GET /highlights/MLA/item/{item_id}` funciona con publicaciones de OTROS vendedores? ¿Y `/highlights/MLA/product/{product_id}`?
+9. `/trends`: la documentación define tres criterios (mayor crecimiento; más deseadas = mayor volumen de búsquedas; populares = aumento frente a dos semanas atrás). ¿En qué orden y en qué posiciones vienen en la respuesta de `/trends/MLA/{categoría}`? ¿Qué día y hora de la semana se actualiza?
+10. ¿`/trends/MLA/{category_id}` acepta cualquier nivel del árbol (raíz, intermedia, hoja)? ¿Existe forma oficial de obtener más de 50 palabras o algún indicador de volumen?
+
+**Mensaje C — publicaciones y vendedores de terceros**
+11. `GET /products/{id}`: en el ejemplo de la documentación, `buy_box_winner` trae `seller_id`, `price`, `available_quantity`, `tier` y la reputación del vendedor. ¿Es así en MLA con token de aplicación? ¿`available_quantity` viene en los rangos de referencia (1, 50, 100…)?
+12. Los rangos de `available_quantity` de los recursos públicos: ¿aplican a `/products/{id}/items` y a `buy_box_winner`? ¿Hay algún campo público con unidades vendidas, aunque sea redondeado como el «+100 vendidos» que muestra la página?
+13. ¿Qué significa `tier` en las ofertas y en `buy_box_winner` (por ejemplo «candidate») y qué valores existen?
+14. ¿Cuál es el recurso oficial para ver el estado (activa, pausada, cerrada) y el precio de una publicación de otro vendedor, ya que `GET /items/{id}` da 403 con token de aplicación?
+15. `GET /users/{id}` de otro vendedor: ¿qué campos devuelve con token de aplicación? La página de reputación (11/08/2025) muestra `transactions` con `completed`, `canceled`, `ratings` y `metrics.sales.completed`: ¿siguen vigentes para terceros o son solo para el dueño de la cuenta?
+
+**Mensaje D — datos personales y lo que guardamos**
+16. Cuando un vendedor se desconecta o revoca el permiso, ¿qué datos hay que eliminar y en qué plazo (cláusulas 2.2.4, 6 y 14)? ¿Incluye las copias de seguridad y los agregados históricos de esa cuenta?
+17. ¿Se pueden conservar las órdenes del vendedor (importes, fechas, costos) después de la desconexión, por obligaciones fiscales o contables o para que consulte su historial? ¿Con qué condiciones?
+18. Guardamos la localidad y el código postal de entrega de cada venta para calcular el costo de envío Flex. ¿Eso es «Dato Personal» según las cláusulas 1.7 y 6? ¿Cuánto tiempo se puede conservar y se puede mostrar al vendedor?
+19. ¿Qué datos de compradores (nombre, apodo, teléfono, dirección, documento) se pueden guardar y cuáles están prohibidos? ¿Hay una lista oficial?
+20. ¿Cómo se atiende un pedido de un comprador o vendedor para ver o borrar sus datos (acceso y supresión, Ley 25.326)? ¿Lo canaliza Mercado Libre o lo hace cada app?
+
+**Mensaje E — terceros que procesan datos y seguridad**
+21. Nuestra app envía a un proveedor externo de inteligencia artificial cifras agregadas de la cuenta del vendedor (ventas totales, ganancia, nombres de productos, stock) para responder sus preguntas. ¿Eso encaja con la cláusula 2.1(f) («divulgar información a terceros que no son usuarios de Mercado Libre»)? ¿Qué condiciones aplican (contrato de encargado, región del proveedor, que no entrene con los datos)?
+22. ¿Hay países o regiones donde no se pueden alojar o procesar datos del Programa? Usamos hosting y base de datos en São Paulo y monitoreo de errores en EE. UU.
+23. ¿Hay que informar a Mercado Libre la lista de proveedores que procesan datos (subencargados) o alcanza con informarla a los vendedores en la política de privacidad?
+24. La «Evaluación de Seguridad» del Programa (65 % para ser Partner): ¿se puede completar antes de postularse? ¿Qué estándar usa y dónde se pide?
+25. Cláusula 10: ¿el contacto para notificar un incidente dentro de las 24 horas es `security@mercadolibre.com`? ¿Qué información mínima piden?
+
+**Mensaje F — marca, avisos y límites**
+26. Cláusula 2.2.4: tenemos una sección del menú llamada «Mercado» y usamos «Mercado Libre», «envíos» y «pagos» en pantallas y textos. ¿Alcanza con que el nombre de la app no los incluya? ¿Se puede nombrar a Mercado Libre de forma descriptiva («conectá tu cuenta de Mercado Libre»)? ¿Se pueden usar su logo o sus colores?
+27. Notificaciones (webhooks): ¿qué tópicos hay para una app que no es Partner? ¿Hay reintentos si respondemos tarde y cuántos? ¿Se envía siempre `application_id`? ¿Hay rangos de IP de origen publicados?
+28. Escrituras masivas (stock o precios de cientos de publicaciones): ¿hay límites por minuto para `PUT /items/{id}`? ¿Se recomienda alguna ventana horaria?
+29. ¿Cobrar una suscripción por una app construida sobre la API tiene alguna restricción (cláusula 7.1, comercializar la API)? ¿Hay tope de cuentas por app o costos por volumen (2.2.3)?
+30. Usamos `GET /collections/{payment_id}` y `api.mercadopago.com/v1/payments/{id}` con el token del vendedor para conciliar lo depositado. ¿Queda cubierto por los permisos funcionales de «Ventas y envíos» y «Facturación» o rigen términos aparte de Mercado Pago?
+
+**Mensaje G — ecosistema y camino comercial**
+31. ¿Qué productos propios de inteligencia de mercado para vendedores ofrece hoy Mercado Libre (Tendencias, Oportunidades, etc.)? Es para no solaparnos con la cláusula 2.1(b).
+32. ¿Hay un listado público de apps certificadas de análisis de mercado en Argentina (Centro de Partners)? ¿Alguna tiene autorización de la 5.4 y de qué alcance?
+33. Para pedir más cuota o acceso a recursos restringidos: ¿qué canal usa una app que no es Partner? La página de límites habla de «integraciones comerciales»: ¿cómo se los contacta y qué evidencia piden?
+34. El GMV del Partner (US$ 1,5 M/mes en Argentina): ¿se mide con las ventas de todas las cuentas conectadas o solo con las activas en los últimos 3 meses? ¿Cuentan varias cuentas del mismo usuario? ¿Hay un camino previo para apps chicas?
+35. Vimos en la documentación un «Mercado Libre MCP Server»: ¿qué expone, quién puede usarlo y bajo qué condiciones?
+
+**Qué NO se le pregunta a la IA (se prueba con la API real, sondeo 0b, solo lectura, token de aplicación en Fly):** (a) `highlights` por categoría, por marca y por ítem; (b) `/products/{id}` en MLA: campos de `buy_box_winner` y si `available_quantity` viene en rangos; (c) `/users/{id}` de otros vendedores: lista exacta de campos y si trae `metrics.sales`; (d) orden y posiciones de `/trends` frente a los tres criterios documentados; (e) `/items/bulk`: máximo de ids, forma de la respuesta y `include_attributes`; (f) `/questions/search?item=` y `/reviews/item/` con ids ajenos; (g) paginación de `/products/{id}/items`; (h) `listing_prices` según precio y tipo; (i) cuántos pedidos por segundo aguanta el token de aplicación sin 429. Antes de eso, el dueño mira en DevCenter qué **permisos funcionales** tiene tildados la aplicación de CoreLux (solo mirar, no cambiar nada).
