@@ -20,6 +20,8 @@ import cobros as cobros_mod
 import costos as costos_mod
 import dashboard as dashboard_mod
 import db
+import despacho as despacho_mod
+import despacho_corte
 import dolar as dolar_mod
 import embudo_conversion as embudo_mod
 import espia_competencia
@@ -939,6 +941,47 @@ def _preguntas(ctx):
     }
 
 
+def _texto_de_cortes(cortes):
+    """Los horarios de corte en palabras; sin dato se dice que falta (nunca un horario supuesto)."""
+    correo = cortes["correo"]
+    texto_correo = {"informado": f"hoy a las {correo['hora']}", "sin_retiro": "hoy el correo no retira"}.get(correo["estado"], "Mercado Libre no informó el horario de corte del correo")
+    return {"correo": texto_correo, "flex": f"hoy a las {cortes['flex']}" if cortes["flex"] else "la persona todavía no lo cargó (se carga en Mi cuenta)"}
+
+
+def _despacho(ctx):
+    """
+    Lo que hay para despachar HOY, de lo guardado en la base (sin llamar a Mercado Libre ni escribir nada): cuántos paquetes faltan, de qué modalidad y de qué productos. Usa la misma consulta
+    que la pantalla (despacho.leer_paquetes_guardados) y el mismo día de despacho (el que arma el horario de corte). FULL no figura: lo despacha Mercado Libre.
+    """
+    with _conexion(ctx) as conexion:
+        cortes = despacho_corte.cortes_guardados(conexion.cursor(), ctx.cuenta_id, ctx.hoy)
+        hora = cortes["hora_agrupacion"]
+        filas = despacho_mod.leer_paquetes_guardados(conexion, ctx.hoy, 24 - hora)
+    pendientes = [f for f in filas if not f["despachado"]]
+    por_modalidad, por_variante = {}, {}
+    for f in pendientes:
+        modalidad = despacho_mod._tipo_envio_legible(f["tipo_logistica"])
+        grupo = por_modalidad.setdefault(modalidad, {"modalidad": modalidad, "paquetes": 0, "unidades": 0})
+        grupo["paquetes"] += 1
+        grupo["unidades"] += int(f["cantidad"] or 0)
+        clave = (limpiar_titulo_modelo(f["titulo"], f["talle_real"]), rotulo_variante(f["etiqueta_variante"], f["talle_real"]))
+        por_variante[clave] = por_variante.get(clave, 0) + int(f["cantidad"] or 0)
+    ranking = sorted(por_variante.items(), key=lambda x: (-x[1], x[0]))
+    return {
+        "dia_de_despacho": ctx.hoy.isoformat(),
+        "paquetes_del_dia": len(filas), "ya_despachados": len(filas) - len(pendientes), "pendientes_de_despachar": len(pendientes),
+        "unidades_pendientes": sum(g["unidades"] for g in por_modalidad.values()),
+        "pendientes_por_modalidad": sorted(por_modalidad.values(), key=lambda g: (-g["paquetes"], g["modalidad"])),
+        "que_hay_que_preparar": [{"modelo": modelo, "variante": variante, "unidades": unidades} for (modelo, variante), unidades in ranking[:8]],
+        "otros_modelos_o_variantes_pendientes": max(0, len(ranking) - 8),
+        "horarios_de_corte": _texto_de_cortes(cortes),
+        "que_dias_abarca": f"las ventas desde ayer a las {hora:02d}:00 hasta hoy a las {hora:02d}:00 (las de después del corte entran al despacho de mañana)" if hora < 24 else "las ventas de hoy, día calendario (no hay un horario de corte conocido)",
+        "aclaracion": ("Es lo último que quedó guardado: un paquete figura como despachado cuando Mercado Libre lo avisa o cuando se abre la pantalla Despacho, que lo verifica contra Mercado Libre. Lo que todavía no tiene "
+                       "el tipo de envío confirmado se cuenta como Correo, igual que en la pantalla. El horario límite de cada paquete se ve solo ahí."),
+        "origen": "pantalla Día a día (Despacho)",
+    }
+
+
 def _panorama(ctx):
     """El panorama general en una sola llamada: hoy, últimos 30 días, mes en curso, modelos más vendidos y stock en riesgo (el resumen de siempre del asistente)."""
     datos = chat_ia._armar_contexto(ctx.usuario_id, ctx.cuenta_id)
@@ -1011,6 +1054,9 @@ HERRAMIENTAS = {
                                 "parametros": {}, "funcion": _cargos_de_mercado_libre},
     "preguntas": {"descripcion": "Las preguntas de la gente: cuántas esperan respuesta, hace cuánto espera la más vieja, cuántas pasaron el objetivo de una hora y cuánto tarda la persona en responder. No lee el texto de las preguntas.",
                   "parametros": {}, "funcion": _preguntas},
+    "despacho": {"descripcion": ("Lo que hay para despachar hoy (Correo y Flex; FULL lo despacha Mercado Libre): cuántos paquetes faltan, de qué modalidad, qué productos y variantes hay que preparar y los horarios de corte. "
+                                 "Usala para «¿qué tengo para despachar?» o «¿cuánto me falta enviar hoy?». Es de hoy y de lo último guardado."),
+                 "parametros": {}, "funcion": _despacho},
 }
 
 

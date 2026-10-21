@@ -142,6 +142,17 @@ def horario_de_correo(usuario_id, cuenta_id, access_token, seller_id, ahora=None
     return nuevo
 
 
+def cortes_guardados(cursor, cuenta_id, fecha):
+    """
+    Los cortes de `fecha` con lo que YA está guardado (el horario semanal de Correo y la hora de Flex que cargó la persona), sin llamar a Mercado Libre ni escribir nada: sirve en
+    una transacción de solo lectura. Si el horario guardado tiene más de un día no se refresca acá (lo hace la pantalla de Despacho al abrirse).
+    """
+    cursor.execute("SELECT horario_corte FROM cuentas_meli WHERE id = %s", (cuenta_id,))
+    fila = cursor.fetchone()
+    horario = fila[0] if fila and isinstance(fila[0], dict) else None
+    return resolver_cortes(horario, leer_flex(cursor, cuenta_id), fecha)
+
+
 def cortes_para(usuario_id, cuenta_id, access_token, seller_id, fecha):
     """Los cortes de la fecha pedida para esta cuenta (ver resolver_cortes)."""
     horario = horario_de_correo(usuario_id, cuenta_id, access_token, seller_id)

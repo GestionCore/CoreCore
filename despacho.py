@@ -40,22 +40,32 @@ def _limite_de_despacho(sla):
     return texto, ("warn" if dias <= 0 else "info")
 
 
+def leer_paquetes_guardados(conexion, fecha, offset_horas):
+    """
+    Los paquetes del día TAL COMO están guardados en la base: no llama a Mercado Libre ni escribe nada (sirve en una transacción de solo lectura). Es la ÚNICA consulta de
+    «qué hay que despachar ese día»: la pantalla (obtener_paquetes_del_dia) y la herramienta de lectura del asistente la comparten, así los dos cuentan el mismo conjunto.
+    `despachado` y el tipo de logística son lo último que se guardó; la pantalla los vuelve a verificar contra Mercado Libre al abrirse.
+    """
+    cursor = conexion.cursor(row_factory=dict_row)
+    cursor.execute("""
+        SELECT v.id_orden, v.id_meli, v.id_variante, v.titulo, v.cantidad, v.despachado,
+               v.comprador_nickname, v.comprador_nombre, p.thumbnail, v.shipment_id, v.tipo_logistica, v.flex_zona, v.flex_zona_meli,
+               pv.talle AS talle_real, pv.etiqueta AS etiqueta_variante
+        FROM ventas v
+        LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
+        LEFT JOIN productos_variantes pv ON pv.id_variante = {variante} AND pv.cuenta_id = v.cuenta_id
+        WHERE ({momento} + (%s || ' hours')::interval)::date = %s
+          AND COALESCE(v.tipo_logistica, p.tipo_logistica, '') != 'fulfillment'
+          AND v.origen = 'meli'
+        ORDER BY v.despachado ASC, v.id ASC
+    """.format(momento=sql_momento_argentina("v"), variante=sql_variante_de_venta("v")), (offset_horas, fecha))
+    return cursor.fetchall()
+
+
 def obtener_paquetes_del_dia(usuario_id, cuenta_id, access_token, fecha, offset_horas):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor(row_factory=dict_row)
-        cursor.execute("""
-            SELECT v.id_orden, v.id_meli, v.id_variante, v.titulo, v.cantidad, v.despachado,
-                   v.comprador_nickname, v.comprador_nombre, p.thumbnail, v.shipment_id, v.tipo_logistica, v.flex_zona, v.flex_zona_meli,
-                   pv.talle AS talle_real, pv.etiqueta AS etiqueta_variante
-            FROM ventas v
-            LEFT JOIN productos_padre p ON p.id_meli = v.id_meli AND p.cuenta_id = v.cuenta_id
-            LEFT JOIN productos_variantes pv ON pv.id_variante = {variante} AND pv.cuenta_id = v.cuenta_id
-            WHERE ({momento} + (%s || ' hours')::interval)::date = %s
-              AND COALESCE(v.tipo_logistica, p.tipo_logistica, '') != 'fulfillment'
-              AND v.origen = 'meli'
-            ORDER BY v.despachado ASC, v.id ASC
-        """.format(momento=sql_momento_argentina("v"), variante=sql_variante_de_venta("v")), (offset_horas, fecha))
-        filas = cursor.fetchall()
+        filas = leer_paquetes_guardados(conexion, fecha, offset_horas)
 
         paquetes = []
         shipment_ids_del_dia = []
