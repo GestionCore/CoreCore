@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CoreLux — Gestión profesional para Mercado Libre</title>
+    <title>CoreLux — Cuánto te queda de verdad de cada venta en Mercado Libre</title>
     <meta name="description" content="Sabé cuánto te queda de verdad de cada venta en Mercado Libre: comisiones, cuotas, envíos, publicidad y costo de fabricación descontados. Beta cerrada y gratuita.">
     <link rel="canonical" href="{{ request.url_root.rstrip('/') }}/">
     <meta property="og:type" content="website">
@@ -250,13 +250,20 @@
         @media (max-width: 680px) {
             .lp-nav-link { display: none; }
             .lp-hero { padding: 44px 0 40px; }
-            .lp-seccion { padding: 68px 0; }
             .lp-hechos { grid-template-columns: minmax(0, 1fr); }
             .lp-hecho + .lp-hecho { border-left: 0; border-top: 1px solid var(--border-soft); }
             .lp-mas, .lp-seguridad { grid-template-columns: minmax(0, 1fr); }
-            .lp-flota-1 { left: 8px; bottom: -18px; }
-            .lp-flota-2 { right: 8px; top: -26px; }
-            .lp-escena { padding: 30px 0 40px; }
+            /* Las tarjetas flotantes tapaban el encabezado de la maqueta: en celular van debajo, en el flujo normal */
+            .lp-escena { display: grid; gap: 12px; padding: 8px 0 0; }
+            .lp-flota-1, .lp-flota-2 { position: static; left: auto; right: auto; top: auto; bottom: auto; }
+            .lp-flota-2 { order: 2; }
+            .lp-flota-1 { order: 3; }
+            /* Funciones: las tres principales en un carrusel que se desliza (la página medía casi 9.400 px en celular) */
+            .lp-pilares { display: flex; overflow-x: auto; gap: 14px; padding-bottom: 10px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+            .lp-pilar { flex: 0 0 84%; scroll-snap-align: start; }
+            .lp-pilar-vista { min-height: 0; }
+            .lp-mas-item { padding: 16px; }
+            .lp-seccion { padding: 52px 0; }
             .lp-hero-cta .lp-btn { flex: 1 1 100%; }
             .lp-final { margin: 0 16px 68px; padding: 48px 22px; }
         }

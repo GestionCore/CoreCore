@@ -9,11 +9,11 @@ vale el monto ÷ los días de su mes: ver utils.prorratear_mensual). Se prorrate
 a propósito en vez de contar el mes completo siempre, para que el número tenga
 sentido en períodos cortos como "últimos 7 días"."""
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from psycopg.rows import dict_row
 import costos_moneda
 import db
-from utils import formatear_moneda, limpiar_titulo_modelo, normalizar_talle, prorratear_mensual
+from utils import formatear_moneda, hoy_argentina, limpiar_titulo_modelo, normalizar_talle, prorratear_mensual
 
 
 UMBRAL_AVISO_SIN_COSTO = 5       # % de lo facturado sin costo de fabricación a partir del cual se avisa que la ganancia puede estar inflada
@@ -87,7 +87,20 @@ def _resumen_de_costos(items):
         "costo_comun": de_referencia[0] if de_referencia and de_referencia[0] and min(de_referencia) == max(de_referencia) else None,     # mismo costo en todas: el campo del grupo lo muestra
         "a_atender": bool((sin_costo and cargados) or any(i["ganancia_negativa"] for i in items)),
         "thumbnail": next((i["thumbnail"] for i in items if i["thumbnail"]), None),
+        "unidades": sum(i.get("unidades_90d", 0) for i in items),
     }
+
+
+DIAS_DE_VENTAS_PARA_ORDENAR = 90
+
+
+def _orden_de_carga(grupo):
+    """
+    Qué ofrecer primero al cargar costos: lo activo, y de eso lo que todavía tiene algo sin costo; entre eso, lo que MÁS VENDIÓ (cargar bien el costo del producto estrella es lo que
+    más acerca la ganancia a la real), después lo que más publicaciones sin costo tiene, y por último el nombre. Sin ventas conocidas (todos en 0) queda el criterio de siempre.
+    """
+    nombre = (grupo.get("nombre") or grupo.get("etiqueta") or "").lower()
+    return (not grupo["activo"], not grupo["sin_costo"], -grupo.get("unidades", 0), -grupo["sin_costo"], nombre)
 
 
 def agrupar_modelos(productos):
@@ -121,10 +134,10 @@ def agrupar_modelos(productos):
         variantes = []
         for clave, items in variantes_por_clave.items():
             variantes.append({"clave": clave, "etiqueta": etiquetas[clave], "filas": items, **_resumen_de_costos(items)})
-        variantes.sort(key=lambda v: (not v["activo"], -v["sin_costo"], v["etiqueta"].lower()))
+        variantes.sort(key=_orden_de_carga)
         todos = [i for v in variantes for i in v["filas"]]
         modelos.append({"nombre": nombre, "variantes": variantes, "filas": todos, "n_variantes": len(variantes), "n_publicaciones": len(todos), **_resumen_de_costos(todos)})
-    modelos.sort(key=lambda m: (not m["activo"], -m["sin_costo"], m["nombre"].lower()))
+    modelos.sort(key=_orden_de_carga)
     return modelos
 
 
@@ -180,6 +193,10 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
         # columna calculada sin alias.
         cursor.execute("SELECT id_meli, AVG(costo_envio) AS envio_promedio FROM ventas WHERE costo_envio > 0 GROUP BY id_meli")
         envio_promedio_por_item = {r["id_meli"]: float(r["envio_promedio"]) for r in cursor.fetchall()}
+        # Cuánto vendió cada publicación en los últimos 90 días: la pantalla ofrece primero cargar el costo de lo que más vende (es lo que más mueve la ganancia)
+        cursor.execute("SELECT id_meli, COALESCE(SUM(cantidad), 0) AS unidades FROM ventas WHERE cuenta_id = %s AND fecha_venta >= %s GROUP BY id_meli",
+                       (cuenta_id, hoy_argentina() - timedelta(days=DIAS_DE_VENTAS_PARA_ORDENAR)))
+        unidades_por_item = {r["id_meli"]: int(r["unidades"] or 0) for r in cursor.fetchall()}
         # Cargado en pesos o en dólares, y el costo propio de cada variante (en las publicaciones que tienen más de una)
         en_dolares, variantes_por_publicacion = costos_moneda.costos_originales(conexion.cursor(), cuenta_id)
 
@@ -220,6 +237,7 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
             "talle": normalizar_talle(fila.get("talle_real")),
             "etiqueta": fila.get("etiqueta"),
             "familia": fila.get("family_id") or None,
+            "unidades_90d": unidades_por_item.get(fila["id_meli"], 0),
         })
 
     stats_gastos = {

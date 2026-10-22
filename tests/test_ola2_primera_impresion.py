@@ -121,3 +121,63 @@ def test_cada_pantalla_pregunta_si_te_sirvio_sin_repetirse():
 
 def test_la_clase_para_lectores_de_pantalla_existe():
     assert ".sr-only {" in _leer("static", "css", "style.css")
+
+
+# ── Costos: lo que más vende, primero ────────────────────────────────────────────
+def _con_ventas(publicaciones, unidades):
+    return [{**p, "unidades_90d": unidades} for p in publicaciones]
+
+
+def test_costos_ofrece_primero_el_modelo_que_mas_vendio_entre_los_que_les_falta_el_costo():
+    """El producto estrella es el que más mueve la ganancia: se le pide el costo antes que a uno con más publicaciones pero casi sin ventas."""
+    from tests.test_costos_modelos import _pub_modelo
+    import costos
+    productos = (_con_ventas(_pub_modelo("Zapatilla A", costo=0.0, n=4), 2)                  # 4 publicaciones sin costo, casi no vende
+                 + _con_ventas(_pub_modelo("Zapatilla B", costo=0.0, n=1), 90)               # 1 publicación sin costo, la que más vende
+                 + _con_ventas(_pub_modelo("Zapatilla C", costo=5000.0, n=2), 500)           # ya tiene costo: va después aunque venda más
+                 + _con_ventas(_pub_modelo("Zapatilla D", costo=0.0, n=2, estado="paused"), 900))   # pausada: al final
+    modelos = costos.agrupar_modelos(productos)
+    assert [m["nombre"] for m in modelos] == ["Zapatilla B", "Zapatilla A", "Zapatilla C", "Zapatilla D"]
+    assert modelos[0]["unidades"] == 90 and modelos[1]["unidades"] == 8                      # las unidades de un modelo son la suma de sus publicaciones
+
+
+def test_sin_ventas_conocidas_el_orden_de_costos_es_el_de_siempre():
+    from tests.test_costos_modelos import _pub_modelo
+    import costos
+    productos = _pub_modelo("Zapatilla A", costo=0.0, n=1) + _pub_modelo("Zapatilla B", costo=0.0, n=3)
+    assert [m["nombre"] for m in costos.agrupar_modelos(productos)] == ["Zapatilla B", "Zapatilla A"]
+
+
+def test_la_pantalla_de_costos_marca_por_donde_empezar_y_dice_cuanto_vendio():
+    html = _leer("templates", "costos.html")
+    assert "{% if loop.first and m.sin_costo and m.unidades %}" in html and "Empezá por acá" in html
+    assert "{{ m.unidades|numero }} vendidas en 90 días" in html
+    codigo = _leer("costos.py")
+    assert "DIAS_DE_VENTAS_PARA_ORDENAR = 90" in codigo and "WHERE cuenta_id = %s AND fecha_venta >= %s" in codigo
+
+
+# ── Landing en celular ───────────────────────────────────────────────────────────
+def test_la_landing_en_celular_no_tapa_la_maqueta_y_las_funciones_se_deslizan():
+    html = _leer("templates", "landing.html")
+    celular = html[html.index("@media (max-width: 680px) {"):]
+    assert ".lp-flota-1, .lp-flota-2 { position: static;" in celular                         # las tarjetas flotantes dejaban cortado el encabezado de la maqueta
+    assert ".lp-pilares { display: flex; overflow-x: auto;" in celular and "scroll-snap-type: x mandatory" in celular
+    assert ".lp-pilar { flex: 0 0 84%;" in celular
+
+
+def test_el_titulo_de_la_pestana_de_la_landing_es_el_mismo_que_el_de_compartir():
+    html = _leer("templates", "landing.html")
+    titulo = re.search(r"<title>(.*?)</title>", html).group(1)
+    assert titulo == re.search(r'property="og:title" content="(.*?)"', html).group(1)
+    assert "Gestión profesional" not in titulo
+
+
+# ── Recordatorio de comentarios ─────────────────────────────────────────────────
+def test_el_dashboard_recuerda_la_beta_a_los_3_dias_y_nunca_mas_si_ya_comento():
+    dash = _leer("templates", "dashboard_personalizable.html")
+    assert 'id="recordatorio-comentario"' in dash and "hidden>" in dash and "Dejar un comentario" in dash and "Ahora no" in dash
+    base = _leer("templates", "base.html")
+    assert "Date.now() - primera >= 3 * dia && Date.now() - ultimo >= 7 * dia" in base       # 3 días de uso y, después, una vez por semana
+    assert "localStorage.getItem('corelux_comento')" in base and "localStorage.setItem('corelux_comento', '1')" in base
+    assert "abrirComentarioDesdeRecordatorio" in base and "posponerRecordatorioComentario" in base
+    assert ".ux-banner[hidden] { display: none; }" in _leer("static", "css", "ux.css")        # un banner oculto se esconde de verdad (display: flex le ganaba al atributo)

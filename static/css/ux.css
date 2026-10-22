@@ -795,6 +795,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .fb-caja { width: 460px; max-width: 100%; background: var(--glass-bg-alt, var(--bg-elevated, #16161a)); border: 1px solid var(--glass-border); border-radius: var(--radius-md); box-shadow: var(--shadow-elevated); padding: 18px; }
 .fb-cabecera { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 1.05em; }
 .fb-cerrar { background: none; border: 0; color: var(--text-secondary); font-size: 1.6em; line-height: 1; cursor: pointer; padding: 0 4px; }
+.ux-banner[hidden] { display: none; }
 .te-sirvio { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 40px 0 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); color: var(--text-secondary); font-size: var(--text-sm); }
 .te-sirvio[hidden], .te-sirvio-botones[hidden] { display: none; }
 .te-sirvio-botones { display: inline-flex; gap: 8px; }

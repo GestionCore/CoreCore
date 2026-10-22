@@ -12,6 +12,17 @@
 
 {{ aviso_iva(condicion_fiscal) }}
 
+{# Recordatorio de la beta: a los 3 días de uso, una sola vez por semana y nunca más si ya dejó un comentario (se recuerda en este navegador) #}
+<div class="ux-banner ux-info" id="recordatorio-comentario" role="status" hidden>
+    <div class="ux-banner-icono"><svg class="icon" aria-hidden="true"><use href="#icon-chat"/></svg></div>
+    <div class="ux-banner-cuerpo">
+        <div class="ux-banner-titulo"><b>Estás en la beta: tu opinión nos guía.</b></div>
+        <div class="ux-banner-detalle">¿Qué te gustó, qué te sobró y qué te faltó? Lo leemos todos, y llega con la pantalla en la que estabas.</div>
+    </div>
+    <button type="button" class="btn btn-secondary" data-click="abrirComentarioDesdeRecordatorio">Dejar un comentario</button>
+    <button type="button" class="btn btn-secondary" data-click="posponerRecordatorioComentario">Ahora no</button>
+</div>
+
 <!-- ── 0. PRIMEROS PASOS: arriba de todo mientras la cuenta no esté completa (se oculta solo al llegar al 100 %) ── -->
 <div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" role="button" tabindex="0" aria-expanded="true" data-click="alternarChecklist" data-click-args='["$el", "$ev"]'>
     <div class="panel-title">

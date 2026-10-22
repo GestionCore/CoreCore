@@ -116,7 +116,7 @@
             {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<span class="ux-thumb-vacio" aria-hidden="true"></span>{% endif %}
             <div class="ux-modelo-nombre">
                 <div class="ux-modelo-titulo" title="{{ m.nombre }}">{{ m.nombre }}</div>
-                <div class="ux-modelo-linea"><span class="text-muted ux-modelo-meta">{% if m.n_variantes > 1 %}{{ m.n_variantes|plural("variante") }} · {% endif %}{{ m.n_publicaciones|plural(u1, uN) }}{% if m.n_publicaciones > m.n_activas %} · {{ (m.n_publicaciones - m.n_activas)|plural("pausada") }}{% endif %}</span>{% if m.n_publicaciones > 1 %}<span class="ux-grupo-resumen" data-resumen></span>{% endif %}</div>
+                <div class="ux-modelo-linea">{% if loop.first and m.sin_costo and m.unidades %}<span class="ux-pill ux-accion ux-pill-suave">Empezá por acá</span>{% endif %}<span class="text-muted ux-modelo-meta">{% if m.n_variantes > 1 %}{{ m.n_variantes|plural("variante") }} · {% endif %}{{ m.n_publicaciones|plural(u1, uN) }}{% if m.n_publicaciones > m.n_activas %} · {{ (m.n_publicaciones - m.n_activas)|plural("pausada") }}{% endif %}{% if m.unidades %} · {{ m.unidades|numero }} vendidas en 90 días{% endif %}</span>{% if m.n_publicaciones > 1 %}<span class="ux-grupo-resumen" data-resumen></span>{% endif %}</div>
             </div>
             {% if m.n_publicaciones > 1 %}
             {{ campo_grupo(m, m.nombre, "a todo el modelo") }}

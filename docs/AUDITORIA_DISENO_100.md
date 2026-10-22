@@ -95,10 +95,10 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 49. ✅ [M·S] **Áreas táctiles menores de 40 px en celular:** los tres chips de arriba de Día a día (37 px), las insignias de búsqueda de Tendencias (32 px), los chips de series del Monitor (29 px) y el link «Orden #…» de Cobros (17 px). Ahora miden 44 px (el link de Cobros, 39 px, con la zona de toque extendida sin mover nada), medido a 375 px sin desborde horizontal (`movil.css`). Queda «(Cambiar)» (un link dentro de una frase, que las normas dejan afuera).
 50. ✅ [M·S] **Los botones de ordenar las tablas (`th-orden`) medían 19–20 px de alto** en Ganancia Real (también en celular) y en Stock. En celular ahora 44 px (`movil.css`); en escritorio quedan como estaban.
 51. ⏳ [M·S] **78 `title="…"` (tooltips) que en celular no se ven:** varios son lo único que dice el nombre completo de un título cortado. → tocar para expandir.
-52. ⏳ [B·S] **Landing en 375 px: la tarjeta flotante «2 publicaciones venden a pérdida» tapa parte de la maqueta del producto** (el encabezado «Ganancia Real · últimos 30 días» queda cortado).
+52. ✅ [B·S] **Landing en 375 px: la tarjeta flotante «2 publicaciones venden a pérdida» tapa parte de la maqueta del producto** (el encabezado «Ganancia Real · últimos 30 días» queda cortado).
 53. ⏳ [M·M] **No hay `service worker`:** sin conexión se ve la pantalla de error del navegador, aunque la app se instala (`manifest.json`, `display: standalone`). → una página «Sin conexión: mostrando lo último que viste» y la caché de lo estático (UX200#151).
 54. ⏳ [B·S] **El manifiesto no tiene `shortcuts`** (Despachar, Ventas de hoy) ni hay invitación a instalar la app (`beforeinstallprompt`: 0 usos). Para quien despacha desde el celular es el acceso más rápido.
-55. ⏳ [B·S] **Landing: la página mide 8.970 px en celular** (13 pantallas) y «Funciones» sola ocupa 2.073. → cinco funciones en un carrusel o tarjetas de una línea con «Ver todas».
+55. ✅ [B·S] **Landing: la página mide 8.970 px en celular** (13 pantallas) y «Funciones» sola ocupa 2.073. → cinco funciones en un carrusel o tarjetas de una línea con «Ver todas».
 
 ## F. Formularios y edición (5)
 
@@ -141,7 +141,7 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 ## K. Textos y nombres (3)
 
 79. ✅ [M·S] **El nombre de la cuenta se escribe «Diegoarielsantiago» / «Noenoeindumentaria»** (el filtro `|title` sobre el apodo en mayúsculas de Mercado Libre) en la barra, el chat y la lista de cuentas, que además lo repite abajo en mayúsculas («DIEGOARIELSANTIAGO»). Parece un error de tipeo. → mostrarlo como Mercado Libre lo informa, una sola vez, y dejar elegir un «nombre del negocio» (ya existe el campo) (UX200#6/#184).
-80. ⏳ [B·S] **Landing: el título de la pestaña dice «Gestión profesional para Mercado Libre» y el título para compartir dice «Cuánto te queda de verdad de cada venta»** (`<title>` y `og:title`). El segundo es el bueno. → el mismo en los dos.
+80. ✅ [B·S] **Landing: el título de la pestaña dice «Gestión profesional para Mercado Libre» y el título para compartir dice «Cuánto te queda de verdad de cada venta»** (`<title>` y `og:title`). El segundo es el bueno. → el mismo en los dos.
 81. ⏳ [B·S] **Pantallas con subtítulos genéricos** (Stock: «Qué tenés, dónde está y qué hay que reponer — se actualiza solo»; Precios: «El precio mínimo para no perder plata…»; Mercado: «Qué busca la gente…»): explican el nombre de la pantalla, no dicen cómo estás hoy. → la frase de resultado, como Ganancia Real y Cobros («Lo que realmente te queda…», «Plata que todavía te tienen que acreditar»). Va con el punto 89.
 
 ## L. Cuenta, planes y páginas públicas (4)
@@ -149,7 +149,7 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 82. ✅ [A·S] **Planes: Base y Elite son dos listas de frases con ✓**, sin una tabla que muestre la diferencia fila por fila (cuentas, consultas del asistente, soporte). → tabla comparativa y el «RECOMENDADO» sobre la columna (UX200#179).
 83. ⏳ [M·S] **El layout no muestra cuántos días quedan de la prueba** (0 menciones de «prueba» o `trial` en `base.html`): hoy está en beta gratuita, pero el día que se cobre, la persona se entera al vencer. → una barra discreta «te quedan 9 días» solo con el cobro activo (UX200#182).
 84. ✅ [B·S] **Menú de cuenta: «Eliminar mi cuenta» está pegado a «Cerrar sesión»** en el mismo gris, a un clic de distancia. Tiene su propia pantalla de confirmación, pero lo destructivo y lo cotidiano no deberían ser vecinos. → moverlo a «Preferencias y datos», al final.
-85. ⏳ [B·M] **Landing: sin testimonios ni imagen para compartir.** El `og:image` es el ícono de 512 px con `twitter:card = summary`: al pasar el link por WhatsApp sale un cuadradito. → una imagen de 1200×630 con la maqueta y la frase; y los testimonios de la beta, con permiso (UX200#187).
+85. ✅ [B·M] **Landing: sin testimonios ni imagen para compartir.** El `og:image` es el ícono de 512 px con `twitter:card = summary`: al pasar el link por WhatsApp sale un cuadradito. → una imagen de 1200×630 con la maqueta y la frase; y los testimonios de la beta, con permiso (UX200#187).
 
 ---
 

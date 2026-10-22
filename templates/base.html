@@ -546,6 +546,22 @@ document.addEventListener('keydown', e => {
         setTimeout(() => document.getElementById('fb-mensaje').focus(), 50);
     };
     window.cerrarComentario = function () { overlay().hidden = true; UX.soltarFoco(overlay().querySelector('.fb-caja')); };
+    // Recordatorio de la beta en el Dashboard: a los 3 días de la primera visita a este navegador, una vez por semana, y nunca más si ya comentó
+    (function () {
+        try {
+            if (!localStorage.getItem('corelux_primera_visita')) localStorage.setItem('corelux_primera_visita', String(Date.now()));
+            const caja = document.getElementById('recordatorio-comentario');
+            if (!caja || localStorage.getItem('corelux_comento')) return;
+            const dia = 86400000, primera = Number(localStorage.getItem('corelux_primera_visita')), ultimo = Number(localStorage.getItem('corelux_recordatorio') || 0);
+            if (Date.now() - primera >= 3 * dia && Date.now() - ultimo >= 7 * dia) caja.hidden = false;
+        } catch (e) { /* sin almacenamiento del navegador no se recuerda nada: no se ofrece */ }
+    })();
+    window.posponerRecordatorioComentario = function () {
+        try { localStorage.setItem('corelux_recordatorio', String(Date.now())); } catch (e) { /* nada */ }
+        const caja = document.getElementById('recordatorio-comentario');
+        if (caja) caja.hidden = true;
+    };
+    window.abrirComentarioDesdeRecordatorio = function () { window.posponerRecordatorioComentario(); window.abrirComentario(); };
     // «¿Te sirvió esta pantalla?»: se muestra una vez cada 2 semanas por pantalla (se recuerda en este navegador; si no se puede guardar, simplemente no se ofrece)
     const CLAVE_SIRVIO = 'corelux_sirvio:' + location.pathname, DIAS_SIRVIO = 14;
     (function () {
@@ -584,6 +600,7 @@ document.addEventListener('keydown', e => {
             const d = await r.json();
             if (d.ok) {
                 caja.value = ''; cerrarComentario();
+                try { localStorage.setItem('corelux_comento', '1'); } catch (e) { /* nada */ }
                 if (typeof mostrarToast === 'function') mostrarToast('¡Gracias! Lo leemos todos.', 'success');
             } else { estado.textContent = d.detalle || 'No se pudo enviar. Probá de nuevo.'; }
         } catch (e) { estado.textContent = 'No se pudo enviar. Revisá tu conexión.'; }
