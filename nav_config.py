@@ -17,11 +17,12 @@ GRUPOS_NAV = {
     },
     "dia": {
         "label": "Día a día", "icono": "bolt",
-        # una sola pantalla con cuatro partes (las pestañas saltan a cada una): no hay una «más usada» que destacar
+        # una sola pantalla con cinco partes (las pestañas saltan a cada una): no hay una «más usada» que destacar
         "una_pantalla": True,
         "paginas": [
             {"nav_key": "despacho", "label": "Despacho", "href": "/dia", "ancla": "despacho", "endpoint": "dia_vista"},
             {"nav_key": "preguntas", "label": "Preguntas", "href": "/dia", "ancla": "preguntas", "endpoint": "dia_vista"},
+            {"nav_key": "reclamos", "label": "Reclamos", "href": "/dia", "ancla": "reclamos", "endpoint": "dia_vista"},
             {"nav_key": "logros", "label": "Pendientes", "href": "/dia", "ancla": "pendientes", "endpoint": "dia_vista"},
             {"nav_key": "reputacion", "label": "Reputación", "href": "/dia", "ancla": "reputacion", "endpoint": "dia_vista"},
         ],

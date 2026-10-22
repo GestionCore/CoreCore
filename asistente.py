@@ -41,6 +41,7 @@ GUIA_DE_PANTALLAS = {
     "dashboard": "Inicio: la ganancia de hoy comparada con un día normal, qué hacer primero, el mes en curso y los 14 días.",
     "despacho": "Despacho (en Día a día): los paquetes a entregar hoy, con el horario límite de cada uno.",
     "preguntas": "Preguntas (en Día a día): las preguntas de compradores sin responder, con respuesta sugerida por IA.",
+    "reclamos": "Reclamos (en Día a día): los reclamos y devoluciones abiertos, con el motivo, si afectan la reputación y qué hacer.",
     "logros": "Pendientes (en Día a día): lo que hay que atender hoy y la salud de la cuenta.",
     "reputacion": "Reputación (en Día a día): cómo está tu reputación en Mercado Libre y qué la mueve.",
     "monitor_en_vivo": "Monitor en vivo: lo de HOY hora por hora (ventas, visitas, conversión y publicidad), siempre en neto.",

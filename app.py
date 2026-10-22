@@ -76,6 +76,7 @@ import dolar as dolar_mod
 import costos_moneda
 import beta
 import consentimiento_ia
+import reclamos_dia
 import asistente
 import monitor_en_vivo
 import pagos
@@ -1758,11 +1759,11 @@ def _contexto_logros():
 @login_requerido
 def dia_vista():
     """
-    «Día a día» en UNA pantalla: despacho, preguntas, pendientes y reputación, una debajo de la otra. Las pestañas de arriba no cambian de página: saltan a cada parte.
+    «Día a día» en UNA pantalla: despacho, preguntas, reclamos, pendientes y reputación, una debajo de la otra. Las pestañas de arriba no cambian de página: saltan a cada parte.
     Si una sección no se puede armar, las demás se muestran igual (con un aviso en la que falló); si la cuenta de Mercado Libre está desconectada, se manda a reconectarla.
     """
     contexto, errores = {}, {}
-    for clave, armar in (("despacho", _contexto_despacho), ("pendientes", _contexto_logros), ("reputacion", _contexto_reputacion)):
+    for clave, armar in (("despacho", _contexto_despacho), ("reclamos", _contexto_reclamos), ("pendientes", _contexto_logros), ("reputacion", _contexto_reputacion)):
         try:
             contexto.update(armar())
         except _Salir as salida:
@@ -1809,6 +1810,14 @@ def embudo_conversion_vista():
         zombies = embudo_mod.detectar_publicaciones_zombie(headers, g.cuenta_id, cursor)
 
     return render_template("embudo_conversion.html", embudo=embudo, zombies=zombies, active_nav="embudo_conversion")
+
+
+def _contexto_reclamos():
+    """Los reclamos y devoluciones abiertos, uno por tarjeta (reclamos_dia.py)."""
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        filas = reclamos_dia.listar_abiertos(conexion.cursor(), g.cuenta_id)
+    tarjetas = reclamos_dia.armar(filas, hoy_argentina())
+    return dict(reclamos=tarjetas, reclamos_resumen=reclamos_dia.resumen(tarjetas))
 
 
 def _contexto_reputacion():

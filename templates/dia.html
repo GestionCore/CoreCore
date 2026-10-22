@@ -3,7 +3,7 @@
 {% block title %}Día a día · CoreLux{% endblock %}
 {% block content %}
 {#
-  «Día a día» en UNA pantalla: despacho, preguntas, pendientes y reputación, una debajo de la otra. Las pestañas de arriba (nav_config, con `ancla`) saltan a cada parte
+  «Día a día» en UNA pantalla: despacho, preguntas, reclamos, pendientes y reputación, una debajo de la otra. Las pestañas de arriba (nav_config, con `ancla`) saltan a cada parte
   y se marcan solas según lo que se está mirando. Cada parte es una plantilla parcial (_dia_*.html) con su propio contexto (app._contexto_*): si una no se puede armar,
   las demás se muestran igual.
 #}
@@ -17,6 +17,9 @@
             <a class="dia-resumen-item ux-{{ 'warn' if por_despachar else 'ok' }}" href="#despacho"><svg class="icon" aria-hidden="true"><use href="#icon-truck"/></svg>{% if total == 0 %}Sin paquetes hoy{% elif por_despachar %}<b>{{ por_despachar }}</b> por despachar{% else %}Todo despachado{% endif %}</a>
             {% endif %}
             <a class="dia-resumen-item ux-neutral" href="#preguntas" id="resumen-preguntas"><svg class="icon" aria-hidden="true"><use href="#icon-chat"/></svg><span id="resumen-preguntas-texto">Preguntas</span></a>
+            {% if not errores.get('reclamos') and reclamos_resumen is defined %}
+            <a class="dia-resumen-item ux-{{ 'danger' if reclamos_resumen.afectan else ('warn' if reclamos_resumen.abiertos else 'ok') }}" href="#reclamos"><svg class="icon" aria-hidden="true"><use href="#icon-alert"/></svg>{% if reclamos_resumen.abiertos == 0 %}Sin reclamos{% else %}{{ reclamos_resumen.abiertos|plural("reclamo o devolución", "reclamos y devoluciones") }}{% endif %}</a>
+            {% endif %}
             {% if not errores.get('pendientes') %}
             <a class="dia-resumen-item ux-{{ 'danger' if conteo_por_prioridad.urgente else ('warn' if conteo_por_prioridad.importante else ('accion' if misiones else 'ok')) }}" href="#pendientes"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg>{% if misiones %}<b>{{ misiones|length }}</b> pendiente{{ '' if misiones|length == 1 else 's' }}{% else %}Sin pendientes{% endif %}</a>
             {% endif %}
@@ -35,6 +38,10 @@
 
 <section class="dia-seccion" id="preguntas" aria-label="Preguntas">
     {% include "_dia_preguntas.html" %}
+</section>
+
+<section class="dia-seccion" id="reclamos" aria-label="Reclamos">
+    {% if errores.get('reclamos') or reclamos_resumen is not defined %}{{ no_se_pudo("Reclamos y devoluciones") }}{% else %}{% include "_dia_reclamos.html" %}{% endif %}
 </section>
 
 <section class="dia-seccion" id="pendientes" aria-label="Pendientes">

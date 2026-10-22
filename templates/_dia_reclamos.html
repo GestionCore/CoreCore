@@ -1,0 +1,40 @@
+{# Sección «reclamos» de /dia: lo abierto en posventa, uno por tarjeta, lo más urgente primero. El contexto lo arma app._contexto_reclamos() con reclamos_dia.py. #}
+{% from "_ux.html" import banner, kpi, vacio %}
+<div class="page-header">
+    <div>
+        <h2 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-alert"/></svg>Reclamos y devoluciones</h2>
+        <div class="page-subtitle">Lo que está abierto hoy: qué pasó, si afecta tu reputación y qué hacer. Se resuelven en Mercado Libre; acá ves cuál mirar primero.</div>
+    </div>
+</div>
+
+{% if not reclamos %}
+{{ vacio("No tenés reclamos ni devoluciones abiertos", "Cuando un comprador abra uno, aparece acá con el motivo y lo que conviene hacer.", "check", "ok") }}
+{% else %}
+{{ banner("danger" if reclamos_resumen.afectan else "info", "alert", "<b>" ~ reclamos_resumen.frase ~ "</b>", "Cada tarjeta tiene el botón para abrir esa venta en Mercado Libre y resolverlo ahí.") }}
+
+<div class="ux-kpis">
+    {{ kpi("Abiertos", reclamos_resumen.abiertos, "neutral", "alert") }}
+    {{ kpi("Afectan tu reputación", reclamos_resumen.afectan, "danger" if reclamos_resumen.afectan else "ok", "alert", "según Mercado Libre") }}
+    {{ kpi("Plata retenida", "$" ~ reclamos_resumen.retenido_texto, "warn" if reclamos_resumen.retenido else "ok", "coin", "mientras siguen abiertos") }}
+</div>
+
+<div class="rc-lista">
+    {% for r in reclamos %}
+    <article class="rc-tarjeta rc-{{ r.tono }}" aria-label="{{ r.tipo_texto }}: {{ r.titulo }}">
+        <div class="rc-cabecera">
+            <span class="ux-pill ux-{{ 'danger' if r.tono == 'danger' else ('warn' if r.tono == 'warn' else 'neutral') }} ux-pill-suave">{{ r.tipo_texto }}</span>
+            <span class="rc-titulo" title="{{ r.titulo }}">{{ r.titulo }}</span>
+            {% if r.desde %}<span class="rc-desde text-muted">{{ r.desde }}</span>{% endif %}
+        </div>
+        <div class="rc-motivo"><span class="text-muted">Motivo:</span> {{ r.motivo }}</div>
+        <div class="rc-datos">
+            <span class="rc-dato rc-dato-{{ r.tono }}">{{ r.impacto }}</span>
+            <span class="rc-dato">{{ r.estado_texto }}</span>
+            {% if r.retenido_texto %}<span class="rc-dato rc-dato-warn">${{ r.retenido_texto }} retenidos</span>{% endif %}
+        </div>
+        <div class="rc-que-hacer"><b>Qué hacer:</b> {{ r.que_hacer }}</div>
+        {% if r.link %}<a class="btn btn-secondary rc-boton" href="{{ r.link }}" target="_blank" rel="noopener">Abrir en Mercado Libre</a>{% endif %}
+    </article>
+    {% endfor %}
+</div>
+{% endif %}

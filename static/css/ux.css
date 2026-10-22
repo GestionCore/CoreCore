@@ -796,6 +796,22 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .fb-cabecera { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 1.05em; }
 .fb-cerrar { background: none; border: 0; color: var(--text-secondary); font-size: 1.6em; line-height: 1; cursor: pointer; padding: 0 4px; }
 .ux-banner[hidden] { display: none; }
+/* Reclamos y devoluciones (Día a día): una tarjeta por caso, con el color del borde según lo que está en juego */
+.rc-lista { display: grid; gap: 14px; margin-top: 4px; }
+.rc-tarjeta { border: 1px solid var(--border-soft); border-left: 4px solid var(--border-soft); border-radius: var(--radius-md); background: var(--glass-bg); padding: 16px 18px; display: grid; gap: 10px; }
+.rc-danger { border-left-color: var(--danger); }
+.rc-warn { border-left-color: var(--semantic-warning); }
+.rc-cabecera { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rc-titulo { font-weight: 700; min-width: 0; flex: 1 1 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-desde { font-size: var(--text-sm); white-space: nowrap; }
+.rc-motivo { color: var(--text-primary); }
+.rc-datos { display: flex; gap: 8px; flex-wrap: wrap; }
+.rc-dato { font-size: var(--text-xs); font-weight: 700; padding: 3px 10px; border-radius: var(--radius-pill); border: 1px solid var(--border-soft); color: var(--text-secondary); }
+.rc-dato-danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.rc-dato-warn { color: var(--semantic-warning); border-color: color-mix(in srgb, var(--semantic-warning) 45%, transparent); }
+.rc-que-hacer { color: var(--text-secondary); line-height: 1.55; }
+.rc-que-hacer b { color: var(--text-primary); }
+.rc-boton { justify-self: start; }
 .te-sirvio { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 40px 0 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); color: var(--text-secondary); font-size: var(--text-sm); }
 .te-sirvio[hidden], .te-sirvio-botones[hidden] { display: none; }
 .te-sirvio-botones { display: inline-flex; gap: 8px; }
