@@ -21,6 +21,7 @@
     --glass-bg: #131318;
     --glass-bg-alt: #17171d;
     --glass-border: #232329;
+    --campo-borde: #666673;              /* borde de los CAMPOS (input, select, textarea): 3,2:1 contra la tarjeta (WCAG 1.4.11 pide 3:1 para reconocer un campo); el de las tarjetas sigue casi invisible */
     --border-soft: rgba(255, 255, 255, 0.06);
 
     --text-primary: #ffffff;
@@ -114,6 +115,7 @@
     --glass-bg: rgba(255, 255, 255, 0.85);
     --glass-bg-alt: rgba(240, 241, 245, 0.9);
     --glass-border: rgba(90, 60, 160, 0.15);
+    --campo-borde: #84849c;              /* 3,6:1 sobre blanco y 3,3:1 sobre el fondo de la página */
     --border-soft: rgba(0, 0, 0, 0.07);
 
     --text-primary: #16161f;
@@ -453,7 +455,7 @@ label.field-label { display: block; font-size: 0.82em; color: var(--text-seconda
    medio de una pantalla oscura. Encontrado en Preguntas (el cuadro de
    respuesta a compradores), donde más se nota porque es de uso diario. */
 input[type="text"], input[type="number"], input[type="date"], select, textarea {
-    background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: var(--text-primary);
+    background: rgba(255,255,255,0.04); border: 1px solid var(--campo-borde); color: var(--text-primary);
     padding: 10px 13px; border-radius: var(--radius-sm); font-family: var(--font-data); font-size: 0.9em; width: 100%; transition: border-color 0.2s;
 }
 textarea { line-height: 1.5; }
