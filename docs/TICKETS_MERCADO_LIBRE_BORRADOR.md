@@ -55,7 +55,7 @@ Por ahora no pedimos estimaciones de ventas de terceros ni datos de vendedores e
 
 **Descripción:**
 
-Según la documentación «Más vendidos en Mercado Libre» (actualizada el 22/06/2026), /highlights pertenece al permiso funcional «Métricas del negocio». Nuestra aplicación [ID de la aplicación] tiene ese permiso activo en «Lectura» (DevCenter → Permisos). Con ese mismo permiso, /trends funciona (200), pero /highlights da 403 siempre: con token de usuario, con token de aplicación, con una categoría hoja y con una publicación propia. La primera vez que lo probamos fue el 13/10/2026 y se repitió el 21/10/2026 con el mismo resultado.
+Según la documentación «Más vendidos en Mercado Libre» (actualizada el 22/06/2026), /highlights pertenece al permiso funcional «Métricas del negocio». Nuestra aplicación [ID de la aplicación] tiene ese permiso activo en «Lectura» (DevCenter → Permisos). Con ese mismo permiso, /trends funciona (200), pero /highlights da 403 siempre: con token de usuario, con token de aplicación, con una categoría hoja y con una publicación propia. La primera vez que lo probamos fue el 13/10/2026 y se repitió el 21/10/2026 con el mismo resultado. El 22/10/2026 quitamos el acceso de la aplicación desde la cuenta del vendedor y la volvimos a autorizar: la pantalla de permisos de Mercado Libre listó los siete permisos, incluido «Métricas del negocio», y el 403 persistió con el token nuevo.
 
 Revisamos las causas que lista la página «Error 403»: con los mismos tokens funcionan otros recursos de lectura y de escritura, así que la aplicación no está bloqueada y los tokens son válidos; no configuramos restricción de IP.
 
