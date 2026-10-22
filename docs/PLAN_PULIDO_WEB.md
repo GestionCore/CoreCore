@@ -1,5 +1,7 @@
 # Plan de pulido de la web — primero la página, después lo demás
 
+> **2026-10-22:** el orden de trabajo ahora lo da [`docs/PLAN_MAESTRO_BETA.md`](PLAN_MAESTRO_BETA.md) (olas 0 a 5 hasta la beta). Este documento sigue valiendo como detalle de la parte visual (Ola 1 del plan maestro).
+
 Preparado el 2026-10-22, a pedido del dueño: no gastar en suscripciones ni pruebas (WhatsApp Business, Google Workspace, tickets) hasta que la web esté para mostrarla y venderla. Se apoya en `docs/AUDITORIA_DISENO_100.md` (D1–D100) y en `PLAN_UX_200.md` (UX200#nn), que ya están medidos y priorizados: **no se vuelve a auditar, se ejecuta**.
 
 ## Por qué se siente «desprolija» (medido, no opinión)
