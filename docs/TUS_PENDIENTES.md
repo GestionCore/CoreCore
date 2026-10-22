@@ -6,7 +6,7 @@ Hecho el 2026-10-14. Están en el orden en que conviene hacerlos. Cada uno dice 
 
 | # | Qué | Tiempo | Por qué importa |
 |---|---|---|---|
-| 0 | **Desplegar antes del domingo 25/10** | 5 min | Mercado Libre retira un endpoint que usa el sincronizador de publicaciones: sin este deploy, el catálogo deja de actualizarse |
+| 0 | ✅ **Hecho el 22/10:** migración de `/items/bulk` desplegada y verificada | — | Mercado Libre retira el 25/10 un endpoint que usaba el sincronizador de publicaciones |
 | 1 | Costo de entrega Flex | 10 min | Tu ganancia real hoy sale **inflada** (190 envíos sin costo) |
 | 2 | Costos de fabricación que faltan | 5 min | Sin costo, la ganancia es mentira |
 | 3 | Que exista `soporte@corelux.app` | 10 min | Está publicado en la web: si nadie lo recibe, un cliente se pierde |
@@ -21,7 +21,9 @@ Hecho el 2026-10-14. Están en el orden en que conviene hacerlos. Cada uno dice 
 
 ---
 
-## 0. Desplegar antes del domingo 25/10 (5 minutos)
+## 0. ✅ HECHO el 22/10 — Desplegar la migración de Mercado Libre (guía histórica)
+
+**Estado: desplegado y verificado** (versión `8ca7e1df3737`; lo de abajo queda como referencia para el próximo deploy):
 
 **Por qué es urgente:** Mercado Libre retira el 25/10/2026 el pedido `/items?ids=` (traer varias publicaciones juntas). El primer deploy (21/10, versión `0693a8c`) ya migró el sincronizador de catálogo a `/items/bulk` y se verificó con Mercado Libre real. La prueba real mostró un detalle que la primera versión no cubría (las sugerencias de Competencia, que piden pocos campos): **ya está corregido y hace falta un segundo deploy chico antes del domingo 25/10.** El segundo deploy lleva además un endurecimiento chico: el navegador deja de aceptar imágenes por `http:` (las miniaturas ya son todas `https`, verificado en producción el 22/10). No hay migraciones nuevas (la última sigue siendo la 0050).
 
