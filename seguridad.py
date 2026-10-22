@@ -139,7 +139,7 @@ def _origen_permitido():
 #   · "prueba" (por defecto): se aplica la política de siempre y la ESTRICTA va en Report-Only: el navegador solo avisa a /csp-report qué habría bloqueado (queda en el log de Fly).
 #   · "estricta": se aplica la estricta (después de mirar el log con uso real y ver que no hay violaciones propias).
 #   · "actual": la de siempre (con 'unsafe-inline'), por si hubiera que volver atrás.
-_BASE_CSP = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+_BASE_CSP = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
 CSP = "script-src 'self' 'unsafe-inline'; " + _BASE_CSP                       # la de siempre (también la que usan las pruebas)
 CSP_MODO = os.getenv("CSP_MODO", "prueba").strip().lower()
 if CSP_MODO not in ("prueba", "estricta", "actual"):

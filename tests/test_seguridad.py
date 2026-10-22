@@ -51,7 +51,8 @@ def test_la_politica_de_contenido_solo_deja_cargar_de_corelux(cliente):
     assert "connect-src 'self'" in csp and "font-src 'self'" in csp
     assert "script-src 'self' 'unsafe-inline'" in csp           # inline: las pantallas todavía tienen onclick y scripts propios
     for tercero in ("googleapis", "gstatic", "jsdelivr", "cdnjs", "unpkg", "*"):
-        assert tercero not in csp.replace("https: http:", "")   # ningún servidor ajeno permitido para scripts, estilos, fuentes ni datos
+        assert tercero not in csp                                # ningún servidor ajeno permitido para scripts, estilos, fuentes ni datos
+    assert "http:" not in csp.replace("https:", "")              # ni imágenes por http: las 275 miniaturas guardadas ya son https (verificado en producción el 2026-10-22) y el código convierte las que llegan de la API
     assert "form-action" not in csp                              # Chrome lo aplica a las redirecciones: rompería el pago en Mercado Pago
 
 
