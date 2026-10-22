@@ -15,6 +15,7 @@ Sirve a cualquier rubro: no depende de talles, categorías ni de un tipo de log�
 import math
 from datetime import timedelta
 from utils import hoy_argentina
+import costos_moneda
 import meli_errores
 
 import meli_http
@@ -45,6 +46,13 @@ def parametros(margen, publicidad):
     return _entre(margen, 0, 60, MARGEN_OBJETIVO_DEFECTO), _entre(publicidad, 0, 40, 0.0)
 
 
+def _nota_de_variantes(resumen):
+    """Lo que la pantalla avisa cuando el costo de una publicación sale de varias variantes que cuestan distinto o a las que les falta el costo; None si no hay nada que avisar."""
+    if not resumen or not (resumen["distintos"] or resumen["unidades_sin_costo"]):
+        return None
+    return {"minimo": resumen["minimo"], "maximo": resumen["maximo"], "distintos": resumen["distintos"], "con_ventas": resumen["con_ventas"], "unidades_sin_costo": resumen["unidades_sin_costo"]}
+
+
 def obtener_datos(cursor, cuenta_id, margen_objetivo=MARGEN_OBJETIVO_DEFECTO, publicidad_pct=0.0):
     cursor.execute("""
         SELECT id_meli, SUM(cantidad), SUM(precio_venta * cantidad), SUM(COALESCE(cargo_venta, 0)), SUM(COALESCE(costo_envio, 0))
@@ -61,16 +69,17 @@ def obtener_datos(cursor, cuenta_id, margen_objetivo=MARGEN_OBJETIVO_DEFECTO, pu
         ORDER BY titulo
     """, (cuenta_id,))
     filas = cursor.fetchall()
+    efectivos = costos_moneda.costos_efectivos(cursor, cuenta_id, VENTANA_DIAS)      # publicaciones cuyas variantes tienen costo propio: su costo es el promedio de lo que se vendió
 
     pub = publicidad_pct / 100
     obj = margen_objetivo / 100
     items, sin_costo, sin_ventas = [], [], []
     for id_meli, titulo, thumbnail, permalink, precio, costo in filas:
         precio = float(precio)
-        costo = float(costo or 0)
+        costo = costos_moneda.costo_de_publicacion(efectivos, id_meli, costo)
         v = ventas.get(id_meli) or {"u": 0, "ingreso": 0.0, "cargos": 0.0, "envios": 0.0}
         base = {"id_meli": id_meli, "titulo": titulo or id_meli, "thumbnail": thumbnail, "permalink": permalink, "precio": precio,
-                "costo": costo, "unidades": v["u"], "estimado": v["u"] < MIN_UNIDADES_PROPIAS}
+                "costo": costo, "unidades": v["u"], "estimado": v["u"] < MIN_UNIDADES_PROPIAS, "costo_variantes": _nota_de_variantes(efectivos.get(id_meli))}
         if costo <= 0:
             sin_costo.append(base)
             continue
@@ -215,8 +224,9 @@ def calcular_ajuste(datos, porcentaje):
                 if neto < 0:
                     base.update(estado="pierde", motivo="Quedaría por debajo de su precio mínimo: cada venta perdería plata.")
             elif origen == "sin_ventas":
-                if nuevo <= i["costo"]:
-                    base.update(estado="pierde", motivo="Quedaría por debajo de su costo de fabricación.")
+                variantes = i.get("costo_variantes")
+                if nuevo <= (variantes["maximo"] if variantes else i["costo"]):
+                    base.update(estado="pierde", motivo="Quedaría por debajo del costo de alguna de sus variantes." if variantes else "Quedaría por debajo de su costo de fabricación.")
                 else:
                     base["motivo"] = "Sin ventas todavía: no se conoce su comisión y su envío."
             else:

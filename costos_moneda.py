@@ -12,11 +12,12 @@ TODA escritura de un costo pasa por `guardar_costo_publicacion` / `guardar_costo
 costo viejo y el próximo recálculo pisaría lo que la persona acaba de cargar (hay una prueba que lo impide).
 El código tolera que la migración 0050 todavía no esté aplicada: en pesos escribe como siempre; en dólares avisa que se activa con la próxima actualización.
 """
+from datetime import timedelta
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 
 import psycopg
 
-from utils import sql_variante_de_venta
+from utils import hoy_argentina, sql_variante_de_venta
 
 MONEDAS = ("ARS", "USD")
 MONTO_MAXIMO = 1e12
@@ -163,6 +164,62 @@ def costo_de_venta(id_meli, id_variante, costos_por_item, costos_por_variante):
     if propio:
         return float(propio)
     return float(costos_por_item.get(id_meli) or 0.0)
+
+
+# ── El costo de una PUBLICACIÓN cuando sus variantes cuestan distinto (Precios, Promociones, calculadora, margen del Dashboard, capital de Stock) ──
+
+def resumir_costo_de_publicacion(costo_publicacion, variantes):
+    """
+    El costo en pesos de UNA unidad de una publicación con costos por variante. `variantes` = [(costo propio o None, unidades vendidas)]: una variante sin costo propio usa el de la publicación.
+    Con ventas, es el promedio de lo que se vendió (cada variante pesa lo que vendió: el mismo criterio de la Ganancia Real); sin ventas, el promedio simple. Una variante sin ningún costo
+    no entra en el promedio (no se supone uno) y se cuenta en `unidades_sin_costo`. None si ninguna variante tiene costo.
+    """
+    pub = float(costo_publicacion or 0)
+    costos = [(float(propio) if propio else pub, int(unidades or 0)) for propio, unidades in variantes]
+    conocidos = [(c, u) for c, u in costos if c > 0]
+    if not conocidos:
+        return None
+    unidades = sum(u for _, u in conocidos)
+    costo = sum(c * u for c, u in conocidos) / unidades if unidades > 0 else sum(c for c, _ in conocidos) / len(conocidos)
+    return {"costo": round(costo, 2), "minimo": min(c for c, _ in conocidos), "maximo": max(c for c, _ in conocidos), "distintos": len({c for c, _ in conocidos}) > 1,
+            "con_ventas": unidades > 0, "unidades_sin_costo": sum(u for c, u in costos if c <= 0)}
+
+
+def costos_efectivos(cursor, cuenta_id, dias=90, hoy=None, id_meli=None):
+    """
+    {id_meli: resumen} SOLO de las publicaciones que tienen costo cargado en alguna de sus variantes (`resumir_costo_de_publicacion`, con las unidades de los últimos `dias`); las demás usan
+    su propio costo, como siempre: quien lo necesita hace `costo_de_publicacion`. `id_meli` limita el cálculo a una publicación.
+    """
+    if cuenta_id is None:
+        return {}
+    desde = (hoy or hoy_argentina()) - timedelta(days=dias)
+    filtro_ids = "AND p.id_meli = %s" if id_meli else ""
+    cursor.execute(f"""
+        SELECT p.id_meli, p.precio_costo, pv.id_variante, NULLIF(pv.precio_costo, 0), COALESCE(u.unidades, 0)
+        FROM productos_variantes pv
+        JOIN productos_padre p ON p.id = pv.id_padre AND p.cuenta_id = pv.cuenta_id
+        LEFT JOIN (SELECT v.id_meli, {sql_variante_de_venta("v")} AS id_variante, SUM(v.cantidad) AS unidades
+                   FROM ventas v WHERE v.cuenta_id = %s AND v.origen = 'meli' AND v.fecha_venta >= %s GROUP BY 1, 2) u
+               ON u.id_meli = p.id_meli AND u.id_variante = pv.id_variante
+        WHERE pv.cuenta_id = %s {filtro_ids}
+          AND pv.id_padre IN (SELECT id_padre FROM productos_variantes WHERE cuenta_id = %s AND precio_costo > 0)
+        ORDER BY p.id_meli, pv.id_variante""", (cuenta_id, desde, cuenta_id, *([id_meli] if id_meli else []), cuenta_id))
+    por_publicacion, costo_de_la_publicacion = {}, {}
+    for id_pub, costo_pub, _id_variante, propio, unidades in cursor.fetchall():
+        costo_de_la_publicacion[id_pub] = costo_pub
+        por_publicacion.setdefault(id_pub, []).append((propio, unidades))
+    resultado = {}
+    for id_pub, variantes in por_publicacion.items():
+        resumen = resumir_costo_de_publicacion(costo_de_la_publicacion[id_pub], variantes)
+        if resumen:
+            resultado[id_pub] = resumen
+    return resultado
+
+
+def costo_de_publicacion(efectivos, id_meli, costo_publicacion):
+    """El costo en pesos de una unidad de la publicación: el promedio de sus variantes si tienen costos propios (`costos_efectivos`), y si no el de la publicación."""
+    resumen = efectivos.get(id_meli)
+    return resumen["costo"] if resumen else float(costo_publicacion or 0)
 
 
 # ── Lo que se muestra: el costo original de cada publicación y variante ───────────────────────────────────────────────────────────────────────

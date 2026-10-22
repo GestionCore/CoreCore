@@ -8,6 +8,7 @@ texto. Acá fecha_venta es un DATE limpio (sin hora), así que un simple
 from datetime import datetime, timedelta
 import db
 import analisis_stock
+import costos_moneda
 import salud_cuenta
 import resumen_semanal
 import ventas_hoy
@@ -411,14 +412,15 @@ def obtener_costos_resumen(usuario_id, cuenta_id=None):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("""
-            SELECT titulo, precio, precio_costo, recibis_estimado FROM productos_padre
+            SELECT id_meli, titulo, precio, precio_costo, recibis_estimado FROM productos_padre
             WHERE estado = 'active' AND precio > 0 AND recibis_estimado IS NOT NULL
         """)
         filas = cursor.fetchall()
+        efectivos = costos_moneda.costos_efectivos(cursor, cuenta_id)             # con costos por variante, el margen usa el promedio de lo que se vendió
 
     margenes = []
-    for titulo, precio, costo, recibis in filas:
-        precio, costo, recibis = float(precio), float(costo or 0), float(recibis)
+    for id_meli, titulo, precio, costo, recibis in filas:
+        precio, costo, recibis = float(precio), costos_moneda.costo_de_publicacion(efectivos, id_meli, costo), float(recibis)
         comision = precio - recibis
         margen_pct = round(((precio - comision - costo) / precio) * 100, 1)
         margenes.append({"titulo": titulo, "margen_pct": margen_pct})

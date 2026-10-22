@@ -10,6 +10,8 @@
         <div class="ux-precio-titulo">
             <div>{% if i.permalink %}<a href="{{ i.permalink }}" target="_blank" rel="noopener"><b>{{ i.titulo }}</b> ↗</a>{% else %}<b>{{ i.titulo }}</b>{% endif %}</div>
             <div class="text-muted" style="font-size:var(--text-2xs);">{{ i.unidades }} venta{{ 's' if i.unidades != 1 }} en {{ ventana_dias }} días · comisión {{ i.comision_pct|string|replace('.', ',') }}% · envío {{ i.envio|plata }}{% if i.estimado %} <span class="ux-pill ux-neutral ux-pill-suave" title="Con menos de 3 ventas el cálculo es orientativo">pocas ventas</span>{% endif %}</div>
+            {% set cv = i.costo_variantes %}
+            {% if cv %}<div class="text-muted" style="font-size:var(--text-2xs);">{% if cv.distintos %}El costo cambia según la variante ({{ cv.minimo|plata }} a {{ cv.maximo|plata }}): el cálculo usa <b>{{ i.costo|plata }}</b>, el promedio {{ 'de lo que vendiste' if cv.con_ventas else 'de sus variantes' }}.{% endif %}{% if cv.unidades_sin_costo %} {{ cv.unidades_sin_costo|plural('unidad vendida', 'unidades vendidas') }} de variantes sin costo cargado: no entran en el cálculo.{% endif %}</div>{% endif %}
         </div>
     </div>
     <div class="ux-precio-regla-caja">

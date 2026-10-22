@@ -104,3 +104,27 @@ def test_en_cuentas_sin_full_no_hay_filtro_de_full():
     productos = [_modelo("Remera Lisa", 30, 0)]
     html = _render(productos, [])
     assert 'id="chip-full"' not in html
+
+
+# ── Capital en stock a costo (cada variante con su costo) ────────────────────────────────────────────────────────────────────────────────
+
+def _render_con(stats):
+    with aplicacion.app.test_request_context("/"):
+        return aplicacion.render_template("index.html", productos=[_modelo("Remera Lisa", 30, 0)], stats=stats, full_no_disponible=SIN_FULL, reactivables=[], riesgo=[],
+                                          modelos_en_riesgo=set(), active_nav="stock")
+
+
+def test_con_costos_cargados_el_capital_en_stock_es_lo_que_costo_y_dice_cuanto_vale_a_la_venta():
+    html = _render_con({**STATS, "capital_costo": "700", "unidades_con_costo": 5, "unidades_sin_costo": 0})
+    assert "Capital en stock" in html and "$700" in html and "a precio de costo" in html and "a la venta <b>$300.000</b>" in html
+    assert "precio × unidades totales" not in html
+
+
+def test_si_a_algunas_unidades_les_falta_el_costo_el_capital_lo_dice_y_no_inventa_un_costo():
+    html = _render_con({**STATS, "capital_costo": "700", "unidades_con_costo": 5, "unidades_sin_costo": 4})
+    assert "$700" in html and "faltan <b>4 u.</b>" in html
+
+
+def test_sin_ningun_costo_cargado_el_capital_sigue_siendo_el_de_siempre():
+    html = _render_con(STATS)
+    assert "Capital en stock" in html and "$300.000" in html and "precio × unidades totales" in html

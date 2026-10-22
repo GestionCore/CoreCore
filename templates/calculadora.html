@@ -180,6 +180,8 @@ function completarConProducto(p) {
     } else {
         $('calc-hint-producto').textContent = 'Este producto no vendió en los últimos 90 días: completamos precio, categoría y costo; la comisión la consultamos a Mercado Libre.';
     }
+    const cv = p.costo_variantes;
+    if (cv) $('calc-hint-producto').innerHTML += ` El costo cambia según la variante (${UX.plata(cv.minimo)} a ${UX.plata(cv.maximo)}): usamos ${cv.con_ventas ? 'el promedio de lo que vendiste' : 'el promedio de sus variantes'}.`;
     const a = p.ads || {};
     const nota = $('calc-ads-nota');
     if (!a.disponible) { $('calc-ads').value = ''; nota.textContent = 'No pudimos consultar tu publicidad ahora: cargá el costo por unidad a mano.'; }

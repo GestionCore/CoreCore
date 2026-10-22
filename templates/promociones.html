@@ -49,7 +49,7 @@
             <label class="field-label" for="select-promo-item">Qué publicación</label>
             <select name="id_meli" id="select-promo-item" required>
                 {% for p in catalogo %}
-                <option value="{{ p.id }}" data-precio="{{ p.precio }}" data-costo="{{ p.precio_costo or 0 }}">{{ p.titulo }} — {{ p.precio|plata }}</option>
+                <option value="{{ p.id }}" data-precio="{{ p.precio }}" data-costo="{{ p.precio_costo or 0 }}"{% if p.costo_variantes %} data-costo-min="{{ p.costo_variantes.minimo }}" data-costo-max="{{ p.costo_variantes.maximo }}"{% endif %}>{{ p.titulo }} — {{ p.precio|plata }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -182,6 +182,7 @@
         const cont = document.getElementById('simulador-impacto-promo');
         if (!opcion || !precioDeal || precioDeal <= 0) { cont.style.display = 'none'; return; }
         const costo = parseFloat(opcion.dataset.costo) || 0, precioActual = parseFloat(opcion.dataset.precio) || 0;
+        const costoMax = parseFloat(opcion.dataset.costoMax) || 0, costoMin = parseFloat(opcion.dataset.costoMin) || 0;
         const descuento = precioActual > 0 ? (1 - precioDeal / precioActual) * 100 : null;
         const mi = ++_pedidoSim;
         cont.style.display = 'block';
@@ -195,7 +196,8 @@
                 ? `<b>Vendés a pérdida:</b> perdés ${UX.plata(Math.abs(d.ganancia_neta), 0)} por unidad a este precio`
                 : `Con este precio te quedan <b>${UX.plata(d.ganancia_neta, 0)} por unidad</b> (${UX.pct(d.margen_pct, 1)})${d.margen_pct < window.MARGEN_MINIMO ? ' — <b>margen justo</b>' : ''}`;
             cont.innerHTML = UX.banner({ tono, icono: tono === 'ok' ? 'check' : 'alert', tituloHtml: frase,
-                detalle: (descuento !== null ? `Es un ${UX.pct(descuento, 0)} menos que el precio actual (${UX.plata(precioActual)}). ` : '') + (costo === 0 ? 'Sin costo de fabricación cargado, el margen real es menor.' : '') });
+                detalle: (descuento !== null ? `Es un ${UX.pct(descuento, 0)} menos que el precio actual (${UX.plata(precioActual)}). ` : '') + (costo === 0 ? 'Sin costo de fabricación cargado, el margen real es menor.' : '')
+                    + (costoMax > costoMin ? `El costo cambia según la variante (${UX.plata(costoMin)} a ${UX.plata(costoMax)}): el margen usa ${UX.plata(costo)}, el promedio de lo que vendiste.` : '') });
         } catch (e) { if (mi === _pedidoSim) cont.innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No se pudo calcular ahora</b>', detalle: 'Probá de nuevo.' }); }
     }
     const programarSim = () => { clearTimeout(_timerSim); _timerSim = setTimeout(actualizarSimuladorPromo, 400); };

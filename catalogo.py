@@ -25,7 +25,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
 
         cursor.execute("""
             WITH variantes_deduplicadas AS (
-                SELECT id_padre, talle, color, etiqueta, MAX(stock_propio) AS stock_propio, MAX(stock_full) AS stock_full
+                SELECT id_padre, talle, color, etiqueta, MAX(stock_propio) AS stock_propio, MAX(stock_full) AS stock_full, MAX(precio_costo) AS precio_costo
                 FROM productos_variantes
                 GROUP BY id_padre, talle, color, etiqueta
             )
@@ -33,7 +33,8 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
                    p.precio_original, p.recibis_estimado, p.cuotas_cantidad, p.cuotas_monto,
                    COALESCE(v.stock_propio, 0) AS stock_propio,
                    COALESCE(v.stock_full, 0) AS stock_full,
-                   v.talle AS talle_real, v.etiqueta
+                   v.talle AS talle_real, v.etiqueta,
+                   COALESCE(NULLIF(v.precio_costo, 0), NULLIF(p.precio_costo, 0), 0) AS costo_unitario
             FROM productos_padre p
             LEFT JOIN variantes_deduplicadas v ON v.id_padre = p.id
             ORDER BY p.titulo
@@ -59,7 +60,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
 
     for item in items_db:
         (id_meli, titulo, precio, estado, thumbnail, precio_original,
-         recibis_estimado, cuotas_cantidad, cuotas_monto, stock_propio, stock_full, talle_real, etiqueta) = item
+         recibis_estimado, cuotas_cantidad, cuotas_monto, stock_propio, stock_full, talle_real, etiqueta, costo_unitario) = item
 
         talle_detectado = normalizar_talle(talle_real)
         variante = rotulo_variante(etiqueta, talle_real)
@@ -100,13 +101,14 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
             if stock_propio != fila_existente["propio"] or stock_full != fila_existente["full"]:
                 fila_existente["revisar_duplicado"] = True
             fila_existente["propio"] = max(fila_existente["propio"], stock_propio)
+            fila_existente["costo"] = fila_existente["costo"] or float(costo_unitario or 0)
             fila_existente["full"] = max(fila_existente["full"], stock_full)
             fila_existente["pausada_por_stock"] = fila_existente["pausada_por_stock"] and pausada_por_stock
         else:
             nueva_fila = {
                 "id_meli": id_meli, "talle": talle_detectado, "variante": variante, "propio": stock_propio,
                 "full": stock_full, "precio": precio, "estado": estado,
-                "pausada_por_stock": pausada_por_stock, "revisar_duplicado": False
+                "pausada_por_stock": pausada_por_stock, "revisar_duplicado": False, "costo": float(costo_unitario or 0)
             }
             m["variantes"].append(nueva_fila)
             m["_variantes_index"][variante] = nueva_fila
@@ -116,6 +118,7 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
     total_stock_propio = 0
     total_stock_full = 0
     valor_inventario_total = 0.0
+    capital_a_costo, unidades_con_costo, unidades_sin_costo = 0.0, 0, 0       # lo que costó lo que hay en stock: cada variante con SU costo (la de la publicación si no tiene uno propio)
 
     for m in modelos_agrupados.values():
         del m["_variantes_index"]
@@ -127,6 +130,13 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
             total_stock_propio += m["stock_propio"]
             total_stock_full += m["stock_full"]
             valor_inventario_total += (float(m["precio"] or 0.0) * (m["stock_propio"] + m["stock_full"]))
+            for v in m["variantes"]:
+                unidades = v["propio"] + v["full"]
+                if v["costo"] > 0:
+                    capital_a_costo += v["costo"] * unidades
+                    unidades_con_costo += unidades
+                else:
+                    unidades_sin_costo += unidades
 
         if m["precio_min"] == m["precio_max"]:
             m["precio_rango"] = formatear_moneda(m["precio_min"])
@@ -159,7 +169,8 @@ def obtener_productos_y_estadisticas(usuario_id, cuenta_id=None):
         "activas": total_activas,
         "propio": total_stock_propio,
         "full": total_stock_full,
-        "valor_total": formatear_moneda(valor_inventario_total)
+        "valor_total": formatear_moneda(valor_inventario_total),
+        "capital_costo": formatear_moneda(capital_a_costo), "unidades_con_costo": unidades_con_costo, "unidades_sin_costo": unidades_sin_costo,
     }
 
     return productos_lista, reporte_global

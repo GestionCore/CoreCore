@@ -1472,7 +1472,10 @@ def promociones_vista():
         ]
 
         cursor.execute("SELECT id_meli, titulo, precio, precio_costo FROM productos_padre WHERE estado = 'active' ORDER BY titulo")
-        catalogo_promo = [{"id": r[0], "titulo": r[1], "precio": r[2], "precio_costo": r[3]} for r in cursor.fetchall()]
+        filas_catalogo = cursor.fetchall()
+        efectivos = costos_moneda.costos_efectivos(cursor, g.cuenta_id)               # con costos por variante, el margen del descuento usa el promedio de lo que se vendió
+        catalogo_promo = [{"id": r[0], "titulo": r[1], "precio": r[2], "precio_costo": costos_moneda.costo_de_publicacion(efectivos, r[0], r[3]),
+                           "costo_variantes": efectivos[r[0]] if efectivos.get(r[0], {}).get("distintos") else None} for r in filas_catalogo]
 
         impacto_promociones = promociones_mod.obtener_impacto_promociones(cursor)
         sugerencias_promocion = promociones_mod.sugerir_candidatos_promocion(cursor)

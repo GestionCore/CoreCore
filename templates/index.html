@@ -46,7 +46,8 @@
 <!-- ── 2. NÚMEROS ─────────────────────────────────────────────────────── -->
 <div class="ux-kpis">
     {{ kpi("Modelos activos", stats.activas, "accion", "grid", "publicaciones online") }}
-    {{ kpi("Capital en stock", "$" ~ stats.valor_total.split(',')[0], "gold", "coin", "precio × unidades totales") }}
+    {% if stats.unidades_con_costo %}{{ kpi("Capital en stock", "$" ~ stats.capital_costo.split(',')[0], "gold", "coin", ("a precio de costo · a la venta <b>$" ~ stats.valor_total.split(',')[0] ~ "</b>") if not stats.unidades_sin_costo else ("a costo de lo que tiene costo cargado · faltan <b>" ~ stats.unidades_sin_costo ~ " u.</b>")) }}
+    {% else %}{{ kpi("Capital en stock", "$" ~ stats.valor_total.split(',')[0], "gold", "coin", "precio × unidades totales") }}{% endif %}
     {{ kpi("Depósito propio", stats.propio ~ " u.", "ok" if stats.propio else "neutral", "box", "stock físico en tu local") }}
     {% if capacidades.get('full') is not false %}{{ kpi("Depósito FULL", stats.full ~ " u.", "info", "truck", "en bodegas de MeLi (solo lectura)") }}{% endif %}
     {{ kpi("Sin stock", sin_stock|length, "danger" if sin_stock else "ok", "alert", "<b>publicaciones activas</b> sin una unidad" if sin_stock else "ninguna publicación activa agotada") }}

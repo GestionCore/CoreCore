@@ -8,6 +8,7 @@ de blogs de terceros.
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+import costos_moneda
 import envio_gratis
 import flex
 import meli_http
@@ -272,6 +273,8 @@ def datos_de_producto(cursor, cuenta_id, id_meli, hoy=None):
         return None
     id_meli, titulo, thumbnail, precio, costo, category_id, listing_type_id = fila
     desde = (hoy or hoy_argentina()) - timedelta(days=VENTANA_REALES_DIAS)
+    efectivos = costos_moneda.costos_efectivos(cursor, cuenta_id, VENTANA_REALES_DIAS, hoy, id_meli)      # si sus variantes cuestan distinto: el promedio de lo que vendió
+    costo = costos_moneda.costo_de_publicacion(efectivos, id_meli, costo)
     cursor.execute("""
         SELECT COALESCE(SUM(cantidad), 0), COALESCE(SUM(precio_venta * cantidad), 0), COALESCE(SUM(COALESCE(cargo_venta, 0)), 0), COALESCE(SUM(COALESCE(costo_envio, 0)), 0),
                COALESCE(SUM(retenciones), 0), COALESCE(SUM(precio_venta * cantidad) FILTER (WHERE retenciones IS NOT NULL), 0)
@@ -285,4 +288,5 @@ def datos_de_producto(cursor, cuenta_id, id_meli, hoy=None):
                   "retenciones_pct": round(retenciones / ingreso_con_retenciones * 100, 2) if ingreso_con_retenciones > 0 else None}
     return {"id_meli": id_meli, "titulo": titulo or id_meli, "thumbnail": thumbnail, "precio": float(precio) if precio else None,
             "costo_fabricacion": float(costo) if costo else None, "category_id": category_id, "listing_type_id": listing_type_id,
+            "costo_variantes": efectivos[id_meli] if efectivos.get(id_meli, {}).get("distintos") else None,
             "reales": reales, "flex": escala_flex(flex.obtener_config(cursor, cuenta_id)["umbrales"])}

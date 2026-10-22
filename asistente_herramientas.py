@@ -18,6 +18,7 @@ import catalogo_ganar as catalogo_mod
 import chat_ia
 import cobros as cobros_mod
 import costos as costos_mod
+import costos_moneda
 import dashboard as dashboard_mod
 import db
 import despacho as despacho_mod
@@ -409,8 +410,10 @@ def _costos(ctx):
     with _conexion(ctx) as conexion:
         cursor = conexion.cursor()
         cobertura = costos_mod.cobertura_de_costos(cursor, desde.isoformat(), hasta.isoformat())
-        cursor.execute("SELECT COUNT(*) FROM productos_padre WHERE cuenta_id = %s AND estado = 'active' AND COALESCE(precio_costo, 0) = 0", (ctx.cuenta_id,))
-        sin_costo = cursor.fetchone()[0]
+        cursor.execute("SELECT id_meli FROM productos_padre WHERE cuenta_id = %s AND estado = 'active' AND COALESCE(precio_costo, 0) = 0", (ctx.cuenta_id,))
+        sin_cargar = [fila[0] for fila in cursor.fetchall()]
+        con_costo_en_variantes = costos_moneda.costos_efectivos(cursor, ctx.cuenta_id) if sin_cargar else {}              # sin costo en la publicación pero con costo en sus variantes: sí tiene
+        sin_costo = sum(1 for id_meli in sin_cargar if id_meli not in con_costo_en_variantes)
         cotizacion = dolar_mod.cotizacion_activa(cursor, ctx.cuenta_id)
     return {
         "publicaciones_activas_sin_costo_de_fabricacion": int(sin_costo), "ultimos_30_dias": {"facturado": _plata(cobertura["facturado"]), "facturado_sin_costo_cargado": _plata(cobertura["sin_costo"]),
@@ -610,6 +613,7 @@ def _producto(ctx, buscar=None):
         stock = {r[0]: (int(r[1]), int(r[2])) for r in cursor.fetchall()}
         precios = precios_mod.obtener_datos(cursor, ctx.cuenta_id, precios_mod.MARGEN_OBJETIVO_DEFECTO, 0.0)
     por_precio = {i["id_meli"]: i for i in precios["items"]}
+    con_costo = set(por_precio) | {i["id_meli"] for i in precios["sin_ventas"]}          # incluye las que tienen el costo cargado solo en sus variantes
 
     modelos = {}
     for id_padre, id_meli, titulo, estado, precio, costo, familia, calidad, visitas, previas, op_promedio, op_total in filas:
@@ -622,7 +626,7 @@ def _producto(ctx, buscar=None):
         m["facturado"] += f
         if estado == "active":
             m["precios"].append(float(precio or 0))
-            m["sin_costo"] += 1 if float(costo) <= 0 else 0
+            m["sin_costo"] += 1 if float(costo) <= 0 and id_meli not in con_costo else 0
             s, sin = stock.get(id_padre, (0, 0))
             m["stock"] += s
             m["variantes_sin_stock"] += sin

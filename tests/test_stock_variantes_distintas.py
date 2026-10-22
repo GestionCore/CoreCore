@@ -30,8 +30,8 @@ class _Conexion:
         return _Cursor(self.filas)
 
 
-def _fila(id_meli, propio, full, talle, etiqueta, titulo="Termo Acero 1l"):
-    return (id_meli, titulo, 10000, "active", None, None, None, None, None, propio, full, talle, etiqueta)
+def _fila(id_meli, propio, full, talle, etiqueta, titulo="Termo Acero 1l", costo=0):
+    return (id_meli, titulo, 10000, "active", None, None, None, None, None, propio, full, talle, etiqueta, costo)
 
 
 def _modelos(monkeypatch, filas):
