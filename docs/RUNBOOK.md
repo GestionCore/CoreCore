@@ -117,7 +117,8 @@ python respaldo.py --descifrar RUTA.zip.cifrado   # deja el .zip al lado para ab
 - **No aparecen ventas nuevas**: ver en los logs `[VentasSync]` y `[Sincronizador]` de esa cuenta. Si dice `CuentaDesconectada`, el usuario revocó
   el permiso o cambió la clave de Mercado Libre: tiene que volver a conectar (`/reconectar`).
 - Forzar un sync de una cuenta desde una consola con el `.env` local: `python -c "import sincronizador; sincronizador.sincronizar_todo(<usuario_id>, <cuenta_id>)"`.
-- Mercado Libre limita `GET /items?ids=` a 20 ids; los datos de facturación (`/billing/.../details`) devuelven 429 rápido: usar el resumen cacheado.
+- Mercado Libre limita el multiget de publicaciones a **20 ids** (con 21: 400 «Too many IDs. Maximum allowed: 20»). Todo multiget pasa por `meli_items.traer_items` (usa `/items/bulk`; el viejo `/items?ids=` se retira el 25/10/2026). Los datos de facturación (`/billing/.../details`) devuelven 429 rápido: usar el resumen cacheado.
+- **Ver qué hace producción**: `fly logs -a corecore --no-tail` muestra solo las últimas 100 líneas (con los webhooks de `items_prices` llegan varias por minuto: lo viejo se pierde). Para una pregunta puntual, correr un script de solo lectura dentro de la máquina: `fly ssh console -a corecore -C "python -c \"import base64;exec(base64.b64decode('<script en base64>').decode())\""` (el script agrega `/app` a `sys.path`, saca el token con `token_manager.asegurar_token_valido(cuenta_id)` y hace solo GET; nunca imprimir el token). Cuidado con el pooler: abre 1-2 conexiones más (tope 15 en total).
 
 ## 7. Usuarios y cuentas
 
@@ -126,6 +127,15 @@ python respaldo.py --descifrar RUTA.zip.cifrado   # deja el .zip al lado para ab
   excluirlas de cualquier proceso de cobro.
 - **Registro de actividad**: `/cuenta/actividad` muestra, por usuario, quién cambió qué (precios, stock, costos, planes…). La tabla `auditoria` es de solo
   agregar para la app.
+
+## 7b. Incidente de seguridad (tokens o datos de vendedores/compradores)
+
+Mercado Libre pide avisar **lo antes posible a `security@mercadolibre.com`** si el incidente involucra tokens, datos de vendedores o compradores, o afecta la integración (página «Gestión de incidentes» de su documentación); los Términos del Programa fijan **24 horas** desde que se toma conocimiento (cláusula 10). Pasos:
+1. **Contener**: rotar la clave afectada (sección 4), revocar sesiones (`FLASK_SECRET_KEY`), y si son tokens de Mercado Libre, `rotar_clave.py` y avisar a los vendedores que vuelvan a conectar.
+2. **Avisar** a `security@mercadolibre.com` con: qué pasó y cuándo, qué datos (tokens, cuántas cuentas, si hubo datos de compradores), qué se contuvo y qué falta. Sin pegar tokens ni claves.
+3. **Avisar a los afectados** (claro, sin jerga, con lo que tienen que hacer) y guardar la línea de tiempo.
+4. **Post-mortem** corto con causa raíz y una acción concreta por lección.
+Severidades de referencia de Mercado Libre: crítica (brecha confirmada, varios vendedores) < 15 min de respuesta; alta < 1 h; media < 4 h; baja < 24 h.
 
 ## 8. Límites de pedidos
 

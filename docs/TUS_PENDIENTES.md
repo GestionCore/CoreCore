@@ -23,7 +23,7 @@ Hecho el 2026-10-14. Están en el orden en que conviene hacerlos. Cada uno dice 
 
 ## 0. Desplegar antes del domingo 25/10 (5 minutos)
 
-**Por qué es urgente:** Mercado Libre retira el 25/10/2026 el pedido `/items?ids=` (traer varias publicaciones juntas), que usa el sincronizador de catálogo. El cambio ya está hecho y probado (usa el pedido nuevo `/items/bulk` y, si Mercado Libre contestara algo inesperado, vuelve al viejo). **Todavía no está en producción.** No hay migraciones nuevas (la última sigue siendo la 0050).
+**Por qué es urgente:** Mercado Libre retira el 25/10/2026 el pedido `/items?ids=` (traer varias publicaciones juntas). El primer deploy (21/10, versión `0693a8c`) ya migró el sincronizador de catálogo a `/items/bulk` y se verificó con Mercado Libre real. La prueba real mostró un detalle que la primera versión no cubría (las sugerencias de Competencia, que piden pocos campos): **ya está corregido y hace falta un segundo deploy chico antes del domingo 25/10.** No hay migraciones nuevas (la última sigue siendo la 0050).
 
 1. Abrí una terminal en la carpeta del proyecto (`CoreLux-SaaS`, la de siempre).
 2. Escribí:
@@ -34,7 +34,7 @@ python desplegar.py
 
 3. Tarda unos 5 minutos: primero corre todas las pruebas (si algo falla, **no sube nada**) y después despliega.
 4. **Cómo sé que salió bien:** al final dice la versión nueva. Abrí `https://corelux.app/healthz` (tiene que decir `ok` y mostrar esa versión) y entrá a la página.
-5. **Confirmar que usa el pedido nuevo** (a los 5 minutos de abrir la app, o después de «Actualizar»):
+5. **Confirmar que usa el pedido nuevo** (Fly solo guarda las últimas 100 líneas de log: si ya no aparece, no es un problema; Claude lo verifica con una consulta directa):
 
 ```bash
 fly logs -a corecore | grep ItemsBulk
