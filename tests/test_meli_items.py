@@ -84,9 +84,10 @@ def test_usa_bulk_con_los_atributos_con_prefijo_body_y_normaliza(monkeypatch):
     api = _instalar(monkeypatch, _Api())
     elementos, fallos = meli_items.traer_items(["MLA1", "MLA2"], HEADERS, atributos=("id", "title"))
     assert fallos == []
-    assert api.llamadas == [(meli_items.URL_BULK, {"ids": "MLA1,MLA2", "attributes": "body.id,body.title"})]
-    assert elementos == [{"id": "MLA1", "status_code": 200, "body": {"id": "MLA1", "title": "Titulo MLA1"}},
-                         {"id": "MLA2", "status_code": 200, "body": {"id": "MLA2", "title": "Titulo MLA2"}}]
+    # `id` y `status_code` se piden aparte: con `body.` solo, el endpoint real manda cada elemento como {body: {...}} y una publicación inexistente como {} (verificado 2026-10-21)
+    assert api.llamadas == [(meli_items.URL_BULK, {"ids": "MLA1,MLA2", "attributes": "id,status_code,body.id,body.title"})]
+    assert elementos == [{"id": "MLA1", "status_code": 200, "body": {"id": "MLA1", "title": "Titulo MLA1"}, "error": None},
+                         {"id": "MLA2", "status_code": 200, "body": {"id": "MLA2", "title": "Titulo MLA2"}, "error": None}]
 
 
 def test_acepta_la_forma_vieja_de_los_elementos_aunque_conteste_bulk(monkeypatch):
@@ -94,7 +95,7 @@ def test_acepta_la_forma_vieja_de_los_elementos_aunque_conteste_bulk(monkeypatch
     api = _instalar(monkeypatch, _Api(bulk=lambda ids: _Resp(200, _viejo(ids))))
     elementos, fallos = meli_items.traer_items(["MLA1"], HEADERS)
     assert fallos == [] and api.urls() == [meli_items.URL_BULK]
-    assert elementos == [{"id": "MLA1", "status_code": 200, "body": {"id": "MLA1", "title": "Titulo MLA1"}}]
+    assert elementos == [{"id": "MLA1", "status_code": 200, "body": {"id": "MLA1", "title": "Titulo MLA1"}, "error": None}]
 
 
 def test_sin_atributos_no_manda_el_parametro(monkeypatch):
@@ -151,6 +152,32 @@ def test_si_bulk_contesta_200_con_algo_que_no_es_una_lista_de_publicaciones_se_u
     elementos, fallos = meli_items.traer_items(["MLA1"], HEADERS)
     assert fallos == [] and api.urls() == [meli_items.URL_BULK, meli_items.URL_VIEJA]
     assert elementos[0]["id"] == "MLA1"
+
+
+# Formas REALES de /items/bulk, tal como las devolvió Mercado Libre el 2026-10-21 (publicaciones propias y un id inexistente)
+def test_un_elemento_que_mercado_libre_no_encontro_trae_error_y_no_body(monkeypatch):
+    datos = [{"id": "MLA1", "status_code": 200, "body": {"id": "MLA1"}}, {"id": "MLA2", "status_code": 404, "error": {"message": "Item not found"}}]
+    api = _instalar(monkeypatch, _Api(bulk=lambda ids: _Resp(200, datos)))
+    elementos, fallos = meli_items.traer_items(["MLA1", "MLA2"], HEADERS)
+    assert fallos == [] and api.urls() == [meli_items.URL_BULK]
+    assert elementos[1] == {"id": "MLA2", "status_code": 404, "body": None, "error": {"message": "Item not found"}}
+
+
+def test_un_elemento_filtrado_que_llega_solo_con_body_se_entiende_como_exito(monkeypatch):
+    """`attributes=body.id,body.title` (sin pedir la raíz) devuelve [{body: {...}}]: hay cuerpo, salió bien."""
+    api = _instalar(monkeypatch, _Api(bulk=lambda ids: _Resp(200, [{"body": {"id": "MLA1", "title": "A"}}, {}])))
+    elementos, fallos = meli_items.traer_items(["MLA1", "MLA2"], HEADERS)
+    assert fallos == [] and api.urls() == [meli_items.URL_BULK]
+    assert [(e["id"], e["status_code"]) for e in elementos] == [("MLA1", 200), (None, 0)]              # el inexistente llega como {}: sin estado, no se confunde con un éxito
+
+
+def test_si_ningun_elemento_dice_nada_se_prueba_el_viejo(monkeypatch):
+    """`attributes=id,title` sin prefijo llega solo con `id` (o todo `{}`): no se puede usar, y con el viejo sí."""
+    for cuerpo in ([{"id": "MLA1"}], [{}, {}]):
+        api = _instalar(monkeypatch, _Api(bulk=lambda ids, c=cuerpo: _Resp(200, c)))
+        elementos, fallos = meli_items.traer_items(["MLA1"], HEADERS)
+        assert fallos == [] and api.urls() == [meli_items.URL_BULK, meli_items.URL_VIEJA]
+        assert elementos[0]["status_code"] == 200
 
 
 def test_si_bulk_contesta_200_sin_json_se_usa_el_viejo(monkeypatch):
@@ -272,7 +299,7 @@ def test_las_sugerencias_de_competencia_parten_en_lotes_y_suman_todos(monkeypatc
     api = _instalar(monkeypatch, _Api(bulk=bulk))
     sugerencias = espia_competencia.sugerir_productos_propios("tok", ids, set())
     assert [len(p["ids"].split(",")) for _, p in api.llamadas] == [20, 20]
-    assert api.llamadas[0][1]["attributes"] == "body.id,body.title,body.catalog_product_id"
+    assert api.llamadas[0][1]["attributes"] == "id,status_code,body.id,body.title,body.catalog_product_id"
     assert {s["id_producto"]: s["publicaciones_propias"] for s in sugerencias} == {"MLA55555": 20, "MLA66666": 20}
 
 

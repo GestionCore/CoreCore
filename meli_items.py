@@ -2,14 +2,14 @@
 Consulta de varias publicaciones a la vez (multiget), con el endpoint nuevo de Mercado Libre y respaldo al viejo.
 
 Mercado Libre retira `GET /items?ids=` y `GET /users?ids=` el 25/10/2026 (documentación «Ítems y búsquedas», actualizada el 10/09/2026): el reemplazo es `GET /items/bulk?ids=`.
-Lo que cambia con el endpoint nuevo:
-  · en cada elemento, `code` pasa a llamarse `status_code` y se agrega `id` en la raíz;
-  · los campos que se piden con `attributes=` llevan el prefijo `body.` (`attributes=body.id,body.title`).
-Hasta ver una respuesta real de `/items/bulk` (no se pudo probar desde la PC: sin token de aplicación el API da 403), esto acepta las dos formas de elemento y, si el endpoint nuevo no está o contesta
-algo que no es una lista, vuelve al viejo: antes del 25/10 la sincronización sigue andando pase lo que pase, y después alcanza con que el nuevo responda como dice la documentación.
-Los dos aceptan 20 ids por pedido como máximo (con más, 400 «only allows 20 elements»): este módulo parte la lista.
+Lo que cambia con el endpoint nuevo (verificado contra Mercado Libre real el 2026-10-21, desde una máquina de producción y con publicaciones propias):
+  · cada elemento es `{id, status_code, body}`; si la publicación no existe, `{id, status_code: 404, error: {...}}` (sin `body`);
+  · los campos que se piden con `attributes=` llevan el prefijo `body.`, y **la raíz se pierde si no se pide**: con `attributes=body.id,body.title` cada elemento llega solo como `{body: {...}}` y una
+    publicación inexistente como `{}` (no se sabe qué pasó). Por eso se piden también `id,status_code`: `attributes=id,status_code,body.id,body.title`;
+  · máximo 20 ids por pedido (con 21, 400 «Too many IDs. Maximum allowed: 20»); `include_attributes=all` es aceptado.
+El viejo `/items?ids=` (también 20 como máximo) responde hasta el 25/10/2026. Este módulo acepta las dos formas de elemento y, si el endpoint nuevo no está o contesta algo que no es una lista, vuelve al viejo.
 
-Cada elemento de salida es `{"id", "status_code", "body"}`, sea cual sea el endpoint que contestó. Cómo ver cuál se usa en producción: `fly logs -a corecore | grep ItemsBulk`.
+Cada elemento de salida es `{"id", "status_code", "body", "error"}`, sea cual sea el endpoint que contestó. Cómo ver cuál se usa en producción: `fly logs -a corecore | grep ItemsBulk`.
 """
 import time
 
@@ -19,6 +19,7 @@ URL_BULK = "https://api.mercadolibre.com/items/bulk"
 URL_VIEJA = "https://api.mercadolibre.com/items"
 LOTE_MAXIMO = 20
 PREFIJO_BULK = "body."
+RAIZ_BULK = ("id", "status_code")
 SIN_ENDPOINT = (404, 405, 410, 501)            # el endpoint nuevo todavía no está (o ya no): no se insiste durante un rato
 RECHAZO_POR_FORMATO = (400,)                   # puede ser el formato del pedido nuevo: se prueba el viejo, pero no se descarta el nuevo
 ESPERA_TRAS_SIN_ENDPOINT = 30 * 60
@@ -45,13 +46,15 @@ def _normalizar(datos):
     for fila in datos:
         if not isinstance(fila, dict):
             return None
-        estado = fila.get("status_code", fila.get("code"))
-        if isinstance(estado, bool) or not isinstance(estado, int):
-            return None
         cuerpo = fila.get("body")
         cuerpo = cuerpo if isinstance(cuerpo, dict) else None
+        estado = fila.get("status_code", fila.get("code"))
+        if isinstance(estado, bool) or not isinstance(estado, int):
+            estado = 200 if cuerpo else 0                      # un elemento filtrado por `attributes` llega solo con `body`: si hay cuerpo es que salió bien; si no, no se sabe qué pasó
         identificador = fila.get("id") or (cuerpo or {}).get("id")
-        elementos.append({"id": identificador, "status_code": estado, "body": cuerpo})
+        elementos.append({"id": identificador, "status_code": estado, "body": cuerpo, "error": fila.get("error")})
+    if elementos and all(e["status_code"] == 0 for e in elementos):
+        return None                                            # ningún elemento dice nada (p. ej. `attributes=id,title` sin prefijo llega solo con `id`): no es una respuesta usable, se prueba el viejo
     return elementos
 
 
@@ -66,7 +69,10 @@ def _url(base, lote, atributos, prefijo):
     """La dirección con la consulta escrita a mano (las comas sin codificar), igual que la que usaba el sincronizador desde siempre."""
     direccion = f"{base}?ids={','.join(lote)}"
     if atributos:
-        direccion += "&attributes=" + ",".join(f"{prefijo}{a}" for a in atributos)
+        campos = [f"{prefijo}{a}" for a in atributos]
+        if prefijo:
+            campos = list(RAIZ_BULK) + campos                  # el endpoint nuevo pierde `id` y `status_code` si se filtra solo por `body.`: se piden aparte
+        direccion += "&attributes=" + ",".join(campos)
     return direccion
 
 
