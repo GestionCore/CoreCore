@@ -10,7 +10,7 @@ FUENTES = {os.path.basename(p): open(p, encoding="utf-8").read() for p in glob.g
 CODIGO = "\n".join(FUENTES.values())
 TODAS = [(clave, p) for clave, s in nav_config.GRUPOS_NAV.items() for p in s["paginas"]]
 # pantallas que llevan active_nav pero no son una sección del menú (cuenta, administración, páginas a las que se llega por un link)
-SIN_SECCION = {"admin", "suscripcion", "referidos", "cuenta"}
+SIN_SECCION = {"admin", "suscripcion", "referidos", "cuenta", "ayuda"}
 
 
 def test_cada_pantalla_aparece_una_sola_vez_en_el_menu():

@@ -121,5 +121,7 @@ def test_dia_a_dia_muestra_el_resumen_de_hoy_con_numeros_y_no_una_frase_que_expl
     assert "por despachar" in dia and "pendiente{{ '' if misiones|length == 1 else 's' }}" in dia
 
 
-def test_el_nombre_de_la_cuenta_no_se_muestra_en_mayusculas_si_no_hay_nombre_de_negocio():
-    assert "c.nombre_negocio or c.nickname|capitalize" in _leer("templates", "cuenta.html")
+def test_el_nombre_de_la_cuenta_se_muestra_como_lo_informa_mercado_libre_si_no_hay_nombre_de_negocio():
+    """Antes se pasaba por |capitalize / |title y «NOENOEINDUMENTARIA» quedaba «Noenoeindumentaria», que parecía un error de tipeo (D79, 2026-10-22)."""
+    cuenta = _leer("templates", "cuenta.html")
+    assert "c.nombre_negocio or c.nickname }}" in cuenta and "|capitalize" not in cuenta

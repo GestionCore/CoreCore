@@ -103,6 +103,26 @@
 
 </div>
 
+{# Comparación fila por fila (D82): lo que cambia entre Base y Elite se ve de un vistazo. Los números salen del mismo lugar que los límites reales. #}
+<section class="planes-tabla-wrap" aria-labelledby="planes-comparar">
+  <h2 id="planes-comparar" class="planes-tabla-titulo">Comparar los dos planes</h2>
+  <div class="planes-tabla-scroll">
+  <table class="planes-tabla">
+    <thead><tr><th scope="col"><span class="sr-only">Función</span></th><th scope="col">Base</th><th scope="col" class="planes-col-elite">Elite <span class="planes-reco">Recomendado</span></th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Cuentas de Mercado Libre</th><td>1</td><td class="planes-col-elite">Hasta {{ MAX_CUENTAS_ELITE }}</td></tr>
+      <tr><th scope="row">Cambiar entre tus cuentas con un clic</th><td class="planes-no">—</td><td class="planes-col-elite planes-si">✓</td></tr>
+      <tr><th scope="row">Ganancia real, costos y precios</th><td class="planes-si">✓</td><td class="planes-col-elite planes-si">✓</td></tr>
+      <tr><th scope="row">Stock, catálogo y publicaciones</th><td class="planes-si">✓</td><td class="planes-col-elite planes-si">✓</td></tr>
+      <tr><th scope="row">Día a día: despacho, preguntas y reputación</th><td class="planes-si">✓</td><td class="planes-col-elite planes-si">✓</td></tr>
+      <tr><th scope="row">Radar y tendencias del mercado</th><td class="planes-si">✓</td><td class="planes-col-elite planes-si">✓</td></tr>
+      <tr><th scope="row">Asistente de IA (consultas por día)</th><td>{{ CONSULTAS_IA_BASE }}</td><td class="planes-col-elite">{{ CONSULTAS_IA_ELITE }}</td></tr>
+      <tr><th scope="row">Soporte</th><td>Por mail</td><td class="planes-col-elite">Prioritario</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
 {% if plan_actual in ("base", "elite") %}
 <div class="planes-footer-link">
   <a href="/suscripcion">Ver estado de tu suscripción</a>
@@ -281,6 +301,18 @@
 }
 .plan-cta-link { display: block; text-align: center; text-decoration: none; box-sizing: border-box; }
 .plan-beta { opacity: 0.85; }
+.planes-tabla-wrap { max-width: 760px; margin: 0 auto 2rem; padding: 0 1rem; }
+.planes-tabla-titulo { font-family: var(--font-display); font-size: 1.3rem; text-align: center; margin: 0 0 1rem; }
+.planes-tabla-scroll { overflow-x: auto; border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.planes-tabla { width: 100%; border-collapse: collapse; min-width: 460px; }
+.planes-tabla th, .planes-tabla td { padding: 12px 16px; text-align: center; border-bottom: 1px solid var(--border-soft); font-size: var(--text-base); color: var(--text-secondary); }
+.planes-tabla tbody tr:last-child th, .planes-tabla tbody tr:last-child td { border-bottom: 0; }
+.planes-tabla th[scope="row"] { text-align: left; font-weight: 500; color: var(--text-primary); }
+.planes-tabla thead th { font-weight: 800; color: var(--text-primary); }
+.planes-col-elite { background: color-mix(in srgb, var(--accent-primary) 7%, transparent); }
+.planes-reco { display: block; font-size: var(--text-2xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-texto); }
+.planes-si { color: var(--success); font-weight: 800; }
+.planes-no { color: var(--text-faint); }
 .planes-notas {
   text-align: center;
   max-width: 600px;

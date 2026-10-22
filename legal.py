@@ -27,7 +27,7 @@ def _contexto():
 def robots():
     base = request.url_root.rstrip("/")
     # Las pantallas con datos del negocio son privadas (requieren sesión): se piden fuera del índice por prolijidad
-    lineas = ["User-agent: *", "Allow: /", "Allow: /terminos", "Allow: /privacidad", "Allow: /planes",
+    lineas = ["User-agent: *", "Allow: /", "Allow: /terminos", "Allow: /privacidad", "Allow: /planes", "Allow: /ayuda",
               "Disallow: /api/", "Disallow: /admin", "Disallow: /cuenta/", f"Sitemap: {base}/sitemap.xml"]
     cuerpo = chr(10).join(lineas) + chr(10)
     return Response(cuerpo, mimetype="text/plain")
@@ -36,7 +36,7 @@ def robots():
 @bp.route("/sitemap.xml")
 def sitemap():
     base = request.url_root.rstrip("/")
-    urls = "".join(f"<url><loc>{base}{p}</loc></url>" for p in ("/", "/planes", "/terminos", "/privacidad"))
+    urls = "".join(f"<url><loc>{base}{p}</loc></url>" for p in ("/", "/planes", "/ayuda", "/terminos", "/privacidad"))
     return Response(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>', mimetype="application/xml")
 
 

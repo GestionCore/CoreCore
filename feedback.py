@@ -15,7 +15,8 @@ from utils import ARGENTINA
 log = logging.getLogger("corelux.feedback")
 bp = Blueprint("feedback", __name__)
 
-TIPOS = {"idea": "Una idea", "problema": "Algo no anda", "pregunta": "Una pregunta"}
+TIPOS = {"idea": "Una idea", "problema": "Algo no anda", "pregunta": "Una pregunta", "valoracion": "Me sirvió"}
+# «Me sirvió»: lo manda el botón «¿Te sirvió esta pantalla?» del pie de cada pantalla, no la ventana de comentarios (que ofrece los otros tres)
 MIN_LARGO, MAX_LARGO = 5, 2000
 
 

@@ -33,4 +33,5 @@ def test_todos_los_tipos_de_la_interfaz_existen_en_el_servidor():
     import re
     base = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "templates", "base.html"), encoding="utf-8").read()
     en_pantalla = set(re.findall(r'class="fb-tipo[^"]*" data-tipo="(\w+)"', base))
-    assert en_pantalla == set(feedback.TIPOS)
+    assert en_pantalla == set(feedback.TIPOS) - {"valoracion"}                # el «me sirvió» sale del pie de cada pantalla, no de la ventana
+    assert "valoracion" in feedback.TIPOS and feedback.validar("valoracion", "Me sirvió esta pantalla.")[2] is None

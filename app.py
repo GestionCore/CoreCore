@@ -76,6 +76,7 @@ import dolar as dolar_mod
 import costos_moneda
 import beta
 import consentimiento_ia
+import asistente
 import monitor_en_vivo
 import pagos
 import correos
@@ -300,6 +301,8 @@ import costos_importar
 app.register_blueprint(costos_importar.bp)
 
 
+app.jinja_env.globals["CONSULTAS_IA_BASE"] = asistente.limite_diario("base")             # lo que dice la tabla de Planes: el mismo número que aplica el asistente
+app.jinja_env.globals["CONSULTAS_IA_ELITE"] = asistente.limite_diario("elite")
 app.jinja_env.globals["MAX_CUENTAS_ELITE"] = config.MAX_CUENTAS_ELITE        # lo usan los textos del plan Elite (planes, landing): un solo número para cambiar
 
 
@@ -4015,6 +4018,12 @@ def admin_beta_desactivar(invitacion_id):
 # ── /Panel de administración ──────────────────────────────────────────────
 
 # ── Suscripciones / Pagos ─────────────────────────────────────────────────
+
+@app.route("/ayuda")
+def ayuda_vista():
+    """Qué es cada cosa y las preguntas frecuentes. Sin sesión es una página pública (la ve quien todavía no entró)."""
+    return render_template("ayuda.html", active_nav="ayuda")
+
 
 @app.route("/planes")
 def planes_vista():

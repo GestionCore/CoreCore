@@ -1067,3 +1067,6 @@ a.checklist-item:not(.completo) .checklist-check { border-color: color-mix(in sr
 .rf-en-rango { background: rgba(139,92,246,0.15); border-radius: 0; color: var(--text-primary); }
 .rf-limite { background: var(--accent-solid); color: #fff; font-weight: 700; }
 .rf-footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-soft); text-align: center; font-size: var(--text-2xs); color: var(--text-secondary); font-family: var(--font-data); }
+
+/* Texto solo para lectores de pantalla (la celda vacía de la esquina de una tabla, por ejemplo) */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

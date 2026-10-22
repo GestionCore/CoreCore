@@ -537,10 +537,12 @@
             if (d.completos / d.total >= 0.5 || window.innerWidth <= 720) { panelPrimerosPasos.classList.remove('abierto'); panelPrimerosPasos.setAttribute('aria-expanded', 'false'); }
             document.getElementById('checklist-contador').textContent = `${d.completos}/${d.total}`;
             document.getElementById('checklist-fill').style.width = d.porcentaje + '%';
-            document.getElementById('checklist-items').innerHTML = d.pasos.map(p => {
+            // Lo que falta va primero (el de más valor, el costo, arriba) y lo ya hecho queda debajo; el primero pendiente se marca como el próximo paso
+            const ordenados = [...d.pasos].sort((a, b) => Number(a.completo) - Number(b.completo));
+            document.getElementById('checklist-items').innerHTML = ordenados.map((p, i) => {
                 const tag = p.link && !p.completo ? 'a' : 'div';
                 const href = p.link && !p.completo ? `href="${UX.esc(p.link)}"` : '';
-                return `<${tag} ${href} class="checklist-item ${p.completo ? 'completo' : ''}">
+                return `<${tag} ${href} class="checklist-item ${p.completo ? 'completo' : ''}${i === 0 && !p.completo ? ' primero' : ''}">
                     <span class="checklist-check">${p.completo ? '✓' : ''}</span>
                     <span class="checklist-texto">${UX.esc(p.texto)}${p.detalle && !p.completo ? `<span class="text-muted" style="display:block; font-size:var(--text-xs); font-weight:400;">${UX.esc(p.detalle)}</span>` : ''}</span>
                     ${tag === 'a' ? '<span class="checklist-ir">Hacerlo →</span>' : ''}

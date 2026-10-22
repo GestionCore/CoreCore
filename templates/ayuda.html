@@ -1,0 +1,77 @@
+{# Ayuda: qué es cada cosa y las preguntas que más se repiten. Sin sesión es una página pública (para quien todavía no entró); con sesión, la de siempre. #}
+{% extends "base.html" if session.get('usuario_id') else "_publico.html" %}
+{% block title %}Ayuda — CoreLux{% endblock %}
+{% block content %}
+<div class="ay-pagina">
+  <header class="ay-cabecera">
+    <h1 class="ay-titulo">Ayuda</h1>
+    <p class="ay-bajada">Lo que más se pregunta, dicho simple. Si no está acá, escribinos a <a href="mailto:soporte@corelux.app">soporte@corelux.app</a>.</p>
+  </header>
+
+  <section class="ay-bloque" aria-labelledby="ay-primeros">
+    <h2 id="ay-primeros" class="ay-h2">Para empezar</h2>
+    <ol class="ay-pasos">
+      <li><b>Conectá tu cuenta de Mercado Libre.</b> La primera vez trae tus publicaciones y tus ventas del último año; tarda unos minutos y la pantalla te muestra cómo va.</li>
+      <li><b>Cargá cuánto te cuesta tu producto más vendido</b> (en <em>Precios y costos → Costos</em>). Sin ese dato, la ganancia que ves sale más alta que la real.</li>
+      <li><b>Mirá el Dashboard.</b> Arriba está lo de hoy: cuánto facturaste, cuánto te cuesta y cuánto te queda.</li>
+    </ol>
+  </section>
+
+  <section class="ay-bloque" aria-labelledby="ay-terminos">
+    <h2 id="ay-terminos" class="ay-h2">Qué significa cada cosa</h2>
+    <dl class="ay-glosario">
+      <div><dt>Ganancia neta real</dt><dd>Lo que te queda de cada venta después de descontar todo: lo que cobra Mercado Libre (comisión y cuotas), el envío, la publicidad, lo que te cuesta fabricar o comprar el producto y los cargos mensuales de Mercado Libre.</dd></div>
+      <div><dt>Te queda</dt><dd>Esa misma ganancia, dicha en una frase: <em>facturado − costos = te queda</em>.</dd></div>
+      <div><dt>Margen</dt><dd>Lo que te queda, como porcentaje de lo que facturaste. Un margen de 20 % significa que de cada $100 vendidos te quedan $20.</dd></div>
+      <div><dt>Costo de fabricación</dt><dd>Lo que te cuesta hacer o comprar un producto. Lo cargás vos, en pesos o en dólares, y CoreLux lo usa en cada cuenta.</dd></div>
+      <div><dt>Cargos de Mercado Libre</dt><dd>Lo que te cobra por vender: la comisión, el costo de ofrecer cuotas y los cupones que financiás vos.</dd></div>
+      <div><dt>Retenciones</dt><dd>Impuestos que Mercado Libre retiene al cobrar (por ejemplo, Ingresos Brutos). Se muestran aparte y no restan de tu ganancia: son un pago anticipado de impuestos.</dd></div>
+      <div><dt>FULL</dt><dd>Tu mercadería está en un depósito de Mercado Libre, que la prepara y la envía. Su stock se ve acá, pero solo se cambia en Mercado Libre.</dd></div>
+      <div><dt>Flex</dt><dd>Entregás vos (o tu logística). Mercado Libre informa $0 de envío, así que el costo real lo cargás vos en <em>Costos</em> para que la ganancia lo descuente.</dd></div>
+      <div><dt>ROAS</dt><dd>Cuánto vendés por cada peso que gastás en publicidad. Un ROAS de 5 significa $5 vendidos por cada $1 de publicidad.</dd></div>
+      <div><dt>ACOS</dt><dd>El gasto en publicidad como porcentaje de lo que esa publicidad vendió. Es el ROAS dado vuelta: cuanto más bajo, mejor.</dd></div>
+      <div><dt>TACOS</dt><dd>El gasto en publicidad como porcentaje de todo lo que vendiste, con o sin publicidad.</dd></div>
+      <div><dt>Variante</dt><dd>Cada versión de una publicación: la que cambia de tamaño, de capacidad o de modelo. CoreLux toma lo que distingue a cada una de lo que informa Mercado Libre, sea cual sea tu rubro.</dd></div>
+      <div><dt>Radar</dt><dd>Lo que la gente busca en Mercado Libre y cómo está la oferta en las categorías donde vendés.</dd></div>
+    </dl>
+  </section>
+
+  <section class="ay-bloque" aria-labelledby="ay-preguntas">
+    <h2 id="ay-preguntas" class="ay-h2">Preguntas frecuentes</h2>
+    <div class="ay-preguntas">
+      <details><summary>¿Por qué mi ganancia parece más alta de lo real?</summary><p>Casi siempre es porque faltan costos. Si un producto no tiene su costo cargado, CoreLux no puede descontarlo y la ganancia sale inflada. Cargalos en <em>Precios y costos → Costos</em>: podés cargarlos de a uno, por modelo o con una planilla.</p></details>
+      <details><summary>¿Cada cuánto se actualiza?</summary><p>Apenas Mercado Libre avisa un cambio (una venta, una pregunta, un reclamo) y, por las dudas, cada media hora. El botón de arriba dice hace cuánto se actualizó y trae lo último al tocarlo.</p></details>
+      <details><summary>¿CoreLux cambia mis publicaciones?</summary><p>Solo lee tus datos para mostrarte los números. Las pocas acciones que sí cambian algo (precio, stock, reactivar una publicación, responder o borrar una pregunta, descuentos) te piden confirmación antes de tocar nada.</p></details>
+      <details><summary>¿Qué es el aviso «aplicación no certificada» de Mercado Libre?</summary><p>Mercado Libre lo muestra en las aplicaciones que todavía no pasaron por su programa de certificación, y CoreLux está en esa etapa. Entrás con tu cuenta de Mercado Libre y nunca vemos tu contraseña.</p></details>
+      <details><summary>Soy Responsable Inscripto, ¿qué tengo que saber?</summary><p>Los importes que ves todavía incluyen el IVA: CoreLux aún no lo separa, así que tu ganancia real puede ser menor. Para temas impositivos conviene confirmar con tu contador.</p></details>
+      <details><summary>¿Cómo descargo o borro mis datos?</summary><p>En <em>Mi cuenta → Tus datos</em> descargás todo lo tuyo en un archivo, o eliminás tu cuenta y todos tus datos de CoreLux. También podés quitarle el acceso a CoreLux desde las aplicaciones conectadas de tu cuenta de Mercado Libre.</p></details>
+      <details><summary>¿Qué datos se envían a la inteligencia artificial?</summary><p>Solo si activaste las funciones con IA, y solo lo necesario para cada consulta: por ejemplo tus ventas o tu ganancia de un período, o el texto de la pregunta de un comprador. Nunca tu contraseña ni los datos de contacto de tus compradores. Lo activás o desactivás en <em>Mi cuenta</em>.</p></details>
+      <details><summary>¿A quién le escribo si algo no anda?</summary><p>A <a href="mailto:soporte@corelux.app">soporte@corelux.app</a>, o desde «Enviar un comentario» en el menú de tu cuenta: nos llega con la pantalla en la que estabas.</p></details>
+    </div>
+  </section>
+</div>
+
+<style>
+.ay-pagina { max-width: 800px; margin: 0 auto; padding: 2rem 1rem 3rem; }
+.ay-cabecera { margin-bottom: 1.5rem; }
+.ay-titulo { font-family: var(--font-display); font-size: 2rem; font-weight: 800; margin: 0 0 0.4rem; }
+.ay-bajada { color: var(--text-secondary); margin: 0; line-height: 1.6; }
+.ay-bajada a, .ay-preguntas a { color: var(--accent-texto); }
+.ay-bloque { border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 1.4rem 1.5rem; margin-bottom: 1.2rem; background: var(--glass-bg); }
+.ay-h2 { font-size: 1.1rem; font-weight: 700; margin: 0 0 1rem; font-family: var(--font-ui); }
+.ay-pasos { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.7rem; color: var(--text-secondary); line-height: 1.6; }
+.ay-pasos b { color: var(--text-primary); }
+.ay-glosario { margin: 0; display: grid; gap: 0.9rem; }
+.ay-glosario div { display: grid; grid-template-columns: minmax(130px, 0.28fr) 1fr; gap: 0.3rem 1.2rem; align-items: baseline; }
+.ay-glosario dt { font-weight: 700; color: var(--text-primary); }
+.ay-glosario dd { margin: 0; color: var(--text-secondary); line-height: 1.6; }
+.ay-preguntas details { border-top: 1px solid var(--border-soft); padding: 0.85rem 0; }
+.ay-preguntas details:first-child { border-top: 0; padding-top: 0; }
+.ay-preguntas summary { cursor: pointer; font-weight: 600; color: var(--text-primary); list-style: none; }
+.ay-preguntas summary::-webkit-details-marker { display: none; }
+.ay-preguntas summary::after { content: "+"; float: right; color: var(--text-secondary); font-weight: 400; }
+.ay-preguntas details[open] summary::after { content: "−"; }
+.ay-preguntas p { margin: 0.6rem 0 0; color: var(--text-secondary); line-height: 1.65; }
+@media (max-width: 560px) { .ay-glosario div { grid-template-columns: 1fr; } .ay-bloque { padding: 1.1rem 1rem; } }
+</style>
+{% endblock %}

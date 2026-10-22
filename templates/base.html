@@ -91,10 +91,10 @@
     <a href="/dashboard" class="brand sidebar-brand"><span class="brand-mark"></span><span class="sidebar-texto">CoreLux</span></a>
     {% if cuentas_disponibles and cuentas_disponibles|length > 1 %}
     <details class="sidebar-cuenta" id="tour-nav-cuenta">
-        <summary>{{ _nombre_cuenta|title }}</summary>
+        <summary>{{ _nombre_cuenta }}</summary>
         <div class="sidebar-cuenta-lista">
             {% for c in cuentas_disponibles %}
-            <form method="post" action="{{ url_for('cambiar_cuenta', cuenta_id=c.id) }}"><button type="submit" class="{% if cuenta_actual and c.id == cuenta_actual.id %}active{% endif %}">{{ (c.nombre_negocio or c.nickname or ('Cuenta #' ~ c.id))|title }}</button></form>
+            <form method="post" action="{{ url_for('cambiar_cuenta', cuenta_id=c.id) }}"><button type="submit" class="{% if cuenta_actual and c.id == cuenta_actual.id %}active{% endif %}">{{ c.nombre_negocio or c.nickname or ('Cuenta #' ~ c.id) }}</button></form>
             {% endfor %}
         </div>
     </details>
@@ -146,7 +146,7 @@
     <button type="button" class="btn btn-secondary btn-sync-todo" id="btn-sincronizar-todo" data-click="ejecutarSincronizarTodo" aria-label="Actualizar con Mercado Libre" title="Trae lo último de Mercado Libre ahora (se actualiza solo cada 4 minutos)">
         <svg class="icon" style="width:14px;height:14px;" aria-hidden="true"><use href="#icon-refresh"/></svg><span class="btn-sync-texto">Actualizar</span>
     </button>
-    <button type="button" class="cuenta-btn" data-click="abrirMenuLateral" aria-label="Abrir el menú de tu cuenta"><span class="cuenta-inicial">{{ _nombre_cuenta[0]|upper }}</span><span class="cuenta-nombre">{{ _nombre_cuenta|title }}</span></button>
+    <button type="button" class="cuenta-btn" data-click="abrirMenuLateral" aria-label="Abrir el menú de tu cuenta"><span class="cuenta-inicial">{{ _nombre_cuenta[0]|upper }}</span><span class="cuenta-nombre">{{ _nombre_cuenta }}</span></button>
 </header>
 
 {% if _seccion_activa and nav_grupos[_seccion_activa].paginas|length > 1 %}
@@ -166,6 +166,16 @@
 
 <main class="page-container" id="contenido-principal" tabindex="-1">
     {% block content %}{% endblock %}
+    {% if session.get('usuario_id') and active_nav and active_nav not in ('ayuda', 'admin', 'cuenta', 'suscripcion', 'referidos') %}
+    {# Pie de cada pantalla: una pregunta de un clic para saber qué sirve y qué no (la beta necesita devoluciones). Se muestra una vez cada 2 semanas por pantalla. #}
+    <div class="te-sirvio" id="te-sirvio" hidden>
+        <span class="te-sirvio-pregunta" id="te-sirvio-pregunta">¿Te sirvió esta pantalla?</span>
+        <span class="te-sirvio-botones" id="te-sirvio-botones">
+            <button type="button" class="btn btn-secondary te-sirvio-btn" data-click="votarSirvio" data-click-args='["si"]'>Sí</button>
+            <button type="button" class="btn btn-secondary te-sirvio-btn" data-click="votarSirvio" data-click-args='["mejorar"]'>Se puede mejorar</button>
+        </span>
+    </div>
+    {% endif %}
 </main>
 </div><!-- /app-main -->
 </div><!-- /app-shell -->
@@ -217,7 +227,7 @@
 
 <button type="button" class="chat-fab" data-click="toggleChat" title="Consultar con Asistente IA" aria-label="Consultar con Asistente IA"><svg class="icon" style="width:22px;height:22px;" aria-hidden="true"><use href="#icon-chat"/></svg></button>
 <div class="chat-window" id="chat-window">
-    <div class="chat-header"><span class="chat-titulo">Asistente de Operaciones{% if cuentas_disponibles and cuentas_disponibles|length > 1 %}<small class="chat-cuenta">Consultando: {{ _nombre_cuenta|title }}</small>{% endif %}</span><button type="button" style="background:none;border:none;cursor:pointer;color:inherit;padding:2px;display:inline-flex;" data-click="toggleChat" title="Cerrar" aria-label="Cerrar chat"><svg class="icon" style="width:15px;height:15px;" aria-hidden="true"><use href="#icon-x"/></svg></button></div>
+    <div class="chat-header"><span class="chat-titulo">Asistente de Operaciones{% if cuentas_disponibles and cuentas_disponibles|length > 1 %}<small class="chat-cuenta">Consultando: {{ _nombre_cuenta }}</small>{% endif %}</span><button type="button" style="background:none;border:none;cursor:pointer;color:inherit;padding:2px;display:inline-flex;" data-click="toggleChat" title="Cerrar" aria-label="Cerrar chat"><svg class="icon" style="width:15px;height:15px;" aria-hidden="true"><use href="#icon-x"/></svg></button></div>
     <div class="chat-body" id="chat-body"><div class="chat-msg-bot">¡Hola! Te ayudo con tu cuenta de Mercado Libre: preguntame por tus ventas, qué producto te deja más, tu publicidad, tus precios, el stock, los cobros o cómo usar la página, y te llevo a la pantalla que necesites.</div>
         <div class="chat-sugerencias" id="chat-sugerencias">
             <button type="button" class="btn btn-secondary" data-click="preguntarAlAsistente" data-click-args='["¿Cuánto gané esta semana?"]'>¿Cuánto gané esta semana?</button>
@@ -342,6 +352,7 @@
 
         <div class="menu-lateral-section">
             <div class="menu-lateral-section-label">Soporte</div>
+            <a href="/ayuda" class="menu-lateral-item {% if active_nav == 'ayuda' %}active{% endif %}"><svg class="icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#icon-info"/></svg><span>Ayuda y preguntas frecuentes</span></a>
             <a href="#" class="menu-lateral-item" data-click="abrirComentario" data-prevenir>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.6" fill="currentColor" stroke="none"/></svg>
                 <span>Enviar un comentario</span>
@@ -349,7 +360,6 @@
             <a href="/cuenta/actividad" class="menu-lateral-item"><svg class="icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#icon-file-text"/></svg><span>Actividad de mi cuenta</span></a>
             <a href="/terminos" class="menu-lateral-item"><svg class="icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#icon-receipt"/></svg><span>Términos y condiciones</span></a>
             <a href="/privacidad" class="menu-lateral-item"><svg class="icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#icon-lock"/></svg><span>Política de privacidad</span></a>
-            <a href="/cuenta/eliminar" class="menu-lateral-item"><svg class="icon" style="width:18px;height:18px;" aria-hidden="true"><use href="#icon-trash"/></svg><span>Eliminar mi cuenta</span></a>
         </div>
 
         <div class="menu-lateral-section" style="margin-top:auto;">
@@ -527,13 +537,41 @@ document.addEventListener('keydown', e => {
 (function () {
     let tipo = 'problema';
     const overlay = () => document.getElementById('fb-overlay');
+    const PLACEHOLDER_ORIGINAL = document.getElementById('fb-mensaje').placeholder;
     window.abrirComentario = function () {
         document.getElementById('fb-estado').textContent = '';
+        document.getElementById('fb-mensaje').placeholder = PLACEHOLDER_ORIGINAL;
         overlay().hidden = false;
         UX.atraparFoco(overlay().querySelector('.fb-caja'));
         setTimeout(() => document.getElementById('fb-mensaje').focus(), 50);
     };
     window.cerrarComentario = function () { overlay().hidden = true; UX.soltarFoco(overlay().querySelector('.fb-caja')); };
+    // «¿Te sirvió esta pantalla?»: se muestra una vez cada 2 semanas por pantalla (se recuerda en este navegador; si no se puede guardar, simplemente no se ofrece)
+    const CLAVE_SIRVIO = 'corelux_sirvio:' + location.pathname, DIAS_SIRVIO = 14;
+    (function () {
+        const franja = document.getElementById('te-sirvio');
+        if (!franja) return;
+        try {
+            const visto = Number(localStorage.getItem(CLAVE_SIRVIO) || 0);
+            if (visto && Date.now() - visto < DIAS_SIRVIO * 86400000) return;
+            franja.hidden = false;
+        } catch (e) { /* sin almacenamiento del navegador no se ofrece: no hay cómo evitar repetirla */ }
+    })();
+    function _recordarSirvio() { try { localStorage.setItem(CLAVE_SIRVIO, String(Date.now())); } catch (e) { /* nada */ } }
+    window.votarSirvio = async function (voto) {
+        _recordarSirvio();
+        if (voto === 'mejorar') {
+            document.getElementById('te-sirvio').hidden = true;
+            elegirTipoComentario(document.querySelector('.fb-tipo[data-tipo="idea"]'));
+            window.abrirComentario();
+            document.getElementById('fb-mensaje').placeholder = '¿Qué mejorarías de esta pantalla? Contanos qué esperabas encontrar.';
+            return;
+        }
+        document.getElementById('te-sirvio-botones').hidden = true;
+        document.getElementById('te-sirvio-pregunta').textContent = '¡Gracias!';
+        try { await fetch('/api/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: 'valoracion', mensaje: 'Me sirvió esta pantalla.', pantalla: location.pathname }) }); } catch (e) { /* un voto perdido no molesta a nadie */ }
+        setTimeout(() => { document.getElementById('te-sirvio').hidden = true; }, 2500);
+    };
     window.elegirTipoComentario = function (boton) {
         tipo = boton.dataset.tipo;
         document.querySelectorAll('.fb-tipo').forEach(b => b.classList.toggle('activo', b === boton));

@@ -140,15 +140,15 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 
 ## K. Textos y nombres (3)
 
-79. ⏳ [M·S] **El nombre de la cuenta se escribe «Diegoarielsantiago» / «Noenoeindumentaria»** (el filtro `|title` sobre el apodo en mayúsculas de Mercado Libre) en la barra, el chat y la lista de cuentas, que además lo repite abajo en mayúsculas («DIEGOARIELSANTIAGO»). Parece un error de tipeo. → mostrarlo como Mercado Libre lo informa, una sola vez, y dejar elegir un «nombre del negocio» (ya existe el campo) (UX200#6/#184).
+79. ✅ [M·S] **El nombre de la cuenta se escribe «Diegoarielsantiago» / «Noenoeindumentaria»** (el filtro `|title` sobre el apodo en mayúsculas de Mercado Libre) en la barra, el chat y la lista de cuentas, que además lo repite abajo en mayúsculas («DIEGOARIELSANTIAGO»). Parece un error de tipeo. → mostrarlo como Mercado Libre lo informa, una sola vez, y dejar elegir un «nombre del negocio» (ya existe el campo) (UX200#6/#184).
 80. ⏳ [B·S] **Landing: el título de la pestaña dice «Gestión profesional para Mercado Libre» y el título para compartir dice «Cuánto te queda de verdad de cada venta»** (`<title>` y `og:title`). El segundo es el bueno. → el mismo en los dos.
 81. ⏳ [B·S] **Pantallas con subtítulos genéricos** (Stock: «Qué tenés, dónde está y qué hay que reponer — se actualiza solo»; Precios: «El precio mínimo para no perder plata…»; Mercado: «Qué busca la gente…»): explican el nombre de la pantalla, no dicen cómo estás hoy. → la frase de resultado, como Ganancia Real y Cobros («Lo que realmente te queda…», «Plata que todavía te tienen que acreditar»). Va con el punto 89.
 
 ## L. Cuenta, planes y páginas públicas (4)
 
-82. ⏳ [A·S] **Planes: Base y Elite son dos listas de frases con ✓**, sin una tabla que muestre la diferencia fila por fila (cuentas, consultas del asistente, soporte). → tabla comparativa y el «RECOMENDADO» sobre la columna (UX200#179).
+82. ✅ [A·S] **Planes: Base y Elite son dos listas de frases con ✓**, sin una tabla que muestre la diferencia fila por fila (cuentas, consultas del asistente, soporte). → tabla comparativa y el «RECOMENDADO» sobre la columna (UX200#179).
 83. ⏳ [M·S] **El layout no muestra cuántos días quedan de la prueba** (0 menciones de «prueba» o `trial` en `base.html`): hoy está en beta gratuita, pero el día que se cobre, la persona se entera al vencer. → una barra discreta «te quedan 9 días» solo con el cobro activo (UX200#182).
-84. ⏳ [B·S] **Menú de cuenta: «Eliminar mi cuenta» está pegado a «Cerrar sesión»** en el mismo gris, a un clic de distancia. Tiene su propia pantalla de confirmación, pero lo destructivo y lo cotidiano no deberían ser vecinos. → moverlo a «Preferencias y datos», al final.
+84. ✅ [B·S] **Menú de cuenta: «Eliminar mi cuenta» está pegado a «Cerrar sesión»** en el mismo gris, a un clic de distancia. Tiene su propia pantalla de confirmación, pero lo destructivo y lo cotidiano no deberían ser vecinos. → moverlo a «Preferencias y datos», al final.
 85. ⏳ [B·M] **Landing: sin testimonios ni imagen para compartir.** El `og:image` es el ícono de 512 px con `twitter:card = summary`: al pasar el link por WhatsApp sale un cuadradito. → una imagen de 1200×630 con la maqueta y la frase; y los testimonios de la beta, con permiso (UX200#187).
 
 ---
@@ -165,9 +165,9 @@ Esto no son defectos: es lo que haría con más tiempo para que la app **se vea 
 91. 💡 [B·S] **Íconos de 16 px en las pestañas de cada sección:** el menú los tiene, las pestañas son solo texto.
 92. 💡 [M·S] **Color por estado, no por tema:** tres tonos fijos (verde = bien, naranja = atención, rojo = urgente) y el violeta solo para acciones. Hoy un mismo violeta es «acción», «dato» y «decoración».
 93. 💡 [M·M] **«Modo calmo» del Dashboard:** un interruptor que deja solo el hero y «lo que tenés que hacer hoy» (un solo scroll) para quien se abruma; el Dashboard completo tiene 14 bloques y 3.942 px.
-94. 💡 [M·S] **Definiciones al tocar:** FULL, Flex, ROAS, ACOS, TACOS y «cargos de MeLi» con una línea de qué son (UX200#164).
+94. ✅ [M·S] **Definiciones al tocar:** FULL, Flex, ROAS, ACOS, TACOS y «cargos de MeLi» con una línea de qué son (UX200#164).
 95. 💡 [B·M] **Resumen de los lunes en la campana:** lo mejor, lo peor y una sola cosa para hacer (UX200#107).
-96. 💡 [M·M] **Vacíos con ejemplo:** «así se va a ver cuando cargues costos» + el botón; para las cuentas nuevas, que hoy ven pantallas en blanco hasta la primera sincronización (UX200#149/#178).
+96. ✅ [M·M] **Vacíos con ejemplo:** «así se va a ver cuando cargues costos» + el botón; para las cuentas nuevas, que hoy ven pantallas en blanco hasta la primera sincronización (UX200#149/#178).
 97. 💡 [B·S] **Rótulos directos en el gráfico de 14 días** sobre el mejor y el peor día, en vez de una leyenda (UX200#131).
 98. 💡 [M·S] **Tres acciones rápidas arriba del Dashboard** («Despachar», «Responder», «Cargar un costo»), con el número de cada una (UX200#43).
 99. 💡 [M·M] **Una página interna `/ui` con todos los componentes y sus estados** (normal, foco, deshabilitado, error): sirve de guía de estilo viva, de prueba visual y evita que vuelvan las seis etiquetas (D42) (UX200#127).

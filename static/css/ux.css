@@ -115,6 +115,9 @@ html.modo-privacidad .ux-rank-valor:hover, html.modo-privacidad .ux-dist-val:hov
     border: 1px solid var(--glass-border); border-top: 4px solid var(--ux-c); box-shadow: var(--shadow-card);
     transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
+.checklist-item.primero { background: color-mix(in srgb, var(--accent-primary) 9%, transparent); border-radius: var(--radius-sm); }      /* el próximo paso: el de más valor */
+.checklist-item.primero .checklist-ir { opacity: 1; }
+
 /* D30 + D92: el color de una tarjeta de números significa ESTADO (verde = bien, naranja = atención, rojo = urgente). Una tarjeta que solo informa va neutra: antes el
    violeta, el dorado y el celeste de «tono decorativo» hacían buscar un significado que no había. */
 .ux-kpi:not(.ux-ok):not(.ux-warn):not(.ux-danger) { --ux-c: var(--text-secondary); border-top-color: var(--glass-border); }
@@ -792,6 +795,10 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .fb-caja { width: 460px; max-width: 100%; background: var(--glass-bg-alt, var(--bg-elevated, #16161a)); border: 1px solid var(--glass-border); border-radius: var(--radius-md); box-shadow: var(--shadow-elevated); padding: 18px; }
 .fb-cabecera { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 1.05em; }
 .fb-cerrar { background: none; border: 0; color: var(--text-secondary); font-size: 1.6em; line-height: 1; cursor: pointer; padding: 0 4px; }
+.te-sirvio { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 40px 0 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); color: var(--text-secondary); font-size: var(--text-sm); }
+.te-sirvio[hidden], .te-sirvio-botones[hidden] { display: none; }
+.te-sirvio-botones { display: inline-flex; gap: 8px; }
+.te-sirvio-btn { padding: 6px 14px; font-size: var(--text-sm); }
 .fb-tipos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .fb-tipo { background: transparent; border: 1px solid var(--border-soft); color: var(--text-secondary); border-radius: 99px; padding: 6px 14px; font-weight: 600; cursor: pointer; }
 .fb-tipo.activo { background: color-mix(in srgb, var(--accent-primary) 20%, transparent); border-color: var(--accent-primary); color: var(--text-primary); }

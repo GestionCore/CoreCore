@@ -568,6 +568,8 @@ const PASOS_TUTORIAL = [
     { selector: '#tour-nav-crecimiento', titulo: 'Crecimiento', texto: 'Promociones, publicidad, tendencias y competencia: para vender más, no solo para medir lo que ya vendiste.' },
     { selector: '#btn-sincronizar-todo', titulo: 'Actualizar', texto: 'Trae lo último de Mercado Libre ahora. De fondo se actualiza solo cada 4 minutos: no hace falta que lo toques seguido.' },
     { selector: '#tour-estado', titulo: 'Cómo va hoy', texto: 'Las ventas de hoy y cuándo te acreditan la próxima plata, siempre a la vista.' },
+    // El recorrido termina en la primera tarea real, no solo en el menú: con el costo de lo que más vendés, la ganancia deja de ser una estimación
+    { selector: '#tour-nav-precios', alternativo: '.bottombar', titulo: 'Tu primer paso', texto: 'Cargá cuánto te cuesta tu producto más vendido. Con eso, la ganancia que ves deja de ser una estimación y pasa a ser lo que de verdad te queda.', accion: { texto: 'Cargar mis costos', url: '/costos' } },
 ];
 
 let _tourPasoActual = 0;
@@ -601,15 +603,18 @@ function _crearElementosTour() {
         anillo: capa.querySelector('.tour-anillo'), tarjeta: capa.querySelector('.tour-tarjeta'),
         titulo: capa.querySelector('.tour-tarjeta-titulo'), texto: capa.querySelector('.tour-tarjeta-texto'),
         contador: capa.querySelector('.tour-tarjeta-contador'),
-        btnSiguiente: capa.querySelector('.tour-btn-siguiente'),
+        btnSiguiente: capa.querySelector('.tour-btn-siguiente'), btnSaltar: capa.querySelector('.tour-btn-saltar'),
     };
 }
 
 function _posicionarPasoTour() {
     const paso = PASOS_TUTORIAL[_tourPasoActual];
-    const objetivo = document.querySelector(paso.selector);
-    // un elemento escondido (el menú lateral en el celular) no se puede señalar: se salta ese paso
-    if (!objetivo || objetivo.getClientRects().length === 0) { avanzarTutorial(); return; }
+    const visible = (e) => !!e && e.getClientRects().length > 0;
+    let objetivo = document.querySelector(paso.selector);
+    // En el celular el menú lateral está escondido: si el paso tiene un lugar alternativo (la barra de abajo) se señala ese
+    if (!visible(objetivo) && paso.alternativo) objetivo = document.querySelector(paso.alternativo);
+    // un elemento escondido no se puede señalar: se salta ese paso (sin ejecutar su acción)
+    if (!visible(objetivo)) { _siguientePaso(); return; }
     objetivo.scrollIntoView({ block: 'center', behavior: 'instant' });
 
     const r = objetivo.getBoundingClientRect();
@@ -626,7 +631,8 @@ function _posicionarPasoTour() {
     el.titulo.textContent = paso.titulo;
     el.texto.textContent = paso.texto;
     el.contador.textContent = `${_tourPasoActual + 1} / ${PASOS_TUTORIAL.length}`;
-    el.btnSiguiente.textContent = (_tourPasoActual === PASOS_TUTORIAL.length - 1) ? 'Entendido' : 'Siguiente';
+    el.btnSiguiente.textContent = paso.accion ? paso.accion.texto : ((_tourPasoActual === PASOS_TUTORIAL.length - 1) ? 'Entendido' : 'Siguiente');
+    el.btnSaltar.textContent = paso.accion ? 'Más tarde' : 'Saltar tutorial';
 
     const tarjetaAncho = 320;
     let tarjetaTop = r.bottom + margen + 14;
@@ -635,10 +641,17 @@ function _posicionarPasoTour() {
     Object.assign(el.tarjeta.style, { top: tarjetaTop + 'px', left: tarjetaLeft + 'px' });
 }
 
-function avanzarTutorial() {
+function _siguientePaso() {
     _tourPasoActual++;
     if (_tourPasoActual >= PASOS_TUTORIAL.length) { finalizarTutorial(); return; }
     _posicionarPasoTour();
+}
+
+// Botón principal de la tarjeta: «Siguiente», o la acción del paso final (llevar a la primera tarea)
+function avanzarTutorial() {
+    const actual = PASOS_TUTORIAL[_tourPasoActual];
+    if (actual && actual.accion) { finalizarTutorial(); window.location.href = actual.accion.url; return; }
+    _siguientePaso();
 }
 
 function saltarTutorial() { finalizarTutorial(); }
