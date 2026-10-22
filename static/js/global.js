@@ -949,10 +949,21 @@ function _recordarSincronizacion(segundos) {
 setInterval(_pintarActualizadoHace, 30000);
 
 // ---------- Ticker superior ----------
+// Un solo pedido de /api/ticker aunque lo necesiten dos bloques a la vez (la barra superior y el Dashboard lo pedían cada uno por su lado). Si falla no queda guardado.
+let _tickerPedido = null, _tickerPedidoEn = 0;
+function pedirTicker() {
+    const ahora = Date.now();
+    if (!_tickerPedido || ahora - _tickerPedidoEn > 10000) {
+        _tickerPedidoEn = ahora;
+        _tickerPedido = fetch('/api/ticker').then(r => { if (!r.ok) throw new Error('/api/ticker respondió ' + r.status); return r.json(); })
+            .catch(e => { _tickerPedido = null; throw e; });
+    }
+    return _tickerPedido;
+}
+
 async function actualizarTicker() {
     try {
-        const resp = await fetch('/api/ticker');
-        const data = await resp.json();
+        const data = await pedirTicker();
         const elVentas = document.getElementById('ticker-ventas');
         const elLiberacion = document.getElementById('ticker-liberacion');
         elVentas.classList.remove('skeleton');
@@ -1092,6 +1103,7 @@ function ocultarTooltipTicker() {
 
 async function marcarVariantesClaveAgotadas() {
     try {
+        if (!document.querySelector('[data-modelo-titulo]')) return;       // solo Stock masivo tiene modelos para marcar: en las demás pantallas el pedido era en vano
         const resp = await fetch('/api/cobertura_variantes');
         const lista = await resp.json();
         if (!lista.length) return;
@@ -1251,6 +1263,7 @@ function abrirDrawerConSugerencia(idMeli, tituloSugerido) {
 
 async function cargarOportunidadesSeo() {
     try {
+        if (!document.getElementById('panel-oportunidades-seo')) return;   // solo Stock tiene ese panel: en las demás pantallas el pedido era en vano
         const resp = await fetch('/api/oportunidades_seo');
         const oportunidades = await resp.json();
         const panel = document.getElementById('panel-oportunidades-seo');

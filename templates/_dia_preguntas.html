@@ -18,6 +18,30 @@
 <!-- Estado de la bandeja, en una frase -->
 <div id="estado-preguntas"></div>
 
+<!-- Respuestas que repetís, guardadas: se usan con un clic en cada pregunta (se completan {saludo}, {producto} y {precio}) -->
+<details class="ux-detalle" id="mis-respuestas">
+    <summary><span class="ux-det-texto">Mis respuestas guardadas <span class="text-muted" id="mr-resumen"></span></span></summary>
+    <div class="ux-detalle-cuerpo">
+        <p class="text-muted mr-ayuda">Guardá lo que contestás seguido y usalo con un clic en cada pregunta. Podés escribir <code>{saludo}</code>, <code>{producto}</code> y <code>{precio}</code>: se completan solos según la pregunta.</p>
+        <div id="mr-lista"></div>
+        <div class="mr-form" id="mr-form">
+            <label class="mr-etiqueta" for="mr-titulo">Nombre corto</label>
+            <input type="text" id="mr-titulo" maxlength="60" placeholder="Por ejemplo: Hay stock" autocomplete="off">
+            <label class="mr-etiqueta" for="mr-texto">Respuesta</label>
+            <textarea id="mr-texto" rows="4" maxlength="2000" placeholder="{saludo}! Sí, tenemos {producto} disponible…"></textarea>
+            <div class="mr-pie">
+                <span class="mr-variables">Insertar: <button type="button" class="ux-pl-chip" data-mr-variable="saludo">{saludo}</button> <button type="button" class="ux-pl-chip" data-mr-variable="producto">{producto}</button> <button type="button" class="ux-pl-chip" data-mr-variable="precio">{precio}</button></span>
+                <span class="text-muted mr-contador" id="mr-contador-texto"></span>
+            </div>
+            <div class="flex-gap" style="margin-top:10px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary" id="mr-guardar">Guardar respuesta</button>
+                <button type="button" class="btn btn-secondary" id="mr-cancelar" hidden>Cancelar</button>
+                <span class="text-muted" id="mr-estado" role="status"></span>
+            </div>
+        </div>
+    </div>
+</details>
+
 <div class="ux-periodo" style="margin-bottom:18px;">
     <div class="ux-periodo-botones" style="flex-wrap:wrap;">
         <button type="button" class="btn btn-secondary filtro-btn active" data-estado="pendiente">Pendientes</button>
@@ -36,6 +60,10 @@
 <script nonce="{{ csp_nonce }}">
 let _estado = 'pendiente';
 let _preguntas = [];
+let _plantillas = [];        // las respuestas guardadas de esta cuenta (más usadas primero)
+let _sugeridas = [];         // ejemplos para empezar, solo mientras no hay ninguna guardada
+let _plantillaEnEdicion = null;
+const LIMITE_RESPUESTA = 2000;      // lo que acepta Mercado Libre
 
 const $ = id => document.getElementById(id);
 
@@ -78,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarTiempoRespuesta();
     cargarMensajes();
     cargarPreguntas();
+    iniciarPlantillas();
     $('btn-actualizar').addEventListener('click', cargarPreguntas);
     document.querySelectorAll('.filtro-btn').forEach(btn => btn.addEventListener('click', () => {
         document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
@@ -87,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
     // Un solo listener para todas las tarjetas (las tarjetas se re-crean al cargar)
     $('lista-preguntas').addEventListener('click', alClickEnTarjeta);
+    $('lista-preguntas').addEventListener('input', alEscribirEnTarjeta);
 });
 
 // "hace 3 h" / "hace 2 días" y qué tan urgente es (más de 24 h sin responder = rojo)
@@ -174,6 +204,7 @@ function renderLista() {
         return;
     }
     cont.innerHTML = _preguntas.map(tarjeta).join('');
+    pintarChips();
 }
 
 function tarjeta(p) {
@@ -182,9 +213,12 @@ function tarjeta(p) {
     const a = pl ? { texto: pl.texto, tono: pl.tono } : antiguedad(p.creado_en_iso);
     const pillEstado = pendiente ? `<span class="ux-pill ux-${a.tono}" title="${pl ? UX.esc(AYUDA_PLAZO) : ''}">${UX.esc(a.texto || 'Pendiente')}</span>`
         : (p.estado === 'respondida' ? '<span class="ux-pill ux-ok">Respondida</span>' : (p.estado === 'borrada' ? '<span class="ux-pill ux-danger ux-pill-suave">Borrada</span>' : '<span class="ux-pill ux-neutral ux-pill-suave">Ignorada</span>'));
-    const verPub = p.item_id ? `<a class="ux-pregunta-item" href="/stock?drawer=${encodeURIComponent(p.item_id)}" title="Ver la publicación">${UX.esc(p.titulo_item)} ↗</a>` : `<span class="ux-pregunta-item">${UX.esc(p.titulo_item)}</span>`;
+    const verPub = (p.item_id ? `<a class="ux-pregunta-item" href="/stock?drawer=${encodeURIComponent(p.item_id)}" title="Ver la publicación">${UX.esc(p.titulo_item)} ↗</a>` : `<span class="ux-pregunta-item">${UX.esc(p.titulo_item)}</span>`)
+        + (p.precio_texto ? `<span class="text-muted" style="white-space:nowrap;">· ${UX.esc(p.precio_texto)}</span>` : '');
     const acciones = pendiente ? `
+        <div class="ux-pl-chips" data-chips></div>
         <textarea rows="3" placeholder="Escribí tu respuesta…" aria-label="Tu respuesta">${UX.esc(p.respuesta_sugerida)}</textarea>
+        <div class="ux-pl-pie"><span class="ux-pl-contador text-muted" data-contador aria-live="polite"></span><button type="button" class="ux-pl-guardar" data-accion="guardarplantilla">Guardar esta respuesta para usarla otra vez</button></div>
         <div class="flex-gap" style="margin-top:10px; flex-wrap:wrap;">
             <button type="button" class="btn btn-primary btn-lg" data-accion="publicar">${UX.icono('check')}Publicar respuesta</button>
             <button type="button" class="btn btn-secondary" data-accion="sugerir">${UX.icono('bolt')}Sugerir respuesta con IA</button>
@@ -207,13 +241,29 @@ function alClickEnTarjeta(ev) {
     if (!boton) return;
     const card = boton.closest('.ux-pregunta');
     const qid = card.dataset.qid;
-    ({ publicar: publicarRespuesta, sugerir: sugerirIA, ignorar: ignorarPregunta, yarespondida: yaRespondida, borrar: borrarPregunta })[boton.dataset.accion](qid, card, boton);
+    ({ publicar: publicarRespuesta, sugerir: sugerirIA, ignorar: ignorarPregunta, yarespondida: yaRespondida, borrar: borrarPregunta,
+       plantilla: usarPlantilla, abrirplantillas: abrirPanelPlantillas, guardarplantilla: guardarComoPlantilla })[boton.dataset.accion](qid, card, boton);
+}
+
+// El contador de la respuesta aparece cuando se acerca al límite de Mercado Libre (2.000 caracteres)
+function alEscribirEnTarjeta(ev) {
+    if (!ev.target.matches('textarea')) return;
+    const contador = ev.target.closest('.ux-pregunta').querySelector('[data-contador]');
+    if (contador) pintarContador(contador, ev.target.value.length);
+}
+function pintarContador(contador, largo) {
+    contador.textContent = largo >= 1500 ? `${largo.toLocaleString('es-AR')} / ${LIMITE_RESPUESTA.toLocaleString('es-AR')}` : '';
+    contador.classList.toggle('ux-pl-excedido', largo > LIMITE_RESPUESTA);
 }
 
 async function publicarRespuesta(qid, card, boton) {
     const ta = card.querySelector('textarea');
     const texto = (ta.value || '').trim();
     if (!texto) { mostrarToast('Escribí una respuesta antes de publicar', 'error'); ta.focus(); return; }
+    // Una variable que no se pudo completar ({precio} de una publicación sin precio) no se publica tal cual
+    const sinCompletar = [...new Set(texto.match(/\{\w+\}/g) || [])];
+    if (sinCompletar.length) { mostrarToast('Completá ' + sinCompletar.join(', ') + ' antes de publicar', 'error'); ta.focus(); return; }
+    if (texto.length > LIMITE_RESPUESTA) { mostrarToast('La respuesta es muy larga: Mercado Libre acepta hasta ' + LIMITE_RESPUESTA.toLocaleString('es-AR') + ' caracteres', 'error'); ta.focus(); return; }
     const original = boton.innerHTML;
     boton.disabled = true;
     boton.innerHTML = `${UX.icono('refresh', '').replace('class="icon"', 'class="icon spin-anim"')}Publicando…`;
@@ -286,6 +336,152 @@ async function borrarPregunta(qid, card, boton) {
         mostrarToast(d.detalle || 'No se pudo borrar la pregunta', 'error');
         return false;
     });
+}
+
+// ── Respuestas guardadas ──────────────────────────────────────────────────────
+async function iniciarPlantillas() {
+    $('mr-guardar').addEventListener('click', guardarPlantilla);
+    $('mr-cancelar').addEventListener('click', () => limpiarFormularioPlantilla());
+    $('mr-lista').addEventListener('click', alClickEnPlantillas);
+    $('mr-form').addEventListener('click', ev => { const v = ev.target.closest('[data-mr-variable]'); if (v) insertarVariable(v.dataset.mrVariable); });
+    $('mr-texto').addEventListener('input', () => pintarContador($('mr-contador-texto'), $('mr-texto').value.length));
+    await cargarPlantillas();
+}
+
+async function cargarPlantillas() {
+    try {
+        const d = await (await fetch('/api/preguntas/plantillas')).json();
+        _plantillas = d.plantillas || [];
+        _sugeridas = d.sugeridas || [];
+    } catch (e) { _plantillas = []; _sugeridas = []; }          // sin respuestas guardadas las preguntas siguen funcionando igual
+    pintarPanelPlantillas();
+    pintarChips();
+}
+
+function pintarPanelPlantillas() {
+    $('mr-resumen').textContent = _plantillas.length ? `· ${_plantillas.length}` : '';
+    const lista = $('mr-lista');
+    if (_plantillas.length) {
+        lista.innerHTML = _plantillas.map(p => `<div class="mr-fila" data-id="${Number(p.id)}">
+            <div class="mr-fila-texto"><b>${UX.esc(p.titulo)}</b><span class="text-muted">${UX.esc(p.texto.length > 140 ? p.texto.slice(0, 140) + '…' : p.texto)}</span></div>
+            <div class="mr-fila-botones"><button type="button" class="btn btn-secondary" data-mr-accion="editar">Editar</button><button type="button" class="btn btn-secondary" data-mr-accion="borrar">Borrar</button></div>
+        </div>`).join('');
+    } else if (_sugeridas.length) {
+        lista.innerHTML = `<div class="mr-sugeridas"><div class="text-muted" style="margin-bottom:8px;">Todavía no guardaste ninguna. Para empezar, estos ejemplos (los podés cambiar):</div>` + _sugeridas.map((p, i) => `<div class="mr-fila">
+            <div class="mr-fila-texto"><b>${UX.esc(p.titulo)}</b><span class="text-muted">${UX.esc(p.texto)}</span></div>
+            <div class="mr-fila-botones"><button type="button" class="btn btn-secondary" data-mr-accion="sugerida" data-i="${Number(i)}">Usar como base</button></div>
+        </div>`).join('') + '</div>';
+    } else {
+        lista.innerHTML = '';
+    }
+}
+
+// Las respuestas guardadas, como botones arriba de cada respuesta (las 6 más usadas)
+function htmlChips() {
+    if (!_plantillas.length) return '<button type="button" class="ux-pl-vacio" data-accion="abrirplantillas">Guardá las respuestas que repetís y usalas con un clic</button>';
+    const visibles = _plantillas.slice(0, 6).map(p => `<button type="button" class="ux-pl-chip" data-accion="plantilla" data-pl="${Number(p.id)}" title="${UX.esc(p.texto)}">${UX.esc(p.titulo)}</button>`).join('');
+    const resto = _plantillas.length > 6 ? `<button type="button" class="ux-pl-vacio" data-accion="abrirplantillas">Ver todas (${_plantillas.length})</button>` : '';
+    return '<span class="ux-pl-etiqueta">Mis respuestas:</span>' + visibles + resto;
+}
+function pintarChips() {
+    const html = htmlChips();
+    document.querySelectorAll('#lista-preguntas [data-chips]').forEach(c => { c.innerHTML = html; });
+}
+
+function abrirPanelPlantillas() {
+    const panel = $('mis-respuestas');
+    panel.open = true;
+    panel.scrollIntoView({ behavior: UX.comportamientoDeScroll(), block: 'start' });
+}
+
+// «Guardar esta respuesta»: lo escrito en la tarjeta pasa al formulario del panel para ponerle nombre
+function guardarComoPlantilla(qid, card) {
+    const texto = card.querySelector('textarea').value.trim();
+    if (!texto) { mostrarToast('Escribí la respuesta primero y después la guardás', 'info'); return; }
+    limpiarFormularioPlantilla();
+    $('mr-texto').value = texto;
+    pintarContador($('mr-contador-texto'), texto.length);
+    abrirPanelPlantillas();
+    setTimeout(() => $('mr-titulo').focus(), 350);
+}
+
+async function usarPlantilla(qid, card, boton) {
+    const ta = card.querySelector('textarea');
+    if (ta.value.trim() && !(await confirmarDecision('¿Reemplazar lo que escribiste?', 'Reemplazar', 'La respuesta guardada va a quedar en lugar del texto de esta pregunta.', false))) return;
+    const id = Number(boton.dataset.pl);
+    boton.disabled = true;
+    try {
+        const d = await (await fetch(`/api/preguntas/plantillas/${id}/usar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question_id: qid }) })).json();
+        if (d.ok) {
+            ta.value = d.texto; ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus();
+            const usada = _plantillas.find(p => Number(p.id) === id);
+            if (usada) usada.usos += 1;
+            if (d.sin_completar && d.sin_completar.length) mostrarToast('Falta completar ' + d.sin_completar.map(v => '{' + v + '}').join(', ') + ' antes de publicar', 'warning');
+            else mostrarToast('Respuesta lista: leela y publicala', 'info');
+        } else { mostrarToast(d.detalle || 'No se pudo usar esa respuesta', 'error'); cargarPlantillas(); }
+    } catch (e) { mostrarToast('Error de red — probá de nuevo', 'error'); }
+    finally { boton.disabled = false; }
+}
+
+function limpiarFormularioPlantilla() {
+    _plantillaEnEdicion = null;
+    $('mr-titulo').value = ''; $('mr-texto').value = '';
+    $('mr-guardar').textContent = 'Guardar respuesta';
+    $('mr-cancelar').hidden = true;
+    $('mr-estado').textContent = '';
+    pintarContador($('mr-contador-texto'), 0);
+}
+
+function insertarVariable(nombre) {
+    const ta = $('mr-texto'), t = '{' + nombre + '}';
+    const desde = ta.selectionStart ?? ta.value.length, hasta = ta.selectionEnd ?? ta.value.length;
+    ta.value = ta.value.slice(0, desde) + t + ta.value.slice(hasta);
+    ta.focus(); ta.setSelectionRange(desde + t.length, desde + t.length);
+    pintarContador($('mr-contador-texto'), ta.value.length);
+}
+
+async function guardarPlantilla() {
+    const cuerpo = JSON.stringify({ titulo: $('mr-titulo').value, texto: $('mr-texto').value });
+    const url = _plantillaEnEdicion ? `/api/preguntas/plantillas/${Number(_plantillaEnEdicion)}` : '/api/preguntas/plantillas';
+    $('mr-guardar').disabled = true; $('mr-estado').textContent = 'Guardando…';
+    try {
+        const d = await (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: cuerpo })).json();
+        if (d.ok) { limpiarFormularioPlantilla(); await cargarPlantillas(); mostrarToast('Respuesta guardada', 'success'); }
+        else $('mr-estado').textContent = d.detalle || 'No se pudo guardar.';
+    } catch (e) { $('mr-estado').textContent = 'No se pudo guardar. Revisá tu conexión.'; }
+    $('mr-guardar').disabled = false;
+}
+
+async function alClickEnPlantillas(ev) {
+    const boton = ev.target.closest('[data-mr-accion]');
+    if (!boton) return;
+    const accion = boton.dataset.mrAccion;
+    if (accion === 'sugerida') {
+        const ejemplo = _sugeridas[Number(boton.dataset.i)];
+        limpiarFormularioPlantilla();
+        $('mr-titulo').value = ejemplo.titulo; $('mr-texto').value = ejemplo.texto;
+        pintarContador($('mr-contador-texto'), ejemplo.texto.length);
+        $('mr-titulo').focus();
+        return;
+    }
+    const id = Number(boton.closest('.mr-fila').dataset.id);
+    const plantilla = _plantillas.find(p => Number(p.id) === id);
+    if (!plantilla) return;
+    if (accion === 'editar') {
+        _plantillaEnEdicion = id;
+        $('mr-titulo').value = plantilla.titulo; $('mr-texto').value = plantilla.texto;
+        $('mr-guardar').textContent = 'Guardar cambios';
+        $('mr-cancelar').hidden = false;
+        pintarContador($('mr-contador-texto'), plantilla.texto.length);
+        $('mr-titulo').focus();
+    } else if (accion === 'borrar') {
+        if (!(await confirmarDecision('¿Borrar esta respuesta guardada?', 'Borrar', 'Se borra solo de CoreLux: las respuestas que ya publicaste en Mercado Libre no se tocan.', true))) return;
+        try {
+            const d = await (await fetch(`/api/preguntas/plantillas/${id}/borrar`, { method: 'POST' })).json();
+            if (d.ok) { if (_plantillaEnEdicion === id) limpiarFormularioPlantilla(); await cargarPlantillas(); mostrarToast('Respuesta borrada', 'info'); }
+            else mostrarToast(d.detalle || 'No se pudo borrar', 'error');
+        } catch (e) { mostrarToast('Error de red — probá de nuevo', 'error'); }
+    }
 }
 
 // La tarjeta resuelta sale con una animación corta y la bandeja se recalcula sin volver a pedir todo

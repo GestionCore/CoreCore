@@ -338,11 +338,20 @@
         }
         return _compartidas[clave];
     }
-    const _fetchTickerCompartido = () => _compartida('ticker', '/api/ticker');
+    const _fetchTickerCompartido = () => (typeof pedirTicker === 'function' ? pedirTicker() : _compartida('ticker', '/api/ticker'));      // el mismo pedido que hace la barra superior
     const _fetchResumenDiarioCompartido = () => _compartida('resumen_diario', '/api/resumen_diario');
     const _fetchGananciaCompartida = () => _compartida('ganancia', '/api/dashboard/ganancia_dia_vs_promedio');
     const _fetchTendenciaCompartida = () => _compartida('tendencia', '/api/dashboard/tendencia_ventas');
     const _fetchHoyCompartido = () => _compartida('hoy', '/api/hoy');
+
+    // Lo que está más abajo en la página no se pide hasta que se acerca a la vista (antes se pedía todo junto al abrir el Dashboard)
+    function cuandoSeVea(elemento, cargar) {
+        if (!('IntersectionObserver' in window)) { cargar(); return; }
+        const observador = new IntersectionObserver((entradas) => {
+            if (entradas.some(e => e.isIntersecting)) { observador.disconnect(); cargar(); }
+        }, { rootMargin: '400px 0px' });
+        observador.observe(elemento);
+    }
 
     // Los gráficos que se rearman al cambiar las preferencias se destruyen antes de crear el nuevo: sin esto cada cambio dejaba una instancia de Chart.js viva con su canvas ya borrado de la página
     const _graficos = {};
@@ -485,7 +494,7 @@
             w.classList.add('widget-dashboard-ancho');
             grid.appendChild(w);
             abrirPublicacionDe(w);
-            fetch('/api/dashboard/top_productos').then(r => r.json()).then(d => {
+            cuandoSeVea(w, () => fetch('/api/dashboard/top_productos').then(r => r.json()).then(d => {
                 if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Modelos que más facturaron</div><div class="text-muted" style="margin-top:10px;">Sin ventas este mes.</div>'; return; }
                 const maxPct = d[0].pct || 1;
                 w.innerHTML = `
@@ -510,7 +519,7 @@
                 requestAnimationFrame(() => requestAnimationFrame(() => {
                     w.querySelectorAll('.top-prod-barra').forEach(el => { el.style.width = el.dataset.w + '%'; });
                 }));
-            }).catch(_sinCargar(w));
+            }).catch(_sinCargar(w)));
         }
 
         if (prefs.ultimas_ventas) {
@@ -518,7 +527,7 @@
             w.classList.add('widget-dashboard-ancho');
             grid.appendChild(w);
             abrirPublicacionDe(w);
-            fetch('/api/dashboard/ultimas_ventas').then(r => r.json()).then(d => {
+            cuandoSeVea(w, () => fetch('/api/dashboard/ultimas_ventas').then(r => r.json()).then(d => {
                 if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Últimas ventas</div><div class="text-muted" style="margin-top:10px;">Sin ventas recientes.</div>'; return; }
                 w.innerHTML = `
                     <div class="ux-panel-cab"><div class="stat-chip-label">Últimas ventas</div><a href="/metricas" class="text-muted" style="font-size:var(--text-xs); font-weight:700;">Ver todas →</a></div>
@@ -534,7 +543,7 @@
                             </${tag}>`;
                         }).join('')}
                     </div>`;
-            }).catch(_sinCargar(w));
+            }).catch(_sinCargar(w)));
         }
     }
 
@@ -567,14 +576,14 @@
         const cont = document.getElementById('lista-acciones');
         const contador = document.getElementById('acciones-contador');
         try {
-            const [d, ganancia] = await Promise.all([
+            const [d, ganancia, cob] = await Promise.all([
                 fetch('/api/dashboard/acciones_hoy').then(r => r.json()),
                 _fetchGananciaCompartida().catch(() => null),
+                fetch('/api/dashboard/cobertura_costos').then(r => r.json()).catch(() => null),       // en paralelo: antes se pedía recién cuando terminaban los dos de arriba
             ]);
             // Sin costo de fabricación cargado, la "ganancia neta real" de arriba es más alta que la verdadera:
             // es lo primero que hay que arreglar, así que va al frente de la lista.
             const p = ganancia && ganancia.periodo_14d;
-            const cob = await fetch('/api/dashboard/cobertura_costos').then(r => r.json()).catch(() => null);
             if (cob && cob.avisar) {
                 const pct = String(cob.pct_sin_costo).replace('.0', '').replace('.', ',');
                 const sinNada = p && p.facturado > 0 && p.costo_fabricacion === 0;

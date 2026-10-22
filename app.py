@@ -295,6 +295,8 @@ import auditoria
 app.register_blueprint(auditoria.bp)
 import feedback
 app.register_blueprint(feedback.bp)
+import plantillas_respuesta
+app.register_blueprint(plantillas_respuesta.bp)
 import salud_sistema
 app.register_blueprint(salud_sistema.bp)
 
@@ -3699,7 +3701,7 @@ def api_preguntas_lista():
             SELECT p.id, p.question_id, p.item_id, p.texto_pregunta,
                    p.respuesta_sugerida, p.estado, p.creado_en,
                    COALESCE(pp.titulo, p.item_id) AS titulo_item, pp.thumbnail,
-                   p.fecha_pregunta, p.hora_limite_respuesta
+                   p.fecha_pregunta, p.hora_limite_respuesta, pp.precio
             FROM preguntas_pendientes p
             LEFT JOIN productos_padre pp ON pp.id_meli = p.item_id
             WHERE p.cuenta_id = %s
@@ -3728,6 +3730,7 @@ def api_preguntas_lista():
             "sla_minutos": preguntas_sla.SLA_MINUTOS,
             "titulo_item": f[7] or f[2] or "—",
             "thumbnail": f[8],
+            "precio_texto": ("$" + formatear_moneda(float(f[11]))) if f[11] and float(f[11]) > 0 else None,      # al lado de la publicación: lo primero que se mira para contestar
         })
     return jsonify(preguntas)
 
