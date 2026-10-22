@@ -13,12 +13,14 @@ from auth.middleware import login_requerido, cerrar_sesion
 bp = Blueprint("legal", __name__)
 
 CONTACTO_EMAIL = os.getenv("CONTACTO_EMAIL", "soporte@corelux.app")
-ULTIMA_ACTUALIZACION = "1 de octubre de 2026"
+ULTIMA_ACTUALIZACION = "22 de octubre de 2026"
+# El proveedor de IA que nombra la política de privacidad: si se cambia de proveedor (IA_BASE_URL / IA_MODEL), cambiar también este nombre.
+PROVEEDOR_IA = os.getenv("IA_PROVEEDOR_NOMBRE", "DeepSeek")
 FRASE_CONFIRMACION = "ELIMINAR"
 
 
 def _contexto():
-    return {"contacto": CONTACTO_EMAIL, "actualizado": ULTIMA_ACTUALIZACION}
+    return {"contacto": CONTACTO_EMAIL, "actualizado": ULTIMA_ACTUALIZACION, "proveedor_ia": PROVEEDOR_IA}
 
 
 @bp.route("/robots.txt")

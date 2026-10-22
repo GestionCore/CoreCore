@@ -167,8 +167,6 @@ _TIPOS_PUBLICACION = {
     "gold_pro": "Premium", "gold_premium": "Premium", "gold_special": "Clásica",
     "gold": "Oro", "silver": "Plata", "bronze": "Bronce", "free": "Gratuita",
 }
-_MEDALLAS_VENDEDOR = {"platinum": "MercadoLíder Platinum", "gold": "MercadoLíder Gold", "silver": "MercadoLíder"}
-_NIVELES_REPUTACION = {"5_green": "Verde", "4_light_green": "Verde claro", "3_yellow": "Amarillo", "2_orange": "Naranja", "1_red": "Rojo"}
 
 
 def _get_json(url, headers=None, params=None, timeout=10):
@@ -319,20 +317,6 @@ def _publicaciones_de_producto(headers, product_id):
     return (data or {}).get("results") or [] if st == 200 else []
 
 
-def _perfil_vendedor(headers, seller_id):
-    _, u = _get_json(f"https://api.mercadolibre.com/users/{seller_id}", headers)
-    if not u:
-        return {"id": seller_id, "nickname": f"Vendedor {seller_id}"}
-    rep = u.get("seller_reputation") or {}
-    return {
-        "id": seller_id, "nickname": u.get("nickname") or f"Vendedor {seller_id}",
-        "nivel": _NIVELES_REPUTACION.get(rep.get("level_id")),
-        "medalla": _MEDALLAS_VENDEDOR.get(rep.get("power_seller_status")),
-        "ventas_historicas": (rep.get("transactions") or {}).get("total"),
-        "permalink": (u.get("permalink") or "").replace("http://", "https://") or None,
-    }
-
-
 def _pct(parte, total):
     return round(parte / total * 100, 1) if total else 0.0
 
@@ -432,15 +416,17 @@ def explorar_mercado(access_token, termino=None, category_id=None, site_id="MLA"
     Lo que sí anda, y con lo que se arma esto: la búsqueda de catálogo
     (/products/search), las publicaciones de cada producto de catálogo
     (/products/{id}/items: precio, vendedor, envío, tipo), las
-    categorías (/categories: cantidad total de publicaciones) y el
-    perfil público de los vendedores (/users). La muestra son las
+    categorías (/categories: cantidad total de publicaciones). De los
+    vendedores solo se cuenta CUÁNTOS hay y qué tan concentrada está la
+    oferta: a nadie se lo identifica ni se pide su perfil (cláusula 5.4
+    de los Términos de la API: información de un usuario específico
+    requiere autorización de Mercado Libre). La muestra son las
     publicaciones atadas a productos de catálogo — no todo el mercado —
     y se declara así en pantalla.
 
     Acepta termino (búsqueda libre) O category_id (navegar cualquier
     rama de MeLi) — al menos uno es obligatorio. `liviano=True` saltea
-    lo decorativo (perfiles de vendedores, categorías candidatas) para
-    los snapshots diarios.
+    lo decorativo (categorías candidatas) para los snapshots diarios.
     """
     termino = (termino or "").strip()
     if not termino and not category_id:
@@ -553,14 +539,6 @@ def explorar_mercado(access_token, termino=None, category_id=None, site_id="MLA"
                 marcas[atributo["value_name"]] = marcas.get(atributo["value_name"], 0) + 1
     top_marcas = [{"nombre": m, "cantidad": c} for m, c in sorted(marcas.items(), key=lambda kv: -kv[1])[:8]]
 
-    top_vendedores = []
-    if not liviano and ranking:
-        with ThreadPoolExecutor(max_workers=3) as pool:
-            perfiles = list(pool.map(lambda kv: _perfil_vendedor(headers, kv[0]), ranking[:5]))
-        for perfil, (_, cantidad) in zip(perfiles, ranking[:5]):
-            perfil["publicaciones_muestra"] = cantidad
-            top_vendedores.append(perfil)
-
     mediana = percentil(precios, 0.5)
     iqr_relativo = None
     if len(precios) >= 8 and mediana:
@@ -595,7 +573,6 @@ def explorar_mercado(access_token, termino=None, category_id=None, site_id="MLA"
         "pct_con_descuento": pct_descuento, "descuento_promedio_pct": descuento_prom,
         "mezcla_tipos": mezcla_tipos,
         "marcas": top_marcas, "marcas_distintas": len(marcas) or None,
-        "top_vendedores": top_vendedores,
         "productos_referencia": sorted(referencia, key=lambda r: -r["publicaciones"])[:8],
         "insights": _armar_insights(pct_full, pct_envio, pct_oficial, pct_descuento, descuento_prom, mezcla_tipos) if n >= 8 else [],
         "avisos": avisos,

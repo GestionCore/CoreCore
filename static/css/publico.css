@@ -1,0 +1,77 @@
+/* Páginas públicas (sin sesión): Planes, entrada a la beta. Mismos tokens que el resto; la landing tiene su propio estilo. */
+.pb-body { margin: 0; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-ui); min-height: 100vh; display: flex; flex-direction: column; }
+.pb-ancho { max-width: 1040px; margin: 0 auto; padding: 0 24px; width: 100%; box-sizing: border-box; }
+
+.pb-nav { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg-base) 82%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-soft); }
+.pb-nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 60px; }
+.pb-marca { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-primary); font-family: var(--font-display); font-weight: 800; font-size: 1.12em; }
+.pb-nav-links { display: flex; align-items: center; gap: 22px; }
+.pb-link { color: var(--text-secondary); text-decoration: none; font-size: 0.9em; font-weight: 500; }
+.pb-link:hover { color: var(--text-primary); }
+
+.pb-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 22px; border-radius: 10px; border: 1px solid transparent; font-family: var(--font-ui); font-size: 0.95em; font-weight: 700; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.pb-btn-primario { background: var(--accent-solid); color: #fff; }
+.pb-btn-primario:hover { filter: brightness(1.08); }
+.pb-btn-sec { background: transparent; color: var(--text-primary); border-color: var(--border-strong, var(--glass-border)); }
+.pb-btn-sec:hover { border-color: var(--accent-primary); }
+.pb-btn-chico { padding: 8px 14px; font-size: 0.86em; }
+
+.pb-main { flex: 1 0 auto; padding-bottom: 48px; }
+.pb-footer { border-top: 1px solid var(--border-soft); }
+.pb-footer-inner { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; padding: 24px; color: var(--text-faint); font-size: 0.84em; }
+.pb-footer a { color: var(--text-secondary); text-decoration: none; }
+.pb-footer a:hover { color: var(--text-primary); }
+
+@media (max-width: 560px) {
+  .pb-nav-links .pb-link { display: none; }
+  .pb-ancho { padding: 0 16px; }
+}
+
+/* Entrada a la beta */
+.bt-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 48px; padding-top: 56px; align-items: start; }
+.bt-etq { font-size: 0.8em; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-primary); margin-bottom: 12px; }
+.bt-titulo { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.9em, 4vw, 2.7em); line-height: 1.1; letter-spacing: -0.025em; margin: 0 0 18px; text-wrap: balance; }
+.bt-bajada { color: var(--text-secondary); font-size: 1.08em; line-height: 1.6; margin: 0 0 24px; max-width: 34em; }
+.bt-bajada strong { color: var(--text-primary); }
+.bt-puntos { list-style: none; padding: 0; margin: 0 0 28px; display: grid; gap: 12px; }
+.bt-puntos li { color: var(--text-secondary); line-height: 1.55; padding-left: 18px; position: relative; }
+.bt-puntos li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-primary); }
+.bt-puntos strong { color: var(--text-primary); }
+.bt-aviso-ml { border: 1px solid var(--border-soft); border-left: 3px solid var(--semantic-warning); border-radius: 10px; padding: 18px 20px; background: var(--bg-card, transparent); }
+.bt-aviso-ml p { color: var(--text-secondary); line-height: 1.6; margin: 0 0 10px; font-size: 0.94em; }
+.bt-aviso-ml p:last-child { margin-bottom: 0; }
+.bt-aviso-ml strong { color: var(--text-primary); }
+.bt-h2 { font-size: 1.05em; font-weight: 700; margin: 0 0 12px; font-family: var(--font-ui); }
+.bt-lado { display: grid; gap: 20px; }
+.bt-tarjeta { border: 1px solid var(--border-soft); border-radius: 14px; padding: 22px; background: var(--bg-card, var(--glass-bg)); }
+.bt-form { display: grid; gap: 8px; margin-bottom: 12px; }
+.bt-etiqueta { font-size: 0.85em; font-weight: 600; color: var(--text-secondary); }
+.bt-opcional { font-weight: 400; color: var(--text-faint); }
+.bt-campo { width: 100%; box-sizing: border-box; padding: 11px 12px; border-radius: 8px; border: 1px solid var(--campo-borde); background: var(--bg-base); color: var(--text-primary); font-family: var(--font-ui); font-size: 1em; }
+.bt-campo:focus { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
+.bt-codigo { font-family: var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; }
+.bt-boton { margin-top: 6px; width: 100%; }
+.bt-chico { color: var(--text-faint); font-size: 0.84em; line-height: 1.55; margin: 0; }
+.bt-chico a { color: var(--text-secondary); }
+.bt-mensaje { border-radius: 8px; padding: 10px 12px; font-size: 0.9em; line-height: 1.5; margin-bottom: 12px; }
+.bt-mensaje-info { background: var(--semantic-warning-bg); border: 1px solid var(--semantic-warning); color: var(--semantic-warning); }
+.bt-mensaje-error { background: var(--danger-bg); border: 1px solid var(--danger); color: var(--danger); }
+.bt-mensaje-ok { background: var(--success-bg); border: 1px solid var(--success); color: var(--success); }
+
+@media (max-width: 860px) {
+  .bt-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 32px; }
+  .bt-lado { order: -1; }                      /* en el celular, lo primero es poner el código */
+}
+
+/* Páginas legales */
+.lg-doc { padding-top: 40px; max-width: 800px; }
+.lg-articulo { border: 1px solid var(--border-soft); border-radius: 14px; padding: 32px 30px; background: var(--bg-card, var(--glass-bg)); }
+.lg-titulo { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.6em, 3.4vw, 2.1em); letter-spacing: -0.02em; margin: 0 0 6px; }
+.lg-fecha { color: var(--text-faint); font-size: 0.85em; margin-bottom: 20px; }
+.lg-articulo h2 { font-size: 1.05em; margin: 28px 0 8px; font-family: var(--font-ui); }
+.lg-articulo p, .lg-articulo li { color: var(--text-secondary); line-height: 1.65; }
+.lg-articulo p { margin: 0 0 12px; }
+.lg-articulo ul { padding-left: 20px; margin: 0 0 12px; }
+.lg-articulo a { color: var(--accent-primary); }
+.lg-articulo b { color: var(--text-primary); }
+@media (max-width: 560px) { .lg-articulo { padding: 22px 18px; } }

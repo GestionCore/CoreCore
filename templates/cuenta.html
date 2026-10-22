@@ -119,6 +119,25 @@
 </div>
 {% endif %}
 
+<!-- ── Funciones con IA ──────────────────────────────────────────────────── -->
+<div class="ux-seccion ux-info" id="ia">Funciones con inteligencia artificial</div>
+<div class="panel cuenta-panel">
+    <div class="cuenta-fila">
+        <div style="max-width:620px;">
+            <div style="font-weight:700;">{{ 'Activadas' if ia_activada else 'Desactivadas' }}</div>
+            <div class="text-muted" style="font-size:0.88em; line-height:1.55;">
+                El asistente, las respuestas sugeridas a preguntas, los títulos mejorados, el mensaje del coach y la carga de gastos escribiendo usan un <b>servicio externo de IA</b>.
+                En cada consulta se envía solo lo necesario: por ejemplo tus ventas o tu ganancia del período, o el texto de la pregunta de un comprador.
+                <b>Nunca</b> se envía tu contraseña ni los datos de contacto de tus compradores. {% if ia_activada %}Si las desactivás, dejamos de enviar datos al servicio y el resto de CoreLux sigue igual.{% else %}Mientras estén desactivadas no se envía nada al servicio.{% endif %}
+            </div>
+        </div>
+        <form method="POST" action="/cuenta/ia" style="margin:0;">
+            <input type="hidden" name="acepta" value="{{ '0' if ia_activada else '1' }}">
+            <button type="submit" class="btn {{ 'btn-secondary' if ia_activada else 'btn-primary' }}">{{ 'Desactivar' if ia_activada else 'Activar' }}</button>
+        </form>
+    </div>
+</div>
+
 <!-- ── 4. TUS DATOS ─────────────────────────────────────────────────────── -->
 <div class="ux-seccion ux-neutral">Tus datos</div>
 <div class="panel cuenta-panel">

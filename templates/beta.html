@@ -1,0 +1,57 @@
+{% extends "_publico.html" %}
+{% block title %}Beta cerrada — CoreLux{% endblock %}
+{% block content %}
+<div class="pb-ancho bt-grid">
+
+  <section class="bt-texto" aria-labelledby="bt-titulo">
+    <div class="bt-etq">Beta cerrada</div>
+    <h1 id="bt-titulo" class="bt-titulo">Estamos probando CoreLux con unos pocos vendedores.</h1>
+    <p class="bt-bajada">Te mostramos cuánto te queda de verdad de cada venta en Mercado Libre. Hoy es <strong>gratis</strong> y entran de a poco, para poder atender a cada persona.</p>
+
+    <ul class="bt-puntos">
+      <li><strong>Sin tarjeta.</strong> No se cobra nada durante la beta, y si algún día cambia te avisamos con tiempo.</li>
+      <li><strong>Lo que te pedimos.</strong> Usarlo unos días y contarnos qué entendiste, qué te sobró y qué te faltó.</li>
+      <li><strong>Tus datos son tuyos.</strong> Podés descargarlos o borrar tu cuenta cuando quieras desde <em>Mi cuenta</em>.</li>
+    </ul>
+
+    <div class="bt-aviso-ml" role="note">
+      <h2 class="bt-h2">Antes de conectar: qué vas a ver en Mercado Libre</h2>
+      <p>Mercado Libre te va a mostrar la pantalla de permisos con un aviso de <strong>«aplicación no certificada»</strong>. Aparece en todas las aplicaciones que todavía no pasaron por su programa de certificación, y CoreLux está en esa etapa.</p>
+      <p>Entrás con tu cuenta de Mercado Libre: <strong>nunca vemos tu contraseña</strong>. CoreLux lee tus ventas, publicaciones, preguntas y reclamos para armar tus números, y solo cambia algo en Mercado Libre (un precio, el stock) cuando vos lo pedís y lo confirmás. Podés quitarle el acceso cuando quieras desde las aplicaciones conectadas de tu cuenta de Mercado Libre.</p>
+    </div>
+  </section>
+
+  <aside class="bt-lado">
+    <div class="bt-tarjeta">
+      <h2 class="bt-h2">Tengo un código de invitación</h2>
+      {% if aviso %}<div class="bt-mensaje bt-mensaje-info" role="status">{{ aviso }}</div>{% endif %}
+      {% if error %}<div class="bt-mensaje bt-mensaje-error" role="alert">{{ error }}</div>{% endif %}
+      <form action="{{ url_for('beta_entrar') }}" method="post" class="bt-form" autocomplete="off">
+        <label class="bt-etiqueta" for="bt-codigo">Código</label>
+        <input id="bt-codigo" name="codigo" type="text" class="bt-campo bt-codigo" value="{{ codigo }}" placeholder="CL-XXXX-XXXX" maxlength="40" required autocapitalize="characters" spellcheck="false">
+        <button type="submit" class="pb-btn pb-btn-primario bt-boton">Continuar con Mercado Libre</button>
+      </form>
+      <p class="bt-chico">¿Ya tenés cuenta en CoreLux? <a href="{{ url_for('conectar') }}">Entrá con Mercado Libre</a>.</p>
+    </div>
+
+    <div class="bt-tarjeta" id="lista-de-espera">
+      <h2 class="bt-h2">Todavía no tengo código</h2>
+      {% if espera_ok %}
+      <div class="bt-mensaje bt-mensaje-ok" role="status"><strong>Listo, te anotamos.</strong> Cuando haya un lugar, te escribimos a ese mail con tu código.</div>
+      {% else %}
+      <p class="bt-chico">Dejanos tu mail y qué vendés. Vamos invitando de a poco, empezando por quienes más nos pueden ayudar a mejorarlo.</p>
+      {% if error_espera %}<div class="bt-mensaje bt-mensaje-error" role="alert">{{ error_espera }}</div>{% endif %}
+      <form action="{{ url_for('beta_espera') }}" method="post" class="bt-form">
+        <label class="bt-etiqueta" for="bt-email">Tu mail</label>
+        <input id="bt-email" name="email" type="email" class="bt-campo" maxlength="254" required autocomplete="email">
+        <label class="bt-etiqueta" for="bt-rubro">¿Qué vendés? <span class="bt-opcional">(opcional)</span></label>
+        <input id="bt-rubro" name="rubro" type="text" class="bt-campo" maxlength="120" placeholder="Ropa, repuestos, electrónica…">
+        <button type="submit" class="pb-btn pb-btn-sec bt-boton">Anotarme en la lista</button>
+      </form>
+      <p class="bt-chico">Usamos tu mail solo para escribirte por la beta. <a href="/privacidad">Cómo cuidamos tus datos</a>.</p>
+      {% endif %}
+    </div>
+  </aside>
+
+</div>
+{% endblock %}

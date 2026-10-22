@@ -12,7 +12,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # (migración 0045: datos públicos de Mercado Libre, sin cuenta_id, de solo lectura para el rol de la app): mercado_relevador.py (el trabajo diario del scheduler) y mercado_categorias.py
 # (la usa el sincronizador de cada cuenta para guardar los atributos de variación de una categoría que todavía no se conocía; escribe únicamente datos públicos).
 USAN_ADMIN = {
-    "app.py", "db.py", "feedback.py", "legal.py", "normalizar_horas.py", "predeploy.py", "renovaciones_mp.py", "respaldo.py", "rotar_clave.py", "salud_sistema.py", "scheduler.py", "seguridad.py",
+    "app.py", "beta.py", "db.py", "feedback.py", "legal.py", "normalizar_horas.py", "predeploy.py", "renovaciones_mp.py", "respaldo.py", "rotar_clave.py", "salud_sistema.py", "scheduler.py", "seguridad.py",
     "salud_tokens.py", "sincronizador.py", "mercado_relevador.py", "mercado_categorias.py",
     os.path.join("auth", "registro.py"), os.path.join("auth", "token_manager.py"), os.path.join("auth", "confirmacion_oauth.py"),
 }

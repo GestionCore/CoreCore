@@ -79,7 +79,7 @@ GRUPOS_NAV = {
         "paginas": [
             {"nav_key": "promociones", "label": "Promociones", "href": "/promociones", "endpoint": "promociones_vista"},
             {"nav_key": "publicidad", "label": "Publicidad", "href": "/publicidad", "endpoint": "publicidad_vista", "requiere": "ads"},
-            {"nav_key": "mercado", "label": "Mercado", "href": "/mercado", "endpoint": "mercado_vista"},
+            {"nav_key": "mercado", "label": "Radar", "href": "/mercado", "endpoint": "mercado_vista"},
             {"nav_key": "tendencias", "label": "Tendencias", "href": "/tendencias", "endpoint": "tendencias_vista"},
             {"nav_key": "competencia", "label": "Competencia", "href": "/competencia", "endpoint": "competencia_vista", "requiere": "catalogo"},
         ],
@@ -96,7 +96,7 @@ ENDPOINT_A_NAV = {
 # nav_key -> sección (para marcar en el menú lateral la sección de la pantalla actual)
 SECCION_DE_NAV = {item["nav_key"]: grupo for grupo, datos in GRUPOS_NAV.items() for item in datos["paginas"]}
 # Pantallas que no están en el menú pero pertenecen a una sección (se llega por un link, el buscador o un botón)
-SECCION_DE_NAV.update({"comparador_logistica": "ventas", "timeline_publicacion": "stock"})
+SECCION_DE_NAV.update({"timeline_publicacion": "stock"})
 
 # El badge "MÁS USADO" solo aparece cuando hay uso real de ESA persona que lo respalde: antes se marcaba la pantalla más visitada de cada sección apenas pasaba de 3 visitas,
 # y con poco uso (o con dos pantallas casi empatadas) era ruido. Ahora hace falta que la sección tenga al menos VISITAS_MINIMAS_SECCION visitas en total y que la

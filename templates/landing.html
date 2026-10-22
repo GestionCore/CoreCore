@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CoreLux — Gestión profesional para Mercado Libre</title>
-    <meta name="description" content="Sabé cuánto te queda de verdad de cada venta en Mercado Libre: comisiones, cuotas, envíos, publicidad y costo de fabricación descontados. 14 días gratis.">
+    <meta name="description" content="Sabé cuánto te queda de verdad de cada venta en Mercado Libre: comisiones, cuotas, envíos, publicidad y costo de fabricación descontados. Beta cerrada y gratuita.">
     <link rel="canonical" href="{{ request.url_root.rstrip('/') }}/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="CoreLux">
     <meta property="og:locale" content="es_AR">
     <meta property="og:title" content="CoreLux — Cuánto te queda de verdad de cada venta en Mercado Libre">
-    <meta property="og:description" content="Ganancia real, stock, publicidad y cobros de tu negocio en Mercado Libre, en un solo lugar. 14 días gratis.">
+    <meta property="og:description" content="Ganancia real, stock, publicidad y cobros de tu negocio en Mercado Libre, en un solo lugar. Beta cerrada y gratuita.">
     <meta property="og:url" content="{{ request.url_root.rstrip('/') }}/">
     <meta property="og:image" content="{{ request.url_root.rstrip('/') }}{{ url_for('static', filename='icons/icon-512.png') }}">
     <meta name="twitter:card" content="summary">
@@ -259,6 +259,9 @@
     </style>
 </head>
 <body>
+{# Beta cerrada: los botones llevan a pedir acceso (/beta); quien ya tiene cuenta entra con «Entrar». Sin beta, a conectar como siempre. #}
+{% set beta = beta_con_invitacion %}
+{% set destino = url_for('beta_vista') if beta else url_for('conectar') %}
 
 <svg style="display:none;" aria-hidden="true">
     <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
@@ -288,7 +291,8 @@
             <a href="#como-funciona" class="lp-nav-link">Cómo funciona</a>
             <a href="#funciones" class="lp-nav-link">Funciones</a>
             <a href="#precios" class="lp-nav-link">Precios</a>
-            <a href="{{ url_for('conectar') }}" class="lp-btn lp-btn-primario lp-btn-chico">Probar gratis</a>
+            {% if beta %}<a href="{{ url_for('conectar') }}" class="lp-nav-link">Entrar</a>{% endif %}
+            <a href="{{ destino }}" class="lp-btn lp-btn-primario lp-btn-chico">{{ 'Pedir acceso' if beta else 'Probar gratis' }}</a>
         </div>
     </div>
 </nav>
@@ -301,10 +305,10 @@
             <h1 class="lp-h1">Sabé cuánto te queda <em>de verdad</em> de cada venta.</h1>
             <p class="lp-bajada">CoreLux toma tus ventas de Mercado Libre y les descuenta <b>todo</b>: comisión, cuotas, envío, publicidad y lo que te cuesta fabricar. Y lo cruza con lo que Mercado Pago te deposita, para que el número sea el real.</p>
             <div class="lp-hero-cta">
-                <a href="{{ url_for('conectar') }}" class="lp-btn lp-btn-primario">Probar 14 días gratis <svg><use href="#i-flecha"/></svg></a>
+                <a href="{{ destino }}" class="lp-btn lp-btn-primario">{{ 'Pedir acceso a la beta' if beta else 'Probar 14 días gratis' }} <svg><use href="#i-flecha"/></svg></a>
                 <a href="#como-funciona" class="lp-btn lp-btn-sec">Ver cómo funciona</a>
             </div>
-            <div class="lp-nota"><svg><use href="#i-lock"/></svg>Entrás con tu cuenta de Mercado Libre. Sin tarjeta.</div>
+            <div class="lp-nota"><svg><use href="#i-lock"/></svg>{{ 'Beta cerrada y gratuita. ' if beta }}Entrás con tu cuenta de Mercado Libre. Sin tarjeta.</div>
         </div>
 
         <div class="lp-escena" role="img" aria-label="Ejemplo de la pantalla Ganancia Real de CoreLux, con datos ficticios">
@@ -462,20 +466,20 @@
     <div class="lp-ancho">
         <div class="lp-cab centro">
             <div class="lp-cab-etq">Precios</div>
-            <h2 class="lp-h2">Empezá gratis. Seguí si te sirve.</h2>
-            <p>14 días con todo incluido y sin tarjeta.</p>
+            <h2 class="lp-h2">{{ 'Gratis durante la beta.' if beta else 'Empezá gratis. Seguí si te sirve.' }}</h2>
+            <p>{{ 'Estos son los precios previstos para cuando termine. Hoy no se cobra nada y te avisamos con tiempo antes de que cambie.' if beta else '14 días con todo incluido y sin tarjeta.' }}</p>
         </div>
         <div class="lp-planes reveal-grupo">
             <div class="lp-plan">
-                <div class="lp-plan-nombre">Prueba</div>
+                <div class="lp-plan-nombre">{{ 'Beta cerrada' if beta else 'Prueba' }}</div>
                 <div class="lp-plan-precio"><small>$</small>0</div>
-                <div class="lp-plan-periodo">14 días gratis</div>
+                <div class="lp-plan-periodo">{{ 'mientras dure la beta' if beta else '14 días gratis' }}</div>
                 <ul>
                     <li><svg><use href="#i-check"/></svg>Todas las funciones</li>
                     <li><svg><use href="#i-check"/></svg>1 cuenta de Mercado Libre</li>
                     <li><svg><use href="#i-check"/></svg>Sin tarjeta</li>
                 </ul>
-                <a href="{{ url_for('conectar') }}" class="lp-btn lp-btn-sec">Empezar gratis</a>
+                <a href="{{ destino }}" class="lp-btn lp-btn-sec">{{ 'Pedir acceso' if beta else 'Empezar gratis' }}</a>
             </div>
             <div class="lp-plan destacado">
                 <div class="lp-plan-badge">Más elegido</div>
@@ -488,7 +492,7 @@
                     <li><svg><use href="#i-check"/></svg>Actualización automática en minutos</li>
                     <li><svg><use href="#i-check"/></svg>Soporte dentro de la app</li>
                 </ul>
-                <a href="{{ url_for('conectar') }}" class="lp-btn lp-btn-primario">Probar 14 días gratis</a>
+                <a href="{{ destino }}" class="lp-btn lp-btn-primario">{{ 'Pedir acceso a la beta' if beta else 'Probar 14 días gratis' }}</a>
             </div>
             <div class="lp-plan">
                 <div class="lp-plan-nombre">Elite</div>
@@ -500,7 +504,7 @@
                     <li><svg><use href="#i-check"/></svg>Asistente de IA con 4 veces más consultas por día</li>
                     <li><svg><use href="#i-check"/></svg>Soporte prioritario</li>
                 </ul>
-                <a href="{{ url_for('conectar') }}" class="lp-btn lp-btn-sec">Empezar gratis</a>
+                <a href="{{ destino }}" class="lp-btn lp-btn-sec">{{ 'Pedir acceso' if beta else 'Empezar gratis' }}</a>
             </div>
         </div>
         <p class="lp-letra-chica">Precios en pesos argentinos con IVA incluido. Se actualizan periódicamente.</p>
@@ -516,7 +520,8 @@
         </div>
         <div class="lp-faq">
             <details><summary>¿Es seguro conectar mi cuenta de Mercado Libre?</summary><p>Sí. Usamos el sistema oficial de autorización de Mercado Libre: nunca vemos ni pedimos tu contraseña. Podés revocar el acceso desde tu cuenta de Mercado Libre en cualquier momento, sin avisarnos.</p></details>
-            <details><summary>¿Necesito tarjeta para probar los 14 días gratis?</summary><p>No. Te conectás con tu cuenta de Mercado Libre y usás CoreLux completo, sin cargar ningún medio de pago hasta que decidas seguir.</p></details>
+            {% if beta %}<details><summary>¿Cuánto cuesta durante la beta?</summary><p>Nada. Entrás con una invitación, te conectás con tu cuenta de Mercado Libre y usás CoreLux completo, sin cargar ningún medio de pago. Lo único que te pedimos es que nos cuentes qué mejorarías.</p></details>
+            {% else %}<details><summary>¿Necesito tarjeta para probar los 14 días gratis?</summary><p>No. Te conectás con tu cuenta de Mercado Libre y usás CoreLux completo, sin cargar ningún medio de pago hasta que decidas seguir.</p></details>{% endif %}
             <details><summary>¿CoreLux modifica mis publicaciones?</summary><p>Solo lee tus datos para mostrarte los números. Las pocas acciones que sí cambian algo en Mercado Libre (como actualizar precios o stock de varias publicaciones) te piden confirmación antes de tocar nada.</p></details>
             <details><summary>¿Sirve para cualquier rubro?</summary><p>Sí. Ropa, electrónica, hogar, repuestos: CoreLux toma de Mercado Libre lo que distingue a cada variante de tus publicaciones, sea cual sea tu rubro, y esconde lo que no aplica a tu cuenta, por ejemplo Publicidad si no la usás.</p></details>
             <details><summary>¿Funciona si vendo con FULL o con Flex?</summary><p>Sí. Ves tu stock en FULL (de solo lectura, porque lo controla Mercado Libre) y podés cargar lo que te cobra tu logística de Flex por zona para que la ganancia lo descuente.</p></details>
@@ -530,8 +535,8 @@
 <section class="lp-ancho">
     <div class="lp-final">
         <h2 class="lp-h2">Conocé tu ganancia real hoy.</h2>
-        <p>Conectás tu cuenta en un minuto y en un rato ya tenés tus números. 14 días gratis, sin tarjeta.</p>
-        <a href="{{ url_for('conectar') }}" class="lp-btn lp-btn-primario">Probar 14 días gratis <svg><use href="#i-flecha"/></svg></a>
+        <p>{{ 'Conectás tu cuenta en un minuto y en un rato ya tenés tus números. Beta cerrada y gratuita, sin tarjeta.' if beta else 'Conectás tu cuenta en un minuto y en un rato ya tenés tus números. 14 días gratis, sin tarjeta.' }}</p>
+        <a href="{{ destino }}" class="lp-btn lp-btn-primario">{{ 'Pedir acceso a la beta' if beta else 'Probar 14 días gratis' }} <svg><use href="#i-flecha"/></svg></a>
     </div>
 </section>
 

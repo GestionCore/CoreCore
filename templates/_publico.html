@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CoreLux{% endblock %}</title>
+    <meta name="theme-color" content="#0a0a0c">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
+    <link rel="stylesheet" href="/static/css/fonts.css?v={{ static_v('css/fonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_v('css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/publico.css') }}?v={{ static_v('css/publico.css') }}">
+</head>
+<body class="pb-body">
+<nav class="pb-nav" aria-label="Principal">
+    <div class="pb-ancho pb-nav-inner">
+        <a href="/" class="pb-marca"><span class="brand-mark"></span><span>CoreLux</span></a>
+        <div class="pb-nav-links">
+            <a href="/" class="pb-link">Inicio</a>
+            <a href="{{ url_for('conectar') }}" class="pb-link">Ya tengo cuenta</a>
+            {% if beta_con_invitacion %}<a href="{{ url_for('beta_vista') }}" class="pb-btn pb-btn-primario pb-btn-chico">Tengo una invitación</a>{% endif %}
+        </div>
+    </div>
+</nav>
+
+<main class="pb-main">
+{% block content %}{% endblock %}
+</main>
+
+<footer class="pb-footer">
+    <div class="pb-ancho pb-footer-inner">
+        <div>© {{ anio_actual }} CoreLux · Para vendedores de Mercado Libre Argentina</div>
+        <div style="display:flex; gap:22px; flex-wrap:wrap;">
+            <a href="/terminos">Términos</a>
+            <a href="/privacidad">Privacidad</a>
+            <a href="mailto:soporte@corelux.app">soporte@corelux.app</a>
+        </div>
+    </div>
+</footer>
+</body>
+</html>

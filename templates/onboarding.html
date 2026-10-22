@@ -105,6 +105,15 @@
             </div>
         </div>
 
+        <div class="onb-paso" data-paso="5">
+            <div class="onb-titulo">¿Querés usar las funciones con inteligencia artificial?</div>
+            <div class="onb-pregunta-ayuda">El asistente, las respuestas sugeridas a preguntas, los títulos mejorados y la carga de gastos escribiendo usan un <b>servicio externo de IA</b>. En cada consulta le enviamos solo lo necesario: por ejemplo tus ventas o tu ganancia del período, o el texto de la pregunta de un comprador. <b>Nunca</b> le enviamos tu contraseña ni los datos de contacto de tus compradores. El resto de CoreLux funciona igual si elegís que no, y lo podés cambiar cuando quieras en Mi cuenta.</div>
+            <div class="onb-opciones">
+                <label class="onb-opcion"><input type="radio" name="usar_ia" value="si" data-change="onbValidarPasoActual" required> Sí, quiero usarlas</label>
+                <label class="onb-opcion"><input type="radio" name="usar_ia" value="no" data-change="onbValidarPasoActual" required> Ahora no</label>
+            </div>
+        </div>
+
         <div class="onb-nav">
             <button type="button" class="btn btn-secondary onb-btn-atras" id="onb-btn-atras" data-click="onbAtras" style="display:none;">Atrás</button>
             <button type="button" class="btn btn-primary onb-btn-siguiente" id="onb-btn-siguiente" data-click="onbSiguiente" disabled>Siguiente</button>

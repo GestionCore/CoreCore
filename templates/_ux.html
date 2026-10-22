@@ -50,3 +50,10 @@
 <button type="button" class="btn btn-secondary" {% if estilo %}style="{{ estilo }}"{% endif %} data-click="aplicarMes" data-click-args='[-1, "$el"]'>Mes pasado</button>
 {% endmacro %}
 
+
+{# Aviso para quien declaró ser Responsable Inscripto: CoreLux todavía no separa el IVA, así que la ganancia que ve lo incluye. Sin condición declarada o con otra, no muestra nada. #}
+{% macro aviso_iva(condicion_fiscal) %}
+{% if condicion_fiscal == 'responsable_inscripto' %}
+{{ banner("warn", "file-text", "<b>Estos números todavía incluyen el IVA.</b>", "Como sos Responsable Inscripto, el IVA de tus ventas no es ganancia: lo cobrás para pagarlo a ARCA, y CoreLux aún no lo separa. Tu ganancia real puede ser menor a la que ves acá. Consultalo con tu contador.") }}
+{% endif %}
+{% endmacro %}

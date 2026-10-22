@@ -21,7 +21,6 @@ PERMITIDAS = {
     (os.path.join("templates", "dashboard_personalizable.html"), "w.nombre"): "nombres fijos de los widgets (lista en el propio archivo)",
     (os.path.join("templates", "dashboard_personalizable.html"), "salida.texto"): "texto fijo de la salida del hero ('Cargar los costos'…)",
     (os.path.join("static", "js", "global.js"), "titulo"): "frase del chat de costos armada con cantidades",
-    (os.path.join("templates", "tendencias.html"), "nombre"): "ya viene armado y escapado por _renderVendedor (esc + urlSegura)",
 }
 
 

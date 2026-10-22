@@ -74,6 +74,8 @@ import ventas_hoy
 import preguntas_acciones
 import dolar as dolar_mod
 import costos_moneda
+import beta
+import consentimiento_ia
 import monitor_en_vivo
 import pagos
 import correos
@@ -172,8 +174,8 @@ def _inyectar_version_estaticos():
 
 @app.context_processor
 def _inyectar_pagos():
-    """¿Se puede pagar? Sin Mercado Pago configurado CoreLux es una beta gratuita (ver config.PAGOS_HABILITADOS). Va aparte: lo necesitan también las páginas de error."""
-    return {"pagos_habilitados": config.PAGOS_HABILITADOS}
+    """¿Se cobra hoy? Durante la beta cerrada (config.MODO_BETA) o sin Mercado Pago CoreLux es gratis y nada de cobro se muestra (ver config.COBRO_ACTIVO). Va aparte: lo necesitan también las páginas de error."""
+    return {"pagos_habilitados": config.COBRO_ACTIVO, "modo_beta": config.MODO_BETA, "beta_con_invitacion": config.BETA_SOLO_INVITADOS}
 
 
 @app.context_processor
@@ -468,6 +470,40 @@ def conectar():
     return redirect(oauth_meli.construir_url_autorizacion(state))
 
 
+@app.route("/beta")
+def beta_vista():
+    """Entrada a la beta cerrada: explica qué es, pide el código de invitación y deja anotarse en la lista de espera. Con la beta abierta manda directo a conectar."""
+    if session.get("usuario_id"):
+        return redirect(url_for("landing"))
+    if not config.BETA_SOLO_INVITADOS:
+        return redirect(url_for("conectar"))
+    motivo = request.args.get("motivo")
+    aviso = "Para crear tu cuenta necesitás un código de invitación. Si todavía no tenés uno, dejanos tu mail abajo." if motivo == "sin_invitacion" else None
+    return render_template("beta.html", aviso=aviso, error=None, codigo="", espera_ok=request.args.get("espera") == "ok")
+
+
+@app.route("/beta/entrar", methods=["POST"])
+def beta_entrar():
+    """Valida el código y, si sirve, lo recuerda en la sesión y sigue al login de Mercado Libre (el código se consume recién al crear la cuenta)."""
+    if not config.BETA_SOLO_INVITADOS:
+        return redirect(url_for("conectar"))
+    codigo = request.form.get("codigo", "")
+    ok, motivo = beta.validar(codigo)
+    if not ok:
+        return render_template("beta.html", aviso=None, error=beta.MOTIVOS.get(motivo, beta.MOTIVOS["no_existe"]), codigo=beta.normalizar_codigo(codigo), espera_ok=False), 400
+    session["beta_codigo"] = beta.normalizar_codigo(codigo)
+    return redirect(url_for("conectar"))
+
+
+@app.route("/beta/espera", methods=["POST"])
+def beta_espera():
+    """Lista de espera: un mail y, si quiere, qué vende. No se le dice a nadie si su mail ya estaba anotado."""
+    if not beta.anotar_en_espera(request.form.get("email", ""), request.form.get("rubro"), request.form.get("mensaje")):
+        return render_template("beta.html", aviso=None, error=None, codigo="", espera_ok=False,
+                               error_espera="Revisá el mail: no parece uno válido."), 400
+    return redirect(url_for("beta_vista", espera="ok") + "#lista-de-espera")
+
+
 @app.route("/conectar_otra_cuenta")
 @login_requerido
 def conectar_otra_cuenta():
@@ -666,7 +702,26 @@ def callback():
     if vinculando and usuario_id_actual:
         return _completar_vinculacion(usuario_id_actual, datos_meli, resultado, iniciar=True)
 
-    usuario_id, cuenta_id, es_nuevo = registro.crear_o_actualizar_login(datos_meli)
+    # Beta cerrada: quien ya tiene cuenta vuelve a entrar sin más; una cuenta nueva solo se crea con una invitación (el uso se reserva antes y se
+    # devuelve si la cuenta no llega a crearse).
+    invitacion_id = None
+    if beta.hay_que_pedir_invitacion() and not beta.cuenta_existe(datos_meli["meli_user_id"]):
+        invitacion_id = beta.reservar(session.get("beta_codigo"))
+        if invitacion_id is None:
+            session.pop("beta_codigo", None)
+            return redirect(url_for("beta_vista", motivo="sin_invitacion"))
+    try:
+        usuario_id, cuenta_id, es_nuevo = registro.crear_o_actualizar_login(datos_meli)
+    except Exception:
+        if invitacion_id is not None:
+            beta.liberar(invitacion_id)
+        raise
+    if invitacion_id is not None:
+        if es_nuevo:
+            beta.registrar_canje(invitacion_id, usuario_id)
+        else:
+            beta.liberar(invitacion_id)           # la cuenta se creó mientras tanto por otro camino: el código no se gastó
+        session.pop("beta_codigo", None)
 
     token_manager.guardar_tokens(
         cuenta_id, resultado["access_token"], resultado["refresh_token"], resultado["expires_in"]
@@ -1724,6 +1779,7 @@ def logros_vista():
 
 @app.route("/api/logros/coach")
 @login_requerido
+@consentimiento_ia.requerido
 def api_logros_coach():
     """Mensaje del coach de IA, pedido aparte para que Logros cargue al instante (la IA tarda segundos)."""
     import db
@@ -1844,25 +1900,6 @@ def competencia_eliminar(id_producto):
     return redirect("/competencia")
 
 
-@app.route("/comparador_logistica")
-@login_requerido
-def comparador_logistica_vista():
-    try:
-        access_token = token_manager.asegurar_token_valido(g.cuenta_id)
-    except token_manager.CuentaDesconectada:
-        access_token = None
-
-    fecha_hasta = request.args.get("fecha_hasta") or hoy_argentina().strftime("%Y-%m-%d")
-    fecha_desde = request.args.get("fecha_desde") or (hoy_argentina() - timedelta(days=30)).strftime("%Y-%m-%d")
-
-    resultado, cantidad_cargos_almacenamiento = comparador_logistica_mod.calcular_comparacion(g.usuario_id, g.cuenta_id, access_token, fecha_desde, fecha_hasta)
-
-    return render_template(
-        "comparador_logistica.html", resultado=resultado, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta,
-        cantidad_cargos_almacenamiento=cantidad_cargos_almacenamiento, active_nav="comparador_logistica"
-    )
-
-
 @app.route("/publicidad")
 @login_requerido
 def publicidad_vista():
@@ -1970,7 +2007,8 @@ def onboarding_guardar():
     experiencia = request.form.get("experiencia_meli")
     pantalla = request.form.get("pantalla_preferida")
     condicion = request.form.get("condicion_fiscal")             # "" = «todavía no lo sé»: queda sin informar
-    ok = onboarding.guardar_respuestas(g.usuario_id, prioridades, experiencia, pantalla, condicion_fiscal=condicion, cuenta_id=g.cuenta_id)
+    ok = onboarding.guardar_respuestas(g.usuario_id, prioridades, experiencia, pantalla, condicion_fiscal=condicion, cuenta_id=g.cuenta_id,
+                                       usar_ia=request.form.get("usar_ia"))
     if not ok:
         return render_template("onboarding.html", error="Elegí una opción en cada pregunta antes de continuar.", **_opciones_onboarding())
     session["mostrar_tutorial"] = True
@@ -2126,6 +2164,7 @@ def monotributo_declarar():
 
 @app.route("/api/costos_chat", methods=["POST"])
 @login_requerido
+@consentimiento_ia.requerido
 def api_costos_chat():
     datos = request.get_json(silent=True) or {}
     historial = datos.get("historial", [])
@@ -2152,6 +2191,7 @@ def api_costos_chat_confirmar():
 
 @app.route("/api/chat_ia", methods=["POST"])
 @login_requerido
+@consentimiento_ia.requerido
 def api_chat_ia():
     """
     El Asistente de Operaciones (botón flotante) — existía en el
@@ -3386,6 +3426,7 @@ def api_drawer_preguntas(id_meli):
 
 @app.route("/api/drawer/optimizar_titulo/<id_meli>", methods=["POST"])
 @login_requerido
+@consentimiento_ia.requerido
 def api_drawer_optimizar_titulo(id_meli):
     import ia_asistente
     data = request.get_json(silent=True) or {}
@@ -3789,6 +3830,7 @@ def api_preguntas_borrar():
 
 @app.route("/api/preguntas/sugerir", methods=["POST"])
 @login_requerido
+@consentimiento_ia.requerido
 def api_preguntas_sugerir():
     import ia_asistente
     data = request.get_json(silent=True) or {}
@@ -3830,6 +3872,8 @@ def referral_redirect(code):
 @app.route("/referidos")
 @login_requerido
 def referidos_vista():
+    if not config.COBRO_ACTIVO:                     # sin cobro no hay qué descontar: el programa de referidos no se ofrece (tampoco por dirección)
+        return redirect(url_for("landing"))
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("SELECT referral_code FROM usuarios WHERE id = %s", (g.usuario_id,))
@@ -3936,6 +3980,38 @@ def admin_toggle_activo(uid):
         return jsonify({"ok": False, "detalle": "Usuario no encontrado"}), 404
     return jsonify({"ok": True, "activo": fila[0]})
 
+@app.route("/admin/beta")
+@login_requerido
+@admin_requerido
+def admin_beta():
+    """Invitaciones de la beta cerrada (crear, ver cuántas se usaron, desactivar) y la lista de espera."""
+    return render_template("admin_beta.html", active_nav="admin", invitaciones=beta.listar_invitaciones(), espera=beta.listar_espera(),
+                           pide_invitacion=config.BETA_SOLO_INVITADOS, nuevo_codigo=request.args.get("nuevo"))
+
+
+@app.route("/admin/beta/invitacion", methods=["POST"])
+@login_requerido
+@admin_requerido
+@auditar("beta_invitacion_crear")
+def admin_beta_crear():
+    try:
+        usos = int(request.form.get("usos_max") or 1)
+        dias = int(request.form["dias"]) if (request.form.get("dias") or "").strip() else None
+    except ValueError:
+        return redirect(_con_aviso("/admin/beta", "Los usos y los días tienen que ser números.", "error"))
+    codigo = beta.crear_invitacion(request.form.get("nota"), usos, dias)
+    return redirect(url_for("admin_beta", nuevo=codigo))
+
+
+@app.route("/admin/beta/invitacion/<int:invitacion_id>/desactivar", methods=["POST"])
+@login_requerido
+@admin_requerido
+@auditar("beta_invitacion_desactivar")
+def admin_beta_desactivar(invitacion_id):
+    beta.desactivar(invitacion_id)
+    return redirect(_con_aviso("/admin/beta", "Invitación desactivada.", "success"))
+
+
 # ── /Panel de administración ──────────────────────────────────────────────
 
 # ── Suscripciones / Pagos ─────────────────────────────────────────────────
@@ -3973,7 +4049,7 @@ def planes_vista():
     avisos_ok = {"plan_cambiado": "Listo: tu suscripción pasó al nuevo plan. No se creó otra ni se cobra dos veces: el nuevo monto rige desde tu próxima renovación."}
     codigo_aviso = request.args.get("aviso")
     return render_template("planes.html", plan_actual=plan_actual, dias_trial=dias_trial, aviso=avisos.get(codigo_aviso) or avisos_ok.get(codigo_aviso), aviso_ok=codigo_aviso in avisos_ok,
-                           proximo_cobro=proximo_cobro, pagos_habilitados=config.PAGOS_HABILITADOS)
+                           proximo_cobro=proximo_cobro, pagos_habilitados=config.COBRO_ACTIVO)
 
 
 @app.route("/cuenta")
@@ -3999,9 +4075,20 @@ def cuenta_vista():
             dolar_datos = dolar_mod.para_pantalla(dolar_mod.cotizacion_activa(conexion.cursor(), g.cuenta_id))
     except Exception as e:
         print(f"[Cuenta] ⚠️ No se pudo leer la cotización del dólar: {e}")
-    return render_template("cuenta.html", active_nav="cuenta", plan=plan, flex_hora_corte=flex_hora_corte, dolar=dolar_datos, nombre_plan=nombre_plan, email=email, dias_trial=dias_trial,
-                           pagos_habilitados=config.PAGOS_HABILITADOS, contacto=legal.CONTACTO_EMAIL,
+    return render_template("cuenta.html", active_nav="cuenta", plan=plan, ia_activada=consentimiento_ia.tiene(g.usuario_id), flex_hora_corte=flex_hora_corte, dolar=dolar_datos, nombre_plan=nombre_plan, email=email, dias_trial=dias_trial,
+                           pagos_habilitados=config.COBRO_ACTIVO, contacto=legal.CONTACTO_EMAIL,
                            condicion_fiscal_actual=fiscal.obtener(g.usuario_id, g.cuenta_id), condiciones_fiscales=fiscal.CONDICIONES, detalles_condicion=fiscal.DETALLES)
+
+
+@app.route("/cuenta/ia", methods=["POST"])
+@login_requerido
+@auditar("ia_consentimiento")
+def cuenta_ia():
+    """Activa o desactiva las funciones con IA de esta persona (consentimiento explícito, ver consentimiento_ia.py)."""
+    acepta = request.form.get("acepta") == "1"
+    if not consentimiento_ia.guardar(g.usuario_id, acepta):
+        return redirect(_con_aviso("/cuenta", "No pudimos guardar el cambio. Probá de nuevo en un momento.", "error") + "#ia")
+    return redirect(_con_aviso("/cuenta", "Funciones con IA activadas." if acepta else "Funciones con IA desactivadas. No se envía nada al servicio externo.", "success") + "#ia")
 
 
 @app.route("/api/cuenta/margen_minimo", methods=["POST"])
@@ -4104,6 +4191,9 @@ def suscripcion_vista():
 def suscripcion_iniciar():
     """Crea el link de pago en MP y redirige al usuario."""
     if not config.MP_ACCESS_TOKEN:
+        return redirect(url_for("planes_vista", aviso="sin_pagos"))
+    # En la beta cerrada nadie se suscribe (la pantalla ya no ofrece el botón); el pedido a mano solo lo puede hacer el dueño para probar el cobro.
+    if config.MODO_BETA and not auditoria.es_administrador(g.usuario_id):
         return redirect(url_for("planes_vista", aviso="sin_pagos"))
 
     plan = request.form.get("plan", "")

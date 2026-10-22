@@ -127,6 +127,7 @@ def test_el_chat_no_contesta_con_la_cuenta_equivocada(con_dos_cuentas, monkeypat
         llamadas.append(cuenta_id)
         return {"respuesta": "listo", "botones": []}
     monkeypatch.setattr(aplicacion.chat_ia, "responder_pregunta", responder)
+    monkeypatch.setattr(aplicacion.consentimiento_ia, "tiene", lambda usuario_id: True)       # la persona de la prueba aceptó las funciones con IA
     primera, segunda = con_dos_cuentas.primera_cuenta, con_dos_cuentas.segunda_cuenta
     con_dos_cuentas.post(f"/cambiar_cuenta/{segunda}")                                                      # la persona pasó a la segunda cuenta
 

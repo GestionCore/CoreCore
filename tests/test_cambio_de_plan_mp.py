@@ -102,6 +102,7 @@ def entorno(monkeypatch):
     """Ejecuta la vista de /suscripcion/iniciar (sin el login) con la base y Mercado Pago simulados. Devuelve una función: llamar(plan, plan_actual, mp_id, estado_en_mp)."""
     import app as modulo_app
     monkeypatch.setattr(config, "MP_ACCESS_TOKEN", "APP_USR-de-prueba")
+    monkeypatch.setattr(config, "MODO_BETA", False)                      # estas pruebas son del cobro de verdad; en beta la suscripción solo la puede iniciar el administrador
     llamadas = {"escrituras": [], "creadas": [], "canceladas": [], "cambiadas": [], "auditadas": []}
     monkeypatch.setattr(pagos, "crear_link_suscripcion", lambda plan, uid, email, back: llamadas["creadas"].append((plan, uid)) or ("https://mp.test/checkout", "nueva-id"))
     monkeypatch.setattr(pagos, "cancelar_suscripcion", lambda mp_id: llamadas["canceladas"].append(mp_id) or True)

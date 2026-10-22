@@ -1,11 +1,17 @@
-{% extends "base.html" %}
+{# Sin sesión es una página pública (sin el menú ni la barra de la app); con sesión, la pantalla de siempre. #}
+{% extends "base.html" if session.get('usuario_id') else "_publico.html" %}
 {% block title %}Planes — CoreLux{% endblock %}
 {% block content %}
+{# Durante la beta no hay botón de suscribirse: quien no tiene sesión pide acceso, quien ya la tiene lo usa gratis. #}
+{% macro cta_beta(clases) -%}
+  {%- if session.get('usuario_id') -%}<div class="plan-badge-activo plan-beta">Gratis durante la beta</div>
+  {%- else -%}<a href="{{ url_for('beta_vista') }}" class="{{ clases }} plan-cta-link">Pedir acceso a la beta</a>{%- endif -%}
+{%- endmacro %}
 <div class="planes-hero">
   <h1 class="planes-titulo">Elegí tu plan</h1>
   <p class="planes-subtitulo">Todo lo que necesitás para gestionar tu negocio en Mercado Libre.</p>
   {% if not pagos_habilitados %}
-  <div class="planes-trial-banner"><strong>Estás en la beta: CoreLux es gratis mientras lo probamos.</strong> Estos son los precios previstos; todavía no se cobra nada y te avisamos con tiempo antes de que cambie.</div>
+  <div class="planes-trial-banner"><strong>Beta cerrada: hoy CoreLux es gratis mientras lo mejoramos con vendedores reales.</strong> Estos son los precios previstos para después. No se cobra nada y te avisamos con tiempo antes de que eso cambie.</div>
   {% endif %}
   {% if plan_actual == "trial" and dias_trial is not none and pagos_habilitados %}
     {% if dias_trial > 0 %}
@@ -52,7 +58,7 @@
       <input type="hidden" name="plan" value="base">
       <button type="submit" class="btn-plan">Suscribirme — $40.000/mes</button>
     </form>
-    {% else %}<div class="plan-badge-activo" style="opacity:0.75;">Próximamente</div>{% endif %}
+    {% else %}{{ cta_beta("btn-plan") }}{% endif %}
     {% endif %}
   </div>
 
@@ -82,7 +88,7 @@
       <input type="hidden" name="plan" value="elite">
       <button type="submit" class="btn-plan btn-plan-elite">Suscribirme — $99.000/mes</button>
     </form>
-    {% else %}<div class="plan-badge-activo" style="opacity:0.75;">Próximamente</div>{% endif %}
+    {% else %}{{ cta_beta("btn-plan btn-plan-elite") }}{% endif %}
     {% elif plan_actual == "base" %}
     {% if pagos_habilitados %}
     {# Cambia el monto de la suscripción que ya tiene (no crea otra): confirma con el antes y el después. #}
@@ -91,7 +97,7 @@
       <input type="hidden" name="plan" value="elite">
       <button type="button" class="btn-plan btn-plan-elite" data-click="confirmarAccion" data-click-args='{{ ["¿Pasar al Plan Elite?", "$form", "Pasar a Elite", detalle_cambio]|tojson }}'>Mejorar a Elite</button>
     </form>
-    {% else %}<div class="plan-badge-activo" style="opacity:0.75;">Próximamente</div>{% endif %}
+    {% else %}<div class="plan-badge-activo plan-beta">Incluido en tu beta</div>{% endif %}
     {% endif %}
   </div>
 
@@ -104,7 +110,8 @@
 {% endif %}
 
 <div class="planes-notas">
-  <p>El cobro se procesa a través de <strong>Mercado Pago</strong>. Podés cancelar cuando quieras desde tu panel de suscripción.</p>
+  {% if pagos_habilitados %}<p>El cobro se procesa a través de <strong>Mercado Pago</strong>. Podés cancelar cuando quieras desde tu panel de suscripción.</p>
+  {% else %}<p>Cuando termine la beta, el cobro se hará con <strong>Mercado Pago</strong> y vas a poder cancelar cuando quieras. Precios en pesos argentinos.</p>{% endif %}
   {% if pagos_habilitados %}<p>Prueba gratuita de 14 días incluida para nuevas cuentas — se activa automáticamente al registrarte.</p>{% endif %}
 </div>
 
@@ -264,14 +271,16 @@
   transform: translateY(-1px);
 }
 .btn-plan-elite {
-  border-color: var(--accent-gold);
-  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dim));
-  color: #14100a;
+  border-color: var(--accent-solid);
+  background: var(--accent-solid);
+  color: #fff;
 }
 .btn-plan-elite:hover {
   background: transparent;
-  color: var(--accent-gold);
+  color: var(--accent-primary);
 }
+.plan-cta-link { display: block; text-align: center; text-decoration: none; box-sizing: border-box; }
+.plan-beta { opacity: 0.85; }
 .planes-notas {
   text-align: center;
   max-width: 600px;

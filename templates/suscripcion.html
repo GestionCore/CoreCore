@@ -37,7 +37,9 @@
     {% endif %}
 
     <div class="flex-gap" style="margin-top:18px;">
-        {% if plan in ('trial', 'cancelado') %}
+        {% if plan in ('trial', 'cancelado') and not pagos_habilitados %}
+        <a href="/planes" class="btn btn-secondary btn-lg">Ver los planes previstos</a>
+        {% elif plan in ('trial', 'cancelado') %}
         <a href="/planes" class="btn btn-gold btn-lg">Ver planes y elegir el mío</a>
         {% elif plan == 'base' %}
         <a href="/planes" class="btn btn-gold btn-lg">Mejorar a Plan Elite</a>

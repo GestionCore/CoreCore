@@ -83,6 +83,14 @@ MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN", "")
 # Sin Mercado Pago configurado no hay forma de pagar: CoreLux funciona como BETA GRATUITA (la prueba no bloquea el acceso al vencer, /planes y
 # /suscripcion lo dicen y el programa de referidos —que no tiene qué descontar— se oculta). Al cargar MP_ACCESS_TOKEN pasa solo a modo de cobro.
 PAGOS_HABILITADOS = bool(MP_ACCESS_TOKEN)
+# La BETA CERRADA es una decisión del dueño, no un efecto de que falte el token: producción tiene credenciales de PRUEBA de Mercado Pago cargadas y sin esto la
+# prueba de 14 días bloquearía el acceso a los vendedores invitados. Mientras MODO_BETA esté encendido (por defecto sí; se apaga con MODO_BETA=0) nadie ve ni sufre un cobro:
+# ni el vencimiento de la prueba, ni "Elegir plan", ni Referidos. PAGOS_HABILITADOS sigue diciendo si el motor de cobro (webhooks, renovaciones) puede correr.
+MODO_BETA = os.getenv("MODO_BETA", "1").strip().lower() not in ("0", "false", "no")
+# Lo que ve y sufre la persona: solo hay cobro cuando hay con qué cobrar Y la beta terminó.
+COBRO_ACTIVO = PAGOS_HABILITADOS and not MODO_BETA
+# Entrada con invitación: durante la beta cerrada solo crea cuenta quien tiene un código (ver beta.py). Se apaga con BETA_SOLO_INVITADOS=0 para abrir el registro.
+BETA_SOLO_INVITADOS = MODO_BETA and os.getenv("BETA_SOLO_INVITADOS", "1").strip().lower() not in ("0", "false", "no", "")
 # Clave secreta de los webhooks de Mercado Pago (panel de la integración > Webhooks > "Clave secreta"): con ella se verifica x-signature.
 MP_WEBHOOK_SECRET = os.getenv("MP_WEBHOOK_SECRET", "")
 

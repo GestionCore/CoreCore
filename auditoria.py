@@ -31,6 +31,9 @@ TAMANO_MAXIMO = 3000
 _SECRETO = re.compile(r"token|password|contrase|clave|secret|authorization", re.IGNORECASE)
 
 ETIQUETAS = {
+    "ia_consentimiento": "Funciones con IA activadas o desactivadas",
+    "beta_invitacion_crear": "Invitación de la beta creada",
+    "beta_invitacion_desactivar": "Invitación de la beta desactivada",
     "precios_masivo": "Cambio de precios masivo",
     "stock_masivo": "Cambio de stock masivo",
     "publicaciones_reactivar": "Publicaciones reactivadas",

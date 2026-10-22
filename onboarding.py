@@ -1,4 +1,5 @@
 """Onboarding — encuesta de una sola vez la primera vez que alguien conecta su cuenta."""
+import consentimiento_ia
 import db
 import fiscal
 
@@ -23,7 +24,7 @@ OPCIONES_PANTALLA = {
 # Condición fiscal (por cuenta, ver fiscal.py): nunca se supone. «Todavía no lo sé» (valor vacío) la deja sin informar.
 OPCIONES_FISCAL = {**fiscal.CONDICIONES, "": "Prefiero decirlo después"}
 
-def guardar_respuestas(usuario_id, prioridades, experiencia, pantalla, condicion_fiscal="", cuenta_id=None):
+def guardar_respuestas(usuario_id, prioridades, experiencia, pantalla, condicion_fiscal="", cuenta_id=None, usar_ia=None):
     """
     `prioridades` es una lista (pedido explícito: esta pregunta admite
     elegir más de una, a diferencia de las otras dos que son de una
@@ -37,6 +38,8 @@ def guardar_respuestas(usuario_id, prioridades, experiencia, pantalla, condicion
         return False
     if (condicion_fiscal or "") not in OPCIONES_FISCAL:
         return False
+    if usar_ia not in (None, "si", "no"):
+        return False
     prioridad_guardada = ",".join(prioridades)
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -47,6 +50,8 @@ def guardar_respuestas(usuario_id, prioridades, experiencia, pantalla, condicion
         """, (prioridad_guardada, experiencia, pantalla, usuario_id))
     if cuenta_id and condicion_fiscal:
         fiscal.guardar(usuario_id, cuenta_id, condicion_fiscal)
+    if usar_ia == "si":                                  # solo se activa si la persona lo eligió; sin respuesta o «no» queda desactivado (consentimiento_ia.py)
+        consentimiento_ia.guardar(usuario_id, True)
     return True
 
 

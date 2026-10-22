@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% from "_ux.html" import kpi %}
-{% block title %}Tendencias y Mercado · CoreLux{% endblock %}
+{% block title %}Tendencias · CoreLux{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-chart"/></svg>Tendencias y Mercado</h1>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-chart"/></svg>Tendencias</h1>
         <div class="page-subtitle">
             {% if categoria_foco_nombre %}
                 Cómo está la competencia en <strong>{{ categoria_foco_nombre }}</strong> y en cualquier categoría de Mercado Libre que quieras evaluar
@@ -257,7 +257,7 @@
 <script src="/static/js/vendor/chart.umd.min.js?v=4.4.4"></script>
 <script nonce="{{ csp_nonce }}">
 // ── Helpers de formato y escape ──────────────────────────────────────────────
-// Todo lo que viene de MeLi (nombres de producto, apodos de vendedores, marcas,
+// Todo lo que viene de MeLi (nombres de producto, marcas,
 // categorías) es texto libre: se escapa SIEMPRE antes de meterlo en innerHTML.
 const fmtN = n => (n === null || n === undefined || isNaN(n)) ? '—' : Math.round(n).toLocaleString('es-AR');
 const fmtM = n => (n === null || n === undefined || isNaN(n)) ? '—' : '$' + Math.round(n).toLocaleString('es-AR');
@@ -431,24 +431,6 @@ function _filaPorcentaje(etiqueta, pct) {
         </div>`;
 }
 
-function _renderVendedor(v) {
-    const link = urlSegura(v.permalink);
-    const nombre = link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(v.nickname)}</a>` : esc(v.nickname);
-    const etiquetas = [
-        v.medalla ? `<span class="badge badge-brand">${esc(v.medalla)}</span>` : '',
-        v.nivel ? `<span class="badge badge-neutral">Reputación ${esc(v.nivel.toLowerCase())}</span>` : ''
-    ].join(' ');
-    const historicas = (v.ventas_historicas !== null && v.ventas_historicas !== undefined) ? `${fmtN(v.ventas_historicas)} ventas históricas` : '';
-    return `
-        <div class="flex-gap" style="justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border-soft);">
-            <div>
-                <div style="font-weight:600;">${nombre}</div>
-                <div class="text-muted" style="font-size:0.82em;">${[historicas, `${fmtN(v.publicaciones_muestra)} publicaciones en la muestra`].filter(Boolean).join(' · ')}</div>
-            </div>
-            <div class="flex-gap">${etiquetas}</div>
-        </div>`;
-}
-
 function _renderProductoReferencia(p) {
     const rango = (p.precio_min !== null && p.precio_max !== null)
         ? (p.precio_min === p.precio_max ? fmtM(p.precio_min) : `${fmtM(p.precio_min)} – ${fmtM(p.precio_max)}`) : '—';
@@ -537,10 +519,6 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
             <div class="page-subtitle" style="margin-bottom:8px;">Marcas más presentes en el catálogo${d.marcas_distintas ? ` (${fmtN(d.marcas_distintas)} en total)` : ''}:</div>
             <div class="flex-gap" style="margin-bottom:18px;">${d.marcas.map(m => `<span class="badge badge-neutral">${esc(m.nombre)} · ${fmtN(m.cantidad)}</span>`).join(' ')}</div>` : '';
 
-        const vendedoresHtml = (d.top_vendedores || []).length ? `
-            <div class="page-subtitle" style="margin-bottom:4px;">Quiénes más publican en esta muestra:</div>
-            <div style="margin-bottom:18px;">${d.top_vendedores.map(_renderVendedor).join('')}</div>` : '';
-
         const referenciaHtml = (d.productos_referencia || []).length ? `
             <div class="page-subtitle" style="margin-bottom:4px;">Productos de referencia en catálogo:</div>
             <div style="margin-bottom:18px;">${d.productos_referencia.map(_renderProductoReferencia).join('')}</div>` : '';
@@ -564,7 +542,6 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
             </div>
             <div id="estimador-margen-cont"></div>
             ${marcasHtml}
-            ${vendedoresHtml}
             ${referenciaHtml}
             <div class="text-muted" style="font-size:0.82em; line-height:1.5;">
                 <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>${esc(d.nota_limite || '')}

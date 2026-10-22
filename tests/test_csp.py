@@ -40,7 +40,7 @@ def _nonce_de(cabecera):
 
 def test_en_modo_prueba_se_aplica_la_politica_de_siempre_y_la_estricta_va_en_report_only(cliente, monkeypatch):
     monkeypatch.setattr(seguridad, "CSP_MODO", "prueba")
-    r = cliente.get("/planes")
+    r = cliente.get("/")                                               # la landing lleva <script> inline con nonce (las páginas públicas de Planes y Beta no llevan ninguno)
     vigente, prueba = r.headers["Content-Security-Policy"], r.headers["Content-Security-Policy-Report-Only"]
     assert "script-src 'self' 'unsafe-inline'" in vigente
     assert "'unsafe-inline'" not in prueba.split("style-src")[0] and "report-uri /csp-report" in prueba

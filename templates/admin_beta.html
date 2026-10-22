@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_ux.html" import banner %}
+{% block title %}Beta · Admin · CoreLux{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-settings"/></svg>Invitaciones de la beta</h1>
+        <div class="page-subtitle">Quién puede crear cuenta y quién espera · <a href="/admin">Usuarios</a> · <a href="/admin/salud">Salud del sistema</a></div>
+    </div>
+</div>
+
+{% if not pide_invitacion %}
+{{ banner("warn", "lock", "<b>La beta está abierta: no se pide invitación.</b>", "Para volver a pedirla, dejá BETA_SOLO_INVITADOS sin apagar (y MODO_BETA encendido).") }}
+{% endif %}
+
+{% if nuevo_codigo %}
+{{ banner("ok", "check", "Invitación creada: <b>" ~ nuevo_codigo ~ "</b>", "Mandásela a la persona tal cual. Se escribe con o sin guiones y en mayúsculas o minúsculas.") }}
+{% endif %}
+
+<div class="panel">
+    <div class="panel-title">Crear una invitación</div>
+    <form action="{{ url_for('admin_beta_crear') }}" method="post" class="admin-beta-form">
+        <label>Para quién <input name="nota" type="text" maxlength="200" placeholder="Ej.: Marcela, ropa de bebé"></label>
+        <label>Usos <input name="usos_max" type="number" min="1" max="50" value="1" inputmode="numeric"></label>
+        <label>Vence en (días) <input name="dias" type="number" min="1" max="365" placeholder="sin vencimiento" inputmode="numeric"></label>
+        <button type="submit" class="btn btn-primary">Crear código</button>
+    </form>
+</div>
+
+<div class="panel" style="overflow-x:auto;">
+    <div class="panel-title">Invitaciones <span class="panel-nota">{{ invitaciones|length }}</span></div>
+    {% if invitaciones %}
+    <table class="data-table">
+        <thead><tr><th>Código</th><th>Para quién</th><th class="num">Usos</th><th>Estado</th><th class="num">Vence</th><th class="num">Creada</th><th></th></tr></thead>
+        <tbody>
+        {% for i in invitaciones %}
+        <tr>
+            <td><code>{{ i.codigo }}</code></td>
+            <td>{{ i.nota or "—" }}</td>
+            <td class="num">{{ i.usos }} / {{ i.usos_max }}</td>
+            <td>{{ i.estado }}</td>
+            <td class="num">{{ (i.expira_en|fecha) if i.expira_en else "—" }}</td>
+            <td class="num">{{ i.creada_en|fecha }}</td>
+            <td class="num">
+                {% if i.estado == "disponible" %}
+                <form action="{{ url_for('admin_beta_desactivar', invitacion_id=i.id) }}" method="post"><button type="submit" class="btn btn-secondary">Desactivar</button></form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="ux-vacio">Todavía no creaste invitaciones.</p>
+    {% endif %}
+</div>
+
+<div class="panel" style="overflow-x:auto;">
+    <div class="panel-title">Lista de espera <span class="panel-nota">{{ espera|length }}</span></div>
+    {% if espera %}
+    <table class="data-table">
+        <thead><tr><th>Mail</th><th>Qué vende</th><th class="num">Se anotó</th></tr></thead>
+        <tbody>
+        {% for e in espera %}
+        <tr><td>{{ e.email }}</td><td>{{ e.rubro or "—" }}</td><td class="num">{{ e.creado_en|fecha }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="ux-vacio">Nadie se anotó todavía.</p>
+    {% endif %}
+</div>
+
+<style>
+.admin-beta-form { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+.admin-beta-form label { display: grid; gap: 6px; font-size: 0.85em; color: var(--text-secondary); }
+.admin-beta-form input { padding: 9px 11px; border-radius: 8px; }
+</style>
+{% endblock %}

@@ -188,6 +188,7 @@ def test_la_sugerencia_manda_los_datos_de_la_publicacion_y_la_pantalla_trae_los_
     usuario, cuenta = _cuenta()
     pedidos = []
     monkeypatch.setattr(ia_asistente, "preguntar_ia", lambda prompt, *a, **k: pedidos.append(prompt) or "  Sí, es talle XL.  ")
+    monkeypatch.setattr(a.consentimiento_ia, "tiene", lambda usuario_id: True)          # la persona de la prueba aceptó las funciones con IA (sin eso la ruta contesta 403)
     cliente = a.app.test_client()
     with cliente.session_transaction() as s:
         s["usuario_id"], s["cuenta_id"] = usuario, cuenta

@@ -7,6 +7,7 @@ Hecho el 2026-10-14. Están en el orden en que conviene hacerlos. Cada uno dice 
 | # | Qué | Tiempo | Por qué importa |
 |---|---|---|---|
 | 0 | ✅ **Hecho el 22/10:** migración de `/items/bulk` desplegada y verificada | — | Mercado Libre retira el 25/10 un endpoint que usaba el sincronizador de publicaciones |
+| 0b | **Desplegar la Ola 0 y crear tus invitaciones** | 15 min | La web ya no cobra ni pide pagar, y se entra con código |
 | 1 | Costo de entrega Flex | 10 min | Tu ganancia real hoy sale **inflada** (190 envíos sin costo) |
 | 2 | Costos de fabricación que faltan | 5 min | Sin costo, la ganancia es mentira |
 | 3 | Que exista `soporte@corelux.app` | 10 min | Está publicado en la web: si nadie lo recibe, un cliente se pierde |
@@ -46,6 +47,16 @@ fly logs -a corecore | grep ItemsBulk
 6. **Si falla el deploy:** el script vuelve solo a la versión anterior. Pegame el mensaje.
 
 ---
+
+## 0b. Desplegar la Ola 0 y crear tus invitaciones (15 minutos)
+
+**Qué cambió:** la web ya no muestra nada de cobro (aunque haya credenciales de prueba de Mercado Pago), «Planes» se ve como página pública, hay una puerta de entrada con código de invitación, Tendencias no muestra vendedores, «Mercado» pasó a llamarse «Radar» y las funciones con IA piden tu permiso.
+
+1. En la carpeta del proyecto: `python desplegar.py` (aplica solo las dos migraciones nuevas, 0051 y 0052, antes de arrancar).
+2. Entrá a **`/cuenta`** y, en la sección **«Funciones con inteligencia artificial»**, tocá **Activar**. ⚠️ Hasta que lo hagas, el asistente y las sugerencias con IA te van a decir que están desactivadas (lo mismo le pasa a tu padre: que lo active él en su cuenta).
+3. Entrá a **`/admin/beta`** y creá tu primera invitación (poné para quién es). Probala en una ventana privada: `/beta` → pegás el código → te manda a Mercado Libre.
+   - Si querés probar sin gastar un código, usá una cuenta de Mercado Libre que ya esté en CoreLux: esas entran siempre.
+4. **Cómo saber que salió bien:** `/planes` sin iniciar sesión no muestra el menú de la app; `/beta` muestra el aviso de «aplicación no certificada»; `/cuenta` dice «Funciones con inteligencia artificial».
 
 ## 1. Cargar el costo de entrega Flex (10 minutos)
 
