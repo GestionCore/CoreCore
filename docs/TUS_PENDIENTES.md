@@ -148,7 +148,9 @@ La dirección ya está cargada (producción recibe avisos) y, en una captura del
 3. Tildá: **Items**, **Orders** (órdenes), **Shipments** (envíos), **Questions** (preguntas), **Claims / Post-purchase** (reclamos) y **Items prices**. Los demás se ignoran sin problema.
 4. **Cómo sé que salió bien:** dentro de unos minutos de actividad, `fly logs -a corecore | grep "\[Webhook\]"` muestra líneas con cada tema.
 
-## 9. Respaldo semanal en tu PC (10 minutos)
+## 9. Respaldo semanal en tu PC (10 minutos) — ✅ HECHO el 22/10
+
+**Estado:** la tarea programada de Windows **«CoreLux respaldo»** corre `respaldo.py` **cada domingo a las 22:00** (si la PC estaba apagada, lo hace al encenderse), como el usuario `clona`; probada a mano el 22/10 (resultado 0) y deja un archivo cifrado (~600 KB) en `~/CoreLux-respaldos`. La carpeta no rota archivos: cuando haya muchos, borrar los viejos (y el `20261002_1618.zip`, que no está cifrado). Para comprobarla: `Get-ScheduledTaskInfo -TaskName "CoreLux respaldo"` en PowerShell (último resultado 0 = bien). **Falta copiar la carpeta de vez en cuando a un disco externo o a la nube**, y probar una restauración (ver `docs/RUNBOOK.md`).
 
 1. Una sola vez, generá la clave del respaldo (en la carpeta del proyecto):
 
