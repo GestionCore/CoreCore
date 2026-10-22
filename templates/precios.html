@@ -9,7 +9,7 @@
         {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
         <div class="ux-precio-titulo">
             <div>{% if i.permalink %}<a href="{{ i.permalink }}" target="_blank" rel="noopener"><b>{{ i.titulo }}</b> ↗</a>{% else %}<b>{{ i.titulo }}</b>{% endif %}</div>
-            <div class="text-muted" style="font-size:0.8em;">{{ i.unidades }} venta{{ 's' if i.unidades != 1 }} en {{ ventana_dias }} días · comisión {{ i.comision_pct|string|replace('.', ',') }}% · envío {{ i.envio|plata }}{% if i.estimado %} <span class="ux-pill ux-neutral ux-pill-suave" title="Con menos de 3 ventas el cálculo es orientativo">pocas ventas</span>{% endif %}</div>
+            <div class="text-muted" style="font-size:var(--text-2xs);">{{ i.unidades }} venta{{ 's' if i.unidades != 1 }} en {{ ventana_dias }} días · comisión {{ i.comision_pct|string|replace('.', ',') }}% · envío {{ i.envio|plata }}{% if i.estimado %} <span class="ux-pill ux-neutral ux-pill-suave" title="Con menos de 3 ventas el cálculo es orientativo">pocas ventas</span>{% endif %}</div>
         </div>
     </div>
     <div class="ux-precio-regla-caja">
@@ -22,7 +22,7 @@
         </div>
         <div class="ux-regla-etiquetas"><span>Mínimo <b>{{ i.minimo|plata }}</b></span><span>Recomendado <b>{{ i.recomendado|plata }}</b></span></div>
         {% else %}
-        <div class="text-muted" style="font-size:0.82em;">Con la comisión y la publicidad indicadas no hay un precio que deje ese margen.</div>
+        <div class="text-muted" style="font-size:var(--text-xs);">Con la comisión y la publicidad indicadas no hay un precio que deje ese margen.</div>
         {% endif %}
     </div>
     <div class="ux-precio-estado">
@@ -30,7 +30,7 @@
         <span class="ux-pill ux-{{ 'danger' if i.estado == 'pierde' else ('warn' if i.estado == 'justo' else 'ok') }}">{{ i.margen_actual|string|replace('.', ',') }}% de margen</span>
         {% if i.suba_excesiva %}<div class="ux-precio-accion" style="color:var(--warning);">Subirlo a {{ i.recomendado|plata }} sería <b>+{{ i.suba_pct|string|replace('.', ',') }}%</b>: revisá el costo cargado</div>
         {% elif i.estado != 'ok' and i.recomendado %}<div class="ux-precio-accion">Subilo a <b>{{ i.recomendado|plata }}</b></div>
-        {% elif i.recomendado %}<div class="text-muted" style="font-size:0.82em;">Cubrís tu margen hasta {{ i.recomendado|plata }}</div>{% endif %}
+        {% elif i.recomendado %}<div class="text-muted" style="font-size:var(--text-xs);">Cubrís tu margen hasta {{ i.recomendado|plata }}</div>{% endif %}
     </div>
 </div>
 {% endmacro %}
@@ -100,17 +100,17 @@
 
 <!-- ── 4. LISTA: primero lo que pierde plata ─────────────────────────────── -->
 {% if pierden or justos %}
-<div class="ux-seccion {{ 'ux-danger' if pierden else 'ux-warn' }}" id="revisar">Para revisar <span class="text-muted" style="font-weight:600; font-size:0.8em;">las que más pierden, primero</span></div>
+<div class="ux-seccion {{ 'ux-danger' if pierden else 'ux-warn' }}" id="revisar">Para revisar <span class="text-muted" style="font-weight:600; font-size:var(--text-2xs);">las que más pierden, primero</span></div>
 {% if (pierden + justos)|selectattr('aplicable')|list %}
 <div class="panel ux-precios-barra no-imprimir" id="precios-barra">
     <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="precios-marcar-pierden" data-change="preciosMarcarPierden" data-change-args='["$checked"]'> Marcar las que pierden plata</label>
-    <span class="text-muted" id="precios-resumen" style="font-size:0.88em;">Elegí las publicaciones a las que querés subir el precio al recomendado.</span>
+    <span class="text-muted" id="precios-resumen" style="font-size:var(--text-sm);">Elegí las publicaciones a las que querés subir el precio al recomendado.</span>
     <button type="button" class="btn btn-primary" id="btn-precios-revisar" data-click="preciosRevisar" disabled>Revisar cambios</button>
 </div>
 
 <div class="panel" id="precios-revision" hidden>
     <div class="panel-title">Revisá antes de cambiar</div>
-    <div class="text-muted" style="font-size:0.88em; margin-bottom:10px;"><b>Estos precios se cambian en Mercado Libre ahora mismo.</b> Con las ventas de tu historial, cada publicación queda con el margen que elegiste.</div>
+    <div class="text-muted" style="font-size:var(--text-sm); margin-bottom:10px;"><b>Estos precios se cambian en Mercado Libre ahora mismo.</b> Con las ventas de tu historial, cada publicación queda con el margen que elegiste.</div>
     <div id="precios-revision-lista"></div>
     <div class="flex-gap" style="margin-top:14px;">
         <button type="button" class="btn btn-primary btn-lg" id="btn-precios-confirmar" data-click="preciosAplicar">Cambiar precios en Mercado Libre</button>
@@ -143,7 +143,7 @@
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--text-faint);"><use href="#icon-info"/></svg> Todavía sin calcular <span class="ux-detalle-nota">{{ (sin_costo|length) + (sin_ventas|length) }}</span></summary>
     <div class="ux-detalle-cuerpo">
         {% if sin_costo %}
-        <div class="text-muted" style="font-size:0.85em; margin-bottom:6px;">Sin costo de fabricación cargado — <a href="/costos">cargalo en Costos</a>:</div>
+        <div class="text-muted" style="font-size:var(--text-sm); margin-bottom:6px;">Sin costo de fabricación cargado — <a href="/costos">cargalo en Costos</a>:</div>
         {% for i in sin_costo %}
         <div class="ux-rank-fila ux-neutral">
             {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
@@ -153,7 +153,7 @@
         {% endfor %}
         {% endif %}
         {% if sin_ventas %}
-        <div class="text-muted" style="font-size:0.85em; margin:14px 0 6px;">Todavía sin ventas en {{ ventana_dias }} días — con la primera venta se calcula con su comisión y envío reales:</div>
+        <div class="text-muted" style="font-size:var(--text-sm); margin:14px 0 6px;">Todavía sin ventas en {{ ventana_dias }} días — con la primera venta se calcula con su comisión y envío reales:</div>
         {% for i in sin_ventas %}
         <div class="ux-rank-fila ux-neutral">
             {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
@@ -177,7 +177,7 @@
             </div>
             <button type="button" class="btn btn-primary" data-click="ajusteVerPrevia" data-click-args='["$el"]'>Ver qué pasaría</button>
         </div>
-        <div class="text-muted" style="font-size:0.8em; margin-top:8px;">Hasta 50% en cada vez. Las publicaciones que quedarían por debajo de su precio mínimo no se cambian.</div>
+        <div class="text-muted" style="font-size:var(--text-2xs); margin-top:8px;">Hasta 50% en cada vez. Las publicaciones que quedarían por debajo de su precio mínimo no se cambian.</div>
         <div id="aj-resultado" hidden style="margin-top:18px;">
             <div class="ux-precios-barra no-imprimir">
                 <span class="text-muted" id="aj-resumen"></span>
@@ -188,7 +188,7 @@
     </div>
 </details>
 
-<div class="text-muted" style="font-size:0.8em; margin-top:18px; line-height:1.5;">Antes de cambiar un precio, confirmalo en la <a href="/calculadora">Calculadora</a>: la comisión y el envío pueden variar con el precio, la logística y las cuotas que ofrezcas.</div>
+<div class="text-muted" style="font-size:var(--text-2xs); margin-top:18px; line-height:1.5;">Antes de cambiar un precio, confirmalo en la <a href="/calculadora">Calculadora</a>: la comisión y el envío pueden variar con el precio, la logística y las cuotas que ofrezcas.</div>
 {% endif %}
 
 <script nonce="{{ csp_nonce }}">

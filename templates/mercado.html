@@ -55,7 +55,7 @@
     <div class="mercado-lista">
         {% for b in busquedas_tuyas %}{{ fila_busqueda(b, True) }}{% endfor %}
     </div>
-    <div class="text-muted" style="font-size:0.8em; margin-top:10px;">«Tenés N publicaciones» cuenta las que tienen en el título todas las palabras que distinguen a esa búsqueda. Una búsqueda sin publicación tuya no es una orden: es algo para mirar.</div>
+    <div class="text-muted" style="font-size:var(--text-2xs); margin-top:10px;">«Tenés N publicaciones» cuenta las que tienen en el título todas las palabras que distinguen a esa búsqueda. Una búsqueda sin publicación tuya no es una orden: es algo para mirar.</div>
     {% elif propias %}
     <div class="text-muted">Todavía no hay búsquedas medidas para tus categorías: aparecen apenas se complete la primera actualización diaria.</div>
     {% else %}
@@ -112,12 +112,12 @@
         <span><b>{{ (muestra.pct_tienda_oficial|string|replace('.', ',')) if muestra.pct_tienda_oficial is not none else '—' }} %</b> de tiendas oficiales</span>
         <span><b>{{ (muestra.pct_con_descuento|string|replace('.', ',')) if muestra.pct_con_descuento is not none else '—' }} %</b> con descuento</span>
     </div>
-    <div class="text-muted" style="font-size:0.8em; margin:6px 0 16px;">
+    <div class="text-muted" style="font-size:var(--text-2xs); margin:6px 0 16px;">
         Muestra del {{ muestra.fecha|fecha }}: {{ muestra.ofertas|plural("oferta", "ofertas") }} de {{ muestra.productos|plural("producto de catálogo", "productos de catálogo") }} y {{ muestra.vendedores|plural("vendedor", "vendedores") }}{% if muestra.alcance == 'dominio' %}; en esta categoría había muy pocas, así que se usaron las de todo el tipo de producto{% endif %}.
         Es una muestra de los productos de catálogo, no de todo lo publicado.
     </div>
     {% else %}
-    <div class="text-muted" style="font-size:0.84em; margin:4px 0 16px;">
+    <div class="text-muted" style="font-size:var(--text-xs); margin:4px 0 16px;">
         {% if ficha.es_hoja %}
         No hay precios medidos en esta categoría: casi no tiene productos de catálogo en Mercado Libre, y CoreLux no estima precios que no ve.
         {% else %}
@@ -132,7 +132,7 @@
         {% for b in busquedas_ficha %}{{ fila_busqueda(b) }}{% endfor %}
     </div>
     {% else %}
-    <div class="text-muted" style="font-size:0.88em;">Mercado Libre no informa búsquedas en alza para esta categoría.</div>
+    <div class="text-muted" style="font-size:var(--text-sm);">Mercado Libre no informa búsquedas en alza para esta categoría.</div>
     {% endif %}
     {% else %}
     <div class="text-muted">No hay datos de esta categoría todavía.</div>
@@ -167,7 +167,7 @@
                 {% endfor %}
             </tbody>
         </table>
-        <div class="text-muted" style="font-size:0.8em; margin-top:8px;">Precios, FULL, envío y competencia salen de la muestra de productos de catálogo: donde no hay muestra, queda «—».</div>
+        <div class="text-muted" style="font-size:var(--text-2xs); margin-top:8px;">Precios, FULL, envío y competencia salen de la muestra de productos de catálogo: donde no hay muestra, queda «—».</div>
     </div>
 </details>
 {% endif %}

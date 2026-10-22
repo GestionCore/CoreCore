@@ -67,7 +67,7 @@
 
 <!-- ── 3. LO YA LOGRADO ────────────────────────────────────────────────── -->
 {% if logros_resueltos %}
-<div class="ux-seccion ux-ok">Resueltos <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ logros_resueltos|length }}</span></div>
+<div class="ux-seccion ux-ok">Resueltos <span class="text-muted" style="font-weight:600; font-size:var(--text-2xs);">{{ logros_resueltos|length }}</span></div>
 <div class="panel" data-mostrar-mas-scope>
     {% for l in logros_resueltos %}
     <div class="{% if loop.index > 5 %}oculto-mostrar-mas{% endif %}" style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border-soft); font-size:0.9em;">

@@ -44,7 +44,7 @@
     </div>
 </div>
 
-<div class="ux-seccion ux-info">Calidad de los datos <span class="text-muted" style="font-weight:500; font-size:0.85em;">· lo que las pruebas no ven: los números reales de cada cuenta</span></div>
+<div class="ux-seccion ux-info">Calidad de los datos <span class="text-muted" style="font-weight:500; font-size:var(--text-sm);">· lo que las pruebas no ven: los números reales de cada cuenta</span></div>
 <div class="panel">
     {% for c in e.cuentas %}
     <div class="ux-paso">
@@ -52,7 +52,7 @@
         <div class="ux-paso-cuerpo">
             {% if not c.hallazgos %}Todo en orden: las ventas encuentran su variante y su publicación, los pagos están informados y lo depositado cierra con lo calculado.{% endif %}
             {% for h in c.hallazgos %}
-            <div style="margin-bottom:6px;"><span class="ux-pill ux-{{ h.tono }} ux-pill-suave">{{ 'falla' if h.tono == 'danger' else 'revisar' }}</span> <b>{{ h.titulo }}</b><div class="text-muted" style="font-size:0.85em;">{{ h.detalle }}</div></div>
+            <div style="margin-bottom:6px;"><span class="ux-pill ux-{{ h.tono }} ux-pill-suave">{{ 'falla' if h.tono == 'danger' else 'revisar' }}</span> <b>{{ h.titulo }}</b><div class="text-muted" style="font-size:var(--text-sm);">{{ h.detalle }}</div></div>
             {% endfor %}
         </div>
     </div>
@@ -76,7 +76,7 @@
                         <td class="num">{{ c.categorias }}</td><td class="num">{{ c.llamadas }}</td>
                         <td class="num {{ 'text-danger' if c.errores else '' }}">{{ c.errores }}</td>
                         <td class="num">{{ ((c.fin - c.inicio).total_seconds()|int ~ ' s') if c.fin else 'sin terminar' }}</td>
-                        <td class="text-muted" style="font-size:0.82em;">{{ (c.detalle.primeros_errores or [])[:3]|join(' · ') if c.detalle else '' }}</td>
+                        <td class="text-muted" style="font-size:var(--text-xs);">{{ (c.detalle.primeros_errores or [])[:3]|join(' · ') if c.detalle else '' }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>
@@ -109,7 +109,7 @@
         {% endfor %}
         <div class="ux-dist-fila"><span class="ux-dist-etq" style="width:200px;">Scheduler</span>
             <b>{% if e.scheduler.este_proceso %}Las tareas periódicas corren en este proceso{% else %}Las tareas periódicas corren en otro proceso{% endif %}</b></div>
-        <div class="text-muted" style="font-size:0.85em; margin-top:10px;">Las conexiones y el scheduler son del proceso que atendió esta página; en producción hay 2 máquinas con 2 procesos cada una (tope en db.POOL_MAX = {{ e.pools.pool_max }}).</div>
+        <div class="text-muted" style="font-size:var(--text-sm); margin-top:10px;">Las conexiones y el scheduler son del proceso que atendió esta página; en producción hay 2 máquinas con 2 procesos cada una (tope en db.POOL_MAX = {{ e.pools.pool_max }}).</div>
     </div>
 </details>
 

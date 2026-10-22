@@ -23,7 +23,7 @@
 <!-- ── 1. QUÉ PROMOCIONAR: la jugada con más plata en juego ─────────────────── -->
 {% if sugerencias_promocion %}
 <div class="ux-acciones-titulo">Conviene promocionar <span class="ux-contador">{{ sugerencias_promocion|length }}</span></div>
-<div class="text-muted" style="font-size:0.88em; margin:-6px 0 12px;">Tienen plata parada en stock que casi no se mueve — son las que más sentido tiene empujar con un descuento.</div>
+<div class="text-muted" style="font-size:var(--text-sm); margin:-6px 0 12px;">Tienen plata parada en stock que casi no se mueve — son las que más sentido tiene empujar con un descuento.</div>
 <div class="ux-lista-acciones" data-mostrar-mas-scope>
     {% for s in sugerencias_promocion %}
     <div class="ux-item-accion ux-warn {% if loop.index > 4 %}oculto-mostrar-mas{% endif %}">
@@ -71,7 +71,7 @@
 <script nonce="{{ csp_nonce }}">document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-promo-nueva'));</script>
 
 <!-- ── 3. LO QUE YA TENÉS ──────────────────────────────────────────────── -->
-<div class="ux-seccion ux-ok">Publicaciones con descuento activo <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ con_descuento|length }}</span></div>
+<div class="ux-seccion ux-ok">Publicaciones con descuento activo <span class="text-muted" style="font-weight:600; font-size:var(--text-2xs);">{{ con_descuento|length }}</span></div>
 <div class="panel" style="padding:0; overflow:hidden;" data-mostrar-mas-scope>
     {% if con_descuento %}
     <div style="overflow-x:auto; padding:6px 12px 12px;">
@@ -86,7 +86,7 @@
                 <td class="num" data-orden="{{ p.descuento_pct }}"><span class="ux-pill ux-ok">-{{ p.descuento_pct }}%</span></td>
                 <td>
                     <form action="/promociones/eliminar_descuento/{{ p.id }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Quitar el descuento de esta publicación?", "$form", "Quitar descuento", "", true]' data-prevenir>
-                        <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Quitar</button>
+                        <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:var(--text-xs);">Quitar</button>
                     </form>
                 </td>
             </tr>
@@ -104,11 +104,11 @@
 <details class="ux-detalle">
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--semantic-warning);"><use href="#icon-percent"/></svg> Cupones que financiaste vos <span class="ux-detalle-nota">{{ cupones.total|plata }} · {{ cupones.ventas_con_cupon }} de {{ cupones.ventas }} ventas</span></summary>
     <div class="ux-detalle-cuerpo">
-        <div class="text-muted" style="font-size:0.85em; margin-bottom:8px; line-height:1.5;">Es lo que Mercado Libre te descontó por cupones que paga el vendedor (en promedio <b>{{ cupones.promedio|plata }}</b> por venta con cupón). Ya está restado en Ganancia Real. Los cupones que paga Mercado Libre no te cuestan nada y no figuran acá.</div>
+        <div class="text-muted" style="font-size:var(--text-sm); margin-bottom:8px; line-height:1.5;">Es lo que Mercado Libre te descontó por cupones que paga el vendedor (en promedio <b>{{ cupones.promedio|plata }}</b> por venta con cupón). Ya está restado en Ganancia Real. Los cupones que paga Mercado Libre no te cuestan nada y no figuran acá.</div>
         {% for t in cupones.top %}
         <div class="ux-rank-fila ux-warn">
             {% if t.thumbnail %}<img src="{{ t.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
-            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ t.titulo }}</div><div class="text-muted" style="font-size:0.8em;">{{ t.ventas }} venta{{ 's' if t.ventas != 1 }} con cupón</div></div>
+            <div class="ux-rank-info"><div class="ux-rank-titulo">{{ t.titulo }}</div><div class="text-muted" style="font-size:var(--text-2xs);">{{ t.ventas }} venta{{ 's' if t.ventas != 1 }} con cupón</div></div>
             <div class="ux-rank-valor"><b>{{ t.total|plata }}</b></div>
         </div>
         {% endfor %}
@@ -118,7 +118,7 @@
 
 {% if impacto_promociones %}
 <div class="ux-seccion ux-accion">¿Funcionaron tus promociones?</div>
-<div class="text-muted" style="font-size:0.88em; margin:-6px 0 12px;">Comparamos cuánto vendías <b>por día antes</b> de cada promoción contra <b>durante</b> la promoción.</div>
+<div class="text-muted" style="font-size:var(--text-sm); margin:-6px 0 12px;">Comparamos cuánto vendías <b>por día antes</b> de cada promoción contra <b>durante</b> la promoción.</div>
 <div class="panel" style="padding:0; overflow:hidden;" data-mostrar-mas-scope>
     <div style="overflow-x:auto; padding:6px 12px 12px;">
     <table class="data-table" data-ordenable>
@@ -133,7 +133,7 @@
                 <td class="num" data-orden="{{ imp.variacion_pct if imp.variacion_pct is not none else '' }}">
                     {% if imp.variacion_pct is not none %}
                     <span class="ux-pill {{ 'ux-ok' if imp.variacion_pct > 10 else ('ux-danger' if imp.variacion_pct < -10 else 'ux-neutral ux-pill-suave') }}">{{ '▲ +' if imp.variacion_pct >= 0 else '▼ ' }}{{ imp.variacion_pct|string|replace('.', ',') }}%</span>
-                    {% else %}<span class="text-muted" style="font-size:0.85em;">Sin base previa</span>{% endif %}
+                    {% else %}<span class="text-muted" style="font-size:var(--text-sm);">Sin base previa</span>{% endif %}
                 </td>
                 <td>{% if imp.activo %}<span class="ux-pill ux-ok ux-pill-suave">Activa</span>{% else %}<span class="ux-pill ux-neutral ux-pill-suave">Finalizada</span>{% endif %}</td>
             </tr>
@@ -166,7 +166,7 @@
         {% else %}
         <div class="text-muted">No hay campañas activas o invitaciones pendientes ahora mismo.</div>
         {% endif %}
-        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Para sumarte a una campaña cofinanciada, elegí tu nivel de descuento desde tu panel de Mercado Libre.</div>
+        <div class="text-muted" style="font-size:var(--text-xs); margin-top:10px;">Para sumarte a una campaña cofinanciada, elegí tu nivel de descuento desde tu panel de Mercado Libre.</div>
     </div>
 </details>
 

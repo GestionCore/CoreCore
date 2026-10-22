@@ -340,10 +340,15 @@ def obtener_ticker(usuario_id, cuenta_id=None):
         # commit() del `with` de más arriba fallaría igual al salir, así
         # que atajarlo acá no evita nada, solo lo esconde peor.
         racha_dias = 0
+        sync_hace_segundos = None
         if cuenta_id:
-            cursor.execute("SELECT racha_dias FROM cuentas_meli WHERE id = %s", (cuenta_id,))
+            # Además de la racha, hace cuánto se trajo lo último de Mercado Libre (el botón «Actualizar» de la barra lo dice: «Actualizado hace 4 min»)
+            cursor.execute("""SELECT racha_dias, EXTRACT(EPOCH FROM (now() - GREATEST(ultima_sincronizacion, ultima_sincronizacion_ventas)))
+                              FROM cuentas_meli WHERE id = %s""", (cuenta_id,))
             fila_racha = cursor.fetchone()
             racha_dias = (fila_racha[0] or 0) if fila_racha else 0
+            if fila_racha and fila_racha[1] is not None:
+                sync_hace_segundos = max(0, int(fila_racha[1]))
 
     return {
         "ventas_hoy": ord_hoy, "facturado_hoy": formatear_moneda(fact_hoy),
@@ -353,6 +358,7 @@ def obtener_ticker(usuario_id, cuenta_id=None):
         "salud_etiqueta": salud["etiqueta"], "salud_detalle": salud["detalle"],
         "ventas_hoy_detalle": ventas_hoy_detalle, "conciliacion_hoy": conciliacion_hoy,
         "avisos": armar_avisos(preguntas_sin_responder, incidencias_activas, devoluciones_activas, publicaciones_sin_stock),
+        "sync_hace_segundos": sync_hace_segundos,
     }
 
 

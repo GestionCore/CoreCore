@@ -7,7 +7,7 @@
         <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-pulse"/></svg>Monitor en vivo <span class="badge-en-vivo">En vivo</span></h1>
         <div class="page-subtitle">Lo de hoy en una sola pantalla — <strong>siempre en neto</strong>: sin lo que se canceló o se devolvió</div>
     </div>
-    <div class="text-muted" style="font-size:0.82em;" id="mon-actualizado" aria-live="polite">Actualizando…</div>
+    <div class="text-muted" style="font-size:var(--text-xs);" id="mon-actualizado" aria-live="polite">Actualizando…</div>
 </div>
 
 <!-- ── 1. CÓMO VA HOY: los números que importan, en neto ─────────────────────────── -->
@@ -24,7 +24,7 @@
 <div class="panel" id="mon-cuenta">
     <div class="ux-panel-cab">
         <div class="panel-title" style="margin:0;">La cuenta de hoy</div>
-        <span class="text-muted" style="font-size:0.82em;">Solo las netas suman a tu ganancia</span>
+        <span class="text-muted" style="font-size:var(--text-xs);">Solo las netas suman a tu ganancia</span>
     </div>
     <div class="pl-waterfall ux-cascada vh-cuenta" id="mon-conciliacion" tabindex="0" role="group" aria-label="Cómo se arma la cuenta de ventas de hoy">
         <div class="pl-tile" id="mon-c-brutas"><div class="stat-chip-label">Ventas brutas</div><div class="pl-tile-valor skeleton">$0</div><div class="vh-cifras-bloque">&nbsp;</div></div>
@@ -46,19 +46,19 @@
         </div>
     </div>
     <div class="mon-grafico"><canvas id="mon-g-ingresos" role="img" aria-label="Ventas netas, canceladas y ganancia neta real de hoy, hora por hora"></canvas></div>
-    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">Hora de Argentina. Las ventas netas ya no incluyen lo cancelado o devuelto; lo cancelado se muestra hacia abajo para que se vea cuándo pasó.</div>
+    <div class="text-muted" style="font-size:var(--text-xs); margin-top:8px;">Hora de Argentina. Las ventas netas ya no incluyen lo cancelado o devuelto; lo cancelado se muestra hacia abajo para que se vea cuándo pasó.</div>
 </div>
 
 <!-- ── 4. VISITAS Y CONVERSIÓN ───────────────────────────────────────────────────── -->
 <div class="ux-seccion ux-info">Visitas y conversión</div>
 <div class="panel" id="mon-p-visitas">
     <div class="mon-grafico"><canvas id="mon-g-visitas" role="img" aria-label="Visitas por hora y conversión acumulada de hoy"></canvas></div>
-    <div class="text-muted" style="font-size:0.82em; margin-top:8px;" id="mon-nota-visitas">Conversión = órdenes netas ÷ visitas a todas tus publicaciones.</div>
+    <div class="text-muted" style="font-size:var(--text-xs); margin-top:8px;" id="mon-nota-visitas">Conversión = órdenes netas ÷ visitas a todas tus publicaciones.</div>
 </div>
 
 <!-- ── 5. PUBLICIDAD EN VIVO ─────────────────────────────────────────────────────── -->
 <div class="mon-solo-ads">
-    <div class="ux-seccion ux-accion">Publicidad en vivo <span class="text-muted" style="font-weight:600; font-size:0.8em;">Product Ads · hoy</span></div>
+    <div class="ux-seccion ux-accion">Publicidad en vivo <span class="text-muted" style="font-weight:600; font-size:var(--text-2xs);">Product Ads · hoy</span></div>
     <div class="panel" id="mon-p-ads">
         <div class="ux-panel-cab">
             <div class="ux-chips-series" id="mon-chips-campanas" role="group" aria-label="Elegí qué ver: toda la cuenta o una campaña"></div>
@@ -71,7 +71,7 @@
             </div>
         </div>
         <div class="mon-grafico"><canvas id="mon-g-ads" role="img" aria-label="Impresiones, clics y ventas de publicidad por hora"></canvas></div>
-        <div class="text-muted" style="font-size:0.82em; margin-top:8px;" id="mon-nota-ads"></div>
+        <div class="text-muted" style="font-size:var(--text-xs); margin-top:8px;" id="mon-nota-ads"></div>
         <div id="mon-tabla-campanas" style="margin-top:14px;"></div>
     </div>
 </div>
@@ -87,7 +87,7 @@
             <button type="button" class="ux-chip-serie" data-dias="30" style="--c: var(--accent-primary);">30 días</button>
         </div>
         <div id="mon-cpa-cuerpo" style="margin-top:14px;"><div class="skeleton" style="height:90px; border-radius:12px;"></div></div>
-        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Gasto en publicidad ÷ unidades netas vendidas en el período (con y sin publicidad, sin cancelaciones ni devoluciones). Por campaña: lo que gastó la campaña ÷ las unidades netas de los productos que anuncia.</div>
+        <div class="text-muted" style="font-size:var(--text-xs); margin-top:10px;">Gasto en publicidad ÷ unidades netas vendidas en el período (con y sin publicidad, sin cancelaciones ni devoluciones). Por campaña: lo que gastó la campaña ÷ las unidades netas de los productos que anuncia.</div>
     </div>
 </div>
 

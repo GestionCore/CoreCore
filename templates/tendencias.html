@@ -41,7 +41,7 @@
     {% if seg_auto and seg_auto.tendencia_pct is not none %}{{ kpi("Evolución de la oferta", ('+' if seg_auto.tendencia_pct >= 0 else '') ~ (seg_auto.tendencia_pct|string|replace('.', ',')) ~ "%", "neutral", "trend", "publicaciones en " ~ seg_auto.serie|length ~ " días de datos") }}{% endif %}
 </div>
 {% if not seg_auto or not seg_auto.tiene_historial_suficiente %}
-<div class="text-muted" style="font-size:0.8em; margin:-12px 0 20px;">
+<div class="text-muted" style="font-size:var(--text-2xs); margin:-12px 0 20px;">
     <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>
     Registramos un dato por día de esta categoría: en unos días vas a ver acá si la cantidad de publicaciones sube o baja.
 </div>
@@ -69,8 +69,8 @@
     </div>
 
     <div id="tab-categoria-explorador" style="display:none;">
-        <div class="text-muted" style="font-size:0.82em; margin-bottom:10px;">Navegá las ramas de cualquier rubro — el tuyo o uno nuevo que quieras evaluar.</div>
-        <div id="breadcrumb-categorias" class="flex-gap" style="margin-bottom:10px; font-size:0.85em;"></div>
+        <div class="text-muted" style="font-size:var(--text-xs); margin-bottom:10px;">Navegá las ramas de cualquier rubro — el tuyo o uno nuevo que quieras evaluar.</div>
+        <div id="breadcrumb-categorias" class="flex-gap" style="margin-bottom:10px; font-size:var(--text-sm);"></div>
         <div id="lista-categorias" class="flex-gap" style="margin-bottom:14px;"></div>
         <button type="button" class="btn btn-primary" id="btn-analizar-categoria" style="display:none;" data-click="analizarCategoriaActual">Analizar esta categoría</button>
     </div>
@@ -100,16 +100,16 @@
                     {{ '▲' if s.tendencia_pct >= 0 else '▼' }} {{ s.tendencia_pct|abs|string|replace('.', ',') }}% de publicaciones desde el primer día registrado ({{ s.serie|length }} días de datos)
                 </div>
                 {% elif s.tiene_historial_suficiente %}
-                <div class="text-muted" style="font-size:0.8em;">Con datos de {{ s.serie|length }} días, pero todavía sin cantidad de publicaciones para comparar.</div>
+                <div class="text-muted" style="font-size:var(--text-2xs);">Con datos de {{ s.serie|length }} días, pero todavía sin cantidad de publicaciones para comparar.</div>
                 {% else %}
-                <div class="text-muted" style="font-size:0.8em;">Acumulando datos — {{ s.serie|length }}/2 días necesarios para mostrar la evolución.</div>
+                <div class="text-muted" style="font-size:var(--text-2xs);">Acumulando datos — {{ s.serie|length }}/2 días necesarios para mostrar la evolución.</div>
                 {% endif %}
             </div>
             {% if s.tiene_historial_suficiente %}
             <div style="position:relative; height:60px; width:180px;"><canvas id="chart-seg-{{ s.id }}" role="img" aria-label="Evolución de publicaciones de {{ s.etiqueta }}"></canvas></div>
             {% endif %}
             {% if not s.automatico %}
-            <button type="button" class="btn btn-secondary" style="font-size:0.8em; padding:6px 12px;" data-click="dejarDeSeguir" data-click-args='{{ [s.id]|tojson }}'>Dejar de seguir</button>
+            <button type="button" class="btn btn-secondary" style="font-size:var(--text-2xs); padding:6px 12px;" data-click="dejarDeSeguir" data-click-args='{{ [s.id]|tojson }}'>Dejar de seguir</button>
             {% endif %}
         </div>
         {% endfor %}
@@ -127,8 +127,8 @@
         {% for e in calendario_estacional %}
         <div style="background:rgba(255,255,255,0.03); border-radius:10px; padding:12px 16px; min-width:180px;">
             <div style="font-weight:700;">{{ e.nombre }}</div>
-            <div class="text-muted" style="font-size:0.8em; margin:4px 0;">{{ e.fecha_str }} — {{ 'mañana' if e.dias_faltantes == 1 else ('en ' ~ e.dias_faltantes ~ ' días') }}</div>
-            <div style="font-size:0.82em; color:var(--accent-primary);">{{ e.categoria_sugerida }}</div>
+            <div class="text-muted" style="font-size:var(--text-2xs); margin:4px 0;">{{ e.fecha_str }} — {{ 'mañana' if e.dias_faltantes == 1 else ('en ' ~ e.dias_faltantes ~ ' días') }}</div>
+            <div style="font-size:var(--text-xs); color:var(--accent-primary);">{{ e.categoria_sugerida }}</div>
         </div>
         {% endfor %}
     </div>
@@ -147,7 +147,7 @@
             <a href="#" data-click="abrirDrawer" data-click-args='{{ [s.id_meli|string]|tojson }}' data-prevenir style="font-weight:600; flex:1;">{{ s.titulo }}</a>
             <div class="seo-score-circulo {% if s.score >= 80 %}seo-score-alto{% elif s.score >= 50 %}seo-score-medio{% else %}seo-score-bajo{% endif %}">{{ s.score }}</div>
         </div>
-        <div class="text-muted" style="font-size:0.8em; line-height:1.6;">
+        <div class="text-muted" style="font-size:var(--text-2xs); line-height:1.6;">
             {% for r in s.razones %}<div>{{ r }}</div>{% endfor %}
         </div>
     </div>
@@ -163,7 +163,7 @@
 {% set cubiertas = relevantes|selectattr("cubierta")|list %}
 
 {% if categorias_tendencia %}
-<div class="text-muted" style="font-size:0.88em; margin-bottom:10px;">Lo que más se busca hoy en Mercado Libre en {% for c in categorias_tendencia %}<b>{{ c.nombre }}</b>{% if not loop.last %} · {% endif %}{% endfor %}, las categorías donde más publicaciones tenés. Se actualiza varias veces por día.</div>
+<div class="text-muted" style="font-size:var(--text-sm); margin-bottom:10px;">Lo que más se busca hoy en Mercado Libre en {% for c in categorias_tendencia %}<b>{{ c.nombre }}</b>{% if not loop.last %} · {% endif %}{% endfor %}, las categorías donde más publicaciones tenés. Se actualiza varias veces por día.</div>
 {% endif %}
 <div class="stat-strip">
     <div class="stat-chip accent-denim">
@@ -248,7 +248,7 @@
             </div>
             <span class="badge badge-warning">{{ c.similitud_pct }}% similares</span>
         </div>
-        <div class="text-muted" style="font-size:0.82em; margin-top:4px;">Palabras compartidas: {{ c.palabras_compartidas|join(', ') }}</div>
+        <div class="text-muted" style="font-size:var(--text-xs); margin-top:4px;">Palabras compartidas: {{ c.palabras_compartidas|join(', ') }}</div>
     </div>
     {% endfor %}
 </div>
@@ -323,7 +323,7 @@ function _crearBotonCategoria(id, nombre, cantidad) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'badge badge-neutral';
-    btn.style.cssText = 'cursor:pointer; font-size:0.85em; padding:8px 14px;';
+    btn.style.cssText = 'cursor:pointer; font-size:var(--text-sm); padding:8px 14px;';
     btn.textContent = nombre + (cantidad !== null && cantidad !== undefined ? ` (${cantidad.toLocaleString('es-AR')})` : '');
     btn.addEventListener('click', () => elegirCategoria(id, nombre));
     return btn;
@@ -394,7 +394,7 @@ function renderizarBreadcrumb() {
     const volver = document.createElement('a');
     volver.href = '#';
     volver.className = 'text-muted';
-    volver.style.cssText = 'margin-left:10px; font-size:0.85em;';
+    volver.style.cssText = 'margin-left:10px; font-size:var(--text-sm);';
     volver.textContent = '(volver al inicio)';
     volver.addEventListener('click', (e) => { e.preventDefault(); cargarCategoriasRaiz(); });
     cont.appendChild(volver);
@@ -424,7 +424,7 @@ function _chip(etiqueta, valor, extra) {
 
 function _filaPorcentaje(etiqueta, pct) {
     return `
-        <div style="display:flex; align-items:center; gap:10px; font-size:0.82em;">
+        <div style="display:flex; align-items:center; gap:10px; font-size:var(--text-xs);">
             <span style="width:130px; flex-shrink:0; color:var(--text-secondary);">${etiqueta}</span>
             <div class="checklist-barra"><div class="checklist-fill" style="width:${Math.min(100, pct || 0)}%; background:var(--accent-primary);"></div></div>
             <span style="width:48px; text-align:right;">${fmtP(pct)}</span>
@@ -439,8 +439,8 @@ function _renderProductoReferencia(p) {
         <div class="flex-gap" style="padding:8px 0; border-bottom:1px solid var(--border-soft);">
             ${thumb}
             <span style="flex:1; min-width:180px;">${esc(p.nombre)}</span>
-            <span class="text-muted" style="font-size:0.82em;">${fmtN(p.publicaciones)} publ. · ${fmtN(p.vendedores)} vend.</span>
-            <span style="font-size:0.85em; min-width:110px; text-align:right;">${rango}</span>
+            <span class="text-muted" style="font-size:var(--text-xs);">${fmtN(p.publicaciones)} publ. · ${fmtN(p.vendedores)} vend.</span>
+            <span style="font-size:var(--text-sm); min-width:110px; text-align:right;">${rango}</span>
         </div>`;
 }
 
@@ -475,7 +475,7 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
             <div class="flex-gap" id="candidatas-cont" style="margin-bottom:16px;"></div>` : '';
 
         const estadoCategoria = cat ? `
-            <div class="text-muted" style="font-size:0.8em; margin-bottom:12px;">${esc((cat.camino || []).join(' › '))}</div>` : '';
+            <div class="text-muted" style="font-size:var(--text-2xs); margin-bottom:12px;">${esc((cat.camino || []).join(' › '))}</div>` : '';
 
         const chips = [];
         chips.push(_chip(d.total_publicaciones_origen === 'categoria' ? 'Publicaciones en la categoría' : 'Productos de catálogo', fmtN(d.total_publicaciones),
@@ -499,7 +499,7 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
 
         const maxHist = Math.max(...(d.distribucion_precios || []).map(b => b.cantidad), 1);
         const histogramaHtml = (d.distribucion_precios || []).map(b => `
-            <div style="display:flex; align-items:center; gap:8px; font-size:0.82em;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:var(--text-xs);">
                 <span style="width:150px; flex-shrink:0; color:var(--text-secondary);">${fmtM(b.desde)} – ${fmtM(b.hasta)}</span>
                 <div class="checklist-barra"><div class="checklist-fill" style="width:${Math.round(b.cantidad / maxHist * 100)}%; background:var(--accent-primary);"></div></div>
                 <span style="width:28px; text-align:right;">${b.cantidad}</span>
@@ -513,7 +513,7 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
                 ${_filaPorcentaje('Tiendas oficiales', d.pct_tienda_oficial)}
                 ${_filaPorcentaje('Con descuento' + (d.descuento_promedio_pct ? ` (prom. ${fmtP(d.descuento_promedio_pct)})` : ''), d.pct_con_descuento)}
             </div>
-            ${(d.insights || []).length ? `<ul style="margin:0 0 18px 18px; padding:0; font-size:0.86em; line-height:1.6;">${d.insights.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}` : '';
+            ${(d.insights || []).length ? `<ul style="margin:0 0 18px 18px; padding:0; font-size:var(--text-sm); line-height:1.6;">${d.insights.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}` : '';
 
         const marcasHtml = (d.marcas || []).length ? `
             <div class="page-subtitle" style="margin-bottom:8px;">Marcas más presentes en el catálogo${d.marcas_distintas ? ` (${fmtN(d.marcas_distintas)} en total)` : ''}:</div>
@@ -543,7 +543,7 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
             <div id="estimador-margen-cont"></div>
             ${marcasHtml}
             ${referenciaHtml}
-            <div class="text-muted" style="font-size:0.82em; line-height:1.5;">
+            <div class="text-muted" style="font-size:var(--text-xs); line-height:1.5;">
                 <svg class="icon" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"><use href="#icon-info"/></svg>${esc(d.nota_limite || '')}
             </div>
         `;
@@ -563,7 +563,7 @@ async function buscarDemanda({ termino, categoryId, etiqueta, tipo }) {
                 b.type = 'button';
                 const actual = c.id === d.category_id;
                 b.className = actual ? 'badge badge-info' : 'badge badge-neutral';
-                b.style.cssText = 'cursor:pointer; font-size:0.85em; padding:8px 14px;';
+                b.style.cssText = 'cursor:pointer; font-size:var(--text-sm); padding:8px 14px;';
                 const camino = c.camino || [];
                 const padre = camino.length > 1 ? ` · ${camino[camino.length - 2]}` : '';
                 b.textContent = c.nombre + padre + (c.total !== null && c.total !== undefined ? ` (${c.total.toLocaleString('es-AR')})` : '');
@@ -613,10 +613,10 @@ async function calcularEstimadorMargen(categoryId) {
         const d = await resp.json();
         if (d.error) { _mostrarMensajeEn(cont, d.error, 'text-danger'); return; }
         let html = `
-            <div class="flex-gap" style="justify-content:space-between; font-size:0.88em;">
+            <div class="flex-gap" style="justify-content:space-between; font-size:var(--text-sm);">
                 <span>Comisión estimada de MeLi</span><strong class="text-danger">-${fmtM(d.comision_estimada)}</strong>
             </div>
-            <div class="flex-gap" style="justify-content:space-between; font-size:0.88em; margin-top:4px;">
+            <div class="flex-gap" style="justify-content:space-between; font-size:var(--text-sm); margin-top:4px;">
                 <span>Lo que recibirías</span><strong>${fmtM(d.recibis_estimado)}</strong>
             </div>
         `;
@@ -631,7 +631,7 @@ async function calcularEstimadorMargen(categoryId) {
         const nota = (d.costo_envio_estimado === null || d.costo_envio_estimado === undefined)
             ? 'Antes de envío y publicidad: restalos para ver tu margen final.'
             : 'Incluye el envío estimado; falta restar la publicidad si la usás.';
-        html += `<div class="text-muted" style="font-size:0.82em; margin-top:8px;">${nota}</div>`;
+        html += `<div class="text-muted" style="font-size:var(--text-xs); margin-top:8px;">${nota}</div>`;
         cont.innerHTML = html;
     } catch (e) {
         _mostrarMensajeEn(cont, 'No se pudo calcular.', 'text-danger');

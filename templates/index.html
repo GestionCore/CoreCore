@@ -56,13 +56,13 @@
 {% if capacidades.get('full') is not false and full_no_disponible.total %}
 <div class="ux-seccion ux-warn">Unidades de FULL que no se pueden vender <span class="ux-pill ux-warn">{{ full_no_disponible.total }} u.</span></div>
 <div class="panel">
-    <div class="text-muted" style="font-size:0.85em; margin-bottom:8px; line-height:1.5;">Están en las bodegas de Mercado Libre pero no figuran como disponibles. Según el motivo (perdidas, dañadas, en proceso...) conviene revisar el detalle en tu panel de FULL.</div>
+    <div class="text-muted" style="font-size:var(--text-sm); margin-bottom:8px; line-height:1.5;">Están en las bodegas de Mercado Libre pero no figuran como disponibles. Según el motivo (perdidas, dañadas, en proceso...) conviene revisar el detalle en tu panel de FULL.</div>
     {% for i in full_no_disponible['items'] %}
     <div class="ux-rank-fila ux-warn">
         {% if i.thumbnail %}<img src="{{ i.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
         <div class="ux-rank-info">
             <div class="ux-rank-titulo">{% if i.permalink %}<a href="{{ i.permalink }}" target="_blank" rel="noopener" style="color:var(--text-primary); text-decoration:none;">{{ i.titulo }} ↗</a>{% else %}{{ i.titulo }}{% endif %}{% if i.estado != 'active' %} <span class="ux-pill ux-neutral ux-pill-suave">Pausada</span>{% endif %}</div>
-            <div class="text-muted" style="font-size:0.8em;">{% for m in i.motivos %}<b>{{ m.cantidad }}</b> {{ m.texto }}{{ ' · ' if not loop.last }}{% endfor %}</div>
+            <div class="text-muted" style="font-size:var(--text-2xs);">{% for m in i.motivos %}<b>{{ m.cantidad }}</b> {{ m.texto }}{{ ' · ' if not loop.last }}{% endfor %}</div>
         </div>
         <div class="ux-rank-valor"><b>{{ i.cantidad }} u.</b></div>
     </div>
@@ -76,7 +76,7 @@
 <summary>Pausadas con stock <span class="ux-pill ux-warn">{{ reactivables|length }}</span> <span class="ux-detalle-nota">plata que no se está cobrando</span></summary>
 <div class="ux-detalle-cuerpo">
 <div id="panel-reactivar" data-mostrar-mas-scope>
-    <div class="text-muted" style="font-size:0.88em; margin-bottom:10px; line-height:1.5;"><b>Estas publicaciones están pausadas pero tienen unidades:</b> no se están vendiendo. Elegí cuáles reactivar; solo se tocan las que marques. Las bloqueadas por Mercado Libre no aparecen acá.</div>
+    <div class="text-muted" style="font-size:var(--text-sm); margin-bottom:10px; line-height:1.5;"><b>Estas publicaciones están pausadas pero tienen unidades:</b> no se están vendiendo. Elegí cuáles reactivar; solo se tocan las que marques. Las bloqueadas por Mercado Libre no aparecen acá.</div>
     <div class="flex-gap" style="margin-bottom:8px;">
         <label style="display:flex; align-items:center; gap:8px; font-weight:600;"><input type="checkbox" id="reactivar-todas" data-change="reactivarMarcarTodas" data-change-args='["$checked"]'> {{ 'Marcar la publicación' if reactivables|length == 1 else 'Marcar las ' ~ reactivables|length }}</label>
     </div>
@@ -86,8 +86,8 @@
         {% if r.thumbnail %}<img src="{{ r.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% else %}<div class="thumb-sm ux-thumb-vacio"></div>{% endif %}
         <div class="ux-rank-info">
             <div class="ux-rank-titulo">{{ r.titulo }}</div>
-            <div class="text-muted" style="font-size:0.8em;">{{ r.motivo }}{% if r.precio %} · {{ r.precio|plata }}{% endif %}</div>
-            <div class="text-muted" style="font-size:0.8em; display:none;" data-reactivar-estado></div>
+            <div class="text-muted" style="font-size:var(--text-2xs);">{{ r.motivo }}{% if r.precio %} · {{ r.precio|plata }}{% endif %}</div>
+            <div class="text-muted" style="font-size:var(--text-2xs); display:none;" data-reactivar-estado></div>
         </div>
         <div class="ux-rank-valor"><b>{{ r.stock }} u.</b></div>
     </label>
@@ -155,7 +155,7 @@ async function reactivarAplicar() {
             <button type="button" class="btn {{ 'btn-primary' if loop.first else 'btn-secondary' }}" data-drawer="{{ v.id_meli }}">Gestionar</button>
         </div>
         {% endfor %}
-        {% if riesgo|length > 6 %}<div class="text-muted" style="font-size:0.82em; padding:4px 2px;">Y {{ riesgo|length - 6 }} {{ vocab.vN }} más — los ves en la tabla con el filtro «Se agota pronto».</div>{% endif %}
+        {% if riesgo|length > 6 %}<div class="text-muted" style="font-size:var(--text-xs); padding:4px 2px;">Y {{ riesgo|length - 6 }} {{ vocab.vN }} más — los ves en la tabla con el filtro «Se agota pronto».</div>{% endif %}
     </div>
 </div>
 {% endif %}
@@ -166,7 +166,7 @@ async function reactivarAplicar() {
 </div>
 
 <!-- ── 4. CATÁLOGO ──────────────────────────────────────────────────────── -->
-<div class="ux-seccion ux-accion">Tus modelos <span class="text-muted" style="font-weight:600; font-size:0.8em;"><span id="contador-visibles">{{ productos|length }}</span> a la vista</span></div>
+<div class="ux-seccion ux-accion">Tus modelos <span class="text-muted" style="font-weight:600; font-size:var(--text-2xs);"><span id="contador-visibles">{{ productos|length }}</span> a la vista</span></div>
 
 <div class="ux-periodo" style="margin-bottom:16px;">
     <div class="field-group" style="flex:1; min-width:220px;">
@@ -232,12 +232,12 @@ async function reactivarAplicar() {
                 </td>
                 <td class="num col-precio" data-label="Precio" data-orden="{{ p.precio_min }}">
                     {% if p.descuento_pct %}
-                    <div class="text-muted" style="text-decoration:line-through; font-size:0.82em;">${{ p.precio_original_formateado }}</div>
+                    <div class="text-muted" style="text-decoration:line-through; font-size:var(--text-xs);">${{ p.precio_original_formateado }}</div>
                     <div><b>${{ p.precio_formateado }}</b> <span class="ux-pill ux-ok">-{{ p.descuento_pct }}%</span></div>
                     {% else %}
                     <div><b>${{ p.precio_rango }}</b></div>
                     {% endif %}
-                    {% if p.recibis_formateado %}<div class="text-muted ux-recibis" style="font-size:0.8em;">Recibís ~${{ p.recibis_formateado }}</div>{% endif %}
+                    {% if p.recibis_formateado %}<div class="text-muted ux-recibis" style="font-size:var(--text-2xs);">Recibís ~${{ p.recibis_formateado }}</div>{% endif %}
                 </td>
                 <td class="num" data-label="Propio"><strong>{{ p.stock_propio }} u.</strong></td>
                 {% if capacidades.get('full') is not false %}<td class="num" data-label="FULL"><strong>{{ p.stock_full }} u.</strong></td>{% endif %}
@@ -250,7 +250,7 @@ async function reactivarAplicar() {
                         <b>{{ p.sparkline_total_7d }}</b>
                     </span>
                     {% else %}
-                    <span class="text-faint" style="font-size:0.8em;">Sin ventas</span>
+                    <span class="text-faint" style="font-size:var(--text-2xs);">Sin ventas</span>
                     {% endif %}
                 </td>
                 <td class="col-alcanza" data-label="Alcanza" data-orden="{{ p.dias_stock if p.dias_stock is not none else '' }}">
@@ -270,7 +270,7 @@ async function reactivarAplicar() {
 </div>
 
 <!-- ── 5. Los precios se cambian en Precios (con vista previa y freno por precio mínimo) ── -->
-<div class="text-muted" style="font-size:0.85em; margin-top:6px;">¿Querés subir o bajar los precios de varias publicaciones? Hacelo en <a href="/precios#ajuste"><b>Precios</b></a>: ves qué pasaría con cada una antes de cambiar nada.</div>
+<div class="text-muted" style="font-size:var(--text-sm); margin-top:6px;">¿Querés subir o bajar los precios de varias publicaciones? Hacelo en <a href="/precios#ajuste"><b>Precios</b></a>: ves qué pasaría con cada una antes de cambiar nada.</div>
 
 </div>
 

@@ -143,7 +143,7 @@
         </div>
     </div>
     <button type="button" class="btn-icono-barra btn-privacidad" data-click="alternarModoPrivacidad" title="Ocultar los montos (modo privacidad)" aria-label="Modo privacidad"><svg class="icon" style="width:16px;height:16px;" aria-hidden="true"><use href="#icon-eye"/></svg></button>
-    <button type="button" class="btn btn-denim btn-sync-todo" id="btn-sincronizar-todo" data-click="ejecutarSincronizarTodo" aria-label="Actualizar con Mercado Libre" title="Trae lo último de Mercado Libre ahora (se actualiza solo cada 4 minutos)">
+    <button type="button" class="btn btn-secondary btn-sync-todo" id="btn-sincronizar-todo" data-click="ejecutarSincronizarTodo" aria-label="Actualizar con Mercado Libre" title="Trae lo último de Mercado Libre ahora (se actualiza solo cada 4 minutos)">
         <svg class="icon" style="width:14px;height:14px;" aria-hidden="true"><use href="#icon-refresh"/></svg><span class="btn-sync-texto">Actualizar</span>
     </button>
     <button type="button" class="cuenta-btn" data-click="abrirMenuLateral" aria-label="Abrir el menú de tu cuenta"><span class="cuenta-inicial">{{ _nombre_cuenta[0]|upper }}</span><span class="cuenta-nombre">{{ _nombre_cuenta|title }}</span></button>
@@ -235,7 +235,7 @@
 <div id="modal-confirmar" role="dialog" aria-modal="true" aria-labelledby="modal-confirmar-texto" style="display:none; position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.55); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
     <div style="background:var(--glass-bg-alt); border:1px solid var(--glass-border); border-radius:var(--radius-lg); padding:28px 32px; max-width:420px; width:90%; box-shadow:var(--shadow-elevated); animation:fadeInUp 0.2s ease;">
         <div style="font-size:1.05em; font-weight:600; margin-bottom:12px; color:var(--text-primary);" id="modal-confirmar-texto">¿Confirmar acción?</div>
-        <div id="modal-confirmar-sub" style="font-size:0.86em; color:var(--text-secondary); margin-bottom:22px; line-height:1.5;"></div>
+        <div id="modal-confirmar-sub" style="font-size:var(--text-sm); color:var(--text-secondary); margin-bottom:22px; line-height:1.5;"></div>
         <div style="display:flex; gap:12px; justify-content:flex-end;">
             <button type="button" class="btn btn-secondary" data-click="cerrarModalConfirmar">Cancelar</button>
             <button type="button" class="btn btn-primary" id="modal-confirmar-ok">Confirmar</button>
@@ -438,7 +438,7 @@
 .menu-lateral-section:last-child { border-bottom: none; margin-top: auto; }
 .menu-lateral-section-label {
     padding: 0 20px 8px;
-    font-size: 0.72rem;
+    font-size: max(12px, 0.72rem);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -460,7 +460,7 @@
     border-radius: 0;
 }
 .menu-lateral-item:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
-.menu-lateral-item.active { color: var(--accent-primary); }
+.menu-lateral-item.active { color: var(--accent-texto); }
 .menu-lateral-item.active svg { color: var(--accent-primary); }
 .menu-lateral-logout { color: var(--danger); margin-bottom: 8px; }
 .menu-lateral-logout:hover { background: var(--danger-bg); color: var(--danger); }
@@ -520,7 +520,7 @@ document.addEventListener('keydown', e => {
             <button type="button" class="fb-tipo" data-tipo="pregunta" data-click="elegirTipoComentario" data-click-args='["$el"]'>Una pregunta</button>
         </div>
         <textarea id="fb-mensaje" rows="5" maxlength="2000" placeholder="Escribí lo que quieras: qué estabas haciendo, qué esperabas y qué pasó. Llega con la pantalla en la que estás." aria-label="Tu comentario"></textarea>
-        <div class="fb-pie"><span class="text-muted" id="fb-estado" style="font-size:0.85em;"></span><button type="button" class="btn btn-primary" id="fb-enviar" data-click="enviarComentario">Enviar</button></div>
+        <div class="fb-pie"><span class="text-muted" id="fb-estado" style="font-size:var(--text-sm);"></span><button type="button" class="btn btn-primary" id="fb-enviar" data-click="enviarComentario">Enviar</button></div>
     </div>
 </div>
 <script nonce="{{ csp_nonce }}">

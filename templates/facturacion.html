@@ -78,7 +78,7 @@
     <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-receipt"/></svg> Cargos del período <span class="ux-detalle-nota">{{ filas_factura|length }} conceptos · total {{ total_con_flex|plata }}</span></summary>
     <div class="ux-detalle-cuerpo">
         {{ tabla_factura(filas_factura, total_con_flex, "Total" ~ (" (con tus envíos Flex)" if flex_neto else "")) }}
-        <div class="text-muted" style="font-size:0.82em; margin-top:10px; line-height:1.5;">
+        <div class="text-muted" style="font-size:var(--text-xs); margin-top:10px; line-height:1.5;">
             Los montos en verde son bonificaciones o anulaciones a tu favor.
             {% if flex_neto %}Los envíos Flex los cobra tu propia logística, no Mercado Libre: por eso no figuran en su factura (que suma <b>{{ total_factura|plata }}</b>). Acá se cuentan junto a los demás envíos para que veas lo que de verdad te cuestan, y el reintegro de Mercado Libre aparece entre las bonificaciones.{% endif %}
             Los cargos que Mercado Libre factura una vez por mes (eShop, reputación, almacenamiento y retiros de FULL, devoluciones) ya están descontados en <a href="/metricas">Ganancia Real</a>, repartidos por día.

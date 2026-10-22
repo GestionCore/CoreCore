@@ -99,12 +99,12 @@
 <div class="ux-seccion ux-warn" id="costos-fabricacion">Costo de fabricación por modelo
     {% if sin_costo %}<span class="ux-pill ux-warn">{{ sin_costo|length }} sin costo</span>{% endif %}
 </div>
-<div class="text-muted" style="font-size:0.88em; margin:-6px 0 6px;" id="nota-dolar-costos">
+<div class="text-muted" style="font-size:var(--text-sm); margin:-6px 0 6px;" id="nota-dolar-costos">
     Podés cargar cada costo en <b>pesos ($)</b> o en <b>dólares (US$)</b>: los dólares se llevan a pesos con tu cotización
     {% if dolar_activo and dolar_activo.valor %}(<b>{{ dolar_activo.valor|plata }}</b>, {{ 'el valor que fijaste' if dolar_activo.modo == 'manual' else 'el dólar MEP automático' }}) y se actualizan solos cuando el dólar cambia{% else %}(todavía no hay una: elegila en <a href="/cuenta#dolar"><b>Mi cuenta</b></a>){% endif %}.
     <a href="/cuenta#dolar">Cambiar el dólar</a>
 </div>
-<div class="text-muted" style="font-size:0.88em; margin:0 0 14px;">Escribí lo que te cuesta cada unidad y tocá <b>Aplicar</b>: se carga a todo el modelo de una vez. Si el costo cambia de una variante a otra, ajustalo en esa variante{% if usa_talles %} (y por {{ u1 }} solo si de verdad cambia){% endif %}. Ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>
+<div class="text-muted" style="font-size:var(--text-sm); margin:0 0 14px;">Escribí lo que te cuesta cada unidad y tocá <b>Aplicar</b>: se carga a todo el modelo de una vez. Si el costo cambia de una variante a otra, ajustalo en esa variante{% if usa_talles %} (y por {{ u1 }} solo si de verdad cambia){% endif %}. Ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>
 
 {% if not productos %}
 {{ vacio("Todavía no hay publicaciones sincronizadas", "Sincronizá para traer tu catálogo y poder cargarles el costo.", "refresh", "accion") }}
@@ -211,9 +211,9 @@
         const errores = r.errores.map(e => `<li>Fila ${e.fila}: ${UX.esc(e.titulo || e.id)} — ${UX.esc(e.motivo)}</li>`).join('');
         caja().innerHTML = `
             ${r.cambios.length ? UX.banner({ tono: 'accion', icono: 'check', tituloHtml: `<b>${r.cambios.length} costo${r.cambios.length === 1 ? '' : 's'} para guardar</b>`, detalle: avisos.join(' · ') }) : UX.banner({ tono: 'info', icono: 'info', tituloHtml: '<b>No hay cambios para guardar</b>', detalle: avisos.join(' · ') || 'Completá la columna de costo y volvé a subir la planilla.' })}
-            ${r.total_errores ? `<div class="text-muted" style="font-size:0.85em; margin:10px 0;"><b>${r.total_errores} fila${r.total_errores === 1 ? '' : 's'} con problemas (no se guardan):</b><ul style="margin:6px 0 0; padding-left:20px;">${errores}</ul></div>` : ''}
+            ${r.total_errores ? `<div class="text-muted" style="font-size:var(--text-sm); margin:10px 0;"><b>${r.total_errores} fila${r.total_errores === 1 ? '' : 's'} con problemas (no se guardan):</b><ul style="margin:6px 0 0; padding-left:20px;">${errores}</ul></div>` : ''}
             ${r.cambios.length ? `<div style="overflow-x:auto; margin-top:12px;"><table class="data-table"><thead><tr><th>Publicación</th><th class="num">Antes</th><th class="num">Después</th></tr></thead><tbody>${filas}</tbody></table></div>
-            ${r.cambios.length > 40 ? `<div class="text-muted" style="font-size:0.82em; margin-top:6px;">Se muestran 40; se guardan los ${r.cambios.length}.</div>` : ''}
+            ${r.cambios.length > 40 ? `<div class="text-muted" style="font-size:var(--text-xs); margin-top:6px;">Se muestran 40; se guardan los ${r.cambios.length}.</div>` : ''}
             <div class="flex-gap" style="margin-top:14px;"><button type="button" class="btn btn-primary btn-lg" id="btn-aplicar-costos">Guardar ${r.cambios.length} costo${r.cambios.length === 1 ? '' : 's'}</button><button type="button" class="btn btn-secondary" id="btn-cancelar-costos">Cancelar</button></div>` : ''}`;
         const guardar = document.getElementById('btn-aplicar-costos');
         if (guardar) guardar.addEventListener('click', aplicar);
@@ -246,14 +246,14 @@
         <div class="flex-cabecera">
             <div>
                 <div style="font-weight:800; font-size:1.05em;">Cargá lo que te cobra tu logística por entrega</div>
-                <div class="text-muted" style="font-size:0.88em; line-height:1.55; margin-top:4px;">Las zonas las define Mercado Libre según tu domicilio. Vos solo ponés el precio de cada umbral y qué zonas cubre: <b>lo que no muevas cae en "Resto de las zonas"</b>. Se suma al costo de envío de cada venta en Ganancia Real.</div>
+                <div class="text-muted" style="font-size:var(--text-sm); line-height:1.55; margin-top:4px;">Las zonas las define Mercado Libre según tu domicilio. Vos solo ponés el precio de cada umbral y qué zonas cubre: <b>lo que no muevas cae en "Resto de las zonas"</b>. Se suma al costo de envío de cada venta en Ganancia Real.</div>
             </div>
             <div class="flex-gap" style="flex-wrap:wrap;">
                 <button type="button" class="btn btn-secondary" id="btn-flex-detectar" data-click="detectarFlex"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-search"/></svg> Detectar mis zonas y precios</button>
                 <button type="button" class="btn btn-secondary" id="btn-flex-sync" data-click="sincronizarFlex"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Sincronizar zonas con MeLi</button>
             </div>
         </div>
-        <div id="flex-origen" class="text-muted" style="font-size:0.85em; margin:10px 0 4px;"></div>
+        <div id="flex-origen" class="text-muted" style="font-size:var(--text-sm); margin:10px 0 4px;"></div>
         <div id="flex-deteccion"></div>
         <div class="ux-banner ux-info" style="display:block; margin:12px 0;">
             <b>Mercado Libre te bonifica el <input type="number" id="flex-reintegro-input" min="0" max="50" step="0.5" inputmode="decimal" value="{{ flex_data.reintegro_pct }}" aria-label="Bonificación de Mercado Libre sobre el envío, en porcentaje" style="width:72px; text-align:center;">% del envío.</b> Por eso en tu ganancia se descuenta el precio de tu logística <b>menos esa bonificación</b>: así ves lo que de verdad te cuesta cada entrega. Si no es la tuya, cambiala.
@@ -261,7 +261,7 @@
 
         <div class="flex-titulo-fila"><div style="font-weight:800;">Tus umbrales</div><button type="button" class="btn btn-secondary" data-click="nuevoUmbralFlex" id="btn-flex-nuevo"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-plus"/></svg> Nuevo umbral</button></div>
         <div id="flex-umbrales" class="flex-umbrales"></div>
-        <div class="flex-guardar"><button type="button" class="btn btn-primary" id="btn-flex-guardar" data-click="guardarUmbralesFlex">Guardar y ver qué envíos resuelve</button><span class="text-muted" id="flex-sin-guardar" style="font-size:0.85em; display:none;"><b style="color:var(--semantic-warning);">Hay cambios sin guardar</b></span></div>
+        <div class="flex-guardar"><button type="button" class="btn btn-primary" id="btn-flex-guardar" data-click="guardarUmbralesFlex">Guardar y ver qué envíos resuelve</button><span class="text-muted" id="flex-sin-guardar" style="font-size:var(--text-sm); display:none;"><b style="color:var(--semantic-warning);">Hay cambios sin guardar</b></span></div>
         <div id="flex-vista-previa"></div>
     </div>
 </details>
@@ -316,7 +316,7 @@
         <span class="ux-detalle-nota">ya se pagaron y no se recuperan</span>
     </summary>
     <div class="ux-detalle-cuerpo">
-        <div class="text-muted" style="font-size:0.88em; line-height:1.55; margin-bottom:10px;">Cuando una orden Flex ya salió con tu logística y después se cancela o se devuelve, el envío de ida igual se pagó. CoreLux lo anota solo como un gasto (lo ves abajo, en «Gastos del período»). Si además pagaste el envío de <b>vuelta</b>, cargalo acá.</div>
+        <div class="text-muted" style="font-size:var(--text-sm); line-height:1.55; margin-bottom:10px;">Cuando una orden Flex ya salió con tu logística y después se cancela o se devuelve, el envío de ida igual se pagó. CoreLux lo anota solo como un gasto (lo ves abajo, en «Gastos del período»). Si además pagaste el envío de <b>vuelta</b>, cargalo acá.</div>
         <div style="overflow-x:auto;">
         <table class="data-table" data-ordenable>
             <thead><tr><th data-orden="texto" data-primero="desc">Fecha</th><th data-orden="texto">Orden</th><th class="num" data-orden="num">Envío de ida</th><th class="num">Envío de vuelta ($)</th><th></th></tr></thead>
@@ -327,7 +327,7 @@
                     <td>{{ p.id_orden }}</td>
                     <td class="num" data-orden="{{ p.ida }}">{{ p.ida|plata }}</td>
                     <td class="num"><input type="number" min="0" step="1" inputmode="decimal" class="flex-vuelta-input" value="{{ (p.vuelta|round|int) if p.vuelta is not none else '' }}" placeholder="0" aria-label="Costo del envío de vuelta de la orden {{ p.id_orden }}" style="max-width:130px; text-align:right;"></td>
-                    <td><button type="button" class="btn btn-secondary" data-click="guardarCostoVueltaFlex" data-click-args='["$closest:tr"]' style="padding:6px 12px; font-size:0.82em;">Guardar</button></td>
+                    <td><button type="button" class="btn btn-secondary" data-click="guardarCostoVueltaFlex" data-click-args='["$closest:tr"]' style="padding:6px 12px; font-size:var(--text-xs);">Guardar</button></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -358,7 +358,7 @@
 {% endif %}
 
 <div class="panel" style="padding:0; overflow:hidden;">
-    <div class="panel-title" style="padding:18px 22px 0;">Gastos del período <span class="text-muted" style="font-weight:600; font-size:0.85em;">{{ gastos|length }}</span></div>
+    <div class="panel-title" style="padding:18px 22px 0;">Gastos del período <span class="text-muted" style="font-weight:600; font-size:var(--text-sm);">{{ gastos|length }}</span></div>
     {% if gastos %}
     <div style="overflow-x:auto; padding:0 12px 12px;">
     <table class="data-table" data-ordenable>
@@ -374,7 +374,7 @@
                     <form action="/eliminar_gasto/{{ g.id }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Eliminar este gasto?", "$form", "Eliminar", "", true]' data-prevenir style="display:inline;">
                         <input type="hidden" name="fecha_desde" value="{{ fecha_desde }}">
                         <input type="hidden" name="fecha_hasta" value="{{ fecha_hasta }}">
-                        <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Borrar</button>
+                        <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:var(--text-xs);">Borrar</button>
                     </form>
                 </td>
             </tr>
@@ -406,9 +406,9 @@
         const entrada = fila.querySelector('.input-costo-producto');
         const cont = fila.querySelector('[data-ganancia]');
         const costo = costoEnPesos(entrada);
-        if (costo === null) { cont.innerHTML = '<span class="text-muted" style="font-size:0.8em;">Para verlo en dólares, elegí tu dólar en <a href="/cuenta#dolar">Mi cuenta</a></span>'; return; }
-        const equivalente = monedaDe(entrada) === 'USD' && costo > 0 ? `<span class="text-muted" style="font-size:0.8em; margin-right:6px;">= ${UX.plata(costo)}</span>` : '';
-        if (!precio || isNaN(comision)) { cont.innerHTML = equivalente + '<span class="text-muted" style="font-size:0.8em;">Sin datos de comisión todavía</span>'; return; }
+        if (costo === null) { cont.innerHTML = '<span class="text-muted" style="font-size:var(--text-2xs);">Para verlo en dólares, elegí tu dólar en <a href="/cuenta#dolar">Mi cuenta</a></span>'; return; }
+        const equivalente = monedaDe(entrada) === 'USD' && costo > 0 ? `<span class="text-muted" style="font-size:var(--text-2xs); margin-right:6px;">= ${UX.plata(costo)}</span>` : '';
+        if (!precio || isNaN(comision)) { cont.innerHTML = equivalente + '<span class="text-muted" style="font-size:var(--text-2xs);">Sin datos de comisión todavía</span>'; return; }
         const ganancia = precio - comision - envio - costo;
         const margen = ganancia / precio * 100;
         const tono = costo === 0 ? 'warn' : (ganancia < 0 ? 'danger' : (margen < window.MARGEN_MINIMO ? 'warn' : 'ok'));
@@ -596,11 +596,11 @@
             const resto = _zonasDelResto();
             const lista = resto.map(z => UX.esc(z.nombre)).join(', ');
             zonasHtml = `<div class="flex-zonas-resumen"><span class="ux-pill ux-neutral">${resto.length} zona${resto.length === 1 ? '' : 's'}</span> <span class="text-muted">Todas las que no estén en otro umbral</span>
-                ${resto.length ? `<details class="flex-ver"><summary>ver todas</summary><div class="text-muted" style="font-size:0.85em; line-height:1.6;">${lista}</div></details>` : ''}</div>`;
+                ${resto.length ? `<details class="flex-ver"><summary>ver todas</summary><div class="text-muted" style="font-size:var(--text-sm); line-height:1.6;">${lista}</div></details>` : ''}</div>`;
         } else {
             const chips = u.zonas.map(z => `<span class="ux-chip">${UX.esc(_nombreZona(z))}<button type="button" class="ux-chip-x" aria-label="Quitar ${UX.esc(_nombreZona(z))}" data-quitar-zona="${UX.esc(z)}" data-i="${i}">×</button></span>`).join('');
             const opciones = flexZonas.filter(z => !u.zonas.includes(z.id)).map(z => `<option value="${UX.esc(z.nombre)}"></option>`).join('');
-            zonasHtml = `<div class="flex-chips">${chips || '<span class="text-muted" style="font-size:0.85em;">Sin zonas todavía — agregá las que te cobran este precio.</span>'}</div>
+            zonasHtml = `<div class="flex-chips">${chips || '<span class="text-muted" style="font-size:var(--text-sm);">Sin zonas todavía — agregá las que te cobran este precio.</span>'}</div>
                 <input type="text" class="flex-agregar" list="flex-dl-${i}" placeholder="+ Agregar zona (escribí para buscar)" data-agregar-zona data-i="${i}" ${flexZonas.length ? '' : 'disabled'} autocomplete="off">
                 <datalist id="flex-dl-${i}">${opciones}</datalist>`;
         }
@@ -608,7 +608,7 @@
             <div class="flex-card-cab">
                 <span class="flex-moneda">$</span>
                 <input type="number" class="flex-precio" min="0" step="0.01" inputmode="decimal" placeholder="0" value="${precio}" data-campo="precio" data-i="${i}" aria-label="Precio por envío">
-                <span class="text-muted" style="font-size:0.8em;">ARS por envío</span>
+                <span class="text-muted" style="font-size:var(--text-2xs);">ARS por envío</span>
                 ${u.resto ? '<span class="ux-pill ux-info" style="margin-left:auto;">Por defecto</span>' : `<button type="button" class="flex-borrar" title="Quitar este umbral" aria-label="Quitar este umbral" data-borrar="${i}">${UX.icono('x')}</button>`}
             </div>
             <input type="text" class="flex-nombre" placeholder="${UX.esc(_etiquetaAutoFlex(u))}" value="${UX.esc(u.nombre || '')}" maxlength="40" data-campo="nombre" data-i="${i}" aria-label="Nombre del umbral">
@@ -680,12 +680,12 @@
         const incluir = document.getElementById('flex-incluir')?.checked || false;
         if (!vp || (!vp.ordenes && !vp.sin_precio)) { caja.innerHTML = ''; return; }
         const filas = (vp.umbrales || []).map(u => `<div class="flex-prev-fila"><div><b>${UX.esc(u.etiqueta)}</b> <span class="text-muted">· ${u.ordenes} envío${u.ordenes === 1 ? '' : 's'}</span></div><div><b>${UX.plata(u.costo)}</b></div></div>`).join('');
-        const aviso = vp.sin_precio ? `<div class="text-muted" style="font-size:0.85em; margin-top:8px;"><b style="color:var(--semantic-warning);">${vp.sin_precio} envío${vp.sin_precio === 1 ? '' : 's'}</b> caen en un umbral sin precio: cargalo y volvé a guardar.</div>` : '';
+        const aviso = vp.sin_precio ? `<div class="text-muted" style="font-size:var(--text-sm); margin-top:8px;"><b style="color:var(--semantic-warning);">${vp.sin_precio} envío${vp.sin_precio === 1 ? '' : 's'}</b> caen en un umbral sin precio: cargalo y volvé a guardar.</div>` : '';
         caja.innerHTML = `<div class="ux-banner ux-accion" style="display:block; margin-top:16px;">
             <div style="font-weight:800; margin-bottom:6px;">${vp.ordenes ? `Con tus umbrales se resuelven ${vp.ordenes} envío${vp.ordenes === 1 ? '' : 's'} Flex` : 'Todavía no hay envíos para resolver'}</div>
             ${filas}
             ${vp.sin_costo_meli ? `<div class="flex-prev-fila"><div><b>Sin costo para vos</b> <span class="text-muted">· ${vp.sin_costo_meli} envío${vp.sin_costo_meli === 1 ? '' : 's'} · los paga el comprador o los cubre Mercado Libre</span></div><div><b>${UX.plata(0)}</b></div></div>` : ''}
-            ${vp.ordenes ? `<div class="flex-prev-fila flex-prev-total"><div><b>Costo de entrega que se suma a tu ganancia</b> <span class="text-muted" style="font-size:0.85em;">(ya con el reintegro de MeLi)</span></div><div style="font-size:1.15em;"><b>${UX.plata(vp.costo_total)}</b></div></div>` : ''}
+            ${vp.ordenes ? `<div class="flex-prev-fila flex-prev-total"><div><b>Costo de entrega que se suma a tu ganancia</b> <span class="text-muted" style="font-size:var(--text-sm);">(ya con el reintegro de MeLi)</span></div><div style="font-size:1.15em;"><b>${UX.plata(vp.costo_total)}</b></div></div>` : ''}
             ${aviso}
             <label class="flex-incluir"><input type="checkbox" id="flex-incluir" ${incluir ? 'checked' : ''} data-change="refrescarVistaPreviaFlex"> Incluir también los envíos que ya tienen costo cargado (se recalculan con estos precios; los que elegiste a mano no se tocan)</label>
             ${vp.ordenes ? `<button type="button" class="btn btn-primary" id="btn-aplicar-flex" style="margin-top:12px;" data-click="aplicarFlex">Aplicar a estos ${vp.ordenes} envíos</button>` : ''}
@@ -710,8 +710,8 @@
         if (!caja) return;
         const anillos = p.umbrales.map(u => `<li><b>${UX.esc(u.nombre)}</b>: ${u.zonas.length} zona${u.zonas.length === 1 ? '' : 's'} · ${u.envios} envío${u.envios === 1 ? '' : 's'}</li>`).join('');
         const mixtas = (p.zonas_en_dos_anillos || []).length
-            ? `<div class="text-muted" style="font-size:0.85em; margin-top:6px;">Tuvieron envíos en dos precios y quedaron en el de más envíos: ${p.zonas_en_dos_anillos.map(z => UX.esc(z.zona)).join(', ')}.</div>` : '';
-        const sinUbicar = p.envios_sin_ubicar ? `<div class="text-muted" style="font-size:0.85em; margin-top:6px;">${p.envios_sin_ubicar} envío${p.envios_sin_ubicar === 1 ? '' : 's'} no se pudo${p.envios_sin_ubicar === 1 ? '' : 'ieron'} ubicar en una zona y cuenta${p.envios_sin_ubicar === 1 ? '' : 'n'} en «Resto de las zonas».</div>` : '';
+            ? `<div class="text-muted" style="font-size:var(--text-sm); margin-top:6px;">Tuvieron envíos en dos precios y quedaron en el de más envíos: ${p.zonas_en_dos_anillos.map(z => UX.esc(z.zona)).join(', ')}.</div>` : '';
+        const sinUbicar = p.envios_sin_ubicar ? `<div class="text-muted" style="font-size:var(--text-sm); margin-top:6px;">${p.envios_sin_ubicar} envío${p.envios_sin_ubicar === 1 ? '' : 's'} no se pudo${p.envios_sin_ubicar === 1 ? '' : 'ieron'} ubicar en una zona y cuenta${p.envios_sin_ubicar === 1 ? '' : 'n'} en «Resto de las zonas».</div>` : '';
         caja.innerHTML = `<div class="ux-banner ux-accion" style="display:block; margin:12px 0;">
             <div style="font-weight:800; margin-bottom:6px;">Miré tus últimos ${p.envios_analizados} envíos Flex</div>
             <ul style="margin:0 0 6px 18px; line-height:1.6;">${anillos}</ul>

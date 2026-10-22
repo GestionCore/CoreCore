@@ -15,7 +15,7 @@
 <!-- ── 0. PRIMEROS PASOS: arriba de todo mientras la cuenta no esté completa (se oculta solo al llegar al 100 %) ── -->
 <div class="panel panel-colapsable abierto" id="panel-checklist-perfil" style="display:none;" role="button" tabindex="0" aria-expanded="true" data-click="alternarChecklist" data-click-args='["$el", "$ev"]'>
     <div class="panel-title">
-        <span>Completá tu perfil <span class="text-muted" id="checklist-contador" style="font-size:0.8em; font-weight:400;"></span></span>
+        <span>Completá tu perfil <span class="text-muted" id="checklist-contador" style="font-size:var(--text-2xs); font-weight:400;"></span></span>
         <span class="chevron-colapsable">▾</span>
     </div>
     <div class="contenido-colapsable">
@@ -73,7 +73,7 @@
 
 <!-- ── 2. QUÉ HAGO: los pendientes más importantes (la lista completa está en Pendientes) ──────── -->
 <div id="bloque-acciones">
-    <div class="ux-acciones-titulo">Lo que tenés que hacer hoy <span class="ux-contador" id="acciones-contador" style="display:none;"></span><a href="/dia#pendientes" class="text-muted" style="margin-left:auto; font-size:0.82em; font-weight:700;">Ver todos los pendientes →</a></div>
+    <div class="ux-acciones-titulo">Lo que tenés que hacer hoy <span class="ux-contador" id="acciones-contador" style="display:none;"></span><a href="/dia#pendientes" class="text-muted" style="margin-left:auto; font-size:var(--text-xs); font-weight:700;">Ver todos los pendientes →</a></div>
     <div class="ux-lista-acciones" id="lista-acciones">
         <div class="skeleton" style="height:64px; border-radius:12px; width:100%;"></div>
         <div class="skeleton" style="height:64px; border-radius:12px; width:100%;"></div>
@@ -92,7 +92,7 @@
 <div class="panel" id="panel-ventas-hoy">
     <div class="ux-panel-cab">
         <div class="panel-title" style="margin:0;"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-box"/></svg> Ventas de hoy</div>
-        <span class="text-muted" style="font-size:0.82em;">Solo las netas suman a tu ganancia</span>
+        <span class="text-muted" style="font-size:var(--text-xs);">Solo las netas suman a tu ganancia</span>
     </div>
     <div class="pl-waterfall ux-cascada vh-cuenta" id="conciliacion-hoy" tabindex="0" role="group" aria-label="Cómo se arma la cuenta de ventas de hoy">
         <div class="pl-tile" id="conc-brutas"><div class="stat-chip-label">Ventas brutas</div><div class="pl-tile-valor skeleton">$0</div><div class="vh-cifras-bloque">&nbsp;</div></div>
@@ -101,14 +101,14 @@
         <div class="pl-operador">=</div>
         <div class="pl-tile pl-tile-resultado" id="conc-netas"><div class="stat-chip-label">Ventas netas</div><div class="pl-tile-valor skeleton">$0</div><div class="vh-cifras-bloque">&nbsp;</div></div>
     </div>
-    <div class="text-muted" style="font-size:0.82em; margin-top:10px;" id="conc-nota">Brutas: todo lo que entró hoy. Canceladas / devueltas: lo que Mercado Libre canceló o reembolsó. Netas: lo que de verdad te quedó vendido.</div>
+    <div class="text-muted" style="font-size:var(--text-xs); margin-top:10px;" id="conc-nota">Brutas: todo lo que entró hoy. Canceladas / devueltas: lo que Mercado Libre canceló o reembolsó. Netas: lo que de verdad te quedó vendido.</div>
     <div class="vh-acordeon" id="acordeon-ventas-hoy"></div>
 </div>
 
 <!-- ── 4. ESTE MES: cómo viene contra el mes pasado ───────────────────────── -->
 {% if proyeccion %}
 <div class="panel">
-    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-trend"/></svg> Cómo viene {{ proyeccion.mes_nombre }} <span class="text-muted" style="font-weight:500; font-size:0.82em;">día {{ proyeccion.dia }} de {{ proyeccion.dias_mes }}</span></div>
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-trend"/></svg> Cómo viene {{ proyeccion.mes_nombre }} <span class="text-muted" style="font-weight:500; font-size:var(--text-xs);">día {{ proyeccion.dia }} de {{ proyeccion.dias_mes }}</span></div>
     <div class="ux-barra ux-accion" style="height:10px; margin-bottom:14px;"><span style="width:{{ proyeccion.avance_pct }}%;"></span></div>
     <div class="ux-kpis" style="margin-top:0;">
         {{ kpi("Facturado en el mes", "$" ~ proyeccion.facturado, "accion", "coin", proyeccion.unidades ~ " unidades vendidas") }}
@@ -148,7 +148,7 @@
     });
     </script>
     {% endif %}
-    <div class="text-muted" style="font-size:0.82em;">{% if proyeccion.pocos_dias %}Todavía hay pocos días para proyectar el mes con sentido.{% else %}La proyección multiplica tu ritmo diario por los días del mes: es una referencia, no una promesa.{% endif %}</div>
+    <div class="text-muted" style="font-size:var(--text-xs);">{% if proyeccion.pocos_dias %}Todavía hay pocos días para proyectar el mes con sentido.{% else %}La proyección multiplica tu ritmo diario por los días del mes: es una referencia, no una promesa.{% endif %}</div>
 </div>
 {% endif %}
 
@@ -188,7 +188,7 @@
             </div>
         </div>
         <div class="pl-detalle-tabla" id="pl-detalle" style="margin-top:18px;"></div>
-        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Cada costo como % de lo facturado en el período.</div>
+        <div class="text-muted" style="font-size:var(--text-xs); margin-top:10px;">Cada costo como % de lo facturado en el período.</div>
     </div>
 </details>
 
@@ -201,11 +201,11 @@
     <div class="ux-detalle-cuerpo">
 {% if cuando_compran %}
 <div class="panel">
-    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-calendar"/></svg> Cuándo te compran <span class="text-muted" style="font-weight:500; font-size:0.82em;">últimos {{ cuando_compran.desde_dias }} días · {{ cuando_compran.total }} ventas · hora de Argentina</span></div>
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-primary);"><use href="#icon-calendar"/></svg> Cuándo te compran <span class="text-muted" style="font-weight:500; font-size:var(--text-xs);">últimos {{ cuando_compran.desde_dias }} días · {{ cuando_compran.total }} ventas · hora de Argentina</span></div>
     <div class="ux-cc-resumen">Comprás más los <b>{{ cuando_compran.mejor_dia|lower }}</b> y la mejor franja es de <b>{{ cuando_compran.franja }}</b> ({{ cuando_compran.pct_franja }}% de tus ventas). Los <b>{{ cuando_compran.peor_dia|lower }}</b> son los más flojos: buen momento para renovar publicaciones o probar promociones.</div>
     <div class="ux-dos-col" style="margin-top:14px;">
         <div>
-            <div class="text-muted" style="font-size:0.82em; margin-bottom:6px;"><b>Por día de la semana</b></div>
+            <div class="text-muted" style="font-size:var(--text-xs); margin-bottom:6px;"><b>Por día de la semana</b></div>
             {% for d in cuando_compran.dias %}
             <div class="ux-dist-fila">
                 <span class="ux-dist-etq" style="width:84px;">{{ d.nombre }}</span>
@@ -215,7 +215,7 @@
             {% endfor %}
         </div>
         <div>
-            <div class="text-muted" style="font-size:0.82em; margin-bottom:6px;"><b>Por hora del día</b></div>
+            <div class="text-muted" style="font-size:var(--text-xs); margin-bottom:6px;"><b>Por hora del día</b></div>
             <div class="ux-horas" role="img" aria-label="Ventas por hora del día">
                 {% for h in cuando_compran.horas %}<span class="ux-hora" title="{{ h.hora }} h: {{ h.ordenes }} venta{{ 's' if h.ordenes != 1 }}"><i style="height:{{ h.alto }}%;"></i></span>{% endfor %}
             </div>
@@ -227,18 +227,18 @@
 
 {% if ventas_por_provincia %}
 <div class="panel">
-    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-map-pin"/></svg> Ventas por provincia <span class="text-muted" style="font-weight:500; font-size:0.82em;">últimos 30 días, según el destino del envío</span></div>
+    <div class="panel-title"><svg class="icon" style="color:var(--accent-cyan);"><use href="#icon-map-pin"/></svg> Ventas por provincia <span class="text-muted" style="font-weight:500; font-size:var(--text-xs);">últimos 30 días, según el destino del envío</span></div>
     <div class="pl-detalle-tabla">
         {% for p in ventas_por_provincia[:10] %}
         <div class="pl-detalle-fila">
             <span class="pl-detalle-label">{{ p.provincia }}</span>
             <div class="ux-barra" style="flex:1;"><span style="width:{{ p.pct }}%;"></span></div>
-            <span class="pl-detalle-valor">${{ p.facturado_formateado }} <span style="color:var(--text-faint); font-size:0.82em;">({{ p.ventas }})</span></span>
+            <span class="pl-detalle-valor">${{ p.facturado_formateado }} <span style="color:var(--text-faint); font-size:var(--text-xs);">({{ p.ventas }})</span></span>
         </div>
         {% endfor %}
     </div>
     {% if ventas_por_provincia|length > 10 %}
-    <div class="text-muted" style="font-size:0.82em; margin-top:10px;">+{{ ventas_por_provincia|length - 10 }} provincias más con ventas menores.</div>
+    <div class="text-muted" style="font-size:var(--text-xs); margin-top:10px;">+{{ ventas_por_provincia|length - 10 }} provincias más con ventas menores.</div>
     {% endif %}
 </div>
 {% endif %}
@@ -298,7 +298,7 @@
             <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Guardar</button>
         </form>
 
-        <div class="text-muted" style="font-size:0.82em;">Escalas vigentes desde el {{ mono.vigente_desde|fecha(true) }} para "venta de cosas muebles" — esto avisa y sugiere; la decisión final siempre conviene confirmarla con tu contador.</div>
+        <div class="text-muted" style="font-size:var(--text-xs);">Escalas vigentes desde el {{ mono.vigente_desde|fecha(true) }} para "venta de cosas muebles" — esto avisa y sugiere; la decisión final siempre conviene confirmarla con tu contador.</div>
     </div>
 </details>
 {% endif %}
@@ -411,7 +411,7 @@
                     <a href="/metricas" style="text-decoration:none; color:inherit; display:block;">
                         <div class="stat-chip-label">Facturación — últimos ${d.serie.length} días</div>
                         <div class="hero-number" style="font-size:1.7em;">$${UX.esc(sinCentavos(d.total_formateado))}</div>
-                        <div class="text-muted" style="font-size:0.8em; margin:2px 0 14px;">facturado en total</div>
+                        <div class="text-muted" style="font-size:var(--text-2xs); margin:2px 0 14px;">facturado en total</div>
                         <div style="position:relative; height:120px;"><canvas id="${canvasId}" role="img" aria-label="Facturación diaria de los últimos ${d.serie.length} días"></canvas></div>
                         <div class="grafico-tendencia-ejes" style="margin-top:6px;"><span>${UX.esc(d.serie[0].fecha)}</span><span>Promedio diario: $${UX.esc(sinCentavos(d.promedio_diario_formateado))}</span><span>${UX.esc(d.serie[d.serie.length - 1].fecha)}</span></div>
                     </a>`;
@@ -453,7 +453,7 @@
                 // Mismos umbrales que la tabla de márgenes de Ganancia Real (desde el margen mínimo de la cuenta ok, por debajo al límite, <0% pierde)
                 const acento = d.margen_promedio >= window.MARGEN_MINIMO ? 'acento-success' : (d.margen_promedio >= 0 ? 'acento-warning' : 'acento-danger');
                 w.innerHTML = `<div class="stat-chip-label">Margen promedio del catálogo</div><div class="hero-number ${acento}" style="font-size:1.9em;">${UX.esc(d.margen_promedio)}%</div>
-                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">Más ajustado: ${UX.esc(d.peor.titulo.slice(0, 30))}… (${UX.esc(d.peor.margen_pct)}%)</div>`;
+                    <div class="text-muted" style="font-size:var(--text-xs); margin-top:8px;">Más ajustado: ${UX.esc(d.peor.titulo.slice(0, 30))}… (${UX.esc(d.peor.margen_pct)}%)</div>`;
             }).catch(_sinCargar(w));
         }
 
@@ -462,7 +462,7 @@
             grid.appendChild(w);
             fetch('/api/quiebre_stock').then(r => r.json()).then(d => {
                 w.innerHTML = `<div class="stat-chip-label">{{ vocab.VN }} en riesgo de quiebre</div><div class="hero-number ${d.length > 0 ? 'acento-warning' : 'acento-success'}" style="font-size:1.9em;">${d.length}</div>
-                    <div class="text-muted" style="font-size:0.82em; margin-top:8px;">${d.length > 0 ? '<b>Revisalos</b> antes de perder ventas' : 'Todo en orden'}</div>`;
+                    <div class="text-muted" style="font-size:var(--text-xs); margin-top:8px;">${d.length > 0 ? '<b>Revisalos</b> antes de perder ventas' : 'Todo en orden'}</div>`;
             }).catch(_sinCargar(w));
         }
 
@@ -478,7 +478,7 @@
                 if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Modelos que más facturaron</div><div class="text-muted" style="margin-top:10px;">Sin ventas este mes.</div>'; return; }
                 const maxPct = d[0].pct || 1;
                 w.innerHTML = `
-                    <div class="ux-panel-cab"><div class="stat-chip-label">Modelos que más facturaron — últimos 30 días</div><a href="/metricas" class="text-muted" style="font-size:0.82em; font-weight:700;">Ver ganancia →</a></div>
+                    <div class="ux-panel-cab"><div class="stat-chip-label">Modelos que más facturaron — últimos 30 días</div><a href="/metricas" class="text-muted" style="font-size:var(--text-xs); font-weight:700;">Ver ganancia →</a></div>
                     <div class="top-prod-lista">
                         ${d.map((p, i) => {
                             const tag = p.id_meli ? 'button' : 'div';
@@ -510,7 +510,7 @@
             fetch('/api/dashboard/ultimas_ventas').then(r => r.json()).then(d => {
                 if (!d.length) { w.innerHTML = '<div class="stat-chip-label">Últimas ventas</div><div class="text-muted" style="margin-top:10px;">Sin ventas recientes.</div>'; return; }
                 w.innerHTML = `
-                    <div class="ux-panel-cab"><div class="stat-chip-label">Últimas ventas</div><a href="/metricas" class="text-muted" style="font-size:0.82em; font-weight:700;">Ver todas →</a></div>
+                    <div class="ux-panel-cab"><div class="stat-chip-label">Últimas ventas</div><a href="/metricas" class="text-muted" style="font-size:var(--text-xs); font-weight:700;">Ver todas →</a></div>
                     <div class="mini-list" style="margin-top:6px;">
                         ${d.map(v => {
                             const tag = v.id_meli ? 'button' : 'div';
@@ -542,7 +542,7 @@
                 const href = p.link && !p.completo ? `href="${UX.esc(p.link)}"` : '';
                 return `<${tag} ${href} class="checklist-item ${p.completo ? 'completo' : ''}">
                     <span class="checklist-check">${p.completo ? '✓' : ''}</span>
-                    <span class="checklist-texto">${UX.esc(p.texto)}${p.detalle && !p.completo ? `<span class="text-muted" style="display:block; font-size:0.82em; font-weight:400;">${UX.esc(p.detalle)}</span>` : ''}</span>
+                    <span class="checklist-texto">${UX.esc(p.texto)}${p.detalle && !p.completo ? `<span class="text-muted" style="display:block; font-size:var(--text-xs); font-weight:400;">${UX.esc(p.detalle)}</span>` : ''}</span>
                     ${tag === 'a' ? '<span class="checklist-ir">Hacerlo →</span>' : ''}
                 </${tag}>`;
             }).join('');
@@ -852,7 +852,7 @@
                 return `<div class="pl-detalle-fila">
                     <span class="pl-detalle-label">${UX.esc(f.label)}</span>
                     <div class="ux-barra ux-danger" style="flex:1;"><span style="width:${Math.min(pct, 100)}%;"></span></div>
-                    <span class="pl-detalle-valor">${UX.esc(f.valor_f)} <span style="color:var(--text-faint); font-size:0.85em;">(${pct}%)</span></span>
+                    <span class="pl-detalle-valor">${UX.esc(f.valor_f)} <span style="color:var(--text-faint); font-size:var(--text-sm);">(${pct}%)</span></span>
                 </div>`;
             }).join('');
         } catch (e) {

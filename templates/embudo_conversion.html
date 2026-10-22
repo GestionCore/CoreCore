@@ -71,14 +71,14 @@
             <polygon points="{{ cx - w2/2 }},{{ sh + gap }} {{ cx + w2/2 }},{{ sh + gap }} {{ cx + w2/2 - 4 }},{{ sh * 2 + gap }} {{ cx - w2/2 + 4 }},{{ sh * 2 + gap }}" fill="var(--success)" fill-opacity="0.3" stroke="var(--success)" stroke-opacity="0.8" stroke-width="1.5" stroke-linejoin="round"/>
             <text x="{{ cx + w2/2 + 14 }}" y="{{ sh + gap + sh/2 + 6 }}" text-anchor="start" fill="var(--success)" font-size="15" font-weight="800" font-family="var(--font-data)">{{ total_ventas|int }} ventas</text>
         </svg>
-        <div class="text-muted" style="font-size:0.85em; margin-top:12px; text-align:center;">Además hubo <b>{{ total_preguntas|numero }}</b> preguntas de compradores{% if total_visitas %} ({{ (total_preguntas / total_visitas * 100)|pct }} de las visitas){% endif %}: están aparte porque no son un paso obligado antes de comprar.</div>
+        <div class="text-muted" style="font-size:var(--text-sm); margin-top:12px; text-align:center;">Además hubo <b>{{ total_preguntas|numero }}</b> preguntas de compradores{% if total_visitas %} ({{ (total_preguntas / total_visitas * 100)|pct }} de las visitas){% endif %}: están aparte porque no son un paso obligado antes de comprar.</div>
     </div>
 </details>
 
 <!-- ── 3. DETALLE POR PUBLICACIÓN ──────────────────────────────────────── -->
 <div class="ux-seccion ux-accion">Detalle por publicación</div>
 <div class="panel" data-mostrar-mas-scope>
-    <div class="flex-gap" style="font-size:0.85em; margin-bottom:14px;">
+    <div class="flex-gap" style="font-size:var(--text-sm); margin-bottom:14px;">
         <span class="text-muted">Ordenar por:</span>
         <div class="ux-periodo-botones">
             <button type="button" class="btn btn-secondary embudo-orden-btn active" data-orden="visitas" data-click="ordenarEmbudo" data-click-args='["visitas", "$el"]'>Visitas</button>
@@ -98,7 +98,7 @@
             {% elif e.diagnostico == 'funciona_bien' %}<span class="ux-pill ux-ok">Funciona bien</span>
             {% elif e.diagnostico == 'pocos_datos' %}<span class="ux-pill ux-neutral ux-pill-suave" title="Con menos de 100 visitas en 4 semanas todavía no se puede juzgar">Pocas visitas</span>
             {% else %}<span class="ux-pill ux-neutral ux-pill-suave">Sin visitas todavía</span>{% endif %}
-            <span class="text-muted" style="margin-left:auto; font-size:0.82em; white-space:nowrap;">{{ e.precio|plata }} · stock {{ e.stock_total }}</span>
+            <span class="text-muted" style="margin-left:auto; font-size:var(--text-xs); white-space:nowrap;">{{ e.precio|plata }} · stock {{ e.stock_total }}</span>
         </div>
         <div class="embudo-barras">
             <div class="embudo-etapa">
@@ -126,7 +126,7 @@
         <div class="page-subtitle" style="margin-bottom:12px;">Ocupan lugar en tu catálogo sin traerte resultados. Vale la pena <b>revisarlas o pausarlas</b>. Tocá una para abrir su ficha.</div>
         <div class="flex-gap">
             {% for z in zombies %}
-            <button type="button" class="ux-pill ux-neutral ux-pill-suave" style="cursor:pointer; border:0; padding:8px 14px; font-size:0.85em;" data-drawer="{{ z.id_meli }}">{{ z.titulo }}</button>
+            <button type="button" class="ux-pill ux-neutral ux-pill-suave" style="cursor:pointer; border:0; padding:8px 14px; font-size:var(--text-sm);" data-drawer="{{ z.id_meli }}">{{ z.titulo }}</button>
             {% endfor %}
         </div>
     </div>

@@ -51,7 +51,7 @@
             <button type="submit" class="btn btn-primary btn-lg"><svg class="icon"><use href="#icon-check"/></svg>Registrar venta</button>
         </div>
     </form>
-    <div class="text-muted" style="font-size:0.82em; margin-top:12px;">No lleva comisión ni envío de MeLi (quedan en $0). Las publicaciones en FULL no se descuentan en Mercado Libre: ese stock lo maneja ellos.</div>
+    <div class="text-muted" style="font-size:var(--text-xs); margin-top:12px;">No lleva comisión ni envío de MeLi (quedan en $0). Las publicaciones en FULL no se descuentan en Mercado Libre: ese stock lo maneja ellos.</div>
     {% endif %}
 </div>
 
@@ -64,7 +64,7 @@
 {% endif %}
 
 <div class="panel" style="padding:0; overflow:hidden;">
-    <div class="panel-title" style="padding:18px 22px 0;">Últimas ventas fuera de MeLi <span class="text-muted" style="font-weight:600; font-size:0.85em;">{{ ventas|length }}</span></div>
+    <div class="panel-title" style="padding:18px 22px 0;">Últimas ventas fuera de MeLi <span class="text-muted" style="font-weight:600; font-size:var(--text-sm);">{{ ventas|length }}</span></div>
     {% if ventas %}
     <div style="overflow-x:auto; padding:0 12px 12px;">
     <table class="data-table" data-ordenable>
@@ -79,7 +79,7 @@
                 <td class="num"><b>${{ v.precio_formateado }}</b></td>
                 <td>
                     <form action="/ventas_manuales/eliminar/{{ v.id }}" method="POST" data-submit="confirmarAccion" data-submit-args='["¿Eliminar esta venta?", "$form", "Eliminar", "El stock descontado se devuelve automáticamente.", true]' data-prevenir style="display:inline;">
-                        <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:0.82em;">Borrar</button>
+                        <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:var(--text-xs);">Borrar</button>
                     </form>
                 </td>
             </tr>

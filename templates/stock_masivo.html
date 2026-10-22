@@ -47,7 +47,7 @@
                     {% if m.thumbnail %}<img src="{{ m.thumbnail }}" class="thumb-sm" alt="" loading="lazy">{% endif %}
                     <div>
                         <strong>{{ m.titulo }}</strong>
-                        <div class="text-muted" style="font-size:0.8em;">
+                        <div class="text-muted" style="font-size:var(--text-2xs);">
                             <b>{{ m.propio }}</b> u. en tu depósito · <b>{{ m.full }}</b> u. en FULL · {{ m.variantes|length }} {{ vocab.v1 }}{{ 's' if m.variantes|length != 1 }}
                         </div>
                     </div>
@@ -65,7 +65,7 @@
                     <tbody>
                         {% for v in m.variantes %}
                         <tr>
-                            <td class="c-variante"><b>{{ v.variante }}</b> <span class="text-muted" style="font-size:0.82em;">· {{ v.id_meli }}</span></td>
+                            <td class="c-variante"><b>{{ v.variante }}</b> <span class="text-muted" style="font-size:var(--text-xs);">· {{ v.id_meli }}</span></td>
                             <td class="c-estado" data-label="Estado">
                                 {% if v.pausada_por_stock %}<span class="ux-pill ux-neutral ux-pill-suave">Pausada por stock (0 u.)</span>
                                 {% elif v.estado == 'active' %}<span class="ux-pill ux-ok">Activa</span>

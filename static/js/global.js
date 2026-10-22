@@ -273,6 +273,7 @@ function ejecutarSincronizarTodo(btn, alTerminar) {
                         if (!est.en_curso || intentos >= maxIntentos) {
                             clearInterval(poll);
                             liberar();
+                            _recordarSincronizacion(0);
                             mostrarToast('Listo: datos actualizados.', 'success');
                             if (alTerminar) alTerminar();
                         }
@@ -676,7 +677,7 @@ let _costosChatHistorial = [];
 function _agregarBurbujaCostosChat(texto, esUsuario) {
     const cont = document.getElementById('costos-chat-mensajes');
     const burbuja = document.createElement('div');
-    burbuja.style.cssText = `align-self:${esUsuario ? 'flex-end' : 'flex-start'}; max-width:80%; padding:10px 14px; border-radius:12px; font-size:0.88em; line-height:1.4; background:${esUsuario ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)'}; color:${esUsuario ? '#fff' : 'var(--text-primary)'};`;
+    burbuja.style.cssText = `align-self:${esUsuario ? 'flex-end' : 'flex-start'}; max-width:80%; padding:10px 14px; border-radius:12px; font-size:var(--text-sm); line-height:1.4; background:${esUsuario ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)'}; color:${esUsuario ? '#fff' : 'var(--text-primary)'};`;
     burbuja.textContent = texto;
     cont.appendChild(burbuja);
     cont.scrollTop = cont.scrollHeight;
@@ -903,6 +904,37 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// ---------- «Actualizado hace X» (botón de la barra superior) ----------
+// El servidor dice hace cuántos segundos se trajo lo último de Mercado Libre (ticker); acá se va sumando el tiempo que pasa en esta pantalla.
+let _syncBaseSegundos = null;
+let _syncBaseMomento = 0;
+
+function _textoHace(segundos) {
+    if (segundos < 90) return 'hace un momento';
+    const minutos = Math.round(segundos / 60);
+    if (minutos < 60) return `hace ${minutos} min`;
+    const horas = Math.round(minutos / 60);
+    if (horas < 36) return `hace ${horas} h`;
+    return `hace ${Math.round(horas / 24)} d`;
+}
+
+function _pintarActualizadoHace() {
+    const btn = document.getElementById('btn-sincronizar-todo');
+    if (!btn || btn.disabled || _syncBaseSegundos === null) return;
+    const texto = btn.querySelector('.btn-sync-texto');
+    if (!texto) return;
+    const hace = _textoHace(_syncBaseSegundos + (Date.now() - _syncBaseMomento) / 1000);
+    texto.textContent = hace.charAt(0).toUpperCase() + hace.slice(1);             // «Hace 8 min»: corto, para no sacarle lugar a lo de hoy en la barra
+    btn.title = `Actualizado ${hace}. Tocá para traer lo último de Mercado Libre ahora (se actualiza solo cada pocos minutos).`;
+}
+
+function _recordarSincronizacion(segundos) {
+    _syncBaseSegundos = (segundos === null || segundos === undefined) ? null : Number(segundos);
+    _syncBaseMomento = Date.now();
+    _pintarActualizadoHace();
+}
+setInterval(_pintarActualizadoHace, 30000);
+
 // ---------- Ticker superior ----------
 async function actualizarTicker() {
     try {
@@ -958,6 +990,7 @@ async function actualizarTicker() {
         _pintarAvisos();
         _avisarNovedades(derivados);
 
+        _recordarSincronizacion(data.sync_hace_segundos);
         window._ultimoTickerData = data;
     } catch (e) {
         console.error('Error actualizando ticker:', e);
@@ -1213,7 +1246,7 @@ async function cargarOportunidadesSeo() {
         const cont = document.getElementById('lista-oportunidades-seo');
         mostrarPanelConAnimacion(panel);
         cont.innerHTML = oportunidades.map(o => `
-            <button type="button" class="badge badge-success" style="cursor:pointer; font-size:0.88em; padding:8px 14px; border:none;"
+            <button type="button" class="badge badge-success" style="cursor:pointer; font-size:var(--text-sm); padding:8px 14px; border:none;"
                 data-click="abrirDrawerConSugerencia" data-click-args='${UX.esc(JSON.stringify([String(o.id_meli_sugerido), String(o.titulo_sugerido)]))}'>
                 Sumar "${UX.esc(o.termino)}" a ${UX.esc(o.titulo_actual.length > 30 ? o.titulo_actual.slice(0,30)+'…' : o.titulo_actual)}
             </button>
@@ -1282,7 +1315,7 @@ async function cargarTabInfo(idMeli) {
                 </div>
             </div>
             <div class="field-group" style="margin-bottom:14px;"><label class="field-label">Costo de fabricación ($) <span class="text-muted" style="font-weight:400;">solo en CoreLux</span></label><input type="number" step="0.01" min="0" inputmode="decimal" id="drawer-costo" value="${Number(d.precio_costo) || 0}" ${d.costo_en_dolares ? 'disabled' : ''}>
-                ${d.costo_en_dolares ? `<div class="text-muted" style="font-size:0.82em; margin-top:6px;">Está cargado en <b>US$ ${UX.esc(Number(d.costo_en_dolares).toLocaleString('es-AR'))}</b> y se lleva a pesos con tu dólar del día. Para cambiarlo, andá a <a href="/costos"><b>Costos</b></a>.</div>` : ''}</div>
+                ${d.costo_en_dolares ? `<div class="text-muted" style="font-size:var(--text-xs); margin-top:6px;">Está cargado en <b>US$ ${UX.esc(Number(d.costo_en_dolares).toLocaleString('es-AR'))}</b> y se lleva a pesos con tu dólar del día. Para cambiarlo, andá a <a href="/costos"><b>Costos</b></a>.</div>` : ''}</div>
             <button type="button" class="btn btn-primary btn-block" data-click="guardarDrawerInfo">Guardar cambios</button>
             <a href="/publicacion/${encodeURIComponent(idMeli)}/timeline" class="btn btn-secondary btn-block" style="margin-top:8px; text-align:center; text-decoration:none;"><svg class="icon" style="margin-right:5px;vertical-align:middle;"><use href="#icon-info"/></svg>Ver línea de tiempo completa</a>
         `;
@@ -1357,19 +1390,19 @@ async function cargarTabFicha(idMeli) {
         // Atributos editables: solo los que tienen valor no vacío o son relevantes
         const atributosHtml = (d.atributos || []).map((a, i) => `
             <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--glass-border);">
-                <span style="color:var(--text-secondary); font-size:0.82em; width:42%; flex-shrink:0;">${UX.esc(a.nombre)}</span>
+                <span style="color:var(--text-secondary); font-size:var(--text-xs); width:42%; flex-shrink:0;">${UX.esc(a.nombre)}</span>
                 <input type="text" class="ficha-atributo-input" data-attr-id="${UX.esc(a.id || '')}" value="${UX.esc(a.valor || '')}"
-                    style="flex:1; background:rgba(255,255,255,0.04); border-radius:4px; color:var(--text-primary); padding:4px 8px; font-size:0.85em;"
+                    style="flex:1; background:rgba(255,255,255,0.04); border-radius:4px; color:var(--text-primary); padding:4px 8px; font-size:var(--text-sm);"
                     placeholder="(vacío)">
             </div>`).join('');
         cont.innerHTML = `
             <div class="field-group" style="margin-bottom:16px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
                     <label class="field-label" style="margin:0;">Descripción</label>
-                    <span class="text-muted" style="font-size:0.75em;" id="desc-chars"></span>
+                    <span class="text-muted" style="font-size:var(--text-2xs);" id="desc-chars"></span>
                 </div>
                 <textarea id="drawer-descripcion" rows="7"
-                    style="width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text-primary); padding:10px; font-family:var(--font-ui); font-size:0.88em; line-height:1.5; resize:vertical;"
+                    style="width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text-primary); padding:10px; font-family:var(--font-ui); font-size:var(--text-sm); line-height:1.5; resize:vertical;"
                     data-input="contarCaracteresDescripcion" data-input-args='["$el"]'>${UX.esc(d.descripcion || '')}</textarea>
                 <button type="button" class="btn btn-primary" style="margin-top:8px;" data-click="guardarDescripcion">
                     <svg class="icon" style="margin-right:5px;"><use href="#icon-check"/></svg>Guardar descripción
@@ -1378,12 +1411,12 @@ async function cargarTabFicha(idMeli) {
             ${atributosHtml ? `
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
                 <div class="field-label" style="margin:0;">Atributos técnicos</div>
-                <button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:0.8em;" data-click="guardarAtributosFicha">
+                <button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:var(--text-2xs);" data-click="guardarAtributosFicha">
                     <svg class="icon" style="width:12px;height:12px;margin-right:4px;"><use href="#icon-check"/></svg>Guardar atributos
                 </button>
             </div>
             <div id="ficha-atributos-cont">${atributosHtml}</div>
-            <div class="text-muted" style="font-size:0.75em; margin-top:10px; line-height:1.4;">
+            <div class="text-muted" style="font-size:var(--text-2xs); margin-top:10px; line-height:1.4;">
                 Los atributos son visibles en MeLi. Algunos tienen valores fijos que MeLi no permite cambiar libremente (pueden quedar ignorados al guardar).
             </div>` : '<div class="alert-empty">Sin atributos técnicos cargados.</div>'}
         `;
@@ -1425,7 +1458,7 @@ async function cargarTabResenas(idMeli) {
         if (!d.rating_average) { cont.innerHTML = '<div class="alert-empty">Todavía no tiene opiniones.</div>'; return; }
         // El texto de una opinión lo escribe un COMPRADOR (un tercero): siempre escapado.
         const reviewsHtml = d.reviews.map(r => `
-            <div class="mobile-card"><div class="mobile-card-top"><strong>${'⭐'.repeat(Math.max(0, Math.min(5, Number(r.rate) || 0)))}</strong><span class="text-muted" style="font-size:0.78em;">${UX.esc(r.fecha)}</span></div>
+            <div class="mobile-card"><div class="mobile-card-top"><strong>${'⭐'.repeat(Math.max(0, Math.min(5, Number(r.rate) || 0)))}</strong><span class="text-muted" style="font-size:var(--text-2xs);">${UX.esc(r.fecha)}</span></div>
             <div>${r.titulo ? '<strong>' + UX.esc(r.titulo) + '</strong><br>' : ''}${UX.esc(r.contenido || '')}</div></div>
         `).join('');
         cont.innerHTML = `
@@ -1446,7 +1479,7 @@ async function cargarTabPreguntas(idMeli) {
             <div class="mobile-card">
                 <div class="mobile-card-top"><strong>${UX.esc(p.fecha)}</strong>${p.estado === 'UNANSWERED' ? '<span class="badge badge-warning">Sin responder</span>' : '<span class="badge badge-success">Respondida</span>'}</div>
                 <div style="margin-bottom:8px;">${UX.esc(p.texto)}</div>
-                ${p.respuesta ? `<div class="text-muted" style="font-size:0.85em;">Respuesta: ${UX.esc(p.respuesta)}</div>` : `
+                ${p.respuesta ? `<div class="text-muted" style="font-size:var(--text-sm);">Respuesta: ${UX.esc(p.respuesta)}</div>` : `
                     <div class="flex-gap"><input type="text" id="respuesta-${Number(p.id)}" placeholder="Escribí una respuesta..." style="flex:1;"><button type="button" class="btn btn-secondary" data-click="responderPreguntaDrawer" data-click-args='[${Number(p.id)}]'>Enviar</button></div>
                 `}
             </div>

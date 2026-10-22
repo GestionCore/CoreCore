@@ -18,7 +18,7 @@
             <input type="text" id="calc-producto-buscar" placeholder="Buscá por nombre y se completa con tus datos reales…" autocomplete="off" aria-controls="calc-prod-resultados">
             <div id="calc-prod-resultados" class="ux-lista-opciones" style="display:none;" role="listbox"></div>
             <div id="calc-prod-elegido" style="margin-top:8px;"></div>
-            <div id="calc-hint-producto" class="text-muted" style="font-size:0.82em; margin-top:6px;"></div>
+            <div id="calc-hint-producto" class="text-muted" style="font-size:var(--text-xs); margin-top:6px;"></div>
         </div>
 
         <div class="field-group" style="margin-bottom:16px;">
@@ -52,12 +52,12 @@
                 <input type="number" id="calc-envio" min="0" step="1" inputmode="decimal" placeholder="3500">
             </div>
         </div>
-        <div class="text-muted" style="font-size:0.82em; margin-top:10px;">Con el costo de fabricación ves tu ganancia neta real. El envío depende del peso y tamaño del producto: si MeLi no lo informa desde acá, cargalo vos.</div>
+        <div class="text-muted" style="font-size:var(--text-xs); margin-top:10px;">Con el costo de fabricación ves tu ganancia neta real. El envío depende del peso y tamaño del producto: si MeLi no lo informa desde acá, cargalo vos.</div>
 
         <div class="field-group" style="margin-top:16px; margin-bottom:0;">
             <label class="field-label" for="calc-ads"><b>Costo unitario de Ads</b> <span class="text-muted" style="font-weight:400;">(lo que pagás de publicidad por cada unidad vendida)</span></label>
             <input type="number" id="calc-ads" min="0" step="1" inputmode="decimal" placeholder="0">
-            <div id="calc-ads-nota" class="text-muted" style="font-size:0.82em; margin-top:6px;">Si elegís uno de tus productos, lo completamos con lo que te costó la publicidad por unidad en los últimos 30 días.</div>
+            <div id="calc-ads-nota" class="text-muted" style="font-size:var(--text-xs); margin-top:6px;">Si elegís uno de tus productos, lo completamos con lo que te costó la publicidad por unidad en los últimos 30 días.</div>
         </div>
 
         <div class="panel-title" style="margin-top:26px;">2 · Devoluciones y embalaje</div>
@@ -78,7 +78,7 @@
                 <button type="button" class="btn btn-secondary" data-modo="escala" id="calc-btn-escala" disabled>Promedio de mi escala Flex</button>
             </div>
             <input type="number" id="calc-envio-dev" aria-label="Costo del envío de vuelta, en pesos" min="0" step="1" inputmode="decimal" placeholder="7000" style="margin-top:8px;">
-            <div id="calc-envio-dev-nota" class="text-muted" style="font-size:0.82em; margin-top:6px;">Si todavía no cargaste los precios de tu entrega Flex (en Costos), ingresalo a mano.</div>
+            <div id="calc-envio-dev-nota" class="text-muted" style="font-size:var(--text-xs); margin-top:6px;">Si todavía no cargaste los precios de tu entrega Flex (en Costos), ingresalo a mano.</div>
         </div>
     </div>
 
@@ -150,7 +150,7 @@ async function elegirProducto(idMeli) {
         if (p.error) { $('calc-prod-elegido').innerHTML = `<span class="text-danger">${UX.esc(p.error)}</span>`; return; }
         productoElegido = p;
         $('calc-prod-elegido').innerHTML = `<div class="calc-elegido"><span class="ux-pill ux-accion" title="${UX.esc(p.titulo)}">${UX.icono('check')}<span class="titulo-1l" title="${UX.esc(p.titulo)}">${UX.esc(p.titulo)}</span></span>
-            <button type="button" class="btn btn-secondary" style="padding:3px 10px; font-size:0.82em;" id="calc-quitar-producto">Quitar</button></div>`;
+            <button type="button" class="btn btn-secondary" style="padding:3px 10px; font-size:var(--text-xs);" id="calc-quitar-producto">Quitar</button></div>`;
         $('calc-quitar-producto').addEventListener('click', quitarProducto);
         completarConProducto(p);
     } catch (e) { $('calc-prod-elegido').innerHTML = '<span class="text-danger">No se pudieron traer los datos ahora — probá de nuevo.</span>'; }
@@ -197,7 +197,7 @@ function elegirCategoria(id, nombre, calcular = true) {
     $('calc-cat-resultados').style.display = 'none';
     $('calc-categoria-buscar').value = '';
     $('calc-cat-elegida').innerHTML = `<div class="calc-elegido"><span class="ux-pill ux-accion" title="${UX.esc(nombre)}">${UX.icono('check')}<span class="titulo-1l" title="${UX.esc(nombre)}">${UX.esc(nombre)}</span></span>
-        <button type="button" class="btn btn-secondary" style="padding:3px 10px; font-size:0.82em;" id="calc-cambiar-cat">Cambiar</button></div>`;
+        <button type="button" class="btn btn-secondary" style="padding:3px 10px; font-size:var(--text-xs);" id="calc-cambiar-cat">Cambiar</button></div>`;
     $('calc-cambiar-cat').addEventListener('click', () => { categoriaElegida = null; $('calc-cat-elegida').innerHTML = ''; $('calc-categoria-buscar').focus(); programarCalculo(); });
     if (calcular) programarCalculo();
 }
@@ -237,7 +237,7 @@ $('calc-categoria-buscar').addEventListener('input', () => {
         const cats = await (await fetch('/api/calculadora_categorias')).json();
         if (!Array.isArray(cats) || !cats.length) return;
         const cont = $('calc-mis-categorias');
-        cont.innerHTML = '<span class="text-muted" style="font-size:0.82em;">Tus categorías:</span>';
+        cont.innerHTML = '<span class="text-muted" style="font-size:var(--text-xs);">Tus categorías:</span>';
         cats.slice(0, 6).forEach(c => {
             const b = document.createElement('button');
             b.type = 'button'; b.className = 'ux-pill ux-neutral ux-pill-suave'; b.style.cursor = 'pointer'; b.style.border = '0';
@@ -352,7 +352,7 @@ async function repintar() {
     const costoDev = m.costo_de_las_devoluciones;
     const fraseMerma = m.frase
         ? `<div class="ux-merma-frase" role="note">${UX.esc(m.frase)}</div>
-           <div class="text-muted" style="font-size:0.8em; margin-top:6px;">Supuesto: en una devolución Mercado Libre te reintegra la comisión y el producto vuelve a tu stock. Las devoluciones te cuestan ${UX.plata(costoDev)} por cada venta concretada (sin ellas ganarías ${UX.plata(m.ganancia_sin_devoluciones)}).</div>`
+           <div class="text-muted" style="font-size:var(--text-2xs); margin-top:6px;">Supuesto: en una devolución Mercado Libre te reintegra la comisión y el producto vuelve a tu stock. Las devoluciones te cuestan ${UX.plata(costoDev)} por cada venta concretada (sin ellas ganarías ${UX.plata(m.ganancia_sin_devoluciones)}).</div>`
         : '';
 
     $('calc-resultado').innerHTML = `
@@ -385,7 +385,7 @@ async function repintar() {
 // "¿Y si ofrezco cuotas sin interés?": cuánto más te cuesta cada opción
 function pintarCuotas(d, m, costo) {
     $('calc-cuotas').innerHTML = `
-        <div class="ux-seccion ux-warn">¿Y si ofrecés cuotas sin interés? <span class="text-muted" style="font-weight:600; font-size:0.82em;">estimado</span></div>
+        <div class="ux-seccion ux-warn">¿Y si ofrecés cuotas sin interés? <span class="text-muted" style="font-weight:600; font-size:var(--text-xs);">estimado</span></div>
         <div class="ux-kpis">
             ${CUOTAS_FINANCIACION.map(c => {
                 const costoFin = d.precio * c.pct;
@@ -397,7 +397,7 @@ function pintarCuotas(d, m, costo) {
                 });
             }).join('')}
         </div>
-        <div class="text-muted" style="font-size:0.8em; margin-top:-10px;">Con cuotas sin interés el comprador paga el precio lleno y Mercado Libre te descuenta el costo financiero. Los porcentajes son orientativos y pueden cambiar.</div>`;
+        <div class="text-muted" style="font-size:var(--text-2xs); margin-top:-10px;">Con cuotas sin interés el comprador paga el precio lleno y Mercado Libre te descuenta el costo financiero. Los porcentajes son orientativos y pueden cambiar.</div>`;
 }
 </script>
 {% endblock %}

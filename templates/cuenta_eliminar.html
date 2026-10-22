@@ -22,7 +22,7 @@
         <li>Las credenciales de acceso a Mercado Libre que guardamos.</li>
         {% if con_suscripcion %}<li><b>Tu suscripción paga se cancela</b> en Mercado Pago antes de borrar.</li>{% endif %}
     </ul>
-    <div class="text-muted" style="font-size:0.88em; margin-bottom:16px;">Tus ventas y publicaciones siguen estando en Mercado Libre: eso no se toca. Si querés revocar también el permiso, hacelo desde tu cuenta de Mercado Libre.</div>
+    <div class="text-muted" style="font-size:var(--text-sm); margin-bottom:16px;">Tus ventas y publicaciones siguen estando en Mercado Libre: eso no se toca. Si querés revocar también el permiso, hacelo desde tu cuenta de Mercado Libre.</div>
     <form method="post" action="{{ url_for('legal.cuenta_eliminar') }}">
         <label class="field-label" for="confirmacion"><b>Para confirmar, escribí {{ frase }}</b></label>
         <div class="flex-gap" style="margin-top:8px;">

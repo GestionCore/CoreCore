@@ -26,7 +26,7 @@
                     <td data-label="Desde" class="text-muted">{{ e.ip or '—' }}</td>
                     <td data-label="Datos técnicos">
                         {% if e.detalle.pedido is defined or e.detalle.ids is defined %}
-                        <details class="ux-detalle"><summary>Ver datos técnicos</summary><pre style="white-space:pre-wrap; font-size:0.8em; margin:8px 0 0;">{{ e.detalle|tojson(indent=1) }}</pre></details>
+                        <details class="ux-detalle"><summary>Ver datos técnicos</summary><pre style="white-space:pre-wrap; font-size:var(--text-2xs); margin:8px 0 0;">{{ e.detalle|tojson(indent=1) }}</pre></details>
                         {% endif %}
                     </td>
                     {% endif %}
@@ -36,6 +36,6 @@
         </table>
     </div>
 </div>
-<div class="text-muted" style="font-size:0.85em; margin-top:10px;">Las horas están en horario de Argentina. Este registro solo se puede leer: no se edita ni se borra.{% if es_admin %} Vista de administrador: incluye los datos técnicos de cada acción.{% endif %}</div>
+<div class="text-muted" style="font-size:var(--text-sm); margin-top:10px;">Las horas están en horario de Argentina. Este registro solo se puede leer: no se edita ni se borra.{% if es_admin %} Vista de administrador: incluye los datos técnicos de cada acción.{% endif %}</div>
 {% endif %}
 {% endblock %}

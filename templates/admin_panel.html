@@ -47,12 +47,12 @@
             <tr id="fila-u{{ u.id }}" {% if not u.activo %}style="opacity:0.5;"{% endif %}>
                 <td>
                     <div style="font-size:0.9em; overflow-wrap:anywhere;">{{ u.email }}</div>
-                    <div class="text-muted" style="font-size:0.82em;">{% if u.nombre %}{{ u.nombre }} · {% endif %}n.º {{ u.id }} · desde el {{ u.creado_en|fecha }}</div>
+                    <div class="text-muted" style="font-size:var(--text-xs);">{% if u.nombre %}{{ u.nombre }} · {% endif %}n.º {{ u.id }} · desde el {{ u.creado_en|fecha }}</div>
                 </td>
                 <td class="num">
                     <span id="badge-plan-{{ u.id }}" class="badge {% if u.plan == 'elite' %}badge-brand{% elif u.plan == 'base' %}badge-success{% elif u.plan == 'trial' %}badge-warning{% else %}badge-neutral{% endif %}">{{ u.plan }}</span>
                 </td>
-                <td class="num" id="prueba-{{ u.id }}" style="font-size:0.82em;">
+                <td class="num" id="prueba-{{ u.id }}" style="font-size:var(--text-xs);">
                     {% if u.dias_trial is none %}<span class="text-muted">—</span>
                     {% else %}
                     <div style="color:var(--text-secondary);">hasta el {{ u.trial_termina_en|fecha }}</div>
@@ -62,11 +62,11 @@
                     {% endif %}
                 </td>
                 <td class="num">{{ u.num_cuentas }}</td>
-                <td class="num" style="font-size:0.82em; color:var(--text-secondary);">
+                <td class="num" style="font-size:var(--text-xs); color:var(--text-secondary);">
                     {{ u.ultima_visita|cuando(false) if u.ultima_visita else "—" }}
                     {% if u.racha_dias > 0 %}<div style="color:var(--text-primary);"><svg class="icon" style="width:11px;height:11px;color:var(--accent-brand);vertical-align:middle;" aria-hidden="true"><use href="#icon-flame"/></svg> {{ u.racha_dias|plural("día") }} seguidos</div>{% endif %}
                 </td>
-                <td class="num" style="font-size:0.82em; color:var(--text-secondary);">{{ u.ultima_sync|cuando if u.ultima_sync else "—" }}</td>
+                <td class="num" style="font-size:var(--text-xs); color:var(--text-secondary);">{{ u.ultima_sync|cuando if u.ultima_sync else "—" }}</td>
                 <td class="num">
                     {% if u.onboarding_completo %}<svg class="icon" style="width:14px;height:14px;color:var(--success);"><use href="#icon-check"/></svg>{% else %}<span class="text-muted">—</span>{% endif %}
                 </td>
@@ -79,8 +79,8 @@
                     </button>
                 </td>
                 <td class="num" style="white-space:nowrap;">
-                    {% if u.plan == 'trial' %}<button type="button" class="btn btn-secondary" style="font-size:0.82em; padding:3px 8px;" data-click="extenderPrueba" data-click-args='{{ [u.id]|tojson }}'>+7 días</button>{% endif %}
-                    <select class="btn btn-secondary" style="font-size:0.82em; padding:3px 6px;" data-change="cambiarPlan" data-change-args='{{ [u.id, "$el"]|tojson }}'>
+                    {% if u.plan == 'trial' %}<button type="button" class="btn btn-secondary" style="font-size:var(--text-xs); padding:3px 8px;" data-click="extenderPrueba" data-click-args='{{ [u.id]|tojson }}'>+7 días</button>{% endif %}
+                    <select class="btn btn-secondary" style="font-size:var(--text-xs); padding:3px 6px;" data-change="cambiarPlan" data-change-args='{{ [u.id, "$el"]|tojson }}'>
                         <option value="">Cambiar plan...</option>
                         <option value="trial" {% if u.plan == 'trial' %}disabled{% endif %}>→ Trial</option>
                         <option value="base" {% if u.plan == 'base' %}disabled{% endif %}>→ Base</option>

@@ -18,7 +18,7 @@
         <span class="ux-pill ux-{{ 'danger' if c.tipo == 'problema' else ('accion' if c.tipo == 'idea' else 'info') }} ux-pill-suave" style="flex-shrink:0;">{{ c.tipo_texto }}</span>
         <div class="ux-paso-cuerpo">
             <div style="white-space:pre-wrap; line-height:1.5;">{{ c.mensaje }}</div>
-            <div class="text-muted" style="font-size:0.8em; margin-top:4px;">
+            <div class="text-muted" style="font-size:var(--text-2xs); margin-top:4px;">
                 {{ c.cuando.strftime('%d/%m %H:%M') }} · {{ c.cuenta or c.email }} · <code>{{ c.pantalla or '—' }}</code> · versión {{ c.version or '—' }}
             </div>
         </div>

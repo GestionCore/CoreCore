@@ -39,7 +39,7 @@
 
 <!-- ── 3. PRÓXIMOS DEPÓSITOS ───────────────────────────────────────────── -->
 {% if dias %}
-<div class="ux-seccion ux-ok">Próximos depósitos <span class="text-muted" style="font-weight:600; font-size:0.8em;">por día de acreditación</span></div>
+<div class="ux-seccion ux-ok">Próximos depósitos <span class="text-muted" style="font-weight:600; font-size:var(--text-2xs);">por día de acreditación</span></div>
 <div class="panel" data-mostrar-mas-scope>
     {% for d in dias %}
     <div class="ux-dist-fila {% if loop.index > 10 %}oculto-mostrar-mas{% endif %}">
@@ -49,7 +49,7 @@
     </div>
     {% endfor %}
     {% if dias|length > 10 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>{{ ver_mas(dias|length - 10, 'día', 'días', 'los') }}</button>{% endif %}
-    {% if mas_adelante %}<div class="text-muted" style="font-size:0.85em; margin-top:10px;">Y <b>{{ mas_adelante|plata }}</b> más con fechas posteriores a los próximos {{ dias_vista }} días.</div>{% endif %}
+    {% if mas_adelante %}<div class="text-muted" style="font-size:var(--text-sm); margin-top:10px;">Y <b>{{ mas_adelante|plata }}</b> más con fechas posteriores a los próximos {{ dias_vista }} días.</div>{% endif %}
 </div>
 {% endif %}
 
@@ -61,12 +61,12 @@
 {% if retenidos %}
 <div class="ux-seccion ux-warn">Retenido por reclamos abiertos</div>
 <div class="panel">
-    <div class="text-muted" style="font-size:0.85em; margin-bottom:8px; line-height:1.5;">Es el pago de la venta, que queda en mediación hasta que el reclamo se cierra. Si se resuelve a favor del comprador se le devuelve; si no, se te acredita.</div>
+    <div class="text-muted" style="font-size:var(--text-sm); margin-bottom:8px; line-height:1.5;">Es el pago de la venta, que queda en mediación hasta que el reclamo se cierra. Si se resuelve a favor del comprador se le devuelve; si no, se te acredita.</div>
     {% for r in retenidos %}
     <div class="ux-rank-fila ux-{{ 'info' if r.sin_impacto else 'warn' }}">
         <div class="ux-rank-info">
             <div class="ux-rank-titulo"><a href="{{ r.link }}" target="_blank" rel="noopener" style="color:var(--text-primary); text-decoration:none;">Orden #{{ r.id_orden }} ↗</a></div>
-            <div class="text-muted" style="font-size:0.8em;">{{ r.motivo or 'Sin motivo informado' }}{% if r.fecha %} · desde el {{ r.fecha|fecha }}{% endif %}{% if r.sin_impacto %} · <b>no afecta tu reputación</b>{% endif %}</div>
+            <div class="text-muted" style="font-size:var(--text-2xs);">{{ r.motivo or 'Sin motivo informado' }}{% if r.fecha %} · desde el {{ r.fecha|fecha }}{% endif %}{% if r.sin_impacto %} · <b>no afecta tu reputación</b>{% endif %}</div>
         </div>
         <div class="ux-rank-valor"><b>{{ r.monto|plata }}</b></div>
     </div>

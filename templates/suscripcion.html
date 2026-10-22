@@ -54,12 +54,12 @@
         {{ kpi("Renovación", "Automática", "ok", "refresh", "cada mes, vía Mercado Pago") }}
         {% if email %}{{ kpi("Email en Mercado Pago", email, "neutral", "file-text", "") }}{% endif %}
     </div>
-    {% if plan == 'elite' %}<div class="text-muted" style="font-size:0.85em; margin-bottom:12px;">Para bajar al Plan Base: cancelá esta suscripción y suscribite al nuevo plan cuando quieras.</div>{% endif %}
+    {% if plan == 'elite' %}<div class="text-muted" style="font-size:var(--text-sm); margin-bottom:12px;">Para bajar al Plan Base: cancelá esta suscripción y suscribite al nuevo plan cuando quieras.</div>{% endif %}
     <button type="button" class="btn btn-danger" id="btn-cancelar" data-click="confirmarCancelacion">Cancelar suscripción</button>
 </div>
 {% endif %}
 
-<div class="text-muted" style="font-size:0.82em; line-height:1.6; max-width:760px;">
+<div class="text-muted" style="font-size:var(--text-xs); line-height:1.6; max-width:760px;">
     Los cobros los procesa Mercado Pago: CoreLux no guarda los datos de tu tarjeta. Si tenés un problema con un cobro, contactá a Mercado Pago o escribinos a soporte.
 </div>
 

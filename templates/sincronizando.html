@@ -70,25 +70,25 @@
             color: #06201a;
         }
         .step-cuerpo { flex: 1; min-width: 0; }
-        .step-nombre { font-size: 0.88em; font-weight: 600; }
-        .step-detalle { font-size: 0.82em; color: var(--text-secondary); margin-top: 1px; }
-        .step-conteo { font-size: 0.82em; font-weight: 700; color: var(--accent-primary); white-space: nowrap; }
+        .step-nombre { font-size: var(--text-sm); font-weight: 600; }
+        .step-detalle { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 1px; }
+        .step-conteo { font-size: var(--text-xs); font-weight: 700; color: var(--accent-primary); white-space: nowrap; }
         .sync-step.hecho .step-conteo { color: var(--success); }
 
         /* Tip rotativo */
         .sync-tip {
             padding: 14px 18px; border-radius: var(--radius-md);
             background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
-            font-size: 0.83em; color: var(--text-secondary); text-align: left; line-height: 1.5;
+            font-size: var(--text-xs); color: var(--text-secondary); text-align: left; line-height: 1.5;
         }
         .sync-tip strong { color: var(--accent-primary); }
-        .sync-tip-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); margin-bottom: 4px; font-weight: 600; }
+        .sync-tip-label { font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); margin-bottom: 4px; font-weight: 600; }
 
-        .sync-nota { text-align: center; color: var(--text-secondary); font-size: 0.8em; margin-top: 20px; }
+        .sync-nota { text-align: center; color: var(--text-secondary); font-size: var(--text-2xs); margin-top: 20px; }
         .sync-problema { margin-top: 20px; padding: 16px 18px; border-radius: var(--radius-md); text-align: left; background: var(--semantic-warning-bg); border: 1px solid color-mix(in srgb, var(--semantic-warning) 45%, transparent); }
         .sync-problema[hidden] { display: none; }
         .sync-problema-titulo { font-weight: 800; margin-bottom: 4px; }
-        .sync-problema-texto { color: var(--text-secondary); font-size: 0.86em; line-height: 1.5; }
+        .sync-problema-texto { color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.5; }
         .sync-problema-botones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
     </style>
 </head>

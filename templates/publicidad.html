@@ -130,7 +130,7 @@
     {% if pct_origen_pagado is not none %}
     <div class="panel">
         <div class="panel-title">Origen de tus ventas</div>
-        <div class="text-muted" style="font-size:0.85em; margin-bottom:12px;">De toda tu facturación, cuánto vino de un clic pago y cuánto fue orgánico.</div>
+        <div class="text-muted" style="font-size:var(--text-sm); margin-bottom:12px;">De toda tu facturación, cuánto vino de un clic pago y cuánto fue orgánico.</div>
         <div class="ux-donut-fila">
             <div class="ux-donut-caja"><canvas id="chartOrigen" role="img" aria-label="Ventas con publicidad {{ pct_origen_pagado }}% y orgánicas {{ pct_origen_organico }}%"></canvas><div class="ux-donut-centro"><b>{{ pct_origen_pagado|string|replace('.', ',') }}%</b><span>con Ads</span></div></div>
             <div class="ux-donut-leyenda">
@@ -143,7 +143,7 @@
     {% if pct_venta_directa is not none %}
     <div class="panel">
         <div class="panel-title">Venta directa e indirecta</div>
-        <div class="text-muted" style="font-size:0.85em; margin-bottom:12px;">De lo que vendió la pauta: cuánto fue del producto anunciado y cuánto de otro de tu catálogo al que llegaron por el anuncio.</div>
+        <div class="text-muted" style="font-size:var(--text-sm); margin-bottom:12px;">De lo que vendió la pauta: cuánto fue del producto anunciado y cuánto de otro de tu catálogo al que llegaron por el anuncio.</div>
         <div class="ux-split"><div class="ux-split-a" style="width:{{ pct_venta_directa }}%;">Directa {{ pct_venta_directa|round|int }}%</div><div class="ux-split-b" style="width:{{ pct_venta_indirecta }}%;">Indirecta {{ pct_venta_indirecta|round|int }}%</div></div>
         <table class="data-table" style="margin-top:12px;"><tbody>
             <tr><td><i class="ux-dot ux-dot-accion"></i>Directa <span class="text-muted">(lo anunciado)</span></td><td class="num"><b>${{ venta_directa_formateada }}</b></td></tr>
@@ -167,7 +167,7 @@
 
 <!-- ── 7. QUÉ PUBLICACIONES RINDEN ────────────────────────────────────── -->
 {% if items_ads %}
-<div class="ux-seccion ux-ok" id="ranking-ads">Qué publicaciones rinden <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ items_ads|length }} en Ads</span>
+<div class="ux-seccion ux-ok" id="ranking-ads">Qué publicaciones rinden <span class="text-muted" style="font-weight:600; font-size:var(--text-2xs);">{{ items_ads|length }} en Ads</span>
     {% if items_sin_ventas_n %}<span class="ux-pill ux-warn">{{ items_sin_ventas_n }} sin ventas</span>{% endif %}</div>
 <div class="panel" data-mostrar-mas-scope>
     <div class="ux-rank-leyenda text-muted">La barra muestra cuánto invertiste. El color dice si rindió: <span class="ux-dot ux-dot-ok"></span>muy bien · <span class="ux-dot ux-dot-warn"></span>justo · <span class="ux-dot ux-dot-mal"></span>pierde o no vendió</div>
@@ -184,7 +184,7 @@
             <div><span class="text-muted">Invertiste</span> <b>${{ i.costo_formateado.split(',')[0] }}</b></div>
             <div><span class="text-muted">Generó</span> <b>${{ i.ventas_formateado.split(',')[0] }}</b></div>
         </div>
-        <div class="ux-rank-roas">{% if i.sin_ventas %}<span class="ux-pill ux-danger">Sin ventas</span>{% else %}<span class="ux-pill ux-{{ 'ok' if estado == 'ok' else ('warn' if estado == 'warn' else 'danger') }}">ROAS {{ i.roas|string|replace('.', ',') }}x</span><div class="text-muted" style="font-size:0.8em; text-align:right;">{{ i.unidades }} u.</div>{% endif %}</div>
+        <div class="ux-rank-roas">{% if i.sin_ventas %}<span class="ux-pill ux-danger">Sin ventas</span>{% else %}<span class="ux-pill ux-{{ 'ok' if estado == 'ok' else ('warn' if estado == 'warn' else 'danger') }}">ROAS {{ i.roas|string|replace('.', ',') }}x</span><div class="text-muted" style="font-size:var(--text-2xs); text-align:right;">{{ i.unidades }} u.</div>{% endif %}</div>
     </div>
     {% endfor %}
     {% if items_ads|length > 8 %}<button type="button" class="btn btn-secondary btn-block" style="margin-top:14px;" data-click="mostrarMasGenerico" data-click-args='["$el"]'>Ver las {{ items_ads|length - 8 }} restantes</button>{% endif %}
@@ -192,7 +192,7 @@
 {% endif %}
 
 <!-- ── 8. CAMPAÑAS ────────────────────────────────────────────────────── -->
-<div class="ux-seccion ux-info">Campañas <span class="text-muted" style="font-weight:600; font-size:0.8em;">{{ campanas|length }}</span></div>
+<div class="ux-seccion ux-info">Campañas <span class="text-muted" style="font-weight:600; font-size:var(--text-2xs);">{{ campanas|length }}</span></div>
 {% if not campanas %}
 <div class="panel">{{ vacio("No hay campañas con datos en este período", "Probá con un rango más amplio.", "calendar", "info") }}</div>
 {% else %}
@@ -209,7 +209,7 @@
         <div class="ux-camp-presu">
             {# Gastar todo el presupuesto diario solo es una mala noticia si la campaña no rinde (ROAS bajo); con buen retorno es una campaña que podría vender más si tuviera más presupuesto #}
             <div class="ux-barra {{ 'ux-danger' if ((c.pct_presupuesto or 0) >= 90 and c.roas_bajo) else ('ux-warn' if (c.pct_presupuesto or 0) >= 90 or ((c.pct_presupuesto or 0) >= 70 and c.roas_bajo) else 'ux-ok') }}"><span style="width:{{ [c.pct_presupuesto or 0, 100]|min }}%;"></span></div>
-            <div class="text-muted" style="font-size:0.82em; margin-top:4px;">Presupuesto diario: <b>${{ c.presupuesto_formateado.split(',')[0] }}</b> · usás en promedio el {{ (c.pct_presupuesto or 0)|round|int }}% por día</div>
+            <div class="text-muted" style="font-size:var(--text-xs); margin-top:4px;">Presupuesto diario: <b>${{ c.presupuesto_formateado.split(',')[0] }}</b> · usás en promedio el {{ (c.pct_presupuesto or 0)|round|int }}% por día</div>
         </div>
         {% endif %}
         <div class="ux-camp-stats">

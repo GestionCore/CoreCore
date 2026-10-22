@@ -75,17 +75,17 @@
                 <span class="ux-pill {{ 'ux-info' if p.tipo_envio == 'Flex' else 'ux-neutral ux-pill-suave' }}">{{ p.tipo_envio }}</span>
                 {% if p.limite_texto and not p.despachado %}<span class="ux-pill ux-{{ p.limite_tono }}" title="Hasta cuándo hay que entregar el paquete, según Mercado Libre">Despachá antes: {{ p.limite_texto }}</span>{% endif %}
                 {% if p.etiqueta_impresa and not p.despachado %}<span class="ux-pill ux-warn ux-pill-suave" title="La etiqueta ya se imprimió en MeLi">Etiqueta ya impresa</span>{% endif %}
-                <a href="https://www.mercadolibre.com.ar/ventas/{{ p.id_orden }}/detalle" target="_blank" rel="noopener" class="text-muted" style="font-size:0.82em; text-decoration:none;" data-aislar>Orden #{{ p.id_orden }} ↗</a>
+                <a href="https://www.mercadolibre.com.ar/ventas/{{ p.id_orden }}/detalle" target="_blank" rel="noopener" class="text-muted" style="font-size:var(--text-xs); text-decoration:none;" data-aislar>Orden #{{ p.id_orden }} ↗</a>
             </div>
             {% if p.tipo_envio == 'Flex' %}
             {# Lo que te cobra tu logística: el umbral sale solo de la zona de Mercado Libre; acá se puede corregir. Se suma al costo de envío de la venta #}
             <div class="ux-zonas no-imprimir" style="margin-top:8px;" data-aislar data-zonas-orden="{{ p.id_orden }}">
-                <span class="text-muted" style="font-size:0.82em;"><b>Entrega{% if p.flex_zona_meli and p.flex_zona_meli != '*manual' %} · zona {{ p.flex_zona_meli|title }}{% endif %}:</b></span>
+                <span class="text-muted" style="font-size:var(--text-xs);"><b>Entrega{% if p.flex_zona_meli and p.flex_zona_meli != '*manual' %} · zona {{ p.flex_zona_meli|title }}{% endif %}:</b></span>
                 {% for u in umbrales_flex %}
                 <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == u.id }}" data-zona="{{ u.id }}" {% if u.precio is none %}disabled title="Cargá primero el precio de este umbral en Costos"{% endif %} data-click="elegirZonaFlex" data-click-args='{{ [p.id_orden|string, u.id]|tojson }}'>{{ u.etiqueta }}{% if u.neto is not none %} · {{ u.neto|plata }}{% endif %}</button>
                 {% endfor %}
                 <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == 0 }}" data-zona="0" title="Sin costo de entrega (por ejemplo, entregás vos)" data-click="elegirZonaFlex" data-click-args='{{ [p.id_orden|string, 0]|tojson }}'>Sin costo</button>
-                {% if umbrales_flex|selectattr('precio', 'none')|list|length == umbrales_flex|length %}<a href="/costos#entrega-flex" style="font-size:0.8em; font-weight:700; color:var(--semantic-warning);">Cargá lo que te cobra tu logística →</a>{% endif %}
+                {% if umbrales_flex|selectattr('precio', 'none')|list|length == umbrales_flex|length %}<a href="/costos#entrega-flex" style="font-size:var(--text-2xs); font-weight:700; color:var(--semantic-warning);">Cargá lo que te cobra tu logística →</a>{% endif %}
             </div>
             {% endif %}
         </div>

@@ -26,14 +26,14 @@
         .estado-subtitulo { color: var(--text-secondary); font-size: 0.9em; line-height: 1.65; margin-bottom: 24px; }
         .coa-pasos { list-style: none; margin: 0 0 26px; padding: 0; counter-reset: paso; }
         .coa-pasos li {
-            display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); font-size: 0.88em; color: var(--text-secondary);
+            display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); font-size: var(--text-sm); color: var(--text-secondary);
         }
         .coa-pasos li:last-child { border-bottom: none; }
         .coa-pasos li::before {
             counter-increment: paso; content: counter(paso);
             flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
             background: var(--glass-bg-alt); border: 1px solid var(--glass-border); color: var(--text-primary);
-            display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; font-size: var(--text-2xs); font-weight: 700;
         }
         .coa-pasos li strong { color: var(--text-primary); }
         .coa-acciones { display: flex; flex-direction: column; gap: 10px; }
@@ -43,7 +43,7 @@
         }
         .coa-link-box input {
             flex: 1; background: none; border: none; color: var(--text-secondary); font-family: var(--font-data);
-            font-size: 0.82em; padding: 8px 0; min-width: 0;
+            font-size: var(--text-xs); padding: 8px 0; min-width: 0;
         }
         .coa-link-box input:focus { outline: none; }
     </style>
@@ -65,7 +65,7 @@
         </ul>
         <div class="coa-link-box">
             <input type="text" readonly value="{{ url_autorizacion }}" id="coa-link" data-click="seleccionarTodo" data-click-args='["$el"]'>
-            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:0.85em; flex-shrink:0;" data-click="coaCopiarLink" id="coa-btn-copiar">Copiar</button>
+            <button type="button" class="btn btn-secondary" style="padding:8px 12px; font-size:var(--text-sm); flex-shrink:0;" data-click="coaCopiarLink" id="coa-btn-copiar">Copiar</button>
         </div>
         <div class="coa-acciones">
             <a href="{{ url_autorizacion }}" class="btn btn-denim btn-block">Continuar acá mismo (si ya cerraste sesión de MeLi)</a>

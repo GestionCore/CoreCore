@@ -14,11 +14,11 @@
 .pb-btn-primario:hover { filter: brightness(1.08); }
 .pb-btn-sec { background: transparent; color: var(--text-primary); border-color: var(--border-strong, var(--glass-border)); }
 .pb-btn-sec:hover { border-color: var(--accent-primary); }
-.pb-btn-chico { padding: 8px 14px; font-size: 0.86em; }
+.pb-btn-chico { padding: 8px 14px; font-size: var(--text-sm); }
 
 .pb-main { flex: 1 0 auto; padding-bottom: 48px; }
 .pb-footer { border-top: 1px solid var(--border-soft); }
-.pb-footer-inner { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; padding: 24px; color: var(--text-faint); font-size: 0.84em; }
+.pb-footer-inner { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; padding: 24px; color: var(--text-faint); font-size: var(--text-sm); }
 .pb-footer a { color: var(--text-secondary); text-decoration: none; }
 .pb-footer a:hover { color: var(--text-primary); }
 
@@ -29,7 +29,7 @@
 
 /* Entrada a la beta */
 .bt-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 48px; padding-top: 56px; align-items: start; }
-.bt-etq { font-size: 0.8em; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-primary); margin-bottom: 12px; }
+.bt-etq { font-size: var(--text-2xs); font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-texto); margin-bottom: 12px; }
 .bt-titulo { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.9em, 4vw, 2.7em); line-height: 1.1; letter-spacing: -0.025em; margin: 0 0 18px; text-wrap: balance; }
 .bt-bajada { color: var(--text-secondary); font-size: 1.08em; line-height: 1.6; margin: 0 0 24px; max-width: 34em; }
 .bt-bajada strong { color: var(--text-primary); }
@@ -45,13 +45,13 @@
 .bt-lado { display: grid; gap: 20px; }
 .bt-tarjeta { border: 1px solid var(--border-soft); border-radius: 14px; padding: 22px; background: var(--bg-card, var(--glass-bg)); }
 .bt-form { display: grid; gap: 8px; margin-bottom: 12px; }
-.bt-etiqueta { font-size: 0.85em; font-weight: 600; color: var(--text-secondary); }
+.bt-etiqueta { font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); }
 .bt-opcional { font-weight: 400; color: var(--text-faint); }
 .bt-campo { width: 100%; box-sizing: border-box; padding: 11px 12px; border-radius: 8px; border: 1px solid var(--campo-borde); background: var(--bg-base); color: var(--text-primary); font-family: var(--font-ui); font-size: 1em; }
 .bt-campo:focus { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
 .bt-codigo { font-family: var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; }
 .bt-boton { margin-top: 6px; width: 100%; }
-.bt-chico { color: var(--text-faint); font-size: 0.84em; line-height: 1.55; margin: 0; }
+.bt-chico { color: var(--text-faint); font-size: var(--text-sm); line-height: 1.55; margin: 0; }
 .bt-chico a { color: var(--text-secondary); }
 .bt-mensaje { border-radius: 8px; padding: 10px 12px; font-size: 0.9em; line-height: 1.5; margin-bottom: 12px; }
 .bt-mensaje-info { background: var(--semantic-warning-bg); border: 1px solid var(--semantic-warning); color: var(--semantic-warning); }
@@ -67,11 +67,11 @@
 .lg-doc { padding-top: 40px; max-width: 800px; }
 .lg-articulo { border: 1px solid var(--border-soft); border-radius: 14px; padding: 32px 30px; background: var(--bg-card, var(--glass-bg)); }
 .lg-titulo { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.6em, 3.4vw, 2.1em); letter-spacing: -0.02em; margin: 0 0 6px; }
-.lg-fecha { color: var(--text-faint); font-size: 0.85em; margin-bottom: 20px; }
+.lg-fecha { color: var(--text-faint); font-size: var(--text-sm); margin-bottom: 20px; }
 .lg-articulo h2 { font-size: 1.05em; margin: 28px 0 8px; font-family: var(--font-ui); }
 .lg-articulo p, .lg-articulo li { color: var(--text-secondary); line-height: 1.65; }
 .lg-articulo p { margin: 0 0 12px; }
 .lg-articulo ul { padding-left: 20px; margin: 0 0 12px; }
-.lg-articulo a { color: var(--accent-primary); }
+.lg-articulo a { color: var(--accent-texto); }
 .lg-articulo b { color: var(--text-primary); }
 @media (max-width: 560px) { .lg-articulo { padding: 22px 18px; } }

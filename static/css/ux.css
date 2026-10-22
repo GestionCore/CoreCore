@@ -34,7 +34,7 @@
 .ux-banner-cuerpo { flex: 1; min-width: 0; }
 .ux-banner-titulo { font-weight: 800; font-size: 1.08em; color: var(--text-primary); line-height: 1.3; }
 .ux-banner-titulo b, .ux-banner-titulo strong { color: var(--ux-c); font-weight: 800; }
-.ux-banner-detalle { font-size: 0.86em; color: var(--text-secondary); margin-top: 3px; }
+.ux-banner-detalle { font-size: var(--text-sm); color: var(--text-secondary); margin-top: 3px; }
 .ux-banner .btn { flex-shrink: 0; }
 
 /* ---------- Hero: el número que importa, teñido por estado ---------- */
@@ -53,7 +53,7 @@
 }
 .ux-hero-frase { font-size: 1.02em; color: var(--text-primary); margin-top: 6px; line-height: 1.45; }
 .ux-hero-frase b, .ux-hero-frase strong { font-weight: 800; color: var(--ux-c); }
-.ux-hero-nota { font-size: 0.8em; color: var(--text-secondary); margin-top: 4px; }
+.ux-hero-nota { font-size: var(--text-2xs); color: var(--text-secondary); margin-top: 4px; }
 html.modo-privacidad .ux-hero-numero, html.modo-privacidad .ux-kpi-valor { filter: blur(8px); transition: filter 0.2s; }
 html.modo-privacidad .ux-hero-numero:hover, html.modo-privacidad .ux-kpi-valor:hover { filter: none; }
 /* Todo elemento que static/js/privacidad.js encontró con un monto en pesos (la lista de arriba era fija y dejaba a la vista la mayoría) */
@@ -77,9 +77,10 @@ html.modo-privacidad .ux-rank-valor:hover, html.modo-privacidad .ux-dist-val:hov
 /* ---------- Pastillas de estado SÓLIDAS (no solo contorno) ---------- */
 .ux-pill {
     display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: var(--radius-pill);
-    font-size: 0.82em; font-weight: 800; background: var(--ux-c); color: var(--texto-sobre-color, #0a0a0c); white-space: nowrap;
+    font-size: var(--text-xs); font-weight: 800; background: var(--ux-c); color: var(--texto-sobre-color, #0a0a0c); white-space: nowrap;
 }
 .ux-pill.ux-accion, .ux-pill.ux-neutral { color: #fff; }
+.ux-pill.ux-neutral:not(.ux-pill-suave) { background: var(--neutral-solid); }      /* D18: blanco sobre el gris de texto daba 2,56:1 */
 .ux-pill-suave { background: color-mix(in srgb, var(--ux-c) 18%, transparent); color: var(--ux-c); }
 
 /* ---------- KPI con estado: número grande coloreado ---------- */
@@ -88,22 +89,46 @@ html.modo-privacidad .ux-rank-valor:hover, html.modo-privacidad .ux-dist-val:hov
 .ux-kpis:has(> :nth-child(5)) { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .ux-kpis:has(> :nth-child(6)) { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .ux-kpis:has(> :nth-child(7)) { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+/* D29: sin tarjeta huérfana. En escritorio la CANTIDAD de tarjetas decide las columnas (con auto-fit quedaba «3 + 1» entre 1024 y 1280 px); en celular van de a dos (movil.css).
+   3 → 3 · 4 → 2×2 y desde 1000 px 4 · 5 → 3 arriba y 2 abajo repartidas a todo el ancho, y desde 1180 px 5 · 6 → 3×2 y desde 1280 px 6. */
+@media (min-width: 721px) {
+    .ux-kpis:has(> :nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ux-kpis:has(> :nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ux-kpis:has(> :nth-child(5):last-child) { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .ux-kpis:has(> :nth-child(5):last-child) > :nth-child(-n+3) { grid-column: span 2; }
+    .ux-kpis:has(> :nth-child(5):last-child) > :nth-child(n+4) { grid-column: span 3; }
+    .ux-kpis:has(> :nth-child(6):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1000px) {
+    .ux-kpis:has(> :nth-child(4):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1180px) {
+    .ux-kpis:has(> :nth-child(5):last-child) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .ux-kpis:has(> :nth-child(5):last-child) > :nth-child(n) { grid-column: auto; }
+}
+@media (min-width: 1280px) {
+    .ux-kpis:has(> :nth-child(6):last-child) { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
 .ux-kpi {
     container-type: inline-size;      /* el número se ajusta al ancho de SU tarjeta (ver .ux-kpi-valor) */
     position: relative; padding: 18px 20px 16px; border-radius: var(--radius-md); background: var(--glass-bg);
     border: 1px solid var(--glass-border); border-top: 4px solid var(--ux-c); box-shadow: var(--shadow-card);
     transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
+/* D30 + D92: el color de una tarjeta de números significa ESTADO (verde = bien, naranja = atención, rojo = urgente). Una tarjeta que solo informa va neutra: antes el
+   violeta, el dorado y el celeste de «tono decorativo» hacían buscar un significado que no había. */
+.ux-kpi:not(.ux-ok):not(.ux-warn):not(.ux-danger) { --ux-c: var(--text-secondary); border-top-color: var(--glass-border); }
+.ux-kpi:not(.ux-ok):not(.ux-warn):not(.ux-danger) .ux-kpi-valor { color: var(--text-primary); }
 a.ux-kpi { display: block; color: inherit; text-decoration: none; }
 a.ux-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated), 0 0 28px -10px color-mix(in srgb, var(--ux-c) 55%, transparent); }
 .ux-kpi-etiqueta { display: flex; align-items: center; gap: 8px; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; color: var(--text-secondary); }
 .ux-kpi-etiqueta .icon { width: 15px; height: 15px; color: var(--ux-c); }
 .ux-kpi-valor { font-family: var(--font-data); font-weight: 800; font-size: clamp(1rem, 16cqw, 1.9em); line-height: 1.15; margin: 8px 0 4px; color: var(--ux-c); font-variant-numeric: tabular-nums; letter-spacing: -0.025em; white-space: nowrap; }      /* un monto NUNCA se parte en dos líneas («$1.040.7 / 35»): se achica con el ancho de la tarjeta */
-.ux-kpi-sub { font-size: 0.8em; color: var(--text-secondary); min-height: 1.2em; }
+.ux-kpi-sub { font-size: var(--text-2xs); color: var(--text-secondary); min-height: 1.2em; }
 .ux-kpi-sub b, .ux-kpi-sub strong { color: var(--text-primary); }
 
 /* Sello del hero de Ganancia Real: lo que más confianza da (el cálculo coincide con lo que Mercado Libre depositó) va arriba, junto al número */
-.ux-hero-sello { display: inline-flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 5px 14px 5px 10px; border-radius: var(--radius-pill); text-decoration: none; font-size: 0.85em;
+.ux-hero-sello { display: inline-flex; align-items: center; gap: 8px; margin: 12px 0 2px; padding: 5px 14px 5px 10px; border-radius: var(--radius-pill); text-decoration: none; font-size: var(--text-sm);
     color: var(--text-primary); background: color-mix(in srgb, var(--ux-c) 16%, transparent); border: 1px solid color-mix(in srgb, var(--ux-c) 40%, transparent); }
 .ux-hero-sello .icon { width: 16px; height: 16px; color: var(--ux-c); flex-shrink: 0; }
 .ux-hero-sello b { color: var(--ux-c); }
@@ -111,7 +136,7 @@ a.ux-hero-sello:hover { background: color-mix(in srgb, var(--ux-c) 24%, transpar
 
 /* «Día a día»: el resumen de hoy (cada número lleva a su parte) y los títulos de las partes, un escalón por debajo del de la página */
 .dia-resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.dia-resumen-item { display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px 6px 10px; border-radius: var(--radius-pill); text-decoration: none; font-size: 0.88em; font-weight: 600; color: var(--text-primary);
+.dia-resumen-item { display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px 6px 10px; border-radius: var(--radius-pill); text-decoration: none; font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);
     background: color-mix(in srgb, var(--ux-c) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ux-c) 36%, transparent); }
 .dia-resumen-item .icon { width: 15px; height: 15px; color: var(--ux-c); flex-shrink: 0; }
 .dia-resumen-item b { color: var(--ux-c); font-size: 1.05em; }
@@ -120,7 +145,7 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
 
 /* ---------- Lo que tenés que hacer: cola de acciones ---------- */
 .ux-acciones-titulo { display: flex; align-items: center; gap: 10px; font-size: 1.12em; font-weight: 800; margin: 4px 0 12px; }
-.ux-acciones-titulo .ux-contador { background: var(--accent-solid); color: #fff; border-radius: var(--radius-pill); font-size: 0.8em; padding: 2px 10px; font-weight: 800; }
+.ux-acciones-titulo .ux-contador { background: var(--accent-solid); color: #fff; border-radius: var(--radius-pill); font-size: var(--text-2xs); padding: 2px 10px; font-weight: 800; }
 .ux-lista-acciones { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
 .ux-item-accion {
     display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: var(--radius-md);
@@ -131,7 +156,7 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
 .ux-item-accion-icono .icon { width: 19px; height: 19px; }
 .ux-item-accion-cuerpo { flex: 1; min-width: 0; }
 .ux-item-accion-titulo { font-weight: 800; font-size: 0.98em; line-height: 1.3; }
-.ux-item-accion-detalle { font-size: 0.82em; color: var(--text-secondary); margin-top: 2px; }
+.ux-item-accion-detalle { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 2px; }
 .ux-item-accion .btn { flex-shrink: 0; }
 .ux-item-accion.ux-danger { animation: uxLatido 2.6s ease-in-out infinite; }
 @keyframes uxLatido { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 16%, transparent); } }
@@ -141,7 +166,7 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
 
 
 /* ---------- Ventas de hoy: la cuenta de tres etapas y el acordeón por modelo → variante ---------- */
-.vh-cifras-bloque { margin-top: 6px; font-size: 0.82em; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.vh-cifras-bloque { margin-top: 6px; font-size: var(--text-xs); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .vh-cifras-bloque b { color: var(--text-primary); }
 .vh-con-canceladas .pl-tile-valor { color: var(--danger); }
 .vh-cuenta { cursor: help; }
@@ -157,7 +182,7 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
 .vh-nombre { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vh-cifras { color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 0.9em; }
 .vh-cifras b { color: var(--text-primary); }
-.vh-canc { color: var(--danger); font-weight: 700; font-size: 0.85em; white-space: nowrap; }
+.vh-canc { color: var(--danger); font-weight: 700; font-size: var(--text-sm); white-space: nowrap; }
 .vh-variantes { border-top: 1px solid var(--border-soft); }
 .vh-fila { display: grid; grid-template-columns: minmax(0, 1fr) 7.5em 6.5em 6em; gap: 12px; align-items: baseline; padding: 8px 16px; font-size: 0.9em; font-variant-numeric: tabular-nums; }
 .vh-fila + .vh-fila { border-top: 1px solid var(--border-soft); }
@@ -167,7 +192,7 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
     /* tres columnas no alcanzan para «10 órdenes · 9 compradores · 10 unidades»: en celular las tres etapas van una debajo de otra, cada una con su resumen */
     .pl-waterfall.ux-cascada.vh-cuenta { grid-template-columns: minmax(0, 1fr); }
     .vh-cuenta .pl-tile { padding: 12px 14px; }
-    .vh-cuenta .pl-tile .stat-chip-label { font-size: 0.82em; }
+    .vh-cuenta .pl-tile .stat-chip-label { font-size: var(--text-xs); }
     .vh-cuenta .pl-tile-valor { font-size: 1.3em; }
 }
 @media (max-width: 640px) {
@@ -206,7 +231,7 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
 .ux-detalle > summary::after { content: "▾"; margin-left: auto; color: var(--text-secondary); transition: transform var(--transition-base); }
 .ux-detalle[open] > summary::after { transform: rotate(180deg); }
 .ux-detalle > summary:hover { background: rgba(255,255,255,0.03); }
-.ux-detalle > summary .ux-detalle-nota { font-weight: 500; font-size: 0.8em; color: var(--text-secondary); }
+.ux-detalle > summary .ux-detalle-nota { font-weight: 500; font-size: var(--text-2xs); color: var(--text-secondary); }
 .ux-detalle-cuerpo { padding: 4px 22px 22px; overflow-x: auto; }
 /* "Más análisis" del Dashboard: paneles planos separados por una línea (una caja dentro de otra pesaba de más) */
 #panel-mas-analisis > .ux-detalle-cuerpo > .panel { background: transparent; border: 0; box-shadow: none; padding: 16px 0 6px; margin-bottom: 0; animation: none; }
@@ -217,7 +242,7 @@ a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, trans
 .ux-vacio-icono { width: 54px; height: 54px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--ux-c, var(--accent-primary)) 20%, transparent); color: var(--ux-c, var(--accent-primary)); }
 .ux-vacio-icono .icon { width: 26px; height: 26px; }
 .ux-vacio-titulo { font-weight: 800; font-size: 1.05em; }
-.ux-vacio-texto { color: var(--text-secondary); font-size: 0.88em; margin: 4px 0 16px; }
+.ux-vacio-texto { color: var(--text-secondary); font-size: var(--text-sm); margin: 4px 0 16px; }
 
 /* ---------- Barra de progreso coloreada por estado ---------- */
 .ux-barra { height: 9px; border-radius: 99px; background: rgba(255,255,255,0.07); overflow: hidden; }
@@ -245,7 +270,7 @@ tr.ux-fila-ok td:first-child { box-shadow: inset 4px 0 0 var(--success); }
     .pl-waterfall.ux-cascada { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: stretch; }
     .pl-waterfall.ux-cascada .pl-operador { display: none; }
     .pl-waterfall.ux-cascada .pl-tile { min-width: 0; padding: 12px 10px; }
-    .pl-waterfall.ux-cascada .pl-tile .stat-chip-label { font-size: 0.78em; letter-spacing: 0.02em; }
+    .pl-waterfall.ux-cascada .pl-tile .stat-chip-label { font-size: var(--text-2xs); letter-spacing: 0.02em; }
     .pl-waterfall.ux-cascada .pl-tile-valor { font-size: 1.02em; }
     .pl-detalle-label { width: 96px; }
     .pl-detalle-valor { width: 104px; }
@@ -254,7 +279,7 @@ tr.ux-fila-ok td:first-child { box-shadow: inset 4px 0 0 var(--success); }
 /* ---------- Selector de período (primero en las pantallas con rango de fechas) ---------- */
 .ux-periodo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--glass-bg); border: 1px solid var(--glass-border); }
 .ux-periodo-botones { display: flex; gap: 6px; }
-.ux-periodo-botones .btn { padding: 8px 14px; font-size: 0.85em; }
+.ux-periodo-botones .btn { padding: 8px 14px; font-size: var(--text-sm); }
 .ux-periodo-botones .btn.active { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; box-shadow: 0 2px 14px -2px var(--accent-primary-glow); }
 .ux-periodo .rango-fechas-boton { min-width: 210px; }
 
@@ -262,11 +287,11 @@ tr.ux-fila-ok td:first-child { box-shadow: inset 4px 0 0 var(--success); }
 .ux-reparto { display: flex; height: 22px; border-radius: 99px; overflow: hidden; margin: 22px 0 14px; background: rgba(255,255,255,0.06); gap: 2px; }
 .ux-reparto > span { display: block; height: 100%; min-width: 3px; }
 .ux-reparto-leyenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 12px 16px; }
-.ux-reparto-item { display: grid; grid-template-columns: 12px 1fr; column-gap: 8px; align-items: center; font-size: 0.85em; }
+.ux-reparto-item { display: grid; grid-template-columns: 12px 1fr; column-gap: 8px; align-items: center; font-size: var(--text-sm); }
 .ux-reparto-item i { width: 12px; height: 12px; border-radius: 4px; grid-row: 1 / span 2; }
 .ux-reparto-item span { color: var(--text-secondary); font-weight: 600; }
 .ux-reparto-item b { font-family: var(--font-data); font-size: 1.05em; grid-column: 2; }
-.ux-reparto-item em { font-style: normal; font-size: 0.82em; color: var(--text-faint); grid-column: 2; margin-top: -2px; }
+.ux-reparto-item em { font-style: normal; font-size: var(--text-xs); color: var(--text-faint); grid-column: 2; margin-top: -2px; }
 .ux-reparto-ganancia b { color: var(--success); font-size: 1.15em; }
 
 @media print {
@@ -300,18 +325,18 @@ div.ux-lectura { display: block; }          /* la versión de una sola frase (no
 .ux-lectura[hidden] { display: none; }
 .ux-lectura li::before { content: "→"; color: var(--accent-texto); font-weight: 800; margin-right: 8px; }
 .mapa-calor { display: grid; grid-template-columns: 36px repeat(24, minmax(0, 1fr)); gap: 3px; align-items: center; }
-.mapa-calor-dia { font-size: 0.78em; font-weight: 700; color: var(--text-secondary); }
-.mapa-calor-hora { font-size: 0.72em; color: var(--text-faint); white-space: nowrap; padding-bottom: 2px; }
+.mapa-calor-dia { font-size: var(--text-2xs); font-weight: 700; color: var(--text-secondary); }
+.mapa-calor-hora { font-size: var(--text-2xs); color: var(--text-faint); white-space: nowrap; padding-bottom: 2px; }
 .mapa-calor-celda { display: block; height: 26px; border-radius: 4px; background: var(--border-soft); }
 .mapa-calor-celda.con-ventas { background: color-mix(in srgb, var(--accent-primary) calc(18% + var(--t) * 82%), transparent); }
 .mapa-calor-celda:hover { outline: 2px solid var(--text-primary); outline-offset: 1px; }
-.mapa-calor-leyenda { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; font-size: 0.78em; color: var(--text-secondary); }
+.mapa-calor-leyenda { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; font-size: var(--text-2xs); color: var(--text-secondary); }
 .mapa-calor-leyenda[hidden] { display: none; }
 .mapa-calor-escala { width: 90px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent-primary) 18%, transparent), var(--accent-primary)); }
 @media (max-width: 720px) { .mapa-calor { gap: 2px; grid-template-columns: 30px repeat(24, minmax(0, 1fr)); } .mapa-calor-celda { height: 22px; border-radius: 3px; } }
 
 /* ---------- La factura de Mercado Libre como tabla: cada grupo y, debajo, lo que lo compone ---------- */
-.tabla-factura tr.fila-detalle td { padding-top: 5px; padding-bottom: 5px; font-size: 0.85em; color: var(--text-secondary); }
+.tabla-factura tr.fila-detalle td { padding-top: 5px; padding-bottom: 5px; font-size: var(--text-sm); color: var(--text-secondary); }
 .tabla-factura tr.fila-detalle td:first-child { padding-left: 30px; }
 .tabla-factura tr:has(+ tr.fila-detalle) td { border-bottom-color: transparent; }
 .tabla-factura tr.fila-detalle td.text-success { color: var(--success); }
@@ -326,15 +351,15 @@ div.ux-lectura { display: block; }          /* la versión de una sola frase (no
 .th-orden:hover, .th-orden:focus-visible { color: var(--text-primary); }
 .th-orden:hover::after, .th-orden:focus-visible::after { opacity: 0.5; }
 th[aria-sort="ascending"] .th-orden, th[aria-sort="descending"] .th-orden { color: var(--accent-texto); }
-th[aria-sort="ascending"] .th-orden::after { content: "▲"; opacity: 1; font-size: 0.7em; }
-th[aria-sort="descending"] .th-orden::after { content: "▼"; opacity: 1; font-size: 0.7em; }
+th[aria-sort="ascending"] .th-orden::after { content: "▲"; opacity: 1; font-size: var(--text-2xs); }
+th[aria-sort="descending"] .th-orden::after { content: "▼"; opacity: 1; font-size: var(--text-2xs); }
 .th-orden:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; border-radius: 4px; }
 
 /* Selector "Ordenar por" (solo celular): ahí la tabla es una lista de tarjetas y no hay encabezados que tocar */
 .orden-movil { display: none; }
 @media (max-width: 720px) {
     .orden-movil { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--glass-border); }
-    .orden-movil label { font-size: 0.8em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); white-space: nowrap; }
+    .orden-movil label { font-size: var(--text-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); white-space: nowrap; }
     .orden-movil select { flex: 1; min-width: 0; }
 }
 
@@ -356,7 +381,7 @@ th[aria-sort="descending"] .th-orden::after { content: "▼"; opacity: 1; font-s
     .ux-tabla-cards thead { display: none; }
     .ux-tabla-cards tr { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; padding: 14px 16px; border-bottom: 1px solid var(--glass-border); }
     .ux-tabla-cards td { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 0; border: 0; text-align: left; min-width: 0; }
-    .ux-tabla-cards td[data-label]::before { content: attr(data-label); color: var(--text-secondary); font-size: 0.78em; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ux-tabla-cards td[data-label]::before { content: attr(data-label); color: var(--text-secondary); font-size: var(--text-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
     .ux-tabla-cards td.col-titulo, .ux-tabla-cards td:last-child { grid-column: 1 / -1; }
     .ux-tabla-cards td.col-titulo { padding-bottom: 10px; }
     .ux-tabla-cards td:last-child { padding-top: 10px; }
@@ -410,7 +435,7 @@ body.modo-despacho-limpio .despacho-check { width: 64px; height: 64px; min-width
 }
 .ux-pregunta-sale { opacity: 0; transform: translateX(24px); }
 .ux-pregunta-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-.ux-pregunta-item { font-size: 0.82em; color: var(--text-secondary); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ux-pregunta-item { font-size: var(--text-xs); color: var(--text-secondary); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-pregunta-texto { font-size: 1.12em; font-weight: 800; line-height: 1.4; margin-bottom: 4px; color: var(--text-primary); }
 .ux-pregunta textarea { width: 100%; box-sizing: border-box; resize: vertical; font-family: var(--font-ui); font-size: 0.95em; }
@@ -433,17 +458,17 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 }
 
 /* ---------- Mercado: búsquedas en alza y ficha de categoría ---------- */
-.mercado-cobertura { font-size: 0.84em; margin: -6px 0 18px; line-height: 1.5; }
+.mercado-cobertura { font-size: var(--text-xs); margin: -6px 0 18px; line-height: 1.5; }
 .mercado-lista { display: flex; flex-direction: column; }
 .mercado-fila { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
 .mercado-fila:last-child { border-bottom: 0; }
 .mercado-puesto { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ux-accion); text-align: center; }
 .mercado-texto { overflow-wrap: anywhere; }
-.mercado-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 0.82em; color: var(--text-secondary); margin-top: 2px; }
+.mercado-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--text-xs); color: var(--text-secondary); margin-top: 2px; }
 .mercado-selector { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-bottom: 16px; }
 .mercado-selector select { min-width: min(100%, 340px); }
 .mercado-ficha-titulo { margin: 4px 0 12px; font-size: 1.05em; }
-.mercado-ficha-titulo .text-muted { font-size: 0.82em; margin-left: 6px; }
+.mercado-ficha-titulo .text-muted { font-size: var(--text-xs); margin-left: 6px; }
 .mercado-subtitulo { font-weight: 800; margin: 6px 0 4px; }
 .mercado-logistica { margin-top: 4px; }
 @media (max-width: 720px) {
@@ -457,7 +482,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-copiar-costo { display: flex; flex-direction: column; gap: 4px; }
 .ux-copiar-costo input { width: 150px; }
 .ux-filas-costo { padding: 4px 20px 10px; }
-.ux-filas-det > summary { list-style: none; cursor: pointer; padding: 12px 20px; font-size: 0.86em; font-weight: 700; color: var(--accent-texto); display: flex; align-items: center; gap: 6px; }
+.ux-filas-det > summary { list-style: none; cursor: pointer; padding: 12px 20px; font-size: var(--text-sm); font-weight: 700; color: var(--accent-texto); display: flex; align-items: center; gap: 6px; }
 .ux-filas-det > summary::-webkit-details-marker { display: none; }
 .ux-filas-det > summary::after { content: "▾"; margin-left: auto; color: var(--text-secondary); transition: transform var(--transition-base); }
 .ux-filas-det[open] > summary::after { transform: rotate(180deg); }
@@ -470,7 +495,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-fila-costo-input { display: flex; align-items: center; gap: 6px; }
 .ux-fila-costo-input select, .ux-copiar-costo select { width: 74px; padding-left: 8px; padding-right: 4px; font-weight: 800; }
 .ux-variantes-ml { grid-column: 1 / -1; border-top: 1px dashed var(--border-soft); padding-top: 6px; }
-.ux-variantes-ml > summary { cursor: pointer; font-size: 0.85em; font-weight: 700; color: var(--text-secondary); padding: 4px 0; list-style: none; }
+.ux-variantes-ml > summary { cursor: pointer; font-size: var(--text-sm); font-weight: 700; color: var(--text-secondary); padding: 4px 0; list-style: none; }
 .ux-variantes-ml > summary::-webkit-details-marker { display: none; }
 .ux-variantes-ml > summary::before { content: "▸ "; }
 .ux-variantes-ml[open] > summary::before { content: "▾ "; }
@@ -480,7 +505,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-fila-costo-perdida { background: color-mix(in srgb, var(--danger) 7%, transparent); box-shadow: inset 4px 0 0 var(--danger); margin: 0 -20px; padding-left: 20px; padding-right: 20px; }
 .ux-modelo-nombre { flex: 1; min-width: 0; }
 .ux-modelo-titulo { font-weight: 800; overflow-wrap: anywhere; }
-.ux-modelo-meta { font-size: 0.8em; }
+.ux-modelo-meta { font-size: var(--text-2xs); }
 .ux-modelo-linea { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
 .ux-grupo-resumen { white-space: nowrap; }
 .ux-thumb-vacio { width: 42px; height: 42px; }
@@ -489,7 +514,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-variante-costo:last-child { border-bottom: 0; }
 .ux-variante-cabecera { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; padding: 12px 20px; }
 .ux-variante-nombre { flex: 1; min-width: 140px; overflow-wrap: anywhere; }
-.ux-filas-det-anidado > summary { padding-top: 6px; padding-bottom: 10px; font-size: 0.82em; font-weight: 600; color: var(--text-secondary); }
+.ux-filas-det-anidado > summary { padding-top: 6px; padding-bottom: 10px; font-size: var(--text-xs); font-weight: 600; color: var(--text-secondary); }
 .ux-filas-det-anidado[open] > summary { border-bottom: 0; }
 @media (max-width: 720px) {
     .ux-fila-costo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; }
@@ -526,12 +551,12 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-input-grande { font-size: 1.5em !important; font-weight: 800; padding: 14px 16px !important; }
 .ux-input-grande::placeholder { font-weight: 400; }        /* el valor de ejemplo no puede verse como uno cargado: en negrita 800 y 21 px lo parecía */
 .ux-lista-opciones { margin-top: 4px; border: 1px solid var(--glass-border); border-radius: var(--radius-sm); max-height: 220px; overflow-y: auto; background: var(--glass-bg-alt); box-shadow: var(--shadow-elevated); }
-.ux-opcion { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--border-soft); background: transparent; color: var(--text-primary); font-family: var(--font-ui); font-size: 0.88em; text-align: left; cursor: pointer; }
+.ux-opcion { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--border-soft); background: transparent; color: var(--text-primary); font-family: var(--font-ui); font-size: var(--text-sm); text-align: left; cursor: pointer; }
 .ux-opcion:hover, .ux-opcion:focus-visible { background: color-mix(in srgb, var(--accent-primary) 14%, transparent); }
-.ux-opcion span { color: var(--text-faint); font-size: 0.82em; }
+.ux-opcion span { color: var(--text-faint); font-size: var(--text-xs); }
 .ux-opcion-doble { flex-direction: column; align-items: flex-start; gap: 2px; }   /* nombre arriba, camino completo debajo: hay categorías con el mismo nombre en rubros distintos */
 .ux-opcion-doble span { line-height: 1.35; }
-.ux-opcion-msg { padding: 10px 14px; color: var(--text-secondary); font-size: 0.85em; }
+.ux-opcion-msg { padding: 10px 14px; color: var(--text-secondary); font-size: var(--text-sm); }
 
 /* ── Publicidad: medidor, embudo, origen, ranking y campañas ───────────── */
 .ux-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; background: var(--text-faint); }
@@ -544,11 +569,11 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-medidor-bien { position: absolute; top: 0; bottom: 0; border-radius: 0 99px 99px 0; background: color-mix(in srgb, var(--success) 55%, transparent); }
 .ux-medidor-corte { position: absolute; top: -5px; width: 2px; height: 26px; margin-left: -1px; background: var(--text-primary); opacity: 0.7; }
 .ux-medidor-marca { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--ux-c); border: 3px solid var(--bg-surface, #0e0e12); box-shadow: 0 0 0 2px var(--ux-c); }
-.ux-medidor-burbuja { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: var(--ux-c); color: #fff; font-size: 0.74rem; font-weight: 800; padding: 3px 10px; border-radius: 8px; }
-.ux-medidor-escala { position: relative; display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.8em; color: var(--text-faint); height: 1.2em; }
+.ux-medidor-burbuja { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: var(--ux-c); color: #fff; font-size: max(12px, 0.74rem); font-weight: 800; padding: 3px 10px; border-radius: 8px; }
+.ux-medidor-escala { position: relative; display: flex; justify-content: space-between; margin-top: 10px; font-size: var(--text-2xs); color: var(--text-faint); height: 1.2em; }
 .ux-medidor-eq { position: absolute; transform: translateX(-50%); color: var(--text-primary); font-weight: 800; white-space: nowrap; }
-.ux-medidor-leyenda { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 0.82em; color: var(--text-secondary); }
-.ux-comparativa { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 18px; font-size: 0.85em; }
+.ux-medidor-leyenda { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: var(--text-xs); color: var(--text-secondary); }
+.ux-comparativa { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 18px; font-size: var(--text-sm); }
 
 .ux-embudo { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .ux-embudo-paso { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-radius: 12px; color: #fff; font-weight: 700; min-width: 230px; max-width: 100%; }
@@ -556,7 +581,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-embudo-1 { background: color-mix(in srgb, var(--accent-primary) 92%, #000); }
 .ux-embudo-2 { background: color-mix(in srgb, var(--accent-primary) 70%, #000); }
 .ux-embudo-3 { background: var(--success); }
-.ux-embudo-tasa { font-size: 0.82em; color: var(--text-secondary); padding-left: 18px; }
+.ux-embudo-tasa { font-size: var(--text-xs); color: var(--text-secondary); padding-left: 18px; }
 .ux-embudo-tasa b { color: var(--text-primary); }
 
 .ux-dos-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px; margin-top: 18px; }
@@ -565,26 +590,26 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-donut-caja { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
 .ux-donut-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 .ux-donut-centro b { font-size: 1.5em; font-family: var(--font-data); }
-.ux-donut-centro span { font-size: 0.8em; color: var(--text-secondary); }
+.ux-donut-centro span { font-size: var(--text-2xs); color: var(--text-secondary); }
 .ux-donut-leyenda { display: flex; flex-direction: column; gap: 14px; font-size: 0.9em; }
-.ux-split { display: flex; height: 38px; border-radius: 10px; overflow: hidden; font-size: 0.8em; font-weight: 800; color: #fff; }
+.ux-split { display: flex; height: 38px; border-radius: 10px; overflow: hidden; font-size: var(--text-2xs); font-weight: 800; color: #fff; }
 .ux-split-a, .ux-split-b { display: flex; align-items: center; padding: 0 12px; white-space: nowrap; overflow: hidden; }
 .ux-split-a { background: var(--accent-primary); } .ux-split-b { background: var(--semantic-warning); }
 
 .ux-chips-series { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-.ux-chip-serie { border: 1px solid var(--border-soft); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 6px 14px; font-size: 0.8em; font-weight: 700; font-family: var(--font-ui); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.ux-chip-serie { border: 1px solid var(--border-soft); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 6px 14px; font-size: var(--text-2xs); font-weight: 700; font-family: var(--font-ui); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .ux-chip-serie::before { content: ''; width: 10px; height: 10px; border-radius: 3px; background: var(--c); opacity: 0.35; }
 .ux-chip-serie.activa { color: var(--text-primary); border-color: var(--c); }
 .ux-chip-serie.activa::before { opacity: 1; }
 
-.ux-rank-leyenda { font-size: 0.8em; margin-bottom: 8px; }
+.ux-rank-leyenda { font-size: var(--text-2xs); margin-bottom: 8px; }
 .ux-rank-fila { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--border-soft); }
 .ux-rank-fila:first-of-type { border-top: 0; }
 .ux-rank-info { flex: 1; min-width: 0; }
 .ux-rank-titulo { font-size: 0.9em; line-height: 1.35; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; }
 .ux-rank-barra { height: 10px; border-radius: 99px; background: var(--border-soft); overflow: hidden; }
 .ux-rank-barra span { display: block; height: 100%; border-radius: 99px; background: var(--ux-c); }
-.ux-rank-nums { display: flex; flex-direction: column; gap: 2px; font-size: 0.82em; min-width: 130px; }
+.ux-rank-nums { display: flex; flex-direction: column; gap: 2px; font-size: var(--text-xs); min-width: 130px; }
 .ux-rank-roas { min-width: 92px; text-align: right; }
 .ux-thumb-vacio { background: var(--border-soft); }
 .ux-rank-fila .thumb-sm { flex-shrink: 0; }
@@ -600,33 +625,33 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-camp-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .ux-camp-nombre { font-weight: 800; line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
 .ux-camp-roas b { font-size: 1.9em; font-family: var(--font-data); color: var(--ux-c); }
-.ux-camp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; font-size: 0.85em; padding-top: 10px; border-top: 1px solid var(--border-soft); }
-.ux-camp-stats span { display: block; font-size: 0.8em; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
-.ux-camp-reco { font-size: 0.82em; line-height: 1.45; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--ux-c) 14%, transparent); }
+.ux-camp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; font-size: var(--text-sm); padding-top: 10px; border-top: 1px solid var(--border-soft); }
+.ux-camp-stats span { display: block; font-size: var(--text-2xs); color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+.ux-camp-reco { font-size: var(--text-xs); line-height: 1.45; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--ux-c) 14%, transparent); }
 
 /* Ganancia Real: valores de ranking, distribución de márgenes y costo Flex */
 .ux-rank-valor { min-width: 84px; text-align: right; font-size: 0.9em; }
-.ux-dist-fila { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 0.85em; }
+.ux-dist-fila { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: var(--text-sm); }
 .ux-dist-etq { width: 92px; flex-shrink: 0; color: var(--text-secondary); font-weight: 600; }
 .ux-dist-val { width: 70px; text-align: right; flex-shrink: 0; }
 .ux-flex-neto { font-family: var(--font-data); font-size: 2.1em; font-weight: 800; color: var(--semantic-warning); line-height: 1.1; margin: 4px 0 2px; }
 
 /* Dashboard: ganancia por día */
 .ux-panel-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-.ux-leyenda { display: flex; gap: 14px; font-size: 0.82em; color: var(--text-secondary); flex-wrap: wrap; }
+.ux-leyenda { display: flex; gap: 14px; font-size: var(--text-xs); color: var(--text-secondary); flex-wrap: wrap; }
 .ux-dot-linea { background: var(--accent-primary); border-radius: 2px; height: 3px; width: 14px; vertical-align: middle; }
 .ux-dash-grafico { position: relative; height: 230px; }
 .ux-ministats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
-.ux-ministats span { display: block; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); font-weight: 700; }
+.ux-ministats span { display: block; font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); font-weight: 700; }
 .ux-ministats b { font-family: var(--font-data); font-size: 1.25em; display: block; margin: 2px 0; }
-.ux-ministats em { font-style: normal; font-size: 0.82em; color: var(--text-secondary); }
+.ux-ministats em { font-style: normal; font-size: var(--text-xs); color: var(--text-secondary); }
 
 /* Conciliación: lo depositado de verdad */
 .ux-conc-fila { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
 .ux-conc-num { font-family: var(--font-data); font-size: 2.1em; font-weight: 800; color: var(--success); line-height: 1.15; margin: 2px 0; }
 .ux-conc-sello { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 170px; padding: 10px 16px; border-radius: 14px; background: color-mix(in srgb, var(--ux-c) 16%, transparent); border: 1px solid color-mix(in srgb, var(--ux-c) 40%, transparent); }
 .ux-conc-sello b { font-family: var(--font-data); font-size: 1.6em; color: var(--ux-c); }
-.ux-conc-sello span { font-size: 0.8em; color: var(--text-secondary); line-height: 1.3; }
+.ux-conc-sello span { font-size: var(--text-2xs); color: var(--text-secondary); line-height: 1.3; }
 
 /* Calidad de publicaciones */
 .ux-calidad-item { padding: 14px 0; border-top: 1px solid var(--border-soft); }
@@ -637,8 +662,8 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-calidad-titulo a { color: var(--text-primary); text-decoration: none; }
 .ux-calidad-titulo a:hover { color: var(--accent-primary); }
 .ux-calidad-acciones { margin: 10px 0 0 58px; display: flex; flex-direction: column; gap: 8px; }
-.ux-calidad-accion { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--semantic-warning) 10%, transparent); font-size: 0.85em; line-height: 1.4; }
-.ux-calidad-accion .btn { padding: 5px 12px; font-size: 0.85em; flex-shrink: 0; }
+.ux-calidad-accion { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--semantic-warning) 10%, transparent); font-size: var(--text-sm); line-height: 1.4; }
+.ux-calidad-accion .btn { padding: 5px 12px; font-size: var(--text-sm); flex-shrink: 0; }
 @media (max-width: 640px) { .ux-calidad-acciones { margin-left: 0; } .ux-calidad-accion { flex-direction: column; align-items: flex-start; } }
 
 /* Precios: la regla (mínimo → recomendado) con el precio actual marcado */
@@ -657,11 +682,11 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-regla-justo { background: color-mix(in srgb, var(--semantic-warning) 60%, transparent); }
 .ux-regla-bien { right: 0; border-radius: 0 99px 99px 0; background: color-mix(in srgb, var(--success) 60%, transparent); }
 .ux-regla-marca { top: 50% !important; bottom: auto !important; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--ux-c); border: 3px solid var(--bg-surface, #0e0e12); box-shadow: 0 0 0 2px var(--ux-c); }
-.ux-regla-etiquetas { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 0.8em; color: var(--text-faint); }
+.ux-regla-etiquetas { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: var(--text-2xs); color: var(--text-faint); }
 .ux-regla-etiquetas b { color: var(--text-primary); }
 .ux-precio-estado { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; min-width: 150px; }
 .ux-precio-actual { font-family: var(--font-data); font-weight: 800; font-size: 1.05em; }
-.ux-precio-accion { font-size: 0.82em; color: var(--ux-c); }
+.ux-precio-accion { font-size: var(--text-xs); color: var(--ux-c); }
 @media (max-width: 860px) {
     .ux-precio-fila { grid-template-columns: 1fr; gap: 12px; }
     .ux-precio-estado { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; text-align: left; }
@@ -669,9 +694,9 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 
 /* Opiniones de compradores */
 .ux-estrellas { display: inline-flex; letter-spacing: 1px; font-size: 1em; line-height: 1; vertical-align: middle; }
-.ux-estrellas span { color: var(--border-soft); }
+.ux-estrellas span { color: var(--text-faint); }                                    /* D20: la estrella vacía tiene que verse (antes 1,16:1) */
 .ux-estrellas span.on { color: var(--accent-gold, #e8b84b); }
-.ux-estrellas span.media { color: color-mix(in srgb, var(--accent-gold, #e8b84b) 55%, var(--border-soft)); }
+.ux-estrellas span.media { color: color-mix(in srgb, var(--accent-gold, #e8b84b) 55%, var(--text-faint)); }
 .ux-hero-numero .ux-estrellas { font-size: 0.4em; margin-left: 10px; }
 .ux-opinion { padding: 12px 0; border-top: 1px solid var(--border-soft); }
 .ux-opinion:first-of-type { border-top: 0; }
@@ -682,7 +707,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-opinion-prod-cab { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .ux-opinion-prod-cab .thumb-sm { flex-shrink: 0; }
 .ux-opinion-nota { font-family: var(--font-data); font-size: 1.6em; font-weight: 800; color: var(--ux-c); line-height: 1.1; }
-.ux-opinion-attr { margin-top: 10px; padding: 8px 12px; border-radius: 10px; font-size: 0.85em; background: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
+.ux-opinion-attr { margin-top: 10px; padding: 8px 12px; border-radius: 10px; font-size: var(--text-sm); background: color-mix(in srgb, var(--accent-primary) 10%, transparent); }
 .ux-opinion-attr-alerta { background: color-mix(in srgb, var(--semantic-warning) 14%, transparent); }
 
 /* Dashboard: cuándo te compran */
@@ -692,7 +717,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-hora { flex: 1; height: 100%; display: flex; align-items: flex-end; border-radius: 4px 4px 0 0; }
 .ux-hora i { display: block; width: 100%; background: var(--accent-primary); border-radius: 4px 4px 0 0; min-height: 0; }
 .ux-hora:hover i { background: var(--success); }
-.ux-horas-eje { display: flex; justify-content: space-between; font-size: 0.8em; color: var(--text-faint); margin-top: 6px; }
+.ux-horas-eje { display: flex; justify-content: space-between; font-size: var(--text-2xs); color: var(--text-faint); margin-top: 6px; }
 
 /* Título de publicación con su miniatura al lado (celdas de tabla, preguntas) */
 .ux-titulo-thumb { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -700,7 +725,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 
 /* Entrega Flex: botones de umbral (Despacho) y tarjetas de umbral (Costos) */
 .ux-zonas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.ux-zona { border: 1px solid var(--border-soft); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 5px 12px; font-size: 0.82em; font-weight: 700; font-family: var(--font-ui); cursor: pointer; }
+.ux-zona { border: 1px solid var(--border-soft); background: transparent; color: var(--text-secondary); border-radius: 999px; padding: 5px 12px; font-size: var(--text-xs); font-weight: 700; font-family: var(--font-ui); cursor: pointer; }
 .ux-zona:hover:not(:disabled) { border-color: var(--accent-primary); color: var(--text-primary); }
 .ux-zona.activa { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; }
 .ux-zona:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -714,21 +739,21 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .flex-moneda { color: var(--text-secondary); font-weight: 700; }
 .flex-precio { width: 130px; font-size: 1.25em; font-weight: 800; text-align: right; font-family: var(--font-data); }
 .flex-nombre { font-weight: 700; }
-.flex-resultado { font-size: 0.85em; line-height: 1.7; padding-top: 8px; border-top: 1px solid var(--border-soft); }
+.flex-resultado { font-size: var(--text-sm); line-height: 1.7; padding-top: 8px; border-top: 1px solid var(--border-soft); }
 .flex-borrar { margin-left: auto; background: none; border: 0; color: var(--text-faint); cursor: pointer; padding: 4px; border-radius: 8px; }
 .flex-borrar:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
 .flex-borrar .icon { width: 16px; height: 16px; }
 .flex-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.ux-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 11px; border-radius: 999px; font-size: 0.82em; font-weight: 700; background: color-mix(in srgb, var(--accent-primary) 18%, transparent); color: var(--text-primary); }
+.ux-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 11px; border-radius: 999px; font-size: var(--text-xs); font-weight: 700; background: color-mix(in srgb, var(--accent-primary) 18%, transparent); color: var(--text-primary); }
 .ux-chip-x { border: 0; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 1.15em; line-height: 1; padding: 0 4px; border-radius: 50%; }
 .ux-chip-x:hover { color: var(--danger); }
-.flex-agregar { font-size: 0.85em; }
-.flex-zonas-resumen { font-size: 0.85em; line-height: 1.6; }
-.flex-ver summary { cursor: pointer; color: var(--accent-primary); font-weight: 700; margin: 6px 0; }
+.flex-agregar { font-size: var(--text-sm); }
+.flex-zonas-resumen { font-size: var(--text-sm); line-height: 1.6; }
+.flex-ver summary { cursor: pointer; color: var(--accent-texto); font-weight: 700; margin: 6px 0; }
 .flex-guardar { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
 .flex-prev-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
 .flex-prev-total { border-top: 1px solid var(--border-soft); margin-top: 6px; padding-top: 10px; }
-.flex-incluir { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; font-size: 0.82em; color: var(--text-secondary); cursor: pointer; }
+.flex-incluir { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; }
 .flex-incluir input { width: auto; margin-top: 3px; }
 @media (max-width: 900px) { .ux-calc { grid-template-columns: 1fr; } .ux-calc > .panel { position: static; max-height: none; overflow-y: visible; } }
 
@@ -736,7 +761,7 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 .ux-escalera { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 18px; }
 .ux-escalera span { height: 14px; border-radius: 99px; }
 .ux-escalera span.actual { height: 20px; margin-top: -3px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ux-c) 28%, transparent); }
-.ux-escalera-etiquetas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; font-size: 0.78em; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+.ux-escalera-etiquetas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; font-size: var(--text-2xs); font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
 
 /* ---------- Tema claro: lo que style.css dejaba fijo en oscuro y los rellenos translúcidos blancos que ahí no se ven ---------- */
 :root[data-theme="light"] .ux-barra { background: rgba(0, 0, 0, 0.09); }
@@ -781,9 +806,9 @@ a.ux-pregunta-item:hover { color: var(--accent-primary); }
 }
 
 /* Tabla de márgenes de Ganancia Real: detalle por publicación de cada modelo */
-.ux-toggle-variantes { background: none; border: 0; padding: 2px 0; margin-top: 4px; color: var(--accent-texto); font: inherit; font-size: 0.8em; font-weight: 700; cursor: pointer; }
+.ux-toggle-variantes { background: none; border: 0; padding: 2px 0; margin-top: 4px; color: var(--accent-texto); font: inherit; font-size: var(--text-2xs); font-weight: 700; cursor: pointer; }
 .ux-toggle-variantes:hover { text-decoration: underline; }
-tr.ux-subfila td { background: rgba(255, 255, 255, 0.025); font-size: 0.88em; color: var(--text-secondary); border-top: 0; }
+tr.ux-subfila td { background: rgba(255, 255, 255, 0.025); font-size: var(--text-sm); color: var(--text-secondary); border-top: 0; }
 tr.ux-subfila td.ux-col-titulo { padding-left: 14px; }
 :root[data-theme="light"] tr.ux-subfila td { background: rgba(0, 0, 0, 0.03); }
 
@@ -798,7 +823,7 @@ tr.ux-subfila td.ux-col-titulo { padding-left: 14px; }
 .ux-tab:hover { color: var(--text-primary); }
 .ux-tab[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--accent-primary); }
 .ux-tab:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; border-radius: 6px; }
-.ux-tab-badge { min-width: 20px; padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); font-size: 0.8em; font-weight: 800; text-align: center; }
+.ux-tab-badge { min-width: 20px; padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); font-size: var(--text-2xs); font-weight: 800; text-align: center; }
 .ux-tab-panel[hidden] { display: none; }
 .ux-tabs-activas .ux-tab-panel > .ux-detalle-cuerpo { padding: 18px 22px 22px; }
 .ux-tab-titulo { display: none; margin: 0; padding: 14px 22px 4px; font-size: 1em; }

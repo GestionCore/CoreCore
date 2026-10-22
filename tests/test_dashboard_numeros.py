@@ -152,7 +152,7 @@ def test_el_ticker_arma_lo_de_hoy_lo_que_falta_acreditar_y_los_avisos(monkeypatc
         "WHERE fecha_liberacion >= %s": [(50300,)],
         "ORDER BY hora_venta DESC": [("Campera Negra", 1, 42990, datetime(2026, 10, 8, 14, 5)), ("Termo", 2, 15000, "09:30:00")],
         "FROM incidencias_posventa": [(2, 3, 1)],
-        "SELECT racha_dias": [(6,)],
+        "SELECT racha_dias": [(6, 754.9)],
     })
     t = dashboard.obtener_ticker(1, 7)
     assert t["ventas_hoy"] == 5 and t["facturado_hoy"] == "168.548"                                              # la píldora muestra las NETAS
@@ -163,6 +163,7 @@ def test_el_ticker_arma_lo_de_hoy_lo_que_falta_acreditar_y_los_avisos(monkeypatc
     assert t["a_liberar_total"] == "50.300" and t["hay_liberaciones"] is True
     assert (t["incidencias_activas"], t["devoluciones_activas"], t["reclamos_sin_impacto"]) == (2, 3, 1)       # reclamos que afectan, devoluciones y reclamos que no afectan, por separado
     assert t["salud_score"] == 72 and t["salud_etiqueta"] == "Bien" and t["racha_dias"] == 6
+    assert t["sync_hace_segundos"] == 754                      # hace cuánto se trajo lo último de Mercado Libre (el botón «Actualizar» lo dice)
     assert t["ventas_hoy_detalle"] == [{"titulo": "Campera Negra", "cantidad": 1, "precio_formateado": "42.990", "hora": "14:05"}, {"titulo": "Termo", "cantidad": 2, "precio_formateado": "15.000", "hora": "09:30"}]
     assert t["avisos"]["total"] == 2 + 4 + 2 + 3 and [a["clave"] for a in t["avisos"]["items"]] == ["reclamos", "preguntas", "sin_stock", "devoluciones"]
 
@@ -172,10 +173,10 @@ def test_el_ticker_sin_nada_acreditar_ni_vendido_no_inventa_datos(monkeypatch):
     monkeypatch.setattr(dashboard, "contar_preguntas_y_sin_stock", lambda cursor: (0, 0))
     _con(monkeypatch, {
         "GROUPING SETS": [(None, 0, 0, 0, 0)], "WHERE fecha_liberacion = ": [(None,)], "GROUP BY fecha_liberacion": [],
-        "WHERE fecha_liberacion >= %s": [(None,)], "ORDER BY hora_venta DESC": [], "FROM incidencias_posventa": [(0, 0, 0)], "SELECT racha_dias": [(None,)],
+        "WHERE fecha_liberacion >= %s": [(None,)], "ORDER BY hora_venta DESC": [], "FROM incidencias_posventa": [(0, 0, 0)], "SELECT racha_dias": [(None, None)],
     })
     t = dashboard.obtener_ticker(1, 7)
-    assert t["facturado_hoy"] == "0" and t["proxima_liberacion"] is None and t["hay_liberaciones"] is False and t["racha_dias"] == 0
+    assert t["facturado_hoy"] == "0" and t["proxima_liberacion"] is None and t["hay_liberaciones"] is False and t["racha_dias"] == 0 and t["sync_hace_segundos"] is None
     assert t["ventas_hoy_detalle"] == [] and t["avisos"] == {"total": 0, "items": []}
 
 
@@ -184,7 +185,7 @@ def test_el_ticker_usa_el_dia_de_argentina(monkeypatch):
     monkeypatch.setattr(dashboard.salud_cuenta, "calcular_score_salud", lambda cursor: {"score": 100, "etiqueta": "Muy bien", "detalle": []})
     monkeypatch.setattr(dashboard, "contar_preguntas_y_sin_stock", lambda cursor: (0, 0))
     cursor = _con(monkeypatch, {"GROUPING SETS": [(None, 0, 0, 0, 0)], "WHERE fecha_liberacion = ": [(0,)], "GROUP BY fecha_liberacion": [],
-                                "WHERE fecha_liberacion >= %s": [(0,)], "ORDER BY hora_venta DESC": [], "FROM incidencias_posventa": [(0, 0, 0)], "SELECT racha_dias": [(0,)]})
+                                "WHERE fecha_liberacion >= %s": [(0,)], "ORDER BY hora_venta DESC": [], "FROM incidencias_posventa": [(0, 0, 0)], "SELECT racha_dias": [(0, None)]})
     dashboard.obtener_ticker(1, 7)
     hoy_ar = datetime.now(ARGENTINA)
     consultado = cursor.consultas[0][1]["fecha"]

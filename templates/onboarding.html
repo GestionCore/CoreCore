@@ -26,7 +26,7 @@
 
         /* Progreso: "Paso X de 3" + barra fina */
         .onb-progreso-fila { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .onb-progreso-texto { font-size: 0.82em; color: var(--text-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+        .onb-progreso-texto { font-size: var(--text-xs); color: var(--text-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
         .onb-progreso-barra { height: 8px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden; margin-bottom: 28px; }
         .onb-progreso-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-primary), var(--accent-cyan)); transition: width 0.35s cubic-bezier(0.16,1,0.3,1); }
 
@@ -35,7 +35,7 @@
         .onb-paso { display: none; }
         .onb-paso.activo { display: block; animation: fadeInUp 0.3s cubic-bezier(0.16,1,0.3,1); }
         .onb-pregunta-titulo { font-weight: 600; font-size: 1.05em; margin-bottom: 6px; }
-        .onb-pregunta-ayuda { font-size: 0.82em; color: var(--text-faint); margin-bottom: 16px; }
+        .onb-pregunta-ayuda { font-size: var(--text-xs); color: var(--text-faint); margin-bottom: 16px; }
         .onb-opciones { display: flex; flex-direction: column; gap: 8px; margin-bottom: 30px; }
         .onb-opcion {
             display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: var(--radius-md);
@@ -45,7 +45,7 @@
         .onb-opcion:hover { border-color: var(--accent-primary); background: rgba(255,255,255,0.02); }
         .onb-opcion input { accent-color: var(--accent-primary); width: 17px; height: 17px; flex-shrink: 0; }
         .onb-opcion:has(input:checked) { border-color: var(--accent-primary); background: rgba(139, 92, 246,0.08); }
-        .onb-error { color: var(--danger); font-size: 0.85em; margin-bottom: 16px; }
+        .onb-error { color: var(--danger); font-size: var(--text-sm); margin-bottom: 16px; }
 
         .onb-nav { display: flex; gap: 12px; }
         .onb-btn-atras { flex: 0 0 auto; }

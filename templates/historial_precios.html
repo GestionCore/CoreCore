@@ -52,7 +52,7 @@
                 <td class="num c-antes" data-label="Antes">{{ c.unidades_antes }} u.</td>
                 <td class="num c-despues" data-label="Después">{{ c.unidades_despues }} u.</td>
                 <td class="num c-res" data-label="Resultado (7 d)" data-orden="{{ c.variacion_pct if c.variacion_pct is not none else '' }}">
-                    {% if c.datos_incompletos %}<span class="text-muted" style="font-size:0.85em;">Sin ventas previas para comparar</span>
+                    {% if c.datos_incompletos %}<span class="text-muted" style="font-size:var(--text-sm);">Sin ventas previas para comparar</span>
                     {% elif c.variacion_pct is not none %}
                     <span class="ux-pill {{ 'ux-ok' if c.variacion_pct >= 0 else 'ux-danger' }}">{{ '▲ +' if c.variacion_pct >= 0 else '▼ ' }}{{ c.variacion_pct|string|replace('.', ',') }}%</span>
                     {% else %}—{% endif %}

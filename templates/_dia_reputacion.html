@@ -54,12 +54,12 @@
     {{ kpi("Ventas canceladas", rep.tasa_cancelacion|pct, "neutral", "x", "histórico total, incluye las que canceló el comprador") }}
 </div>
 {% if not rep.ratings_disponibles %}
-<div class="text-muted" style="font-size:0.88em; margin:-8px 0 16px;">Mercado Libre ya no publica calificaciones de vendedor. Lo que opinan tus compradores de cada publicación está en <a href="/opiniones">Opiniones</a>.</div>
+<div class="text-muted" style="font-size:var(--text-sm); margin:-8px 0 16px;">Mercado Libre ya no publica calificaciones de vendedor. Lo que opinan tus compradores de cada publicación está en <a href="/opiniones">Opiniones</a>.</div>
 {% endif %}
 
 {% if incidencias_por_tipo.devoluciones or incidencias_por_tipo.reclamos or incidencias_por_tipo.reclamos_sin_impacto or incidencias_por_tipo.cancelaciones %}
 <div class="ux-seccion ux-warn">Desglose real de lo que registramos</div>
-<div class="text-muted" style="font-size:0.88em; margin:-6px 0 12px;">Mercado Libre junta cancelaciones, devoluciones y ventas no completadas en un solo número. Acá ves cada tipo por separado, con lo que CoreLux sincronizó de tu cuenta.</div>
+<div class="text-muted" style="font-size:var(--text-sm); margin:-6px 0 12px;">Mercado Libre junta cancelaciones, devoluciones y ventas no completadas en un solo número. Acá ves cada tipo por separado, con lo que CoreLux sincronizó de tu cuenta.</div>
 <div class="ux-kpis">
     {{ kpi("Devoluciones", incidencias_por_tipo.devoluciones, "warn", "refresh") }}
     {{ kpi("Reclamos que afectan tu reputación", incidencias_por_tipo.reclamos, "danger" if incidencias_por_tipo.reclamos else "ok", "alert", "según Mercado Libre") }}

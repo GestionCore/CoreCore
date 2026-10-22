@@ -14,7 +14,7 @@
     <div class="cuenta-fila">
         <div>
             <div style="font-weight:800; font-size:1.05em;">{{ nombre_plan }}</div>
-            <div class="text-muted" style="font-size:0.88em;">{{ email or 'Tu email se completa la próxima vez que entres con Mercado Libre' }}{% if dias_trial is not none and pagos_habilitados %} · te quedan {{ dias_trial|plural("día") }} de prueba{% elif plan == 'trial' %} · beta gratuita{% endif %}</div>
+            <div class="text-muted" style="font-size:var(--text-sm);">{{ email or 'Tu email se completa la próxima vez que entres con Mercado Libre' }}{% if dias_trial is not none and pagos_habilitados %} · te quedan {{ dias_trial|plural("día") }} de prueba{% elif plan == 'trial' %} · beta gratuita{% endif %}</div>
         </div>
         <a class="btn btn-secondary" href="/suscripcion">Ver mi suscripción</a>
     </div>
@@ -27,7 +27,7 @@
     <div class="cuenta-fila">
         <div>
             <div style="font-weight:700;">{{ c.nombre_negocio or c.nickname|capitalize }}{% if cuenta_actual and c.id == cuenta_actual.id %} <span class="ux-pill ux-ok ux-pill-suave">Estás en esta cuenta</span>{% endif %}</div>
-            <div class="text-muted" style="font-size:0.85em;">{{ c.nickname }}</div>
+            <div class="text-muted" style="font-size:var(--text-sm);">{{ c.nickname }}</div>
         </div>
         {% if not cuenta_actual or c.id != cuenta_actual.id %}
         <form method="POST" action="{{ url_for('cambiar_cuenta', cuenta_id=c.id) }}" style="margin:0;"><button type="submit" class="btn btn-secondary">Cambiar a esta cuenta</button></form>
@@ -37,14 +37,14 @@
     {% if puede_agregar_cuenta is not false %}
     <div style="margin-top:14px;"><a class="btn btn-secondary" href="/conectar_otra_cuenta">Agregar otra cuenta</a></div>
     {% else %}
-    <div class="text-muted" style="font-size:0.85em; margin-top:14px;">Ya tenés conectadas las {{ max_cuentas }} cuentas de Mercado Libre que incluye el Plan Elite.</div>
+    <div class="text-muted" style="font-size:var(--text-sm); margin-top:14px;">Ya tenés conectadas las {{ max_cuentas }} cuentas de Mercado Libre que incluye el Plan Elite.</div>
     {% endif %}
 </div>
 
 <!-- ── 2b. CONDICIÓN FISCAL ─────────────────────────────────────────────── -->
 <div class="ux-seccion ux-info" id="condicion-fiscal">Tu condición fiscal</div>
 <div class="panel cuenta-panel">
-    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin-bottom:12px; max-width:640px;">
+    <div class="text-muted" style="font-size:var(--text-sm); line-height:1.5; margin-bottom:12px; max-width:640px;">
         La usamos para mostrarte solo lo que te corresponde (por ejemplo, el control de categoría del Monotributo). <b>No la suponemos:</b> Mercado Libre nos informa tu CUIT pero no tu condición ante ARCA, así que la declarás vos.
         Se guarda para <b>{{ (cuenta_actual.nombre_negocio or cuenta_actual.nickname) if cuenta_actual else 'esta cuenta' }}</b>.
     </div>
@@ -56,7 +56,7 @@
 <div class="ux-seccion ux-gold">Preferencias</div>
 <div class="panel cuenta-panel">
     <label class="field-label" for="input-margen-minimo"><b>Margen mínimo que querés ganar</b></label>
-    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin:4px 0 12px; max-width:640px;">
+    <div class="text-muted" style="font-size:var(--text-sm); line-height:1.5; margin:4px 0 12px; max-width:640px;">
         Es el porcentaje de lo que facturás que tiene que quedarte, como mínimo. Un modelo que deja menos que esto aparece <b>«al límite»</b>
         en naranja; el que pierde plata, en rojo. Es una referencia para mirar: <b>no cambia ningún cálculo</b>. Se guarda para <b>{{ (cuenta_actual.nombre_negocio or cuenta_actual.nickname) if cuenta_actual else 'esta cuenta' }}</b>.
     </div>
@@ -64,14 +64,14 @@
         <input type="number" id="input-margen-minimo" min="0" max="60" step="0.5" inputmode="decimal" value="{{ margen_minimo|round(1) }}" style="width:110px; font-weight:800; text-align:right;" aria-describedby="margen-minimo-ayuda">
         <span style="font-weight:700;">%</span>
         <button type="button" class="btn btn-primary" id="btn-guardar-margen">Guardar</button>
-        <span class="text-muted" id="margen-minimo-ayuda" style="font-size:0.82em;">de 0 a 60 · hoy: {{ margen_minimo|pct }}</span>
+        <span class="text-muted" id="margen-minimo-ayuda" style="font-size:var(--text-xs);">de 0 a 60 · hoy: {{ margen_minimo|pct }}</span>
     </div>
 </div>
 
 {# El dólar con el que se llevan a pesos los costos cargados en dólares: automático (MEP) o el que la persona indica #}
 <div class="panel cuenta-panel" id="dolar">
     <label class="field-label"><b>Dólar para tus costos</b></label>
-    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin:4px 0 12px; max-width:640px;">
+    <div class="text-muted" style="font-size:var(--text-sm); line-height:1.5; margin:4px 0 12px; max-width:640px;">
         Si cargás el costo de un producto en dólares, lo llevamos a pesos con esta cotización. Podés usar <b>la automática</b> (dólar MEP, se actualiza sola varias veces por día) o <b>fijar la tuya</b>, la que de verdad pagás para reponer.
         Se guarda para <b>{{ (cuenta_actual.nombre_negocio or cuenta_actual.nickname) if cuenta_actual else 'esta cuenta' }}</b>.
     </div>
@@ -92,11 +92,11 @@
     <div class="flex-gap" id="dolar-manual-caja" style="align-items:center; margin-top:12px;{% if not dolar or dolar.modo != 'manual' %} display:none;{% endif %}">
         <span style="font-weight:700;">$</span>
         <input type="text" id="input-dolar-manual" inputmode="decimal" autocomplete="off" value="{{ dolar.manual if dolar and dolar.manual else '' }}" placeholder="1480" style="width:130px; font-weight:800; text-align:right;" aria-label="Cuántos pesos pagás por dólar">
-        <span class="text-muted" id="dolar-comparacion" style="font-size:0.82em;">por dólar</span>
+        <span class="text-muted" id="dolar-comparacion" style="font-size:var(--text-xs);">por dólar</span>
     </div>
     <div class="flex-gap" style="align-items:center; margin-top:12px;">
         <button type="button" class="btn btn-secondary" id="btn-guardar-dolar">Guardar</button>
-        <span class="text-muted" id="dolar-ayuda" style="font-size:0.85em;">
+        <span class="text-muted" id="dolar-ayuda" style="font-size:var(--text-sm);">
             {% if dolar and dolar.valor %}Hoy usás <b>{{ dolar.valor|plata }}</b> ({{ 'el valor que fijaste' if dolar.modo == 'manual' else 'el MEP automático' }}).{% else %}Todavía no hay una cotización para usar.{% endif %}
         </span>
     </div>
@@ -106,7 +106,7 @@
 {% if capacidades.get('flex') is not false %}
 <div class="panel cuenta-panel" id="flex-corte">
     <label class="field-label" for="input-flex-corte"><b>Hora de corte de Flex</b></label>
-    <div class="text-muted" style="font-size:0.88em; line-height:1.5; margin:4px 0 12px; max-width:640px;">
+    <div class="text-muted" style="font-size:var(--text-sm); line-height:1.5; margin:4px 0 12px; max-width:640px;">
         Mercado Libre <b>no informa</b> a qué hora cortan tus entregas Flex, así que la cargás vos. La usamos en Despacho para mostrarte cuánto falta para el corte.
         Si la dejás vacía, Despacho dice «Corte Flex: No configurado». Se guarda para <b>{{ (cuenta_actual.nombre_negocio or cuenta_actual.nickname) if cuenta_actual else 'esta cuenta' }}</b>.
     </div>
@@ -114,7 +114,7 @@
         <input type="time" id="input-flex-corte" value="{{ flex_hora_corte or '' }}" style="width:130px; font-weight:800;" aria-describedby="flex-corte-ayuda">
         <button type="button" class="btn btn-primary" id="btn-guardar-flex-corte">Guardar</button>
         <button type="button" class="btn btn-secondary" id="btn-quitar-flex-corte"{% if not flex_hora_corte %} style="display:none;"{% endif %}>Quitar</button>
-        <span class="text-muted" id="flex-corte-ayuda" style="font-size:0.82em;">{% if flex_hora_corte %}hoy: {{ flex_hora_corte }}{% else %}todavía no la cargaste{% endif %}</span>
+        <span class="text-muted" id="flex-corte-ayuda" style="font-size:var(--text-xs);">{% if flex_hora_corte %}hoy: {{ flex_hora_corte }}{% else %}todavía no la cargaste{% endif %}</span>
     </div>
 </div>
 {% endif %}
@@ -125,7 +125,7 @@
     <div class="cuenta-fila">
         <div style="max-width:620px;">
             <div style="font-weight:700;">{{ 'Activadas' if ia_activada else 'Desactivadas' }}</div>
-            <div class="text-muted" style="font-size:0.88em; line-height:1.55;">
+            <div class="text-muted" style="font-size:var(--text-sm); line-height:1.55;">
                 El asistente, las respuestas sugeridas a preguntas, los títulos mejorados, el mensaje del coach y la carga de gastos escribiendo usan un <b>servicio externo de IA</b>.
                 En cada consulta se envía solo lo necesario: por ejemplo tus ventas o tu ganancia del período, o el texto de la pregunta de un comprador.
                 <b>Nunca</b> se envía tu contraseña ni los datos de contacto de tus compradores. {% if ia_activada %}Si las desactivás, dejamos de enviar datos al servicio y el resto de CoreLux sigue igual.{% else %}Mientras estén desactivadas no se envía nada al servicio.{% endif %}
@@ -144,18 +144,18 @@
     <div class="cuenta-fila">
         <div style="max-width:560px;">
             <div style="font-weight:700;">Descargar mis datos</div>
-            <div class="text-muted" style="font-size:0.88em; line-height:1.5;">Un archivo con tus ventas, publicaciones, costos, gastos y reclamos: un CSV por cada tipo de dato y una carpeta por cuenta de Mercado Libre. Se abre con Excel.</div>
+            <div class="text-muted" style="font-size:var(--text-sm); line-height:1.5;">Un archivo con tus ventas, publicaciones, costos, gastos y reclamos: un CSV por cada tipo de dato y una carpeta por cuenta de Mercado Libre. Se abre con Excel.</div>
         </div>
         <form method="POST" action="/cuenta/descargar_datos" style="margin:0;"><button type="submit" class="btn btn-secondary"><svg class="icon" style="width:14px;height:14px;" aria-hidden="true"><use href="#icon-download"/></svg> Descargar</button></form>
     </div>
     <div class="cuenta-fila" style="border-top:1px solid var(--border-soft); margin-top:14px; padding-top:14px;">
         <div style="max-width:560px;">
             <div style="font-weight:700;">Eliminar mi cuenta</div>
-            <div class="text-muted" style="font-size:0.88em; line-height:1.5;">Borramos tu usuario y todos tus datos de CoreLux. No se puede deshacer; antes te pedimos confirmación.</div>
+            <div class="text-muted" style="font-size:var(--text-sm); line-height:1.5;">Borramos tu usuario y todos tus datos de CoreLux. No se puede deshacer; antes te pedimos confirmación.</div>
         </div>
         <a class="btn btn-danger" href="/cuenta/eliminar">Eliminar mi cuenta</a>
     </div>
-    <div class="text-muted" style="font-size:0.82em; margin-top:14px;">¿Alguna duda con tus datos? Escribinos a <b>{{ contacto }}</b>.</div>
+    <div class="text-muted" style="font-size:var(--text-xs); margin-top:14px;">¿Alguna duda con tus datos? Escribinos a <b>{{ contacto }}</b>.</div>
 </div>
 
 <style>
