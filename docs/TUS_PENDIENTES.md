@@ -23,7 +23,7 @@ Hecho el 2026-10-14. Están en el orden en que conviene hacerlos. Cada uno dice 
 
 ## 0. Desplegar antes del domingo 25/10 (5 minutos)
 
-**Por qué es urgente:** Mercado Libre retira el 25/10/2026 el pedido `/items?ids=` (traer varias publicaciones juntas). El primer deploy (21/10, versión `0693a8c`) ya migró el sincronizador de catálogo a `/items/bulk` y se verificó con Mercado Libre real. La prueba real mostró un detalle que la primera versión no cubría (las sugerencias de Competencia, que piden pocos campos): **ya está corregido y hace falta un segundo deploy chico antes del domingo 25/10.** No hay migraciones nuevas (la última sigue siendo la 0050).
+**Por qué es urgente:** Mercado Libre retira el 25/10/2026 el pedido `/items?ids=` (traer varias publicaciones juntas). El primer deploy (21/10, versión `0693a8c`) ya migró el sincronizador de catálogo a `/items/bulk` y se verificó con Mercado Libre real. La prueba real mostró un detalle que la primera versión no cubría (las sugerencias de Competencia, que piden pocos campos): **ya está corregido y hace falta un segundo deploy chico antes del domingo 25/10.** El segundo deploy lleva además un endurecimiento chico: el navegador deja de aceptar imágenes por `http:` (las miniaturas ya son todas `https`, verificado en producción el 22/10). No hay migraciones nuevas (la última sigue siendo la 0050).
 
 1. Abrí una terminal en la carpeta del proyecto (`CoreLux-SaaS`, la de siempre).
 2. Escribí:
