@@ -29,6 +29,7 @@ DECLARADOS = {
     ("logistica.py", "_cache_flex_habilitado"): "clave user_id de MeLi: de una sola cuenta",
     ("sincronizador.py", "_candados_por_cuenta"): "un candado por cuenta_id",
     ("sincronizador.py", "_sincronizando"): "conjunto de cuenta_id con sync en curso",
+    ("sincronizador.py", "_temas_no_vistos"): "nombres de temas nuevos del webhook ya avisados (sin datos de ninguna cuenta)",
     ("tendencias.py", "_categoria_cache"): "clave cuenta_id",
     ("tendencias.py", "_categoria_especifica_cache"): "clave cuenta_id",
     ("tendencias.py", "_cache_caminos_categoria"): "datos públicos de MeLi por id de categoría",

@@ -217,6 +217,10 @@ def iniciar(app):
             resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
         if request.path.startswith("/static/") and "v" in request.args and resp.status_code == 200:
             resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif not request.path.startswith("/static/"):
+            # Las pantallas y las respuestas JSON llevan datos de la cuenta (ganancias, costos): sin esto, en una computadora compartida «Atrás» después de cerrar sesión mostraba la página guardada
+            # por el navegador. Lo estático (con su versión en la dirección) sí se guarda.
+            resp.headers.setdefault("Cache-Control", "private, no-store")
         _registrar_si_fue_lento(resp)
         return resp
 

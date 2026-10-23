@@ -43,7 +43,7 @@ def test_packaging_esta_declarado():
 
 def test_la_imagen_se_niega_a_construirse_si_falta_una_dependencia():
     dockerfile = open(os.path.join(RAIZ, "Dockerfile"), encoding="utf-8").read()
-    copiar = dockerfile.index("COPY . .")
+    copiar = dockerfile.index("COPY --chown=corelux:corelux . .")
     assert "RUN python verificar_dependencias.py" in dockerfile[copiar:]        # después de copiar el código: lee los import de todos los módulos
 
 

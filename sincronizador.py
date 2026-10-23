@@ -300,6 +300,25 @@ def id_item_del_recurso(resource):
     return partes[-1] if partes else ""
 
 
+# Qué se hace con cada tema que manda Mercado Libre (una sola tabla: lo que no está acá no se atiende). El valor dice qué se vuelve a pedir; todo se junta con `antirrebote`.
+TEMAS_ATENDIDOS = {
+    "items": "publicacion", "items_prices": "publicacion",                       # una publicación cambió (stock, precio, estado): se vuelve a leer esa publicación
+    "orders_v2": "ventas", "orders": "ventas", "shipments": "ventas",           # una venta o un envío cambió (despachado, entregado): sincronización incremental de ventas
+    "questions": "preguntas",
+    "claims": "reclamos", "post_purchase": "reclamos",
+}
+# Temas que llegan (o pueden llegar) y a propósito NO tienen sincronización propia: se anotan en el registro como «ignorado» para poder decidir con datos si alguno merece una.
+TEMAS_IGNORADOS = {"payments", "messages", "public_offers", "public_candidates", "stock-locations", "fbm_stock_operations", "catalog_suggestions", "catalog_item_competition", "item_competition", "vis_leads", "invoices", "flex-handshakes"}
+_temas_no_vistos = set()                                                           # un tema que no está en ninguna de las dos listas se avisa una vez por proceso (sin llenar el registro)
+
+
+def clasificar_tema(topic):
+    """'publicacion' | 'ventas' | 'preguntas' | 'reclamos' | 'ignorado' | 'desconocido': qué hace CoreLux con un tema del webhook."""
+    if topic in TEMAS_ATENDIDOS:
+        return TEMAS_ATENDIDOS[topic]
+    return "ignorado" if topic in TEMAS_IGNORADOS else "desconocido"
+
+
 def procesar_notificacion_webhook(topic, resource, meli_user_id):
     """
     Punto de entrada real del webhook de MeLi (/notificaciones_meli en
@@ -318,6 +337,13 @@ def procesar_notificacion_webhook(topic, resource, meli_user_id):
     """
     if not meli_user_id or not topic:
         return
+    accion = clasificar_tema(topic)
+    if accion in ("ignorado", "desconocido"):
+        # Sin buscar la cuenta ni pedir token: un tema que no se usa no cuesta ni una consulta a la base
+        if accion == "desconocido" and topic not in _temas_no_vistos:
+            _temas_no_vistos.add(topic)
+            print(f"[Webhook] ⚠️ tema nuevo que no está en la tabla de temas (se ignora): {str(topic)[:60]}")
+        return
     try:
         with db.conexion_admin() as conexion:
             cursor = conexion.cursor()
@@ -332,7 +358,7 @@ def procesar_notificacion_webhook(topic, resource, meli_user_id):
         except token_manager.CuentaDesconectada:
             return
 
-        if topic in ("items", "items_prices"):
+        if accion == "publicacion":
             id_item = id_item_del_recurso(resource)
             if not id_item:
                 return
@@ -343,7 +369,7 @@ def procesar_notificacion_webhook(topic, resource, meli_user_id):
                     sincronizar_item_individual(cuenta_id, id_item, headers, conexion.cursor())
             _antirrebote_webhook.ejecutar((cuenta_id, "item", id_item), _item)
 
-        elif topic in ("orders_v2", "orders", "shipments"):
+        elif accion == "ventas":
             # Reusa el mismo sync incremental que corre cada 4 minutos —
             # trae desde ultima_sincronizacion_ventas con su colchón de 2hs,
             # así que llamarlo de más (webhook + scheduler solapados) es
@@ -351,13 +377,11 @@ def procesar_notificacion_webhook(topic, resource, meli_user_id):
             # Los cambios de un envío (despachado, entregado) llegan por esta misma vía.
             _antirrebote_webhook.ejecutar((cuenta_id, "ventas"), lambda: ventas_sync.sincronizar_ventas(usuario_id, cuenta_id, access_token, meli_user_id))
 
-        elif topic == "questions":
+        elif accion == "preguntas":
             _antirrebote_webhook.ejecutar((cuenta_id, "preguntas"), lambda: devoluciones_sync.sincronizar_preguntas(usuario_id, cuenta_id, access_token, meli_user_id))
 
-        elif topic in ("claims", "post_purchase"):
+        elif accion == "reclamos":
             _antirrebote_webhook.ejecutar((cuenta_id, "reclamos"), lambda: devoluciones_sync.sincronizar_reclamos(usuario_id, cuenta_id, access_token, meli_user_id))
-
-        # Otros topics (payments, messages, public_offers, public_candidates, etc.) no tienen sync propio — se ignoran a propósito en vez de fallar.
 
     except Exception as e:
         print(f"❌ [Webhook] Error procesando notificación (topic={topic}, resource={resource}): {e}")

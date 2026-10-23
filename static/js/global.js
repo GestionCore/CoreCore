@@ -1393,6 +1393,24 @@ function actualizarLargoTituloDrawer() {
     if (el && nota) nota.textContent = `· ${el.value.length} caracteres`;
 }
 
+// Qué decirle a la persona cuando el servidor contestó algo que no es la respuesta de CoreLux (una página de error de Fly o de Cloudflare, o la pantalla de ingreso porque la sesión terminó).
+// Antes todo eso aparecía como «No se pudo conectar», aunque la conexión había andado perfecto.
+function mensajeDeEstado(estado) {
+    if (estado === 429) return 'Hiciste muchas acciones seguidas. Esperá un momento y probá de nuevo.';
+    if (estado === 401 || estado === 403) return 'Tu sesión terminó. Volvé a entrar y probá de nuevo.';
+    if (estado === 502 || estado === 503 || estado === 504) return 'CoreLux está con mucha demanda en este momento. Probá de nuevo en unos segundos.';
+    if (estado >= 500) return 'Algo falló de nuestro lado. Probá de nuevo; si sigue pasando, avisanos.';
+    return 'No se pudo completar la acción. Probá de nuevo.';
+}
+
+/** Lee la respuesta de un pedido a la API: { datos } si es la respuesta de CoreLux (JSON), o { datos: null, mensaje } con el motivo en palabras de persona si no lo es. */
+async function leerRespuesta(resp) {
+    let datos = null;
+    try { datos = await resp.json(); } catch (e) { datos = null; }
+    if (datos !== null && typeof datos === 'object') return { datos, mensaje: null };
+    return { datos: null, mensaje: (resp.redirected || resp.status === 200) ? 'Tu sesión terminó. Volvé a entrar y probá de nuevo.' : mensajeDeEstado(resp.status) };
+}
+
 async function guardarDrawerInfo() {
     const orig = window._drawerOriginal || {};
     const titulo = document.getElementById('drawer-titulo').value.replace(/\s+/g, ' ').trim();
@@ -1408,7 +1426,9 @@ async function guardarDrawerInfo() {
     const body = { titulo, precio, estado, precio_costo: costo };
     try {
         const resp = await fetch(`/api/drawer/guardar/${drawerIdActual}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-        const data = await resp.json();
+        const leida = await leerRespuesta(resp);
+        if (!leida.datos) { mostrarToast(leida.mensaje, 'error'); return; }
+        const data = leida.datos;
         if (!data.ok) { mostrarToast(data.detalle || 'No se pudieron guardar los cambios', 'error'); return; }
         window._drawerOriginal = { titulo: data.titulo, precio: Number(precio) || orig.precio, estado, costo: Number(costo) || 0, estadoNombre: estado === 'paused' ? 'Pausada' : 'Activa' };
         document.getElementById('drawer-titulo-header').textContent = data.titulo;

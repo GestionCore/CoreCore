@@ -60,3 +60,34 @@ def test_un_cambio_de_la_publicacion_sigue_refrescandola(mundo):
 def test_los_temas_que_no_se_usan_se_ignoran_sin_fallar(mundo, tema):
     sincronizador.procesar_notificacion_webhook(tema, "/algo/MLA1", 99)
     assert mundo == []
+
+
+# ── Tabla explícita de temas (Ola 4, T31) ───────────────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("tema, esperado", [
+    ("items", "publicacion"), ("items_prices", "publicacion"), ("orders_v2", "ventas"), ("orders", "ventas"), ("shipments", "ventas"), ("questions", "preguntas"),
+    ("claims", "reclamos"), ("post_purchase", "reclamos"), ("public_offers", "ignorado"), ("payments", "ignorado"), ("tema_inventado", "desconocido"),
+])
+def test_cada_tema_tiene_una_accion_dicha_en_una_tabla(tema, esperado):
+    assert sincronizador.clasificar_tema(tema) == esperado
+
+
+def test_un_tema_no_puede_estar_a_la_vez_atendido_e_ignorado():
+    assert not (set(sincronizador.TEMAS_ATENDIDOS) & sincronizador.TEMAS_IGNORADOS)
+
+
+def test_un_tema_ignorado_no_gasta_ni_una_consulta_ni_un_token(monkeypatch):
+    llamadas = []
+    monkeypatch.setattr(sincronizador.db, "conexion_admin", lambda: llamadas.append("base") or _Prestada())
+    monkeypatch.setattr(sincronizador.token_manager, "asegurar_token_valido", lambda cuenta: llamadas.append("token") or "token")
+    sincronizador.procesar_notificacion_webhook("public_offers", "/algo", 99)
+    assert llamadas == []
+
+
+def test_un_tema_nuevo_se_avisa_una_sola_vez_y_no_se_atiende(monkeypatch, capsys):
+    monkeypatch.setattr(sincronizador, "_temas_no_vistos", set())
+    monkeypatch.setattr(sincronizador.db, "conexion_admin", lambda: pytest.fail("no debería abrir la base"))
+    for _ in range(3):
+        sincronizador.procesar_notificacion_webhook("tema_nuevo_de_prueba", "/x", 99)
+    salida = capsys.readouterr().out
+    assert salida.count("tema nuevo que no está en la tabla") == 1 and "tema_nuevo_de_prueba" in salida

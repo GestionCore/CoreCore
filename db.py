@@ -41,6 +41,14 @@ POOL_TIMEOUT = max(1.0, float(os.getenv("DB_POOL_TIMEOUT", "10")))
 # DB_SIN_BUCLES_ANIDADOS=0 lo apaga (para comparar o volver atrás sin desplegar).
 SIN_BUCLES_ANIDADOS = os.getenv("DB_SIN_BUCLES_ANIDADOS", "1") != "0"
 
+# Una consulta colgada en un pedido web ocupa una de las 3 conexiones del proceso (12 de todo el proyecto) hasta que alguien mate el proceso: con este tope Postgres la corta a los 30 s
+# (psycopg.errors.QueryCanceled → la página de error de siempre) y la conexión vuelve al pool. Es POR SENTENCIA y solo en pedidos web (los trabajos de fondo —sincronización, scheduler—
+# siguen con lo que tenga el rol). DB_STATEMENT_TIMEOUT_MS=0 lo apaga sin desplegar. Medido: lo más lento del recorrido de todas las pantallas con 30.000 ventas fue 4,6 s.
+STATEMENT_TIMEOUT_WEB_MS = max(0, int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "30000")))
+# Antes de entregar una conexión del pool se comprueba que siga viva: después de un reinicio del pooler de Supabase el primer pedido recibía una conexión muerta y fallaba. Cuesta un viaje a la
+# base por cada `with conexion_usuario` (≈ 5 ms en Fly). DB_VERIFICAR_CONEXION=0 lo apaga.
+VERIFICAR_CONEXION = os.getenv("DB_VERIFICAR_CONEXION", "1") != "0"
+
 _pool = None
 _pool_admin = None
 
@@ -80,7 +88,7 @@ def _crear_pool():
     # Presupuesto actual: (4 + 2) × 2 workers = 12, más la conexión
     # fija que scheduler.py mantiene abierta para el advisory lock =
     # 13, dejando 2 de margen bajo el tope de 15.
-    return ConnectionPool(config.DATABASE_URL, min_size=1, max_size=POOL_MAX, timeout=POOL_TIMEOUT, open=True)
+    return ConnectionPool(config.DATABASE_URL, min_size=1, max_size=POOL_MAX, timeout=POOL_TIMEOUT, open=True, check=ConnectionPool.check_connection if VERIFICAR_CONEXION else None)
 
 
 def _obtener_pool_admin():
@@ -101,7 +109,7 @@ def _crear_pool_admin():
     # en vez de 0 (evita abrir una conexión nueva en el camino
     # caliente de cada pedido), pero max_size se recortó fuerte para
     # no volver a pisar el tope de 15 de Supabase.
-    return ConnectionPool(config.DATABASE_URL_ADMIN, min_size=1, max_size=POOL_ADMIN_MAX, timeout=POOL_TIMEOUT, open=True)
+    return ConnectionPool(config.DATABASE_URL_ADMIN, min_size=1, max_size=POOL_ADMIN_MAX, timeout=POOL_TIMEOUT, open=True, check=ConnectionPool.check_connection if VERIFICAR_CONEXION else None)
 
 
 @atexit.register
@@ -149,6 +157,15 @@ def obtener_conexion_usuario(usuario_id, cuenta_id=None):
     return conexion
 
 
+def _es_pedido_web():
+    """True mientras se atiende un pedido de Flask. Un hilo o greenlet de fondo arranca con el contexto vacío (probado con gevent): la sincronización nunca cuenta como pedido web."""
+    try:
+        from flask import has_request_context
+        return has_request_context()
+    except Exception:
+        return False
+
+
 def _dejar_lista_para_rls(conexion, usuario_id, cuenta_id):
     cursor = conexion.cursor()
     # set_config() en vez de "SET app.usuario_actual = %s": Postgres no
@@ -166,9 +183,12 @@ def _dejar_lista_para_rls(conexion, usuario_id, cuenta_id):
     # valor viejo pegado si la misma conexión física se reutiliza
     # después para otro usuario.
     # Las dos variables en UNA sentencia: un viaje de ida y vuelta menos por cada bloque `with` (hay 5-7 por página).
+    # statement_timeout: solo en pedidos web (None = se deja lo que ya tenga la conexión).
+    tope = str(STATEMENT_TIMEOUT_WEB_MS) if (STATEMENT_TIMEOUT_WEB_MS and _es_pedido_web()) else None
     cursor.execute(
-        "SELECT set_config('app.usuario_actual', %s, true), set_config('app.cuenta_actual', %s, true), set_config('enable_nestloop', %s, true)",
-        (str(usuario_id), str(cuenta_id) if cuenta_id is not None else "", "off" if SIN_BUCLES_ANIDADOS else "on"),
+        "SELECT set_config('app.usuario_actual', %s, true), set_config('app.cuenta_actual', %s, true), set_config('enable_nestloop', %s, true), "
+        "set_config('statement_timeout', COALESCE(%s::text, current_setting('statement_timeout')), true)",
+        (str(usuario_id), str(cuenta_id) if cuenta_id is not None else "", "off" if SIN_BUCLES_ANIDADOS else "on", tope),
     )
     cursor.close()
 

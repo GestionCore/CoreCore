@@ -32,11 +32,17 @@ ENV TZ=America/Argentina/Buenos_Aires
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# La app corre con un usuario sin privilegios (no root): si alguna vez se filtra algo por una dependencia o un pedido, no puede tocar el sistema de la imagen. Escribe solo en /tmp y /dev/shm
+# (el directorio temporal de gunicorn); todo lo demás lo lee. /app es suyo para que Python pueda guardar sus .pyc.
+RUN useradd --system --create-home --uid 10001 corelux && chown corelux:corelux /app
+
+COPY --chown=corelux:corelux . .
 
 # Si falta cualquier dependencia (o el worker de gunicorn no carga), la imagen NO se construye y el deploy se corta antes de tocar producción
 # (ver verificar_dependencias.py: pasó con `packaging` y las dos máquinas quedaron apagadas).
 RUN python verificar_dependencias.py
+
+USER corelux
 
 # Versión (commit) que corre: la pasa desplegar.py con --build-arg y /healthz la informa, así se puede confirmar qué código quedó en producción.
 ARG GIT_SHA=desconocida

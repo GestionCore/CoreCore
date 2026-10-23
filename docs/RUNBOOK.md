@@ -88,6 +88,8 @@ los tokens ya emitidos siguen funcionando hasta que se refresquen.
 - El pooler de **sesión** de Supabase admite **15 conexiones para todo el proyecto**. Cada proceso usa hasta `DB_POOL_MAX` (hoy 3):
   `máquinas × workers × DB_POOL_MAX` tiene que ser ≤ 12 (hoy 2 × 2 × 3 = 12), dejando 3 para migraciones, respaldos y consultas a mano.
   **Antes de agregar una máquina o un worker, bajar `DB_POOL_MAX` o subir el plan de Supabase.**
+- Dos ajustes de `db.py` que se pueden apagar sin desplegar (`fly secrets set NOMBRE=0 -a corecore`): `DB_STATEMENT_TIMEOUT_MS` (30000 por defecto: una consulta de un pedido web que pasa de 30 s se corta y la conexión vuelve al pool; `0` lo apaga)
+  y `DB_VERIFICAR_CONEXION` (1: el pool comprueba que la conexión siga viva antes de entregarla; `0` lo apaga). Los trabajos de fondo (sincronización, scheduler) no llevan tope por consulta.
 - Síntoma de que se acabaron: errores `EMAXCONNSESSION` en los logs y pantallas que no cargan. Primero: `fly status` (¿máquinas de más?), después
   revisar si hay sesiones colgadas en el panel de Supabase.
 - `db.conexion_usuario(usuario_id, cuenta_id)` es el camino normal (con RLS). `db.conexion_admin()` salta RLS y solo se usa en `token_manager.py`,
