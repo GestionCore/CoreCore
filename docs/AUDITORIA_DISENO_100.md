@@ -61,7 +61,7 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 
 ## C. Jerarquía y foco: qué miro primero (13)
 
-24. ⏳ [A·M] **Costos apila 4 herramientas con 4 botones principales** («Subir la planilla completa», «Guardar y ver qué envíos resuelve», «Enviar» del chat de costos, «Agregar gasto»), repartidos a lo largo de 5.700 px en celular. La regla de la casa es uno por pantalla. → segmentos arriba: **Costos de fabricación · Gastos · Entrega Flex · Importar**, cada uno con su único botón principal.
+24. ✅ (2026-10-22: pestañas Costo de fabricación · Gastos · Entrega Flex · Importar desde Excel, un botón violeta cada una) [A·M] **Costos apila 4 herramientas con 4 botones principales** («Subir la planilla completa», «Guardar y ver qué envíos resuelve», «Enviar» del chat de costos, «Agregar gasto»), repartidos a lo largo de 5.700 px en celular. La regla de la casa es uno por pantalla. → segmentos arriba: **Costos de fabricación · Gastos · Entrega Flex · Importar**, cada uno con su único botón principal.
 25. ✅ (2026-10-22: el período se aplica al elegirlo y ya no hay «Ver período» en Ganancia Real, Costos ni Publicidad; los 5 atajos siguen a la vista, el rango en una hoja queda para después) [A·M] **Ganancia Real: la barra de período tiene 5 atajos + un rango + «Ver período»** (7 / 14 / 30 días, Este mes, Mes pasado, 21 sep – 21 oct): son siete controles antes del primer número y hay que apretar un botón más para ver el resultado. → aplicar al elegir, el rango en una hoja, y el botón fuera (UX200#67/#101).
 26. ⏳ [M·S] **Día a día: dos títulos serif seguidos** («Día a día» y «Despacho», mismo peso y tamaño). → el de la parte, más chico (UX200#10 quedó a medias).
 27. ⏳ [M·S] **«✓ 6 pendientes» sale en rojo con una tilde de «hecho».** Una alerta con ícono de listo. → ícono de aviso, o sin ícono.
@@ -70,8 +70,8 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 30. ✅ [M·S] **El borde de color de arriba de cada KPI no significa estado:** Calidad usa celeste, naranja, violeta y celeste; Stock violeta, dorado, verde y celeste; Promociones gris, naranja, celeste y naranja. El ojo busca un significado que no hay. → color solo cuando hay estado (verde bien, naranja atención, rojo urgente); el resto, neutro (UX200#123).
 31. ⏳ [M·S] **Dashboard: «Completá tu perfil 6/7» ocupa el primer lugar, encima de la ganancia del día**, cuando falta un solo paso opcional. → debajo del hero, o una línea de 40 px (UX200#33).
 32. ✅ [M·S] **El botón violeta «Actualizar» de la barra aparece en las 25 pantallas** y compite con el botón principal de cada una (Descargar PDF, Gestionar, Promocionar…): dos violetas llenos en la misma vista. → ícono discreto con «actualizado hace 4 min» (UX200#114).
-33. ⏳ [M·S] **Costos en celular: dos párrafos de ayuda (10 líneas)** antes de la primera tarjeta de modelo. → «¿Cómo se cargan?» plegado.
-34. ⏳ [M·S] **Costos: «Subir la planilla completa» —la forma más rápida de cargar 100 costos— está al 61 % de la página** (a 3.477 de 5.703 px en celular). → arriba, junto al título (UX200#80).
+33. ✅ (2026-10-22: «¿Cómo se cargan los costos?» plegado) [M·S] **Costos en celular: dos párrafos de ayuda (10 líneas)** antes de la primera tarjeta de modelo. → «¿Cómo se cargan?» plegado.
+34. ✅ (2026-10-22: botón «Cargar desde un Excel» junto al título) [M·S] **Costos: «Subir la planilla completa» —la forma más rápida de cargar 100 costos— está al 61 % de la página** (a 3.477 de 5.703 px en celular). → arriba, junto al título (UX200#80).
 35. ⏳ [B·S] **Día a día: «Cargá lo que te cobra tu logística →» se repite en cada paquete Flex** (naranja, una vez por tarjeta). → una sola vez, en el aviso de arriba del bloque.
 36. ⏳ [B·S] **Costos: «Calculadora de comisiones» ocupa una fila entera bajo el título en celular**, y «Calculadora» ya es una sección del menú. → un link discreto o sacarlo.
 
@@ -102,7 +102,7 @@ Regla de la casa: ~25 % de lo que sale de una auditoría es falso. Se midió el 
 
 ## F. Formularios y edición (5)
 
-56. ⏳ [A·M] **Costos: 218 campos y un botón «Aplicar» por modelo.** → guardar al salir del campo con «Guardando… ✓ Guardado» al lado (UX200#79/#141); el botón queda solo para aplicar a todos los talles.
+56. ❌ (2026-10-22, revisado: con 21 modelos hay un «Aplicar» por modelo y una sola barra «Guardar costos» con antes/después; autoguardar sacaría esa confirmación sobre plata) [A·M] **Costos: 218 campos y un botón «Aplicar» por modelo.** → guardar al salir del campo con «Guardando… ✓ Guardado» al lado (UX200#79/#141); el botón queda solo para aplicar a todos los talles.
 57. ⏳ [M·S] **Promociones → «Crear un descuento propio»:** el desplegable de publicaciones muestra títulos que empiezan igual y se cortan («Campera De Jean Hombre Negra Oscuro Clasica Rigido Pren…»), imposibles de distinguir. → un buscador con modelo + variante + precio.
 58. ⏳ [M·S] **Suena un tono al guardar y otro al fallar, y no hay forma de apagarlo** (`global.js`: «sin toggle de silenciar»). En una oficina o de noche molesta. → una preferencia en Mi cuenta, apagada por defecto si el sistema pide menos movimiento.
 59. ⏳ [M·M] **Calculadora: el formulario de 9 campos (1.130 px de contenido) vive en un panel `sticky` de 634 px con scroll propio** (se ve la barra de desplazamiento al costado) mientras el resultado queda vacío a la derecha. Scroll dentro del scroll. → que el formulario fluya y el resultado quede fijo (`position: sticky`) a la derecha.

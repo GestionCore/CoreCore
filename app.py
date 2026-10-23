@@ -2571,11 +2571,11 @@ def agregar_gasto():
     elif not fecha_valida:
         problema = "La fecha del gasto no es válida."
     if problema:
-        return redirect("/costos?" + urlencode({**periodo, "msg": problema, "tipo": "error"}))
+        return redirect("/costos?" + urlencode({**periodo, "msg": problema, "tipo": "error"}) + "#gastos-negocio")
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
         cursor.execute("INSERT INTO gastos_operativos (cuenta_id, concepto, categoria, monto, fecha) VALUES (%s, %s, %s, %s, %s)", (g.cuenta_id, concepto, categoria, round(monto, 2), fecha))
-    return redirect("/costos?" + urlencode(periodo)) if periodo else redirect("/costos")
+    return redirect("/costos?" + urlencode(periodo) + "#gastos-negocio") if periodo else redirect("/costos#gastos-negocio")
 
 
 @app.route("/guardar_costos_masivo", methods=["POST"])
@@ -2620,7 +2620,7 @@ def eliminar_gasto(id_gasto):
         cursor.execute("UPDATE gastos_operativos SET eliminado_en = now() WHERE id = %s AND cuenta_id = %s AND eliminado_en IS NULL", (id_gasto, g.cuenta_id))
         eliminado = cursor.rowcount == 1
     deshacer = f"&deshacer_gasto={id_gasto}" if eliminado else ""
-    return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}{deshacer}")
+    return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}{deshacer}#gastos-negocio")
 
 
 @app.route("/restaurar_gasto/<int:id_gasto>", methods=["POST"])

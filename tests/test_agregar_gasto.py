@@ -76,7 +76,7 @@ def test_un_dato_mal_puesto_se_avisa_y_no_se_guarda_nada(monkeypatch, campos, te
 
 def test_el_periodo_que_no_es_una_fecha_no_viaja_de_vuelta(monkeypatch):
     respuesta, _ = _enviar(monkeypatch, fecha_desde="None", fecha_hasta="<script>")
-    assert respuesta.location == "/costos"                                                   # sin parámetros raros en la dirección
+    assert respuesta.location == "/costos#gastos-negocio"                                                   # sin parámetros raros en la dirección
     respuesta, _ = _enviar(monkeypatch, fecha_desde="", fecha_hasta="2030-03-31")
     assert parse_qs(urlparse(respuesta.location).query) == {"fecha_hasta": ["2030-03-31"]}
 

@@ -77,3 +77,10 @@ def test_la_cobertura_de_costos_se_pide_junto_con_las_acciones_y_no_despues():
     asincrona = html[html.index("async function cargarAcciones()"):][:1400]
     assert "const [d, ganancia, cob] = await Promise.all([" in asincrona and "/api/dashboard/cobertura_costos" in asincrona
     assert asincrona.count("/api/dashboard/cobertura_costos") == 1                                    # ya no hay un segundo pedido que espera al primero
+
+
+def test_el_ticker_se_actualiza_cada_cinco_minutos_solo_con_la_pestana_a_la_vista():
+    js = _leer("static", "js", "global.js")
+    assert "const INTERVALO_TICKER_MS = 5 * 60 * 1000;" in js
+    assert "setInterval(() => { if (!document.hidden) actualizarTicker(); }, INTERVALO_TICKER_MS);" in js
+    assert "document.addEventListener('visibilitychange', () => { if (!document.hidden) actualizarTicker(); });" in js            # al volver a mirar la pestaña se refresca enseguida

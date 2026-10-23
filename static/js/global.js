@@ -29,6 +29,7 @@ function sonidoExito() { reproducirTono([{freq: 523, t: 0, dur: 0.10}, {freq: 78
 function sonidoError() { reproducirTono([{freq: 220, t: 0, dur: 0.16}], 0.05); }
 
 const TOASTS_MAXIMOS = 3;
+const INTERVALO_TICKER_MS = 5 * 60 * 1000;
 
 /**
  * Un aviso arriba a la derecha. `opciones.accion = { texto: 'Deshacer', alHacer }` le suma un botón: el aviso dura 8 s (o `opciones.duracion`) para poder arrepentirse de lo que se
@@ -88,7 +89,7 @@ function avisarGastoEliminado() {
     const id = params.get('deshacer_gasto');
     if (!id) return;
     params.delete('deshacer_gasto');
-    window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
+    window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : '') + (window.location.hash || ''));
     if (!/^\d+$/.test(id)) return;
     mostrarToast('Gasto eliminado', 'info', { accion: { texto: 'Deshacer', alHacer: () => restaurarGasto(id) } });
 }
@@ -1799,8 +1800,9 @@ document.addEventListener('DOMContentLoaded', () => {
         pildoraVentas.addEventListener('mouseleave', ocultarTooltipTicker);
     }
     if (logueado) {
-        // El ticker (varias consultas a la base) se actualiza cada 60 s y SOLO con la pestaña a la vista; al volver a mirarla se refresca enseguida.
-        setInterval(() => { if (!document.hidden) actualizarTicker(); }, 60000);
+        // El ticker (varias consultas a la base) se actualiza cada 5 minutos y SOLO con la pestaña a la vista; al volver a mirarla se refresca enseguida. Cada pestaña abierta cuesta
+        // una consulta pesada por vuelta: con cada minuto, 20 personas con la pantalla abierta eran 20 por minuto; así son 4.
+        setInterval(() => { if (!document.hidden) actualizarTicker(); }, INTERVALO_TICKER_MS);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) actualizarTicker(); });
         cargarAlertasPendientes();
         setInterval(() => { if (!document.hidden) cargarAlertasPendientes(); }, 300000); // cada 5 minutos, con la pestaña a la vista

@@ -24,11 +24,13 @@ def test_se_leyeron_los_filtros_de_la_app():
     assert {"plata", "pct", "numero", "fecha", "plural"} <= set(FILTROS_APP)
 
 
-def test_costos_ofrece_el_excel_antes_que_flex_y_sin_depender_de_flex():
-    """El Excel es la vía rápida para empezar: va primero y se ve aunque la cuenta no tenga Flex (el condicional de Flex no puede envolverlo)."""
+def test_costos_ofrece_el_excel_arriba_y_sin_depender_de_flex():
+    """El Excel es la vía rápida para empezar: tiene su botón junto al título y su pestaña se ve aunque la cuenta no tenga Flex (el condicional de Flex no puede envolverla)."""
     t = open(os.path.join(RAIZ, "templates", "costos.html"), encoding="utf-8").read()
-    condicional = t.index("{% if capacidades.get('flex') is not false %}")
-    assert t.index('id="importar-costos"') < condicional < t.index('id="entrega-flex"')
+    assert t.index('href="#importar-costos"') < t.index('<div class="ux-tabs" data-tabs id="segmentos-costos">')          # el atajo está arriba de todo
+    inicio_flex = t.index("{% if capacidades.get('flex') is not false %}")
+    fin_flex = t.index("{% endif %}", t.index('id="entrega-flex"'))
+    assert inicio_flex < t.index('id="entrega-flex"') < fin_flex < t.index('id="importar-costos" data-tab-titulo')           # solo Flex es condicional; el Excel queda afuera
 
 
 def test_ninguna_plantilla_concatena_html_con_texto_ya_escapado():

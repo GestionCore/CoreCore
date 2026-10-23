@@ -90,7 +90,7 @@ console.log(JSON.stringify({ texto: boton.textContent, duracion, hechas, cerrado
 def test_al_volver_de_eliminar_un_gasto_el_aviso_ofrece_deshacer_y_limpia_la_direccion(tmp_path):
     r = _correr_node(tmp_path, _DOM_FALSO + """
 const avisos = [], urls = [], pedidos = [];
-global.window = { location: { search: '?fecha_desde=2026-10-01&fecha_hasta=2026-10-31&deshacer_gasto=42', pathname: '/costos', reload() { pedidos.push('recarga'); } }, history: { replaceState: (a, b, u) => urls.push(u) } };
+global.window = { location: { search: '?fecha_desde=2026-10-01&fecha_hasta=2026-10-31&deshacer_gasto=42', hash: '#gastos-negocio', pathname: '/costos', reload() { pedidos.push('recarga'); } }, history: { replaceState: (a, b, u) => urls.push(u) } };
 mostrarToast = (m, t, o) => avisos.push({ m, t, o });
 global.fetch = async (url, opts) => { pedidos.push(url + ' ' + opts.method); return { ok: true, json: async () => ({ ok: true }) }; };
 (async () => {
@@ -105,7 +105,7 @@ global.fetch = async (url, opts) => { pedidos.push(url + ' ' + opts.method); ret
 })();
 """)
     assert r["avisos"] == 1 and r["mensaje"] == "Gasto eliminado" and r["texto"] == "Deshacer"
-    assert r["urls"][0] == "/costos?fecha_desde=2026-10-01&fecha_hasta=2026-10-31"                      # el parámetro sale de la dirección: recargar no repite el aviso
+    assert r["urls"][0] == "/costos?fecha_desde=2026-10-01&fecha_hasta=2026-10-31#gastos-negocio"       # el parámetro sale de la dirección (recargar no repite el aviso) y se conserva la pestaña
     assert r["pedidos"] == ["/restaurar_gasto/42 POST", "recarga"]
 
 
@@ -158,7 +158,7 @@ def test_eliminar_un_gasto_lo_oculta_no_lo_borra_y_se_puede_recuperar_durante_un
         cur = con.cursor()
         id_gasto = _gasto(cur, cuenta)
         r = cliente.post(f"/eliminar_gasto/{id_gasto}", data={"fecha_desde": "2030-03-01", "fecha_hasta": "2030-03-31"})
-        assert r.status_code == 302 and r.headers["Location"] == f"/costos?fecha_desde=2030-03-01&fecha_hasta=2030-03-31&deshacer_gasto={id_gasto}"
+        assert r.status_code == 302 and r.headers["Location"] == f"/costos?fecha_desde=2030-03-01&fecha_hasta=2030-03-31&deshacer_gasto={id_gasto}#gastos-negocio"
         cur.execute("SELECT eliminado_en IS NOT NULL FROM gastos_operativos WHERE id = %s", (id_gasto,))
         assert cur.fetchone() == (True,)                                                          # sigue en la base, solo oculto
         # Eliminarlo de nuevo no cambia nada y no ofrece un «Deshacer» de algo que ya no está a la vista

@@ -13,7 +13,10 @@
         <h1 class="page-title"><svg class="icon page-title-icono" aria-hidden="true"><use href="#icon-wallet"/></svg>Costos</h1>
         <div class="page-subtitle">Lo que te cuesta fabricar y mantener el negocio — <strong>sin esto, la ganancia real no es real</strong></div>
     </div>
-    <a class="btn btn-secondary" href="/calculadora"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-calculator"/></svg> Calculadora de comisiones</a>
+    <div class="flex-gap no-imprimir">
+        <a class="btn btn-secondary" href="#importar-costos"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-upload"/></svg> Cargar desde un Excel</a>
+        <a class="btn btn-secondary" href="/calculadora"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-calculator"/></svg> Calculadora de comisiones</a>
+    </div>
 </div>
 
 <!-- ── 1. ESTADO: ¿tengo cargado lo que necesita la ganancia real? ───────── -->
@@ -96,16 +99,24 @@
 </div>
 {%- endmacro %}
 
-<div class="ux-seccion ux-warn" id="costos-fabricacion">Costo de fabricación por modelo
-    {% if sin_costo %}<span class="ux-pill ux-warn">{{ sin_costo|length }} sin costo</span>{% endif %}
-</div>
-<div class="text-muted" style="font-size:var(--text-sm); margin:-6px 0 6px;" id="nota-dolar-costos">
-    Podés cargar cada costo en <b>pesos ($)</b> o en <b>dólares (US$)</b>: los dólares se llevan a pesos con tu cotización
-    {% if dolar_activo and dolar_activo.valor %}(<b>{{ dolar_activo.valor|plata }}</b>, {{ 'el valor que fijaste' if dolar_activo.modo == 'manual' else 'el dólar MEP automático' }}) y se actualizan solos cuando el dólar cambia{% else %}(todavía no hay una: elegila en <a href="/cuenta#dolar"><b>Mi cuenta</b></a>){% endif %}.
+<!-- ── SEGMENTOS: una herramienta por pestaña, cada una con su único botón principal ─────────────────────────── -->
+<div class="ux-tabs" data-tabs id="segmentos-costos">
+
+<section class="ux-tab-panel" id="costos-fabricacion" data-tab-titulo="Costo de fabricación"{% if sin_costo %} data-tab-badge="{{ sin_costo|length }}"{% endif %}>
+<h3 class="ux-tab-titulo">Costo de fabricación por modelo{% if sin_costo %} <span class="ux-pill ux-warn">{{ sin_costo|length }} sin costo</span>{% endif %}</h3>
+<div class="ux-detalle-cuerpo">
+<div class="text-muted" style="font-size:var(--text-sm); margin:0 0 8px;" id="nota-dolar-costos">
+    Cada costo va en <b>pesos ($)</b> o en <b>dólares (US$)</b>.
+    {% if dolar_activo and dolar_activo.valor %}Tu dólar: <b>{{ dolar_activo.valor|plata }}</b> ({{ 'el valor que fijaste' if dolar_activo.modo == 'manual' else 'el dólar MEP automático' }}).{% else %}Para cargar en dólares hace falta una cotización (todavía no hay una: elegila en <a href="/cuenta#dolar"><b>Mi cuenta</b></a>).{% endif %}
     <a href="/cuenta#dolar">Cambiar el dólar</a>
 </div>
-<div class="text-muted" style="font-size:var(--text-sm); margin:0 0 14px;">Escribí lo que te cuesta cada unidad y tocá <b>Aplicar</b>: se carga a todo el modelo de una vez. Si el costo cambia de una variante a otra, ajustalo en esa variante{% if usa_talles %} (y por {{ u1 }} solo si de verdad cambia){% endif %}. Ves <b>cuánto ganás por unidad</b> al precio actual, en vivo.</div>
-
+<details class="ux-detalle" id="ayuda-costos">
+    <summary><svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-info"/></svg> ¿Cómo se cargan los costos?</summary>
+    <div class="ux-detalle-cuerpo text-muted" style="font-size:var(--text-sm); line-height:1.6;">
+        <p style="margin:0 0 8px;">Los dólares se llevan a pesos con tu cotización y <b>se actualizan solos cuando el dólar cambia</b>.</p>
+        <p style="margin:0;">Escribí lo que te cuesta cada unidad y tocá <b>Aplicar</b>: se carga a todo el modelo de una vez. Si el costo cambia de una variante a otra, ajustalo en esa variante{% if usa_talles %} (y por {{ u1 }} solo si de verdad cambia){% endif %}. Ves <b>cuánto ganás por unidad</b> al precio actual, en vivo. Después tocá <b>Guardar costos</b>: antes de pisar uno que ya estaba cargado te mostramos el antes y el después.</p>
+    </div>
+</details>
 {% if not productos %}
 {{ vacio("Todavía no hay publicaciones sincronizadas", "Sincronizá para traer tu catálogo y poder cargarles el costo.", "refresh", "accion") }}
 {% else %}
@@ -155,122 +166,16 @@
     </div>
     {% endfor %}
 </div>
-
-<div class="ux-barra-accion" id="barra-costos" style="display:none;" role="status">
-    <div class="ux-barra-accion-texto"><b id="texto-cambios-costos">0 costos</b> sin guardar</div>
-    <div class="flex-gap">
-        <button type="button" class="btn btn-secondary" data-click="descartarCostos">Descartar</button>
-        <button type="button" class="btn btn-primary btn-lg" id="btn-guardar-costos-masivo" data-click="guardarCostosMasivo"><svg class="icon"><use href="#icon-check"/></svg><span id="btn-guardar-texto">Guardar costos</span></button>
-    </div>
+{% endif %}
 </div>
-{% endif %}
-
-{# Solo para cuentas que usan Flex: un False confirmado (capacidades.py) esconde el panel entero #}
-<!-- ── 2c. CARGAR COSTOS DESDE EXCEL ─────────────────────────────────────────── -->
-<details class="ux-detalle" id="importar-costos" {% if sin_costo and sin_costo|length > 5 %}open{% endif %}>
-    <summary>
-        <svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-upload"/></svg>
-        Cargar los costos desde un Excel
-        {% if sin_costo %}<span class="ux-pill ux-warn">{{ sin_costo|length }} sin costo</span>{% endif %}
-    </summary>
-    <div class="ux-detalle-cuerpo">
-        <div class="text-muted" style="font-size:0.9em; line-height:1.6; margin-bottom:14px;">Descargá la planilla con todas tus publicaciones (las que no tienen costo, primero), completá la columna <b>Costo de fabricación ($)</b> y subila. <b>Antes de guardar te mostramos qué va a cambiar</b>; las celdas vacías no tocan nada.</div>
-        <div class="flex-gap" style="margin-bottom:14px;">
-            <a class="btn btn-secondary" href="/costos/plantilla"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> Descargar la planilla</a>
-            <label class="btn btn-primary" for="archivo-costos" style="cursor:pointer;"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-upload"/></svg> Subir la planilla completa</label>
-            <input type="file" id="archivo-costos" accept=".xlsx,.csv" style="display:none;">
-        </div>
-        <div id="importar-resultado"></div>
-    </div>
-</details>
-<script nonce="{{ csp_nonce }}">
-(function () {
-    let cambiosPendientes = [];
-    const caja = () => document.getElementById('importar-resultado');
-    document.getElementById('archivo-costos').addEventListener('change', async (ev) => {
-        const archivo = ev.target.files[0];
-        if (!archivo) return;
-        caja().innerHTML = '<div class="text-muted">Leyendo el archivo…</div>';
-        const datos = new FormData();
-        datos.append('archivo', archivo);
-        try {
-            const r = await (await fetch('/api/costos/importar/vista_previa', { method: 'POST', body: datos })).json();
-            if (!r.ok) { caja().innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>' + UX.esc(r.detalle || 'No se pudo leer el archivo') + '</b>' }); return; }
-            pintarVistaPrevia(r);
-        } catch (e) {
-            caja().innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No pudimos leer el archivo</b>', detalle: 'Probá de nuevo con la planilla que descargás desde acá.' });
-        } finally { ev.target.value = ''; }
-    });
-
-    function pintarVistaPrevia(r) {
-        cambiosPendientes = r.cambios;
-        const filas = r.cambios.slice(0, 40).map(c => `<tr><td>${UX.esc(c.titulo)}</td><td class="num text-muted">${c.antes ? UX.plata(c.antes) : '—'}</td><td class="num"><b>${UX.plata(c.despues)}</b></td></tr>`).join('');
-        const avisos = [];
-        if (r.sin_cambio) avisos.push(`${r.sin_cambio} ya tenían ese costo`);
-        if (r.total_ignoradas) avisos.push(`${r.total_ignoradas} no son de tu cuenta y se ignoran`);
-        const errores = r.errores.map(e => `<li>Fila ${e.fila}: ${UX.esc(e.titulo || e.id)} — ${UX.esc(e.motivo)}</li>`).join('');
-        caja().innerHTML = `
-            ${r.cambios.length ? UX.banner({ tono: 'accion', icono: 'check', tituloHtml: `<b>${r.cambios.length} costo${r.cambios.length === 1 ? '' : 's'} para guardar</b>`, detalle: avisos.join(' · ') }) : UX.banner({ tono: 'info', icono: 'info', tituloHtml: '<b>No hay cambios para guardar</b>', detalle: avisos.join(' · ') || 'Completá la columna de costo y volvé a subir la planilla.' })}
-            ${r.total_errores ? `<div class="text-muted" style="font-size:var(--text-sm); margin:10px 0;"><b>${r.total_errores} fila${r.total_errores === 1 ? '' : 's'} con problemas (no se guardan):</b><ul style="margin:6px 0 0; padding-left:20px;">${errores}</ul></div>` : ''}
-            ${r.cambios.length ? `<div style="overflow-x:auto; margin-top:12px;"><table class="data-table"><thead><tr><th>Publicación</th><th class="num">Antes</th><th class="num">Después</th></tr></thead><tbody>${filas}</tbody></table></div>
-            ${r.cambios.length > 40 ? `<div class="text-muted" style="font-size:var(--text-xs); margin-top:6px;">Se muestran 40; se guardan los ${r.cambios.length}.</div>` : ''}
-            <div class="flex-gap" style="margin-top:14px;"><button type="button" class="btn btn-primary btn-lg" id="btn-aplicar-costos">Guardar ${r.cambios.length} costo${r.cambios.length === 1 ? '' : 's'}</button><button type="button" class="btn btn-secondary" id="btn-cancelar-costos">Cancelar</button></div>` : ''}`;
-        const guardar = document.getElementById('btn-aplicar-costos');
-        if (guardar) guardar.addEventListener('click', aplicar);
-        const cancelar = document.getElementById('btn-cancelar-costos');
-        if (cancelar) cancelar.addEventListener('click', () => { cambiosPendientes = []; caja().innerHTML = ''; });
-    }
-
-    async function aplicar(ev) {
-        const btn = ev.currentTarget;
-        btn.disabled = true; btn.textContent = 'Guardando…';
-        try {
-            const r = await (await fetch('/api/costos/importar/aplicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cambios: cambiosPendientes }) })).json();
-            if (r.ok) { mostrarToast(`✓ ${r.actualizadas} costos guardados`, 'success'); setTimeout(() => window.location.reload(), 900); }
-            else { mostrarToast(r.detalle || 'No se pudo guardar', 'error'); btn.disabled = false; btn.textContent = 'Guardar'; }
-        } catch (e) { mostrarToast('Error de red — probá de nuevo', 'error'); btn.disabled = false; btn.textContent = 'Guardar'; }
-    }
-})();
-</script>
-
-{% if capacidades.get('flex') is not false %}
-<!-- ── 2b. ENTREGA FLEX: lo que te cobra tu logística ────────────────────── -->
-{% set flex_sin_precio = flex_data.umbrales|selectattr('precio', 'none')|list|length == flex_data.umbrales|length %}
-<details class="ux-detalle" id="entrega-flex" {% if hay_flex and (flex_pendientes_n or flex_sin_precio) %}open{% endif %}>
-    <summary>
-        <svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-truck"/></svg>
-        Entrega Flex — lo que te cobra tu logística
-        {% if hay_flex and flex_pendientes_n %}<span class="ux-pill ux-warn" id="pill-flex">{{ flex_pendientes_n }} envío{{ 's' if flex_pendientes_n != 1 }} sin costo cargado</span>{% elif hay_flex and not flex_sin_precio %}<span class="ux-pill ux-ok" id="pill-flex">al día</span>{% endif %}
-    </summary>
-    <div class="ux-detalle-cuerpo">
-        <div class="flex-cabecera">
-            <div>
-                <div style="font-weight:800; font-size:1.05em;">Cargá lo que te cobra tu logística por entrega</div>
-                <div class="text-muted" style="font-size:var(--text-sm); line-height:1.55; margin-top:4px;">Las zonas las define Mercado Libre según tu domicilio. Vos solo ponés el precio de cada umbral y qué zonas cubre: <b>lo que no muevas cae en "Resto de las zonas"</b>. Se suma al costo de envío de cada venta en Ganancia Real.</div>
-            </div>
-            <div class="flex-gap" style="flex-wrap:wrap;">
-                <button type="button" class="btn btn-secondary" id="btn-flex-detectar" data-click="detectarFlex"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-search"/></svg> Detectar mis zonas y precios</button>
-                <button type="button" class="btn btn-secondary" id="btn-flex-sync" data-click="sincronizarFlex"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Sincronizar zonas con MeLi</button>
-            </div>
-        </div>
-        <div id="flex-origen" class="text-muted" style="font-size:var(--text-sm); margin:10px 0 4px;"></div>
-        <div id="flex-deteccion"></div>
-        <div class="ux-banner ux-info" style="display:block; margin:12px 0;">
-            <b>Mercado Libre te bonifica el <input type="number" id="flex-reintegro-input" min="0" max="50" step="0.5" inputmode="decimal" value="{{ flex_data.reintegro_pct }}" aria-label="Bonificación de Mercado Libre sobre el envío, en porcentaje" style="width:72px; text-align:center;">% del envío.</b> Por eso en tu ganancia se descuenta el precio de tu logística <b>menos esa bonificación</b>: así ves lo que de verdad te cuesta cada entrega. Si no es la tuya, cambiala.
-        </div>
-
-        <div class="flex-titulo-fila"><div style="font-weight:800;">Tus umbrales</div><button type="button" class="btn btn-secondary" data-click="nuevoUmbralFlex" id="btn-flex-nuevo"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-plus"/></svg> Nuevo umbral</button></div>
-        <div id="flex-umbrales" class="flex-umbrales"></div>
-        <div class="flex-guardar"><button type="button" class="btn btn-primary" id="btn-flex-guardar" data-click="guardarUmbralesFlex">Guardar y ver qué envíos resuelve</button><span class="text-muted" id="flex-sin-guardar" style="font-size:var(--text-sm); display:none;"><b style="color:var(--semantic-warning);">Hay cambios sin guardar</b></span></div>
-        <div id="flex-vista-previa"></div>
-    </div>
-</details>
-{% endif %}
+</section>
 
 <!-- ── 3. GASTOS DEL NEGOCIO ───────────────────────────────────────────── -->
-<div class="ux-seccion ux-info" id="gastos-negocio">Gastos del negocio</div>
+<section class="ux-tab-panel" id="gastos-negocio" data-tab-titulo="Gastos">
+<h3 class="ux-tab-titulo">Gastos del negocio</h3>
+<div class="ux-detalle-cuerpo">
 
-<form action="/costos" method="GET" class="ux-periodo no-imprimir" data-aplica-al-elegir>
+<form action="/costos#gastos-negocio" method="GET" class="ux-periodo no-imprimir" data-aplica-al-elegir>
     <div class="ux-periodo-botones">
         {{ botones_periodo() }}
     </div>
@@ -287,7 +192,7 @@
     <div id="costos-chat-propuesta" style="display:none;"></div>
     <form id="costos-chat-form" data-submit="enviarMensajeCostosChat" data-submit-args='["$ev"]' class="filter-row" style="margin:0;">
         <input type="text" id="costos-chat-input" class="field-input" aria-label="Contale a la IA un gasto o el costo de tus productos" placeholder="Escribí un gasto o el costo de tus productos…" style="flex:1;" autocomplete="off">
-        <button type="submit" class="btn btn-primary">Enviar</button>
+        <button type="submit" class="btn btn-secondary">Enviar</button>
     </form>
 </div>
 
@@ -385,8 +290,139 @@
     <div style="padding:20px;">{{ vacio("No hay gastos en este período", "Cargá el alquiler, los sueldos o las bolsas de envío para que la ganancia real los descuente.", "wallet", "info") }}</div>
     {% endif %}
 </div>
+</div>
+</section>
+
+{% if capacidades.get('flex') is not false %}
+<!-- ── 2b. ENTREGA FLEX: lo que te cobra tu logística ────────────────────── -->
+{% set flex_sin_precio = flex_data.umbrales|selectattr('precio', 'none')|list|length == flex_data.umbrales|length %}
+<section class="ux-tab-panel" id="entrega-flex" data-tab-titulo="Entrega Flex"{% if hay_flex and flex_pendientes_n %} data-tab-badge="{{ flex_pendientes_n }}"{% endif %}>
+    <h3 class="ux-tab-titulo">
+        <svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-truck"/></svg>
+        Entrega Flex — lo que te cobra tu logística
+        {% if hay_flex and flex_pendientes_n %}<span class="ux-pill ux-warn" id="pill-flex">{{ flex_pendientes_n }} envío{{ 's' if flex_pendientes_n != 1 }} sin costo cargado</span>{% elif hay_flex and not flex_sin_precio %}<span class="ux-pill ux-ok" id="pill-flex">al día</span>{% endif %}
+    </h3>
+    <div class="ux-detalle-cuerpo">
+        <div class="flex-cabecera">
+            <div>
+                <div style="font-weight:800; font-size:1.05em;">Cargá lo que te cobra tu logística por entrega</div>
+                <div class="text-muted" style="font-size:var(--text-sm); line-height:1.55; margin-top:4px;">Las zonas las define Mercado Libre según tu domicilio. Vos solo ponés el precio de cada umbral y qué zonas cubre: <b>lo que no muevas cae en "Resto de las zonas"</b>. Se suma al costo de envío de cada venta en Ganancia Real.</div>
+            </div>
+            <div class="flex-gap" style="flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary" id="btn-flex-detectar" data-click="detectarFlex"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-search"/></svg> Detectar mis zonas y precios</button>
+                <button type="button" class="btn btn-secondary" id="btn-flex-sync" data-click="sincronizarFlex"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-refresh"/></svg> Sincronizar zonas con MeLi</button>
+            </div>
+        </div>
+        <div id="flex-origen" class="text-muted" style="font-size:var(--text-sm); margin:10px 0 4px;"></div>
+        <div id="flex-deteccion"></div>
+        <div class="ux-banner ux-info" style="display:block; margin:12px 0;">
+            <b>Mercado Libre te bonifica el <input type="number" id="flex-reintegro-input" min="0" max="50" step="0.5" inputmode="decimal" value="{{ flex_data.reintegro_pct }}" aria-label="Bonificación de Mercado Libre sobre el envío, en porcentaje" style="width:72px; text-align:center;">% del envío.</b> Por eso en tu ganancia se descuenta el precio de tu logística <b>menos esa bonificación</b>: así ves lo que de verdad te cuesta cada entrega. Si no es la tuya, cambiala.
+        </div>
+
+        <div class="flex-titulo-fila"><div style="font-weight:800;">Tus umbrales</div><button type="button" class="btn btn-secondary" data-click="nuevoUmbralFlex" id="btn-flex-nuevo"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-plus"/></svg> Nuevo umbral</button></div>
+        <div id="flex-umbrales" class="flex-umbrales"></div>
+        <div class="flex-guardar"><button type="button" class="btn btn-primary" id="btn-flex-guardar" data-click="guardarUmbralesFlex">Guardar y ver qué envíos resuelve</button><span class="text-muted" id="flex-sin-guardar" style="font-size:var(--text-sm); display:none;"><b style="color:var(--semantic-warning);">Hay cambios sin guardar</b></span></div>
+        <div id="flex-vista-previa"></div>
+    </div>
+</section>
+{% endif %}
+
+
+<!-- ── 2c. CARGAR COSTOS DESDE EXCEL ─────────────────────────────────────────── -->
+<section class="ux-tab-panel" id="importar-costos" data-tab-titulo="Importar desde Excel">
+    <h3 class="ux-tab-titulo">
+        <svg class="icon" style="width:18px;height:18px;color:var(--accent-primary);"><use href="#icon-upload"/></svg>
+        Cargar los costos desde un Excel
+        {% if sin_costo %}<span class="ux-pill ux-warn">{{ sin_costo|length }} sin costo</span>{% endif %}
+    </h3>
+    <div class="ux-detalle-cuerpo">
+        <div class="text-muted" style="font-size:0.9em; line-height:1.6; margin-bottom:14px;">Descargá la planilla con todas tus publicaciones (las que no tienen costo, primero), completá la columna <b>Costo de fabricación ($)</b> y subila. <b>Antes de guardar te mostramos qué va a cambiar</b>; las celdas vacías no tocan nada.</div>
+        <div class="flex-gap" style="margin-bottom:14px;">
+            <a class="btn btn-secondary" href="/costos/plantilla"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-download"/></svg> Descargar la planilla</a>
+            <label class="btn btn-primary" for="archivo-costos" style="cursor:pointer;"><svg class="icon" style="width:14px;height:14px;"><use href="#icon-upload"/></svg> Subir la planilla completa</label>
+            <input type="file" id="archivo-costos" accept=".xlsx,.csv" style="display:none;">
+        </div>
+        <div id="importar-resultado"></div>
+    </div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+    let cambiosPendientes = [];
+    const caja = () => document.getElementById('importar-resultado');
+    document.getElementById('archivo-costos').addEventListener('change', async (ev) => {
+        const archivo = ev.target.files[0];
+        if (!archivo) return;
+        caja().innerHTML = '<div class="text-muted">Leyendo el archivo…</div>';
+        const datos = new FormData();
+        datos.append('archivo', archivo);
+        try {
+            const r = await (await fetch('/api/costos/importar/vista_previa', { method: 'POST', body: datos })).json();
+            if (!r.ok) { caja().innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>' + UX.esc(r.detalle || 'No se pudo leer el archivo') + '</b>' }); return; }
+            pintarVistaPrevia(r);
+        } catch (e) {
+            caja().innerHTML = UX.banner({ tono: 'danger', icono: 'alert', tituloHtml: '<b>No pudimos leer el archivo</b>', detalle: 'Probá de nuevo con la planilla que descargás desde acá.' });
+        } finally { ev.target.value = ''; }
+    });
+
+    function pintarVistaPrevia(r) {
+        cambiosPendientes = r.cambios;
+        const filas = r.cambios.slice(0, 40).map(c => `<tr><td>${UX.esc(c.titulo)}</td><td class="num text-muted">${c.antes ? UX.plata(c.antes) : '—'}</td><td class="num"><b>${UX.plata(c.despues)}</b></td></tr>`).join('');
+        const avisos = [];
+        if (r.sin_cambio) avisos.push(`${r.sin_cambio} ya tenían ese costo`);
+        if (r.total_ignoradas) avisos.push(`${r.total_ignoradas} no son de tu cuenta y se ignoran`);
+        const errores = r.errores.map(e => `<li>Fila ${e.fila}: ${UX.esc(e.titulo || e.id)} — ${UX.esc(e.motivo)}</li>`).join('');
+        caja().innerHTML = `
+            ${r.cambios.length ? UX.banner({ tono: 'accion', icono: 'check', tituloHtml: `<b>${r.cambios.length} costo${r.cambios.length === 1 ? '' : 's'} para guardar</b>`, detalle: avisos.join(' · ') }) : UX.banner({ tono: 'info', icono: 'info', tituloHtml: '<b>No hay cambios para guardar</b>', detalle: avisos.join(' · ') || 'Completá la columna de costo y volvé a subir la planilla.' })}
+            ${r.total_errores ? `<div class="text-muted" style="font-size:var(--text-sm); margin:10px 0;"><b>${r.total_errores} fila${r.total_errores === 1 ? '' : 's'} con problemas (no se guardan):</b><ul style="margin:6px 0 0; padding-left:20px;">${errores}</ul></div>` : ''}
+            ${r.cambios.length ? `<div style="overflow-x:auto; margin-top:12px;"><table class="data-table"><thead><tr><th>Publicación</th><th class="num">Antes</th><th class="num">Después</th></tr></thead><tbody>${filas}</tbody></table></div>
+            ${r.cambios.length > 40 ? `<div class="text-muted" style="font-size:var(--text-xs); margin-top:6px;">Se muestran 40; se guardan los ${r.cambios.length}.</div>` : ''}
+            <div class="flex-gap" style="margin-top:14px;"><button type="button" class="btn btn-primary btn-lg" id="btn-aplicar-costos">Guardar ${r.cambios.length} costo${r.cambios.length === 1 ? '' : 's'}</button><button type="button" class="btn btn-secondary" id="btn-cancelar-costos">Cancelar</button></div>` : ''}`;
+        const guardar = document.getElementById('btn-aplicar-costos');
+        if (guardar) guardar.addEventListener('click', aplicar);
+        const cancelar = document.getElementById('btn-cancelar-costos');
+        if (cancelar) cancelar.addEventListener('click', () => { cambiosPendientes = []; caja().innerHTML = ''; });
+    }
+
+    async function aplicar(ev) {
+        const btn = ev.currentTarget;
+        btn.disabled = true; btn.textContent = 'Guardando…';
+        try {
+            const r = await (await fetch('/api/costos/importar/aplicar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cambios: cambiosPendientes }) })).json();
+            if (r.ok) { mostrarToast(`✓ ${r.actualizadas} costos guardados`, 'success'); setTimeout(() => window.location.reload(), 900); }
+            else { mostrarToast(r.detalle || 'No se pudo guardar', 'error'); btn.disabled = false; btn.textContent = 'Guardar'; }
+        } catch (e) { mostrarToast('Error de red — probá de nuevo', 'error'); btn.disabled = false; btn.textContent = 'Guardar'; }
+    }
+})();
+</script>
+</section>
+
+</div>
+
+{% if productos %}
+<div class="ux-barra-accion" id="barra-costos" style="display:none;" role="status">
+    <div class="ux-barra-accion-texto"><b id="texto-cambios-costos">0 costos</b> sin guardar</div>
+    <div class="flex-gap">
+        <button type="button" class="btn btn-secondary" data-click="descartarCostos">Descartar</button>
+        <button type="button" class="btn btn-primary btn-lg" id="btn-guardar-costos-masivo" data-click="guardarCostosMasivo"><svg class="icon"><use href="#icon-check"/></svg><span id="btn-guardar-texto">Guardar costos</span></button>
+    </div>
+</div>
+{% endif %}
 
 <script nonce="{{ csp_nonce }}">
+    // ── Pestañas: una recarga (guardar, importar, aplicar Flex) vuelve a la pestaña en la que se estaba; entrar desde el menú o un enlace con # no cambia nada ──
+    (() => {
+        const CLAVE = 'corelux_costos_pestana';
+        let previa = null;
+        try { previa = sessionStorage.getItem(CLAVE); } catch (e) { /* sin almacenamiento: abre la primera, como siempre */ }
+        const nav = performance.getEntriesByType('navigation')[0];
+        const recarga = !!nav && nav.type === 'reload';
+        document.querySelectorAll('#segmentos-costos > .ux-tab-panel').forEach(p => p.addEventListener('ux:tab-visible', () => { try { sessionStorage.setItem(CLAVE, p.id); } catch (e) { /* no es grave */ } }));
+        window.addEventListener('DOMContentLoaded', () => setTimeout(() => {
+            if (!recarga || location.hash || !previa) return;
+            const pestana = document.getElementById('tab-' + previa);
+            if (pestana) pestana.click();
+        }, 0));
+    })();
+
     // ── Dólar y moneda de cada costo ──────────────────────────────────────────────────────────────────────────────────
     // Con «US$» el costo se lleva a pesos con la cotización de la cuenta (Mi cuenta). Sin cotización no se supone ninguna: la ganancia de esa fila pide elegirla.
     const DOLAR = {{ (dolar_activo.valor if dolar_activo else none)|tojson }};
@@ -544,7 +580,6 @@
     }
 
     // ── Entrega Flex ──────────────────────────────────────────────────────────
-    if (location.hash === '#entrega-flex') document.getElementById('entrega-flex')?.setAttribute('open', '');
     const FLEX = {{ flex_data|tojson }};
     let flexUmbrales = JSON.parse(JSON.stringify(FLEX.umbrales));
     let flexZonas = FLEX.zonas || [];

@@ -21,7 +21,7 @@ def _leer(*partes):
 def test_las_tres_pantallas_con_periodo_lo_aplican_al_elegir_y_ya_no_tienen_ver_periodo():
     for plantilla in ("metricas.html", "costos.html", "publicidad.html"):
         html = _leer("templates", plantilla)
-        assert re.search(r'<form action="/(metricas|costos|publicidad)" method="GET" class="ux-periodo no-imprimir" data-aplica-al-elegir>', html), plantilla
+        assert re.search(r'<form action="/(metricas|costos#gastos-negocio|publicidad)" method="GET" class="ux-periodo no-imprimir" data-aplica-al-elegir>', html), plantilla
         assert "Ver período" not in html, plantilla
 
 
