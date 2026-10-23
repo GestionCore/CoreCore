@@ -44,6 +44,7 @@ import comparador_logistica as comparador_logistica_mod
 import publicidad as publicidad_mod
 import dashboard as dashboard_mod
 import sincronizador
+import sync_avance
 import analisis_stock
 import onboarding
 import fiscal
@@ -2062,11 +2063,12 @@ def api_estado_sincronizacion():
         minutos = float(fila[1] or 0) if fila else 0.0
         cursor.execute("SELECT COUNT(*) FROM productos_padre WHERE cuenta_id = %s", (g.cuenta_id,))
         n_productos = cursor.fetchone()[0] or 0
-        cursor.execute("SELECT COUNT(*) FROM ventas WHERE cuenta_id = %s", (g.cuenta_id,))
-        n_ventas = cursor.fetchone()[0] or 0
+        cursor.execute("SELECT COUNT(*), COUNT(DISTINCT id_orden) FROM ventas WHERE cuenta_id = %s", (g.cuenta_id,))
+        n_ventas, n_ordenes = (x or 0 for x in cursor.fetchone())
+        esperado = sync_avance.leer(cursor, g.cuenta_id)
     if n_productos == 0:
         etapa = "productos"
-    elif n_ventas == 0:
+    elif n_ventas == 0 or sync_avance.faltan_ordenes(n_ordenes, esperado.get("ventas"), en_curso):
         etapa = "ventas"
     else:
         etapa = "calculando"
@@ -2078,7 +2080,8 @@ def api_estado_sincronizacion():
         except token_manager.CuentaDesconectada:
             desconectada = True
     diagnostico = sincronizador.diagnostico_sync_inicial(minutos, en_curso, desconectada)
-    return jsonify({"lista": False, "en_curso": en_curso, "productos": n_productos, "ventas": n_ventas, "etapa": etapa, "diagnostico": diagnostico})
+    return jsonify({"lista": False, "en_curso": en_curso, "productos": n_productos, "ventas": n_ventas, "ordenes": n_ordenes, "etapa": etapa, "diagnostico": diagnostico,
+                    "productos_total": esperado.get("publicaciones"), "ordenes_total": esperado.get("ventas")})
 
 
 @app.route("/publicacion/<id_meli>/timeline")

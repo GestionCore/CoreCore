@@ -19,6 +19,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 import cache_db
 import meli_http
+import sync_avance
 import meli_items
 import mercado_categorias
 import monitoreo
@@ -464,6 +465,7 @@ def sincronizar_catalogo(usuario_id, cuenta_id):
         lista_ids = listar_ids_publicaciones(user_id, headers, cuenta_id)
         if not lista_ids:
             return
+        sync_avance.anotar(usuario_id, cuenta_id, publicaciones=len(lista_ids))             # la pantalla de la primera espera dice «de ~N» (sync_avance.py)
 
         items_procesados = []
         pendientes_convivencia = []  # (índice en items_procesados, user_product_id, id_item, firma de movimiento)

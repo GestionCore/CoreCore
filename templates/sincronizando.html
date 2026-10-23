@@ -73,6 +73,10 @@
         .step-nombre { font-size: var(--text-sm); font-weight: 600; }
         .step-detalle { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 1px; }
         .step-conteo { font-size: var(--text-xs); font-weight: 700; color: var(--accent-primary); white-space: nowrap; }
+        /* La barrita de avance: solo aparece cuando se sabe cuánto se espera traer */
+        .step-barra { height: 4px; border-radius: 2px; background: var(--glass-border); margin-top: 7px; overflow: hidden; }
+        .step-barra > span { display: block; height: 100%; width: 0; background: var(--accent-primary); transition: width .6s ease; }
+        .sync-step.hecho .step-barra > span { background: var(--success); }
         .sync-step.hecho .step-conteo { color: var(--success); }
 
         /* Tip rotativo */
@@ -116,6 +120,7 @@
         <div class="step-cuerpo">
           <div class="step-nombre">Órdenes y ventas</div>
           <div class="step-detalle">Historial completo del último año</div>
+          <div class="step-barra" id="caja-barra-ventas" hidden><span id="barra-ventas"></span></div>
         </div>
         <div class="step-conteo" id="cnt-ventas">—</div>
       </div>
@@ -210,6 +215,18 @@ async function reintentarSync(boton) {
   setTimeout(function () { boton.disabled = false; boton.textContent = 'Reintentar ahora'; }, 6000);
 }
 function cuantos(n, uno, varios) { return n + ' ' + (n === 1 ? uno : varios); }
+function miles(n) { return Number(n).toLocaleString('es-AR'); }
+// «1.240 de ~3.000 órdenes» cuando se sabe cuánto se espera (es una estimación: por eso el «~»); si no, solo lo que ya entró
+function textoAvance(n, total, uno, varios) {
+  if (total && n < total) return n > 0 ? miles(n) + ' de ~' + miles(total) + ' ' + varios : 'Trayendo ~' + miles(total) + ' ' + varios;
+  return cuantos(n, uno, varios);
+}
+function pintarBarra(cajaId, barraId, n, total) {
+  var caja = document.getElementById(cajaId), barra = document.getElementById(barraId);
+  if (!caja || !barra) return;
+  caja.hidden = !(total && n > 0);
+  barra.style.width = total ? Math.min(100, Math.round(n / total * 100)) + '%' : '0%';
+}
 
 async function chequearEstado() {
   try {
@@ -230,18 +247,21 @@ async function chequearEstado() {
     mostrarDiagnostico((!data.diagnostico || data.diagnostico === 'normal' || data.diagnostico === 'lenta') && pasoDemasiado ? 'atascada' : data.diagnostico);
     var etapa = data.etapa || 'productos';
     var nP = data.productos || 0;
-    var nV = data.ventas || 0;
+    var nV = (data.ordenes !== undefined && data.ordenes !== null) ? data.ordenes : (data.ventas || 0);     // órdenes (no filas: una orden con varios productos tiene varias)
+    var totP = data.productos_total || 0, totV = data.ordenes_total || 0;
 
     if (etapa === 'productos') {
       marcarActivo('step-productos');
-      if (nP > 0) document.getElementById('cnt-productos').textContent = cuantos(nP, 'publicación', 'publicaciones');
+      if (nP > 0 || totP > 0) document.getElementById('cnt-productos').textContent = textoAvance(nP, totP, 'publicación', 'publicaciones');
     } else if (etapa === 'ventas') {
       marcarHecho('step-productos', 'ico-productos', 'cnt-productos', cuantos(nP, 'publicación', 'publicaciones'));
       marcarActivo('step-ventas');
-      if (nV > 0) document.getElementById('cnt-ventas').textContent = cuantos(nV, 'orden', 'órdenes');
+      if (nV > 0 || totV > 0) document.getElementById('cnt-ventas').textContent = textoAvance(nV, totV, 'orden', 'órdenes');
+      pintarBarra('caja-barra-ventas', 'barra-ventas', nV, totV);
     } else {
       marcarHecho('step-productos', 'ico-productos', 'cnt-productos', cuantos(nP, 'publicación', 'publicaciones'));
       marcarHecho('step-ventas', 'ico-ventas', 'cnt-ventas', cuantos(nV, 'orden', 'órdenes'));
+      pintarBarra('caja-barra-ventas', 'barra-ventas', 1, 1);
       marcarActivo('step-calc');
     }
   } catch(e) {

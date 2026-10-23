@@ -16,6 +16,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import meli_http
+import sync_avance
 import db
 import monitoreo
 import flex
@@ -800,6 +801,19 @@ def retirar_ventas_canceladas(usuario_id, cuenta_id, access_token, seller_id, de
         return len(filas_retiradas)
 
 
+def _total_de_ordenes(access_token, seller_id, fecha_desde, fecha_hasta):
+    """Cuántas órdenes hay en el período según Mercado Libre (un pedido de una sola orden: solo interesa el total). None si no se pudo saber: es solo para mostrar el avance de la primera importación."""
+    try:
+        resp = meli_http.get("https://api.mercadolibre.com/orders/search", headers={"Authorization": f"Bearer {access_token}"}, timeout=10,
+                             params={"seller": seller_id, "order.date_created.from": _iso(fecha_desde), "order.date_created.to": _iso(fecha_hasta), "limit": 1})
+        if resp.status_code != 200:
+            return None
+        total = ((resp.json() or {}).get("paging") or {}).get("total")
+        return int(total) if isinstance(total, (int, float)) and total > 0 else None
+    except Exception:
+        return None
+
+
 def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
     with db.conexion_usuario(usuario_id, cuenta_id) as conexion:
         cursor = conexion.cursor()
@@ -812,6 +826,7 @@ def sincronizar_ventas(usuario_id, cuenta_id, access_token, seller_id):
         fecha_desde = ultima_sync - timedelta(hours=COLCHON_INCREMENTAL_HORAS)
     else:
         fecha_desde = ahora - timedelta(days=365)
+        sync_avance.anotar(usuario_id, cuenta_id, ventas=_total_de_ordenes(access_token, seller_id, fecha_desde, ahora))      # la primera importación trae un año: se avisa cuánto se espera
 
     ordenes_procesadas, filas_insertadas = _sincronizar_rango(usuario_id, cuenta_id, access_token, seller_id, fecha_desde, ahora)
 

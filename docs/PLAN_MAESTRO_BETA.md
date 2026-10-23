@@ -120,7 +120,7 @@ Menos pantallas, mejor terminadas. Nada se borra de la base; solo se saca de la 
 - **P0** Términos y Privacidad actualizados para la beta (N19, retención de datos de compradores).
 - **P1** Primer ingreso guiado que termine en la primera tarea real: cargar el costo del modelo más vendido (UX200#171/#172).
 - **P1** Pantallas vacías con ejemplo para cuentas nuevas (D96, UX200#149/#178) y cuenta demo (N22).
-- **P1** Avance real de la primera sincronización (N10).
+- ✅ Avance real de la primera sincronización (N10), 2026-10-23.
 - **P1** Ayuda corta y definiciones al tocar (N21, D94); «¿Te sirvió?» y recordatorio de comentarios (N18, UX200#177).
 - **P2** Landing: imagen para compartir 1200×630 y título (D80, D85), celular (D52, D55), calculadora pública (UX200#185), testimonios de la beta (UX200#187), preguntas frecuentes sobre seguridad (UX200#188).
 - **P2** Planes: tabla comparativa (D82), días de prueba visibles (D83), cancelar con claridad (UX200#181).
