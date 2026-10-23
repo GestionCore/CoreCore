@@ -2278,7 +2278,7 @@ def facturacion_vista():
                 cursor = conexion.cursor()
                 cursor.execute("SELECT COALESCE(SUM(precio_venta*cantidad),0) FROM ventas WHERE fecha_venta BETWEEN %s AND %s", (fecha_desde_periodo, fecha_hasta_periodo))
                 facturado_bruto = float(cursor.fetchone()[0] or 0.0)
-                cursor.execute("SELECT COALESCE(SUM(monto),0) FROM gastos_operativos WHERE fecha BETWEEN %s AND %s", (fecha_desde_periodo, fecha_hasta_periodo))
+                cursor.execute("SELECT COALESCE(SUM(monto),0) FROM gastos_operativos WHERE eliminado_en IS NULL AND fecha BETWEEN %s AND %s", (fecha_desde_periodo, fecha_hasta_periodo))
                 gastos_periodo = float(cursor.fetchone()[0] or 0.0)
                 flex_neto = flex.resumen_periodo(cursor, g.cuenta_id, fecha_desde_periodo, fecha_hasta_periodo)["costo"]
                 flex_reintegro = flex.reintegro_de(flex.obtener_config(cursor, g.cuenta_id)["info"])
@@ -2614,10 +2614,28 @@ def guardar_costos_masivo():
 @auditar("gasto_eliminar")
 def eliminar_gasto(id_gasto):
     import db
+    # No se borra: se oculta (`eliminado_en`) para poder deshacerlo durante unos segundos; el scheduler lo borra de verdad pasado un día (ver scheduler._tarea_limpiar_soft_deletes)
     with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
         cursor = conexion.cursor()
-        cursor.execute("DELETE FROM gastos_operativos WHERE id = %s", (id_gasto,))
-    return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}")
+        cursor.execute("UPDATE gastos_operativos SET eliminado_en = now() WHERE id = %s AND cuenta_id = %s AND eliminado_en IS NULL", (id_gasto, g.cuenta_id))
+        eliminado = cursor.rowcount == 1
+    deshacer = f"&deshacer_gasto={id_gasto}" if eliminado else ""
+    return redirect(f"/costos?fecha_desde={request.form.get('fecha_desde')}&fecha_hasta={request.form.get('fecha_hasta')}{deshacer}")
+
+
+@app.route("/restaurar_gasto/<int:id_gasto>", methods=["POST"])
+@login_requerido
+@auditar("gasto_restaurar")
+def restaurar_gasto(id_gasto):
+    """«Deshacer» de eliminar un gasto: solo recupera lo que se ocultó hace menos de un día (después el scheduler ya lo borró)."""
+    import db
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("UPDATE gastos_operativos SET eliminado_en = NULL WHERE id = %s AND cuenta_id = %s AND eliminado_en > now() - interval '1 day'", (id_gasto, g.cuenta_id))
+        recuperado = cursor.rowcount == 1
+    if not recuperado:
+        return jsonify({"ok": False, "detalle": "Ese gasto ya no se puede recuperar."}), 404
+    return jsonify({"ok": True})
 
 
 def _contexto_despacho():
@@ -3786,6 +3804,20 @@ def api_preguntas_ignorar():
             (ids, g.cuenta_id),
         )
     return jsonify({"ok": True, "actualizadas": len(ids)})
+
+
+@app.route("/api/preguntas/restaurar", methods=["POST"])
+@login_requerido
+def api_preguntas_restaurar():
+    """«Deshacer» de ignorar una pregunta: vuelve a pendiente solo lo que estaba ignorado (nunca reabre una respondida o borrada)."""
+    ids = [str(i) for i in ((request.get_json(silent=True) or {}).get("question_ids") or [])][:50]
+    if not ids:
+        return jsonify({"ok": False, "detalle": "Sin preguntas"}), 400
+    with db.conexion_usuario(g.usuario_id, g.cuenta_id) as conexion:
+        cursor = conexion.cursor()
+        cursor.execute("UPDATE preguntas_pendientes SET estado = 'pendiente' WHERE question_id = ANY(%s::text[]) AND cuenta_id = %s AND estado = 'ignorada'", (ids, g.cuenta_id))
+        restauradas = cursor.rowcount
+    return jsonify({"ok": True, "restauradas": restauradas})
 
 
 @app.route("/api/preguntas/ya_respondida", methods=["POST"])

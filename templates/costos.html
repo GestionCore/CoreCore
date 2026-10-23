@@ -270,7 +270,7 @@
 <!-- ── 3. GASTOS DEL NEGOCIO ───────────────────────────────────────────── -->
 <div class="ux-seccion ux-info" id="gastos-negocio">Gastos del negocio</div>
 
-<form action="/costos" method="GET" class="ux-periodo no-imprimir">
+<form action="/costos" method="GET" class="ux-periodo no-imprimir" data-aplica-al-elegir>
     <div class="ux-periodo-botones">
         {{ botones_periodo() }}
     </div>
@@ -278,7 +278,6 @@
         <button type="button" class="rango-fechas-boton" data-click="RangoFechas.toggle" data-click-args='["rango-costos"]'></button>
         <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
     </div>
-    <button type="submit" class="btn btn-secondary">Ver período</button>
 </form>
 
 <div class="panel">

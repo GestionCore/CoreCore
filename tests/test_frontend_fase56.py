@@ -93,7 +93,7 @@ def test_el_titulo_de_una_sugerencia_viaja_escapado_en_un_atributo_y_no_dentro_d
 
 # ── 28, 29, 33, 46. Un botón primario con sentido por pantalla ─────────────────────────────────────────────────────────────────────────────
 def test_los_filtros_y_las_busquedas_son_secundarios():
-    for plantilla, texto in (("costos.html", "Ver período"), ("precios.html", "Recalcular"), ("tendencias.html", "Buscar"), ("metricas.html", "Ver período")):
+    for plantilla, texto in (("precios.html", "Recalcular"), ("tendencias.html", "Buscar")):
         assert f'class="btn btn-secondary">{texto}</button>' in _leer("templates", plantilla), plantilla
 
 

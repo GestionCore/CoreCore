@@ -246,7 +246,7 @@ def test_una_funcion_inexistente_o_un_json_roto_avisan_en_consola_y_no_rompen_na
 # ── 1, 2. Un solo botón primario con sentido ────────────────────────────────────────────────────────────────────────────────────────────────
 def test_ganancia_real_tiene_un_solo_boton_primario_y_es_la_descarga_debajo_del_numero():
     t = _leer("templates", "metricas.html")
-    assert t.count("btn-primary") == 1 and 'btn btn-secondary">Ver período' in t
+    assert t.count("btn-primary") == 1 and "Ver período" not in t                      # el período se aplica al elegirlo (D25): ya no hay un segundo botón
     hero = t[t.index('<div class="ux-hero ux-{{ tono }}">'):t.index("<!-- ── 2. QUÉ REVISAR")]
     assert 'class="btn btn-primary" data-click="window.print"' in hero and "no-imprimir" in hero
     assert '"Ver detalle", "#seccion-reclamos", "btn-secondary")' in t                  # el aviso informativo no es un segundo primario (el urgente va en rojo)

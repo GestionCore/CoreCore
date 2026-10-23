@@ -16,7 +16,7 @@
 {{ banner("warn", "alert", "<b>Mercado Libre no devolvió tus campañas ahora mismo</b>", "Los números de abajo pueden estar incompletos o en cero. Recargá en un rato.") }}
 {% endif %}
 
-<form action="/publicidad" method="GET" class="ux-periodo no-imprimir">
+<form action="/publicidad" method="GET" class="ux-periodo no-imprimir" data-aplica-al-elegir>
     <div class="ux-periodo-botones">
         {{ botones_periodo() }}
     </div>
@@ -24,7 +24,6 @@
         <button type="button" class="rango-fechas-boton" data-click="RangoFechas.toggle" data-click-args='["rango-publicidad"]'></button>
         <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
     </div>
-    <button type="submit" class="btn btn-primary">Ver período</button>
 </form>
 <script nonce="{{ csp_nonce }}">document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-publicidad'));</script>
 

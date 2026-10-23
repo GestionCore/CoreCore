@@ -150,8 +150,8 @@ def obtener_datos_costos(usuario_id, fecha_desde, fecha_hasta, cuenta_id=None):
 
         cursor.execute("""
             SELECT id, concepto, categoria, monto, fecha, recurrente, fecha_fin FROM gastos_operativos
-            WHERE (recurrente = false AND fecha BETWEEN %s AND %s)
-               OR (recurrente = true AND fecha <= %s AND (fecha_fin IS NULL OR fecha_fin >= %s))
+            WHERE eliminado_en IS NULL AND ((recurrente = false AND fecha BETWEEN %s AND %s)
+               OR (recurrente = true AND fecha <= %s AND (fecha_fin IS NULL OR fecha_fin >= %s)))
             ORDER BY fecha DESC, id DESC
         """, (fecha_desde, fecha_hasta, fecha_hasta, fecha_desde))
         gastos_db = cursor.fetchall()

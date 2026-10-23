@@ -30,8 +30,13 @@ function sonidoError() { reproducirTono([{freq: 220, t: 0, dur: 0.16}], 0.05); }
 
 const TOASTS_MAXIMOS = 3;
 
-function mostrarToast(mensaje, tipo = 'info') {
+/**
+ * Un aviso arriba a la derecha. `opciones.accion = { texto: 'Deshacer', alHacer }` le suma un botón: el aviso dura 8 s (o `opciones.duracion`) para poder arrepentirse de lo que se
+ * acaba de hacer; al apretarlo se cierra y corre `alHacer`. Solo para lo que de verdad se puede revertir.
+ */
+function mostrarToast(mensaje, tipo = 'info', opciones) {
     const texto = String(mensaje == null ? '' : mensaje);
+    const accion = opciones && opciones.accion;
     const cont = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast-item toast-${tipo}`;
@@ -49,12 +54,18 @@ function mostrarToast(mensaje, tipo = 'info') {
         boton.addEventListener('click', cerrar);
         toast.append(boton);
     }
+    if (accion) {
+        const boton = document.createElement('button');
+        boton.type = 'button'; boton.className = 'toast-accion'; boton.textContent = accion.texto || 'Deshacer';
+        boton.addEventListener('click', () => { cerrar(); accion.alHacer(); });
+        toast.append(boton);
+    }
     toast.addEventListener('mouseenter', () => clearTimeout(temporizador));
-    toast.addEventListener('mouseleave', () => programar(2000));
+    toast.addEventListener('mouseleave', () => programar(accion ? 4000 : 2000));
     while (cont.children.length >= TOASTS_MAXIMOS) cont.firstElementChild.remove();     // nunca más de 3 a la vez: los errores que se quedan no pueden apilarse sin fin
     cont.appendChild(toast);
     requestAnimationFrame(() => toast.classList.add('visible'));
-    programar(Math.min(9000, Math.max(4000, 2500 + texto.length * 60)));
+    programar(accion ? (opciones.duracion || 8000) : Math.min(9000, Math.max(4000, 2500 + texto.length * 60)));
     if (tipo === 'success') sonidoExito();
     else if (tipo === 'error') sonidoError();
 }
@@ -69,6 +80,26 @@ function revisarMensajeEnURL() {
         const nuevaUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
         window.history.replaceState({}, '', nuevaUrl);
     }
+}
+
+// Al borrar un gasto, Costos recarga la página con ?deshacer_gasto=<id>: el gasto ya no está (se oculta, no se pierde) y este aviso deja recuperarlo durante 8 s
+function avisarGastoEliminado() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('deshacer_gasto');
+    if (!id) return;
+    params.delete('deshacer_gasto');
+    window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
+    if (!/^\d+$/.test(id)) return;
+    mostrarToast('Gasto eliminado', 'info', { accion: { texto: 'Deshacer', alHacer: () => restaurarGasto(id) } });
+}
+
+async function restaurarGasto(id) {
+    try {
+        const r = await fetch(`/restaurar_gasto/${encodeURIComponent(id)}`, { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.ok) { window.location.reload(); return; }
+        mostrarToast(d.detalle || 'No se pudo recuperar el gasto', 'error');
+    } catch (e) { mostrarToast('No se pudo recuperar el gasto — revisá la conexión', 'error'); }
 }
 
 // ---------- Modo Privacidad ----------
@@ -322,7 +353,7 @@ function aplicarUltimosDias(dias, boton) {
     // recarga la página enseguida, pero marcarUltimosDiasActivo() (más
     // abajo) es quien deja el estado "presionado" correcto una vez que
     // esa página nueva termina de cargar.
-    form.querySelectorAll('button[onclick^="aplicarUltimosDias("]').forEach(b => b.classList.remove('active'));
+    form.querySelectorAll('button[data-periodo-dias], button[data-periodo-mes]').forEach(b => b.classList.remove('active'));
     boton.classList.add('active');
     form.submit();
 }
@@ -342,7 +373,7 @@ function aplicarMes(delta, boton) {
     const { desde, hasta } = _rangoDelMes(delta);
     form.querySelector('input[name="fecha_desde"]').value = desde;
     form.querySelector('input[name="fecha_hasta"]').value = hasta;
-    form.querySelectorAll('button[onclick^="aplicarUltimosDias("], button[onclick^="aplicarMes("]').forEach(b => b.classList.remove('active'));
+    form.querySelectorAll('button[data-periodo-dias], button[data-periodo-mes]').forEach(b => b.classList.remove('active'));
     boton.classList.add('active');
     form.submit();
 }
@@ -360,12 +391,12 @@ function marcarUltimosDiasActivo() {
         const form = cont.closest('form');
         const desdeStr = cont.dataset.desde, hastaStr = cont.dataset.hasta;
         if (!form || !desdeStr || !hastaStr) return;
-        const botones = form.querySelectorAll('button[onclick^="aplicarUltimosDias("]');
+        const botones = form.querySelectorAll('button[data-periodo-dias]');
         if (!botones.length) return;
         // Si el período es exactamente un mes (este mes o el pasado) se marca ese botón y no el de "30 días", que también podría coincidir
         let esMes = false;
-        form.querySelectorAll('button[onclick^="aplicarMes("]').forEach(b => {
-            const delta = parseInt(b.getAttribute('onclick').match(/aplicarMes\((-?\d+)/)[1], 10);
+        form.querySelectorAll('button[data-periodo-mes]').forEach(b => {
+            const delta = parseInt(b.dataset.periodoMes, 10);
             const r = _rangoDelMes(delta);
             const coincide = r.desde === desdeStr && r.hasta === hastaStr;
             b.classList.toggle('active', coincide);
@@ -379,9 +410,8 @@ function marcarUltimosDiasActivo() {
         // Un día de tolerancia: el período por defecto del servidor ("hoy menos 30 días") abarca 31 días contando hoy, y el botón
         // "30 días" nunca quedaba marcado. Con botones de 7, 14 y 30 no hay forma de confundir uno con otro.
         botones.forEach(b => {
-            const m = b.getAttribute('onclick').match(/aplicarUltimosDias\((\d+)/);
-            const n = m ? parseInt(m[1], 10) : null;
-            b.classList.toggle('active', !esMes && terminaHoy && n !== null && Math.abs(n - dias) <= 1);
+            const n = parseInt(b.dataset.periodoDias, 10);
+            b.classList.toggle('active', !esMes && terminaHoy && !Number.isNaN(n) && Math.abs(n - dias) <= 1);
         });
     });
 }
@@ -494,6 +524,9 @@ const RangoFechas = {
             cont.querySelector('input[name="fecha_desde"]').value = est.inicio;
             cont.querySelector('input[name="fecha_hasta"]').value = est.fin;
             this.cerrar(id);
+            // Con las dos fechas elegidas el período se aplica solo (como los botones de 7, 14 y 30 días): sin un «Ver período» que apretar
+            const form = cont.closest('form');
+            if (form && form.hasAttribute('data-aplica-al-elegir')) form.submit();
         }
     },
 
@@ -1753,6 +1786,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logueado = !!document.body.dataset.logueado;
     if (logueado) actualizarTicker();
     revisarMensajeEnURL();
+    avisarGastoEliminado();
     if (logueado) marcarVariantesClaveAgotadas();
     if (logueado) _chatRestaurar();
     if (logueado) cargarOportunidadesSeo();

@@ -303,8 +303,16 @@ async function sugerirIA(qid, card, boton) {
 async function ignorarPregunta(qid, card) {
     try {
         const d = await (await fetch('/api/preguntas/ignorar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question_ids: [qid] }) })).json();
-        if (d.ok) { mostrarToast('Pregunta ignorada', 'info'); sacarTarjeta(qid, card); }
+        if (d.ok) { mostrarToast('Pregunta ignorada', 'info', { accion: { texto: 'Deshacer', alHacer: () => restaurarPregunta(qid) } }); sacarTarjeta(qid, card); }
         else mostrarToast(d.detalle || 'No se pudo ignorar la pregunta', 'error');
+    } catch (e) { mostrarToast('Error de red — probá de nuevo', 'error'); }
+}
+
+async function restaurarPregunta(qid) {
+    try {
+        const d = await (await fetch('/api/preguntas/restaurar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question_ids: [qid] }) })).json();
+        if (d.ok) { mostrarToast('Listo, la pregunta volvió a la lista', 'success'); cargarPreguntas(); }
+        else mostrarToast(d.detalle || 'No se pudo recuperar la pregunta', 'error');
     } catch (e) { mostrarToast('Error de red — probá de nuevo', 'error'); }
 }
 

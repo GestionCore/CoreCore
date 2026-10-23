@@ -52,6 +52,7 @@ ETIQUETAS = {
     "costos_importar": "Costos importados desde planilla",
     "gasto_agregar": "Gasto agregado",
     "gasto_eliminar": "Gasto eliminado",
+    "gasto_restaurar": "Gasto recuperado",
     "venta_manual_agregar": "Venta manual agregada",
     "venta_manual_eliminar": "Venta manual eliminada",
     "flex_umbrales": "Umbrales de Flex guardados",

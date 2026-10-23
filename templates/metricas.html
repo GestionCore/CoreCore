@@ -24,7 +24,7 @@
 </div>
 
 <!-- ── Período: lo primero, porque todo lo de abajo depende de esto ───────── -->
-<form action="/metricas" method="GET" class="ux-periodo no-imprimir">
+<form action="/metricas" method="GET" class="ux-periodo no-imprimir" data-aplica-al-elegir>
     <div class="ux-periodo-botones">
         {{ botones_periodo() }}
     </div>
@@ -32,8 +32,6 @@
         <button type="button" class="rango-fechas-boton" data-click="RangoFechas.toggle" data-click-args='["rango-metricas"]'></button>
         <input type="hidden" name="fecha_desde"><input type="hidden" name="fecha_hasta">
     </div>
-    {# Filtrar es secundario: el botón primario de la pantalla es la descarga del resultado, debajo del número #}
-    <button type="submit" class="btn btn-secondary">Ver período</button>
 </form>
 <script nonce="{{ csp_nonce }}">document.addEventListener('DOMContentLoaded', () => RangoFechas.inicializar('rango-metricas'));</script>
 

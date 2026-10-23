@@ -110,7 +110,7 @@ def obtener_checklist_progreso(usuario_id, cuenta_id):
         """)
         activas, con_costo = cursor.fetchone()
 
-        cursor.execute("SELECT EXISTS(SELECT 1 FROM gastos_operativos), EXISTS(SELECT 1 FROM ventas)")
+        cursor.execute("SELECT EXISTS(SELECT 1 FROM gastos_operativos WHERE eliminado_en IS NULL), EXISTS(SELECT 1 FROM ventas)")
         tiene_gastos, tiene_ventas = cursor.fetchone()
 
     return armar_checklist(onboarding_completo, bool(cuenta[0]), activas or 0, con_costo or 0, tiene_gastos, tiene_ventas,
