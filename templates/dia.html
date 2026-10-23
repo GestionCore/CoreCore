@@ -21,7 +21,7 @@
             <a class="dia-resumen-item ux-{{ 'danger' if reclamos_resumen.afectan else ('warn' if reclamos_resumen.abiertos else 'ok') }}" href="#reclamos"><svg class="icon" aria-hidden="true"><use href="#icon-alert"/></svg>{% if reclamos_resumen.abiertos == 0 %}Sin reclamos{% else %}{{ reclamos_resumen.abiertos|plural("reclamo o devolución", "reclamos y devoluciones") }}{% endif %}</a>
             {% endif %}
             {% if not errores.get('pendientes') %}
-            <a class="dia-resumen-item ux-{{ 'danger' if conteo_por_prioridad.urgente else ('warn' if conteo_por_prioridad.importante else ('accion' if misiones else 'ok')) }}" href="#pendientes"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg>{% if misiones %}<b>{{ misiones|length }}</b> pendiente{{ '' if misiones|length == 1 else 's' }}{% else %}Sin pendientes{% endif %}</a>
+            <a class="dia-resumen-item ux-{{ 'danger' if conteo_por_prioridad.urgente else ('warn' if conteo_por_prioridad.importante else ('accion' if misiones else 'ok')) }}" href="#pendientes"><svg class="icon" aria-hidden="true"><use href="#icon-{{ 'alert' if (conteo_por_prioridad.urgente or conteo_por_prioridad.importante) else 'check' }}"/></svg>{% if misiones %}<b>{{ misiones|length }}</b> pendiente{{ '' if misiones|length == 1 else 's' }}{% else %}Sin pendientes{% endif %}</a>
             {% endif %}
         </nav>
     </div>

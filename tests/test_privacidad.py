@@ -72,3 +72,9 @@ def test_la_pagina_carga_el_script_antes_de_global_js_y_global_js_lo_usa():
 def test_el_css_desenfoca_lo_marcado_y_lo_deja_ver_al_pasar_el_mouse():
     css = open(os.path.join(RAIZ, "static", "css", "ux.css"), encoding="utf-8").read()
     assert "html.modo-privacidad .monto-oculto { filter: blur(" in css and "html.modo-privacidad .monto-oculto:hover { filter: none; }" in css
+
+
+def test_los_graficos_tambien_se_desenfocan_con_el_modo_privacidad():
+    """Los ejes y el detalle de un gráfico («$12.000.000») viven en un canvas: el recorrido de texto no los ve, así que lo tapa el CSS (D7)."""
+    css = open(os.path.join(RAIZ, "static", "css", "ux.css"), encoding="utf-8").read()
+    assert "html.modo-privacidad canvas { filter: blur(" in css and "html.modo-privacidad canvas:hover { filter: none; }" in css

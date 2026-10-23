@@ -74,8 +74,13 @@
             <div class="ux-barra" style="flex:1;"><span id="barra-hoy" style="width:0%;"></span></div>
             <span class="hero-ganancia-fila-valor" id="valor-hoy">—</span>
         </div>
+        <div class="hero-ganancia-fila" id="fila-ayer" hidden>
+            <span class="hero-ganancia-fila-label">Ayer a esta hora</span>
+            <div class="ux-barra ux-neutral" style="flex:1;"><span id="barra-ayer" style="width:0%;"></span></div>
+            <span class="hero-ganancia-fila-valor" id="valor-ayer">—</span>
+        </div>
         <div class="hero-ganancia-fila">
-            <span class="hero-ganancia-fila-label">Promedio diario (14 d)</span>
+            <span class="hero-ganancia-fila-label" id="etiqueta-promedio">Promedio diario (14 d)</span>
             <div class="ux-barra ux-neutral" style="flex:1;"><span id="barra-promedio" style="width:0%;"></span></div>
             <span class="hero-ganancia-fila-valor" id="valor-promedio">—</span>
         </div>
@@ -841,7 +846,16 @@
             document.getElementById('hero-tile-queda').style.borderColor = negativo ? 'var(--danger)' : 'var(--success)';
 
             // Barras hoy vs. promedio: el mayor valor absoluto marca el 100%
-            const maxAbs = Math.max(Math.abs(gHoy), Math.abs(gProm), 1);
+            // Hasta las 18 h (cuando la frase de arriba compara con ayer a esta hora) la primera referencia es ESA; el promedio del día entero queda como segunda y dicho como tal
+            const mostrarAyer = esManana && ayer.ventas > 0;
+            const filaAyer = document.getElementById('fila-ayer');
+            filaAyer.hidden = !mostrarAyer;
+            document.getElementById('etiqueta-promedio').textContent = mostrarAyer ? 'Promedio de un día completo (14 d)' : 'Promedio diario (14 d)';
+            const maxAbs = Math.max(Math.abs(gHoy), Math.abs(gProm), mostrarAyer ? Math.abs(ayer.ganancia) : 0, 1);
+            if (mostrarAyer) {
+                document.getElementById('barra-ayer').style.width = Math.max(4, Math.round(Math.abs(ayer.ganancia) / maxAbs * 100)) + '%';
+                document.getElementById('valor-ayer').textContent = UX.plata(ayer.ganancia);
+            }
             const barraHoy = document.getElementById('barra-hoy');
             barraHoy.style.width = (gHoy === 0 ? 0 : Math.max(3, Math.round(Math.abs(gHoy) / maxAbs * 100))) + '%';
             barraHoy.parentElement.className = 'ux-barra ux-' + (negativo ? 'danger' : 'ok');

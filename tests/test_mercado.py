@@ -222,7 +222,9 @@ def test_la_pantalla_muestra_cada_dato_con_su_origen_y_escapa_lo_que_viene_de_me
     html = renderizar(**_datos())
     assert "<script>alert(1)</script>" not in html and "&lt;script&gt;alert(1)&lt;/script&gt;" in html
     assert "Real · lista de Mercado Libre" in html and "Real · subió 11,1 % en 7 días" in html and "Calculado · de las publicaciones de Ropa" in html
-    assert "Tenés 2 publicaciones" in html and "Sin publicación tuya con esto" in html and "Subió 2 puestos en la semana" in html and "5 días seguidos" in html
+    assert "Tenés 2 publicaciones" in html and "Subió 2 puestos en la semana" in html and "5 días seguidos" in html
+    assert "Sin publicación tuya con esto" not in html                                                                      # no se repite en cada fila (D8)
+    assert "Todas coinciden con publicaciones tuyas." in html and "Ninguna de estas búsquedas coincide con tus publicaciones." in html      # una línea por lista
     assert "$52.000" in html and "ni cuánto vende cada competidor" in html                                                 # lo que Mercado Libre NO informa, dicho de entrada
 
 

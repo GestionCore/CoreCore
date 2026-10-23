@@ -36,7 +36,7 @@ def test_los_catorce_dias_dicen_te_queda_y_no_vuelven_a_explicar_la_cuenta():
 # ── 10 y 45. Día a día ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_cada_parte_de_dia_a_dia_tiene_un_titulo_un_escalon_menor_que_el_de_la_pagina():
-    assert ".dia-seccion h2.page-title { font-size: 1.5em; }" in _leer("static", "css", "ux.css")
+    assert ".dia-seccion h2.page-title { font-size: 1.3em; }" in _leer("static", "css", "ux.css")
     assert '<h1 class="page-title">' in _leer("templates", "dia.html") and '<h2 class="page-title">' in _leer("templates", "_dia_despacho.html")
 
 

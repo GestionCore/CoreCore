@@ -60,6 +60,9 @@
 {{ vacio("No hay paquetes para despachar", "No hay ventas propias o Flex en esta ventana. Si esperabas alguna, probá traer las ventas nuevas con el botón de arriba o revisá las ventas del período.", "package", "info", "Revisar ventas", "/metricas") }}
 {% else %}
 <!-- ── 2. LOS PAQUETES: tarjetas grandes, un toque para marcar ─────────────── -->
+{% if flex_habilitado and umbrales_flex and paquetes|selectattr('tipo_envio', 'equalto', 'Flex')|list and umbrales_flex|selectattr('precio', 'none')|list|length == umbrales_flex|length %}
+{{ banner("warn", "truck", "<b>Falta cargar lo que te cobra tu logística por cada entrega Flex</b>", "Sin ese precio, el costo de entrega de estos paquetes no entra en tu ganancia.", "Cargarlo", "/costos#entrega-flex", "btn-secondary") }}
+{% endif %}
 <div id="lista-despacho">
     {% for p in paquetes %}
     <div class="despacho-item {% if p.despachado %}despachado{% endif %}" data-clave="{{ p.clave }}" data-orden="{{ p.id_orden }}">
@@ -85,7 +88,6 @@
                 <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == u.id }}" data-zona="{{ u.id }}" {% if u.precio is none %}disabled title="Cargá primero el precio de este umbral en Costos"{% endif %} data-click="elegirZonaFlex" data-click-args='{{ [p.id_orden|string, u.id]|tojson }}'>{{ u.etiqueta }}{% if u.neto is not none %} · {{ u.neto|plata }}{% endif %}</button>
                 {% endfor %}
                 <button type="button" class="ux-zona {{ 'activa' if p.flex_zona == 0 }}" data-zona="0" title="Sin costo de entrega (por ejemplo, entregás vos)" data-click="elegirZonaFlex" data-click-args='{{ [p.id_orden|string, 0]|tojson }}'>Sin costo</button>
-                {% if umbrales_flex|selectattr('precio', 'none')|list|length == umbrales_flex|length %}<a href="/costos#entrega-flex" style="font-size:var(--text-2xs); font-weight:700; color:var(--semantic-warning);">Cargá lo que te cobra tu logística →</a>{% endif %}
             </div>
             {% endif %}
         </div>

@@ -19,10 +19,15 @@
         </div>
     </div>
     <div class="mercado-tuyo">
-        {% if b.tus_publicaciones %}<span class="ux-pill ux-ok ux-pill-suave">Tenés {{ b.tus_publicaciones|plural("publicación", "publicaciones") }}</span>
-        {% else %}<span class="ux-pill ux-neutral ux-pill-suave">Sin publicación tuya con esto</span>{% endif %}
+        {% if b.tus_publicaciones %}<span class="ux-pill ux-ok ux-pill-suave">Tenés {{ b.tus_publicaciones|plural("publicación", "publicaciones") }}</span>{% endif %}
     </div>
 </div>
+{% endmacro %}
+
+{# Una sola línea sobre cuántas búsquedas de la lista coinciden con publicaciones de la persona (en vez de repetir «sin publicación tuya» en cada fila) #}
+{% macro nota_coincidencias(lista) %}
+{% set n = lista|selectattr('tus_publicaciones')|list|length %}
+<div class="text-muted" style="font-size:var(--text-xs); margin:0 0 8px;">{% if n == 0 %}Ninguna de estas búsquedas coincide con tus publicaciones.{% elif n == lista|length %}Todas coinciden con publicaciones tuyas.{% else %}{{ n }} de {{ lista|length }} coinciden con publicaciones tuyas (las marcadas en verde); en las demás no tenés ninguna publicación con esas palabras.{% endif %}</div>
 {% endmacro %}
 
 <div class="page-header">
@@ -52,6 +57,7 @@
 <div class="panel" id="panel-busquedas">
     <div class="panel-title"><svg class="icon"><use href="#icon-search"/></svg> Lo que se busca en tus categorías <span class="ux-detalle-nota">Real · lista de Mercado Libre</span></div>
     {% if busquedas_tuyas %}
+    {{ nota_coincidencias(busquedas_tuyas) }}
     <div class="mercado-lista">
         {% for b in busquedas_tuyas %}{{ fila_busqueda(b, True) }}{% endfor %}
     </div>
@@ -128,6 +134,7 @@
 
     <div class="mercado-subtitulo">Búsquedas en alza en esta categoría</div>
     {% if busquedas_ficha %}
+    {{ nota_coincidencias(busquedas_ficha) }}
     <div class="mercado-lista">
         {% for b in busquedas_ficha %}{{ fila_busqueda(b) }}{% endfor %}
     </div>

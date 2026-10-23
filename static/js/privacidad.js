@@ -5,7 +5,7 @@
  * la píldora de la barra superior («Hoy: 1 venta · $53.349»), las tres tarjetas de «Facturado − Costos = Te queda», el texto del hero, el detalle de cada misión…
  * Ahora, con el modo prendido, se recorre el texto de la página y a cada elemento que contiene «$ 1.234» (o «US$ 12») se le pone la clase `monto-oculto`
  * (ux.css la desenfoca; al pasar el mouse se ve, como siempre). Un observador vuelve a marcar lo que la página arma después (ticker, listas, avisos).
- * Los gráficos (canvas) no son texto: sus ejes y su detalle no se tapan.
+ * Los gráficos (canvas) no son texto: no se marcan; ux.css los desenfoca enteros (ejes, valores y detalle) mientras el modo esté prendido.
  */
 (function () {
     'use strict';

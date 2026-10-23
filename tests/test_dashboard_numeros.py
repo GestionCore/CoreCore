@@ -191,3 +191,13 @@ def test_el_ticker_usa_el_dia_de_argentina(monkeypatch):
     consultado = cursor.consultas[0][1]["fecha"]
     assert consultado in ((hoy_ar).strftime("%Y-%m-%d"), (hoy_ar - timedelta(minutes=1)).strftime("%Y-%m-%d"))       # (tolera cambiar de día entre las dos lecturas)
     assert date.fromisoformat(cursor.consultas[1][1][0]) - date.fromisoformat(consultado) == timedelta(days=1)                          # «mañana» es el día siguiente a ese hoy
+
+
+
+def test_hasta_las_18_el_hero_muestra_la_barra_de_ayer_a_esta_hora_y_despues_solo_el_promedio():
+    """La frase del hero compara con ayer a esta hora hasta las 18 h: la barra de abajo tiene que mostrar la misma referencia (antes solo el promedio del día entero, y hoy parecía ir al 17 %)."""
+    import os
+    html = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "templates", "dashboard_personalizable.html"), encoding="utf-8").read()
+    assert 'id="fila-ayer" hidden' in html and "const mostrarAyer = esManana && ayer.ventas > 0;" in html
+    assert "filaAyer.hidden = !mostrarAyer;" in html and "mostrarAyer ? Math.abs(ayer.ganancia) : 0" in html
+    assert "Promedio de un día completo (14 d)" in html and "'Promedio diario (14 d)'" in html

@@ -59,6 +59,8 @@ html.modo-privacidad .ux-hero-numero:hover, html.modo-privacidad .ux-kpi-valor:h
 /* Todo elemento que static/js/privacidad.js encontró con un monto en pesos (la lista de arriba era fija y dejaba a la vista la mayoría) */
 html.modo-privacidad .monto-oculto { filter: blur(6px); transition: filter 0.2s; }
 html.modo-privacidad .monto-oculto:hover { filter: none; }
+html.modo-privacidad canvas { filter: blur(5px); transition: filter 0.2s; }
+html.modo-privacidad canvas:hover { filter: none; }
 /* También los montos de rankings, distribuciones, precios y el resumen de cobros */
 html.modo-privacidad .ux-rank-valor, html.modo-privacidad .ux-dist-val, html.modo-privacidad .ux-precio-actual, html.modo-privacidad .ux-precio-estado b,
 html.modo-privacidad .ux-regla-etiquetas b { filter: blur(6px); transition: filter 0.2s; }
@@ -144,7 +146,7 @@ a.ux-hero-sello:hover { background: color-mix(in srgb, var(--ux-c) 24%, transpar
 .dia-resumen-item .icon { width: 15px; height: 15px; color: var(--ux-c); flex-shrink: 0; }
 .dia-resumen-item b { color: var(--ux-c); font-size: 1.05em; }
 a.dia-resumen-item:hover { background: color-mix(in srgb, var(--ux-c) 22%, transparent); }
-.dia-seccion h2.page-title { font-size: 1.5em; }
+.dia-seccion h2.page-title { font-size: 1.3em; }
 
 /* ---------- Lo que tenés que hacer: cola de acciones ---------- */
 .ux-acciones-titulo { display: flex; align-items: center; gap: 10px; font-size: 1.12em; font-weight: 800; margin: 4px 0 12px; }
@@ -308,7 +310,7 @@ tr.ux-fila-ok td:first-child { box-shadow: inset 4px 0 0 var(--success); }
 /* ---------- «Día a día»: varias partes en una pantalla, con las pestañas de arriba que saltan a cada una ---------- */
 .dia-seccion { scroll-margin-top: calc(var(--topbar-h) + 64px); margin-top: 34px; padding-top: 30px; border-top: 1px solid var(--border-soft); }
 .dia-seccion:first-of-type { margin-top: 6px; padding-top: 0; border-top: 0; }
-.dia-seccion .page-title { font-size: 1.5em; }
+.dia-seccion .page-title { font-size: 1.3em; }
 html:has(.dia-seccion) { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html:has(.dia-seccion) { scroll-behavior: auto; } }
 
